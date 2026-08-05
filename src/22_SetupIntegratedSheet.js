@@ -113,6 +113,11 @@ const DROPDOWN_OPTIONS_SETUP = {
  * 手動実行: Apps Scriptエディタから実行
  */
 function setupIntegratedLeadSheetForEnv() {
+  throw new Error(
+    'この関数は無効化されています。既存シートを削除して再作成するため、' +
+    '実行するとリード管理シートのデータが失われます。' +
+    '本当に必要な場合はコード側のガードを外してください。'
+  );
   // デバッグ: どの環境・スプレッドシートを使用するか確認
   const env = getEnvironment();
   const props = PropertiesService.getScriptProperties();
@@ -143,6 +148,11 @@ function setupIntegratedLeadSheetForEnv() {
  * 手動実行: Apps Scriptエディタから実行
  */
 function setupIntegratedLeadSheet() {
+  throw new Error(
+    'この関数は無効化されています。既存シートを削除して再作成するため、' +
+    '実行するとリード管理シートのデータが失われます。' +
+    '本当に必要な場合はコード側のガードを外してください。'
+  );
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   setupIntegratedLeadSheetInternal(ss);
 }
@@ -151,6 +161,11 @@ function setupIntegratedLeadSheet() {
  * 内部実装: リード管理シートのセットアップ
  */
 function setupIntegratedLeadSheetInternal(ss) {
+  throw new Error(
+    'この関数は無効化されています。既存シートを削除して再作成するため、' +
+    '実行するとリード管理シートのデータが失われます。' +
+    '本当に必要な場合はコード側のガードを外してください。'
+  );
   const sheetName = 'リード管理';
 
   // 既存シートがあれば削除確認
