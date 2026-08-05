@@ -1,0 +1,9 @@
+# CI・ドキュメント類は GAS に push しない
+.github/
+README.md
+docs/
+# clasp 設定ファイル自体は GAS 不要
+.clasp.json
+**/.clasp.json
+.claspignore
+.gitignore
