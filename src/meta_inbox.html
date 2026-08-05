@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meta Messaging Inbox</title>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f1117;
+      color: #e4e4e7;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── ヘッダー ── */
+    .header {
+      background: #18191f;
+      border-bottom: 1px solid #2a2a35;
+      padding: 0 16px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .header-logo { font-size: 20px; }
+    .header-title { font-size: 15px; font-weight: 600; color: #fff; }
+    .header-subtitle { font-size: 12px; color: #71717a; margin-left: auto; }
+
+    /* ── 2カラムレイアウト ── */
+    .layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── サイドバー（連絡先リスト） ── */
+    .sidebar {
+      width: 280px;
+      flex-shrink: 0;
+      background: #14151c;
+      border-right: 1px solid #2a2a35;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 10px 12px;
+      border-bottom: 1px solid #2a2a35;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sidebar-header span { font-size: 12px; font-weight: 600; color: #a1a1aa; text-transform: uppercase; letter-spacing: .05em; }
+
+    /* プラットフォームフィルタ */
+    .platform-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 8px 12px;
+      border-bottom: 1px solid #2a2a35;
+    }
+    .tab-btn {
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: none;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #2a2a35;
+      color: #a1a1aa;
+      transition: all .15s;
+    }
+    .tab-btn.active, .tab-btn:hover { background: #3b3b4f; color: #e4e4e7; }
+    .tab-btn.messenger.active { background: #0099ff22; color: #0099ff; }
+    .tab-btn.instagram.active { background: #e1306c22; color: #e1306c; }
+    .tab-btn.whatsapp.active  { background: #25d36622; color: #25d366; }
+
+    /* 連絡先カード */
+    .contact-list { overflow-y: auto; flex: 1; }
+    .contact-card {
+      padding: 10px 12px;
+      border-bottom: 1px solid #1e1e28;
+      cursor: pointer;
+      transition: background .12s;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .contact-card:hover   { background: #1e1e2a; }
+    .contact-card.active  { background: #23233a; border-left: 2px solid #0099ff; }
+
+    .contact-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+      background: #2a2a35;
+    }
+    .contact-info { flex: 1; min-width: 0; }
+    .contact-name { font-size: 13px; font-weight: 600; color: #e4e4e7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .contact-meta { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
+    .platform-badge {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+    .badge-messenger { background: #0099ff22; color: #0099ff; }
+    .badge-instagram  { background: #e1306c22; color: #e1306c; }
+    .badge-whatsapp   { background: #25d36622; color: #25d366; }
+    .contact-time { font-size: 10px; color: #52525b; }
+    .contact-preview { font-size: 11px; color: #71717a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+    .empty-state { text-align: center; padding: 40px 16px; color: #52525b; font-size: 13px; }
+
+    /* ── メインエリア（会話 + 返信フォーム） ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* 会話ヘッダー */
+    .chat-header {
+      background: #18191f;
+      border-bottom: 1px solid #2a2a35;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      min-height: 52px;
+    }
+    .chat-header-name { font-size: 14px; font-weight: 600; }
+    .chat-header-id   { font-size: 11px; color: #52525b; }
+    .refresh-btn {
+      margin-left: auto;
+      background: #2a2a35;
+      border: none;
+      color: #a1a1aa;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background .12s;
+    }
+    .refresh-btn:hover { background: #3b3b4f; color: #e4e4e7; }
+
+    /* メッセージスレッド */
+    .chat-thread {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .msg-row {
+      display: flex;
+      gap: 8px;
+    }
+    .msg-row.outbound { flex-direction: row-reverse; }
+
+    .msg-bubble {
+      max-width: 70%;
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .msg-row.inbound  .msg-bubble { background: #1e1e2a; color: #e4e4e7; border-bottom-left-radius: 2px; }
+    .msg-row.outbound .msg-bubble { background: #0099ff; color: #fff;    border-bottom-right-radius: 2px; }
+
+    .msg-meta { font-size: 10px; color: #52525b; margin-top: 3px; text-align: right; }
+    .msg-row.inbound .msg-meta { text-align: left; }
+
+    /* 返信フォーム */
+    .reply-area {
+      background: #14151c;
+      border-top: 1px solid #2a2a35;
+      padding: 12px 16px;
+      flex-shrink: 0;
+    }
+    .reply-form { display: flex; gap: 8px; align-items: flex-end; }
+    .reply-textarea {
+      flex: 1;
+      background: #1e1e2a;
+      border: 1px solid #2a2a35;
+      border-radius: 8px;
+      color: #e4e4e7;
+      font-size: 13px;
+      padding: 8px 12px;
+      resize: none;
+      min-height: 60px;
+      max-height: 140px;
+      font-family: inherit;
+      transition: border-color .15s;
+    }
+    .reply-textarea:focus { outline: none; border-color: #0099ff55; }
+    .reply-textarea:disabled { opacity: .4; }
+    .send-btn {
+      background: #0099ff;
+      border: none;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background .15s, opacity .15s;
+      white-space: nowrap;
+      align-self: flex-end;
+      height: 38px;
+    }
+    .send-btn:hover    { background: #0080dd; }
+    .send-btn:disabled { opacity: .4; cursor: default; }
+
+    /* ステータストースト */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #18191f;
+      border: 1px solid #2a2a35;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 24px #0006;
+      z-index: 100;
+      transition: opacity .3s;
+    }
+    .toast.success { border-color: #25d36655; color: #25d366; }
+    .toast.error   { border-color: #ef444455; color: #ef4444; }
+
+    /* 未選択時のプレースホルダー */
+    .no-contact {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      color: #3f3f46;
+    }
+    .no-contact .icon { font-size: 48px; }
+    .no-contact p { font-size: 14px; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #2a2a35; border-radius: 3px; }
+  </style>
+</head>
+<body x-data="metaInbox()" x-init="init()">
+
+  <!-- ヘッダー -->
+  <div class="header">
+    <span class="header-logo">💬</span>
+    <span class="header-title">Meta Messaging Inbox</span>
+    <span class="header-subtitle">Messenger · Instagram · WhatsApp</span>
+  </div>
+
+  <div class="layout">
+
+    <!-- サイドバー: 連絡先リスト -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <span>連絡先</span>
+        <span x-text="contacts.length + ' 件'" style="margin-left:auto;font-size:11px;color:#52525b;"></span>
+      </div>
+
+      <!-- プラットフォームフィルタ -->
+      <div class="platform-tabs">
+        <button class="tab-btn" :class="{ active: platformFilter === 'all' }"
+          @click="platformFilter = 'all'">All</button>
+        <button class="tab-btn messenger" :class="{ active: platformFilter === 'Messenger' }"
+          @click="platformFilter = 'Messenger'">💬</button>
+        <button class="tab-btn instagram" :class="{ active: platformFilter === 'Instagram' }"
+          @click="platformFilter = 'Instagram'">📸</button>
+        <button class="tab-btn whatsapp" :class="{ active: platformFilter === 'WhatsApp' }"
+          @click="platformFilter = 'WhatsApp'">📱</button>
+      </div>
+
+      <!-- 連絡先カード -->
+      <div class="contact-list">
+        <template x-if="loadingContacts">
+          <div class="empty-state">読み込み中...</div>
+        </template>
+
+        <template x-if="!loadingContacts && filteredContacts.length === 0">
+          <div class="empty-state">メッセージはありません</div>
+        </template>
+
+        <template x-for="c in filteredContacts" :key="c.senderId">
+          <div class="contact-card"
+            :class="{ active: selected && selected.senderId === c.senderId }"
+            @click="selectContact(c)">
+            <div class="contact-avatar" x-text="platformEmoji(c.platform)"></div>
+            <div class="contact-info">
+              <div class="contact-name" x-text="c.senderName"></div>
+              <div class="contact-meta">
+                <span class="platform-badge"
+                  :class="platformBadgeClass(c.platform)"
+                  x-text="c.platform"></span>
+                <span class="contact-time" x-text="formatTime(c.lastTime)"></span>
+              </div>
+              <div class="contact-preview" x-text="c.lastMessage"></div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- メインエリア -->
+    <div class="main">
+
+      <!-- 未選択 -->
+      <template x-if="!selected">
+        <div class="no-contact">
+          <div class="icon">💬</div>
+          <p>左の連絡先を選択してください</p>
+        </div>
+      </template>
+
+      <!-- 会話エリア -->
+      <template x-if="selected">
+        <div style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+
+          <!-- 会話ヘッダー -->
+          <div class="chat-header">
+            <span x-text="platformEmoji(selected.platform)" style="font-size:20px;"></span>
+            <div>
+              <div class="chat-header-name" x-text="selected.senderName"></div>
+              <div class="chat-header-id" x-text="selected.platform + ' · ' + selected.senderId"></div>
+            </div>
+            <button class="refresh-btn" @click="loadConversation(selected)" :disabled="loadingThread">
+              <span x-text="loadingThread ? '読込中...' : '↻ 更新'"></span>
+            </button>
+          </div>
+
+          <!-- スレッド -->
+          <div class="chat-thread" x-ref="thread">
+            <template x-if="loadingThread">
+              <div style="text-align:center;color:#52525b;padding:20px;">読み込み中...</div>
+            </template>
+
+            <template x-for="(msg, i) in thread" :key="i">
+              <div class="msg-row" :class="msg.direction">
+                <div>
+                  <div class="msg-bubble" x-text="msg.messageText"></div>
+                  <div class="msg-meta">
+                    <span x-text="msg.direction === 'outbound' ? '送信済み' : msg.senderName"></span>
+                    · <span x-text="formatTime(msg.timestamp)"></span>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <template x-if="!loadingThread && thread.length === 0">
+              <div style="text-align:center;color:#52525b;padding:40px;">会話履歴がありません</div>
+            </template>
+          </div>
+
+          <!-- 返信フォーム -->
+          <div class="reply-area">
+            <div class="reply-form">
+              <textarea class="reply-textarea"
+                x-model="replyText"
+                placeholder="返信を入力..."
+                :disabled="sending"
+                @keydown.ctrl.enter="sendReply()"
+                @keydown.meta.enter="sendReply()"></textarea>
+              <button class="send-btn"
+                @click="sendReply()"
+                :disabled="sending || !replyText.trim()">
+                <span x-text="sending ? '送信中...' : '送信'"></span>
+              </button>
+            </div>
+            <div style="font-size:10px;color:#3f3f46;margin-top:4px;">Ctrl+Enter または ⌘+Enter で送信</div>
+          </div>
+
+        </div>
+      </template>
+
+    </div>
+  </div>
+
+  <!-- トースト通知 -->
+  <template x-if="toast.show">
+    <div class="toast" :class="toast.type" x-text="toast.message"></div>
+  </template>
+
+  <script>
+    function metaInbox() {
+      return {
+        // ── 状態 ──
+        contacts:       [],
+        filteredContacts: [],
+        platformFilter: 'all',
+        selected:       null,
+        thread:         [],
+        replyText:      '',
+        sending:        false,
+        loadingContacts: true,
+        loadingThread:  false,
+        toast:          { show: false, type: 'success', message: '' },
+
+        // ── 初期化 ──
+        init() {
+          this.loadContacts();
+          this.$watch('platformFilter', () => this.applyFilter());
+        },
+
+        // ── 連絡先読み込み ──
+        loadContacts() {
+          this.loadingContacts = true;
+          google.script.run
+            .withSuccessHandler((result) => {
+              this.contacts = result.data || [];
+              this.applyFilter();
+              this.loadingContacts = false;
+            })
+            .withFailureHandler((err) => {
+              console.error('連絡先取得失敗:', err);
+              this.loadingContacts = false;
+            })
+            .doPost({ action: 'metaGetContacts', limit: 30 });
+
+          // doPost直接呼び出しのラッパー
+          this._postAction('metaGetContacts', { limit: 30 }, (data) => {
+            this.contacts = data || [];
+            this.applyFilter();
+            this.loadingContacts = false;
+          });
+        },
+
+        // ── プラットフォームフィルタ適用 ──
+        applyFilter() {
+          if (this.platformFilter === 'all') {
+            this.filteredContacts = this.contacts;
+          } else {
+            this.filteredContacts = this.contacts.filter(c => c.platform === this.platformFilter);
+          }
+        },
+
+        // ── 連絡先選択 → 会話読み込み ──
+        selectContact(contact) {
+          this.selected   = contact;
+          this.replyText  = '';
+          this.loadConversation(contact);
+        },
+
+        loadConversation(contact) {
+          this.loadingThread = true;
+          this._postAction('metaGetConversation', { senderId: contact.senderId, limit: 50 }, (data) => {
+            this.thread        = data || [];
+            this.loadingThread = false;
+            this.$nextTick(() => {
+              const el = this.$refs.thread;
+              if (el) el.scrollTop = el.scrollHeight;
+            });
+          });
+        },
+
+        // ── 返信送信 ──
+        sendReply() {
+          const text = this.replyText.trim();
+          if (!text || !this.selected || this.sending) return;
+
+          this.sending = true;
+          this._postAction('metaSendMessage', {
+            platform:    this.selected.platform,
+            recipientId: this.selected.senderId,
+            messageText: text,
+            senderName:  this.selected.senderName
+          }, (result) => {
+            this.sending = false;
+            if (result && result.success !== false) {
+              // 送信済みメッセージをスレッドに追加
+              this.thread.push({
+                timestamp:   new Date().toLocaleString('ja-JP'),
+                direction:   'outbound',
+                messageText: text,
+                senderName:  'オペレーター'
+              });
+              this.replyText = '';
+              this.$nextTick(() => {
+                const el = this.$refs.thread;
+                if (el) el.scrollTop = el.scrollHeight;
+              });
+              this.showToast('success', '送信しました');
+            } else {
+              const errMsg = (result && result.error) ? result.error : '送信に失敗しました';
+              this.showToast('error', errMsg);
+            }
+          });
+        },
+
+        // ── GAS doPost 呼び出しラッパー ──
+        _postAction(action, params, callback) {
+          // GAS google.script.run は doPost の action を経由できないため
+          // 公開されたサーバーサイド関数を action 別に呼ぶ
+          const fnMap = {
+            metaGetContacts:   'metaGetContactList',
+            metaGetConversation: 'metaGetConversation',
+            metaSendMessage:   null  // doPost経由で呼ぶ
+          };
+
+          if (action === 'metaSendMessage') {
+            // 送信はdoPost経由（google.script.run.doPostは使えないので専用関数を用意）
+            google.script.run
+              .withSuccessHandler((r) => callback(r ? JSON.parse(r) : null))
+              .withFailureHandler((e) => { this.sending = false; this.showToast('error', e.message); })
+              .metaSendMessageFromUI(params.platform, params.recipientId, params.messageText, params.senderName);
+            return;
+          }
+
+          if (action === 'metaGetContacts') {
+            google.script.run
+              .withSuccessHandler((r) => callback(r))
+              .withFailureHandler((e) => { console.error(e); callback([]); })
+              .metaGetContactList(params.limit || 30);
+            return;
+          }
+
+          if (action === 'metaGetConversation') {
+            google.script.run
+              .withSuccessHandler((r) => callback(r))
+              .withFailureHandler((e) => { console.error(e); callback([]); })
+              .metaGetConversation(params.senderId, params.limit || 50);
+            return;
+          }
+
+          callback([]);
+        },
+
+        // ── ユーティリティ ──
+        platformEmoji(platform) {
+          return { 'Messenger': '💬', 'Instagram': '📸', 'WhatsApp': '📱' }[platform] || '📩';
+        },
+        platformBadgeClass(platform) {
+          return {
+            'Messenger': 'badge-messenger',
+            'Instagram': 'badge-instagram',
+            'WhatsApp':  'badge-whatsapp'
+          }[platform] || '';
+        },
+        formatTime(timeStr) {
+          if (!timeStr) return '';
+          try {
+            const d = new Date(timeStr);
+            if (isNaN(d)) return timeStr;
+            const now  = new Date();
+            const diff = now - d;
+            if (diff < 60000)              return 'たった今';
+            if (diff < 3600000)            return Math.floor(diff / 60000) + '分前';
+            if (diff < 86400000)           return Math.floor(diff / 3600000) + '時間前';
+            return d.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+          } catch (e) { return timeStr; }
+        },
+
+        showToast(type, message) {
+          this.toast = { show: true, type, message };
+          setTimeout(() => { this.toast.show = false; }, 3000);
+        }
+      };
+    }
+  </script>
+</body>
+</html>
