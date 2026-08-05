@@ -22,13 +22,17 @@ jobs:
       - name: Restore .clasprc.json
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-        run: echo "$CLASPRC_JSON" > ~/.clasprc.json
+        run: |
+          printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
+          # 書き込み確認（値は出さない）
+          python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print('clasprc OK, keys:', list(d.keys()))" ~/.clasprc.json
 
       - name: Generate .clasp.json
         env:
           SCRIPT_ID: ${{ secrets.SCRIPT_ID_DEV }}
         run: |
-          echo "{\"scriptId\":\"$SCRIPT_ID\",\"rootDir\":\"src\"}" > .clasp.json
+          printf '{"scriptId":"%s","rootDir":"src"}\n' "$SCRIPT_ID" > .clasp.json
+          echo "scriptId: $(python3 -c "import json; print(json.load(open('.clasp.json'))['scriptId'][:8] + '...')")"
 
       - name: Push to DEV
         run: clasp push --force
