@@ -150,4 +150,3 @@ function sendActionDateNotification(webhook, customerName, staffId, leadId, acti
     Logger.log('アクション日通知エラー: ' + e.message);
   }
 }
-// CI-VERIFY-20260805-0810 このコメントは反映確認用（後で削除）
