@@ -405,13 +405,8 @@ function getLeads(filter, leadType) {
     return [];
   }
 
-  // gid（シートID）でシートを取得（シート名変更の影響を受けない）
-  const sheet = getSheetByGid(ss, CONFIG.SHEETS.LEADS_GID);
-
-  if (!sheet) {
-    console.log('getLeads: リード管理シートが見つかりません (gid=' + CONFIG.SHEETS.LEADS_GID + ')');
-    return [];
-  }
+  const sheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  if (!sheet) throw new Error('シートが見つかりません: ' + CONFIG.SHEETS.LEADS);
 
   const lastRow = sheet.getLastRow();
   console.log('getLeads: lastRow=' + lastRow);
@@ -1459,12 +1454,12 @@ function getUserInfoByEmail(email) {
 function assignLeadToStaff(leadId, staffId) {
   try {
     const ss = getSpreadsheet();
-    // gid（シートID）でシートを取得（シート名変更の影響を受けない）
     const staffSheet = getSheetByGid(ss, CONFIG.SHEETS.STAFF_GID);
-    const leadsSheet = getSheetByGid(ss, CONFIG.SHEETS.LEADS_GID);
+    const leadsSheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+    if (!leadsSheet) throw new Error('シートが見つかりません: ' + CONFIG.SHEETS.LEADS);
 
-    if (!staffSheet || !leadsSheet) {
-      return { success: false, message: 'シートが見つかりません' };
+    if (!staffSheet) {
+      return { success: false, message: '担当者シートが見つかりません' };
     }
 
     // 1. 担当者情報を取得
@@ -1600,13 +1595,8 @@ function archiveLeadWithReason(leadId, archiveReason) {
     Logger.log('🔍 archiveLeadWithReason開始: leadId=' + leadId + ', archiveReason=' + archiveReason);
 
     const ss = getSpreadsheet();
-    // gid（シートID）でシートを取得（シート名変更の影響を受けない）
-    const leadsSheet = getSheetByGid(ss, CONFIG.SHEETS.LEADS_GID);
-
-    if (!leadsSheet) {
-      Logger.log('❌ リード管理シートが見つかりません');
-      return { success: false, error: 'リード管理シートが見つかりません' };
-    }
+    const leadsSheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+    if (!leadsSheet) throw new Error('シートが見つかりません: ' + CONFIG.SHEETS.LEADS);
 
     Logger.log('✅ シート取得成功: ' + leadsSheet.getName());
 
