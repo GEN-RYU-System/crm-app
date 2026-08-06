@@ -9,12 +9,8 @@
 function getKnowledgeList() {
   try {
     const ss = getSpreadsheet();
-    const sheet = getSheetByGid(ss, CONFIG.SHEETS.TERM_DICTIONARY_GID);
-
-    if (!sheet) {
-      Logger.log('❌ ナレッジシートが見つかりません (gid: ' + CONFIG.SHEETS.TERM_DICTIONARY_GID + ')');
-      return [];
-    }
+    const sheet = ss.getSheetByName(CONFIG.SHEETS.TERM_DICTIONARY);
+    if (!sheet) throw new Error('シートが見つかりません: ' + CONFIG.SHEETS.TERM_DICTIONARY);
 
     // ヘッダー行からインデックスマップを作成
     const headerMap = getHeaderIndexMap(sheet);
@@ -53,11 +49,8 @@ function getKnowledgeList() {
 function saveKnowledge(formData) {
   try {
     const ss = getSpreadsheet();
-    const sheet = getSheetByGid(ss, CONFIG.SHEETS.TERM_DICTIONARY_GID);
-
-    if (!sheet) {
-      return { success: false, error: 'シートが見つかりません' };
-    }
+    const sheet = ss.getSheetByName(CONFIG.SHEETS.TERM_DICTIONARY);
+    if (!sheet) throw new Error('シートが見つかりません: ' + CONFIG.SHEETS.TERM_DICTIONARY);
 
     const headerMap = getHeaderIndexMap(sheet);
     const data = sheet.getDataRange().getValues();
@@ -146,11 +139,8 @@ function saveKnowledge(formData) {
 function deleteKnowledge(id) {
   try {
     const ss = getSpreadsheet();
-    const sheet = getSheetByGid(ss, CONFIG.SHEETS.TERM_DICTIONARY_GID);
-
-    if (!sheet) {
-      return { success: false, error: 'シートが見つかりません' };
-    }
+    const sheet = ss.getSheetByName(CONFIG.SHEETS.TERM_DICTIONARY);
+    if (!sheet) throw new Error('シートが見つかりません: ' + CONFIG.SHEETS.TERM_DICTIONARY);
 
     const headerMap = getHeaderIndexMap(sheet);
     const idIdx = headerMap[TERM_DICTIONARY_HEADERS.ID];

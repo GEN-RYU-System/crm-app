@@ -1195,10 +1195,9 @@ function getCurrentUser() {
  */
 function getStaffListForAssign() {
   const ss = getSpreadsheet();
-  // gid（シートID）でシートを取得（シート名変更の影響を受けない）
-  const sheet = getSheetByGid(ss, CONFIG.SHEETS.STAFF_GID);
-
-  if (!sheet || sheet.getLastRow() < 2) {
+  const sheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
+  if (!sheet) throw new Error('シートが見つかりません: ' + CONFIG.SHEETS.STAFF);
+  if (sheet.getLastRow() < 2) {
     return [];
   }
 
@@ -1256,10 +1255,9 @@ function getStaffListForAssign() {
  */
 function getArchiveReasons() {
   const ss = getSpreadsheet();
-  // gid（シートID）でシートを取得（シート名変更の影響を受けない）
-  const sheet = getSheetByGid(ss, CONFIG.SHEETS.SETTINGS_GID);
-
-  if (!sheet || sheet.getLastRow() < 2) {
+  const sheet = ss.getSheetByName(CONFIG.SHEETS.SETTINGS);
+  if (!sheet) throw new Error('シートが見つかりません: ' + CONFIG.SHEETS.SETTINGS);
+  if (sheet.getLastRow() < 2) {
     return [];
   }
 
@@ -1454,13 +1452,10 @@ function getUserInfoByEmail(email) {
 function assignLeadToStaff(leadId, staffId) {
   try {
     const ss = getSpreadsheet();
-    const staffSheet = getSheetByGid(ss, CONFIG.SHEETS.STAFF_GID);
+    const staffSheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
+    if (!staffSheet) throw new Error('シートが見つかりません: ' + CONFIG.SHEETS.STAFF);
     const leadsSheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
     if (!leadsSheet) throw new Error('シートが見つかりません: ' + CONFIG.SHEETS.LEADS);
-
-    if (!staffSheet) {
-      return { success: false, message: '担当者シートが見つかりません' };
-    }
 
     // 1. 担当者情報を取得
     const staffData = staffSheet.getDataRange().getValues();
