@@ -170,6 +170,28 @@ function rescueWrite(limit) {
 }
 
 /**
+ * 救出3件の書き込み内容確認（一時検証用）
+ */
+function verifyRescuedRows() {
+  const ss = getSpreadsheet();
+  const sh = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  const v = sh.getDataRange().getValues();
+  const h = v[0];
+  const last3 = v.slice(-3).map(r => {
+    const o = {};
+    ['リードID','顧客名','リード種別','商談進捗','国','流入経路','登録日'].forEach(k => {
+      o[k] = String(r[h.indexOf(k)]);
+    });
+    return o;
+  });
+  // WebApp一覧への混入チェック
+  const outbound = getLeads(null, 'アウトバウンド') || [];
+  const leaked = outbound.filter(l =>
+    ['LDO-00002','LDO-00003','LDO-00004'].indexOf(l['リードID']) >= 0);
+  return { last3: last3, outboundCount: outbound.length, leakedIntoList: leaked.length };
+}
+
+/**
  * アーカイブタブ行ずれ検査（一時検証用・検証後に削除すること）
  * 1列目がリードIDパターン（LDI/LDO-NNNNN）でない行を返す。
  */
