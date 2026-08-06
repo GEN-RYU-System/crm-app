@@ -13,8 +13,16 @@
 
 /**
  * スプレッドシート全体を初期化（メインエントリーポイント）
+ *
+ * @deprecated 23_SheetService.js の同名関数に統合済み。名前衝突を避けるためリネーム。
+ *             GAS 上では 23_SheetService.js の initializeSpreadsheet() が有効。
  */
-function initializeSpreadsheet() {
+function _DEPRECATED_initializeSpreadsheet_legacy() {
+  throw new Error(
+    'この関数は無効化されています。既存シートを削除して再作成するため、' +
+    '実行するとリード管理シートのデータが失われます。' +
+    '本当に必要な場合はコード側のガードを外してください。'
+  );
   const ui = SpreadsheetApp.getUi();
   const response = ui.alert(
     '初期設定の実行',
@@ -78,6 +86,11 @@ function initializeSpreadsheet() {
  * リード管理シートを初期化（メインシート）
  */
 function initializeLeadsSheet(ss) {
+  throw new Error(
+    'この関数は無効化されています。既存シートを削除して再作成するため、' +
+    '実行するとリード管理シートのデータが失われます。' +
+    '本当に必要な場合はコード側のガードを外してください。'
+  );
   Logger.log('初期化中: リード管理');
 
   let sheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
