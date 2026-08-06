@@ -18,6 +18,29 @@ function inspectArchiveRows() {
 }
 
 /**
+ * アーカイブタブ列構成・ID重複検査（一時検証用・検証後に削除すること）
+ */
+function inspectArchiveDetail() {
+  const ss = getSpreadsheet();
+  const leads = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  const arch = ss.getSheetByName('リード_アーカイブ');
+  const lh = leads.getRange(1,1,1,leads.getLastColumn()).getValues()[0];
+  const av = arch.getDataRange().getValues();
+  const ah = av[0];
+  // ① 列名の集合差と、並びが同じか
+  const onlyInArch = ah.filter(h => lh.indexOf(h) < 0);
+  const onlyInLeads = lh.filter(h => ah.indexOf(h) < 0);
+  const sameOrder = JSON.stringify(ah) === JSON.stringify(lh);
+  // ② ID重複の実態
+  const counts = {};
+  av.slice(1).forEach(r => { const id = String(r[0]); counts[id] = (counts[id]||0)+1; });
+  const dups = Object.entries(counts).filter(([,c]) => c > 1)
+                     .map(([id,c]) => id + ' x' + c);
+  return { sameOrder: sameOrder, onlyInArch: onlyInArch, onlyInLeads: onlyInLeads,
+           dupCount: dups.length, dups: dups };
+}
+
+/**
  * アーカイブタブ照合（一時検証用・検証後に削除すること）
  * リード管理シートと「リード_アーカイブ」タブのリードIDを比較し、
  * アーカイブタブにのみ存在するIDを返す。
