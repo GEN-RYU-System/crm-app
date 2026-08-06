@@ -85,12 +85,8 @@ function analyzeDealFromMessage(leadId, logId, messageText) {
  */
 function getLeadInfo(leadId) {
   const ss = getSpreadsheet();
-  const sheet = getSheetByGid(ss, CONFIG.SHEETS.LEADS_GID);
-
-  if (!sheet) {
-    Logger.log('リード管理シートが見つかりません');
-    return null;
-  }
+  const sheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  if (!sheet) throw new Error('シートが見つかりません: ' + CONFIG.SHEETS.LEADS);
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
