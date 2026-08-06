@@ -192,6 +192,18 @@ function verifyRescuedRows() {
 }
 
 /**
+ * getLeads のアーカイブ混入チェック（救出起因か既存挙動かの切り分け）
+ */
+function checkExistingArchiveLeak() {
+  const inbound = getLeads(null, 'インバウンド') || [];
+  const outbound = getLeads(null, 'アウトバウンド') || [];
+  const rescued = ['LDO-00002','LDO-00003','LDO-00004'];
+  const count = list => list.filter(l =>
+    l['商談進捗'] === 'アーカイブ' && rescued.indexOf(l['リードID']) < 0).length;
+  return { inboundArchived: count(inbound), outboundArchivedExclRescued: count(outbound) };
+}
+
+/**
  * アーカイブタブ行ずれ検査（一時検証用・検証後に削除すること）
  * 1列目がリードIDパターン（LDI/LDO-NNNNN）でない行を返す。
  */
