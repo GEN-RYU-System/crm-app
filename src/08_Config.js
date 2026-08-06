@@ -753,6 +753,32 @@ function getRemindWebhook() {
 }
 
 /**
+ * 設定シートから単一キーの設定値を取得する。
+ * 「設定キー」列が存在しない場合や行が見つからない場合は null を返す。
+ *
+ * @param {string} key - 設定キー（例: 'REMINDER_ENABLED'）
+ * @returns {string|null} 設定値、または null
+ */
+function getSettingValue(key) {
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName(CONFIG.SHEETS.SETTINGS);
+  if (!sheet || sheet.getLastRow() < 2) return null;
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const keyCol = headers.indexOf('設定キー');
+  const valCol = headers.indexOf('設定値');
+  if (keyCol < 0 || valCol < 0) return null;
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][keyCol]) === key) {
+      return String(data[i][valCol]);
+    }
+  }
+  return null;
+}
+
+/**
  * プルダウン選択肢を取得（クライアント用）
  * 設定シートから動的に読み取る
  */
