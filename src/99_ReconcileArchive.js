@@ -1,4 +1,175 @@
 /**
+ * 救出 DRY-RUN（一時検証用・書き込みなし）
+ * - 重複30ペアを比較し、新しい行を選択
+ * - 購入頻度→購入頻度(月次) の列名読み替えを含む61列マッピングを適用
+ * - 先頭3行のプレビューと 商談進捗 の値集計を返す
+ */
+function rescueDryRun() {
+  const ss = getSpreadsheet();
+  const leads = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  const arch  = ss.getSheetByName('リード_アーカイブ');
+  const lh = leads.getRange(1, 1, 1, leads.getLastColumn()).getValues()[0];
+  const av = arch.getDataRange().getValues();
+  const ah = av[0];
+
+  // アーカイブ列名 → リード管理インデックス（購入頻度 の読み替えを含む）
+  function archToLeadsIdx(archHeader) {
+    if (archHeader === '購入頻度') return lh.indexOf('購入頻度(月次)');
+    return lh.indexOf(archHeader);
+  }
+
+  // アーカイブ行をリード管理の列順に変換（61列）
+  const updateDateArchIdx = ah.indexOf('シート更新日');
+  function toLeadsRow(archRow) {
+    return lh.map(leadsHeader => {
+      let archIdx;
+      if (leadsHeader === '購入頻度(月次)') {
+        archIdx = ah.indexOf('購入頻度(月次)') >= 0 ? ah.indexOf('購入頻度(月次)') : ah.indexOf('購入頻度');
+      } else {
+        archIdx = ah.indexOf(leadsHeader);
+      }
+      return archIdx >= 0 ? archRow[archIdx] : '';
+    });
+  }
+
+  // IDでグループ化
+  const groups = {};
+  av.slice(1).forEach(row => {
+    const id = String(row[0]);
+    if (!groups[id]) groups[id] = [];
+    groups[id].push(row);
+  });
+
+  // 重複解決
+  const dupAnalysis = { identicalCount: 0, differentCount: 0, differentIds: [] };
+  const resolved = [];
+  Object.entries(groups).forEach(([id, rows]) => {
+    if (rows.length === 1) {
+      resolved.push(rows[0]);
+      return;
+    }
+    const identical = JSON.stringify(rows[0]) === JSON.stringify(rows[1]);
+    if (identical) {
+      dupAnalysis.identicalCount++;
+      resolved.push(rows[0]);
+    } else {
+      dupAnalysis.differentCount++;
+      const diffCols = ah.filter((h, i) => String(rows[0][i]) !== String(rows[1][i]));
+      let chosen = rows[0];
+      if (updateDateArchIdx >= 0) {
+        const d0 = rows[0][updateDateArchIdx] instanceof Date ? rows[0][updateDateArchIdx] : new Date(rows[0][updateDateArchIdx] || 0);
+        const d1 = rows[1][updateDateArchIdx] instanceof Date ? rows[1][updateDateArchIdx] : new Date(rows[1][updateDateArchIdx] || 0);
+        if (d1 > d0) chosen = rows[1];
+      }
+      dupAnalysis.differentIds.push({ id: id, diffCols: diffCols });
+      resolved.push(chosen);
+    }
+  });
+
+  const mappedRows = resolved.map(toLeadsRow);
+
+  // 商談進捗 集計
+  const statusIdx = lh.indexOf('商談進捗');
+  const statusCounts = {};
+  mappedRows.forEach(row => {
+    const v = String(row[statusIdx] || '（空）');
+    statusCounts[v] = (statusCounts[v] || 0) + 1;
+  });
+
+  // 先頭3行プレビュー（非空フィールドのみ）
+  const leadIdIdx = lh.indexOf('リードID');
+  const preview = mappedRows.slice(0, 3).map(row => {
+    const obj = {};
+    lh.forEach((h, i) => {
+      const v = row[i];
+      if (v !== '' && v !== null && v !== undefined) {
+        obj[h] = v instanceof Date ? v.toISOString() : v;
+      }
+    });
+    return obj;
+  });
+
+  return {
+    resolvedCount: resolved.length,
+    dupAnalysis: dupAnalysis,
+    statusCounts: statusCounts,
+    previewFirst3: preview
+  };
+}
+
+/**
+ * 救出 WRITE（一時検証用・実際にリード管理へ appendRow する）
+ * @param {number} limit - 書き込む最大件数
+ * @returns {{ writtenIds: string[], skippedIds: string[] }}
+ */
+function rescueWrite(limit) {
+  const ss = getSpreadsheet();
+  const leads = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  const arch  = ss.getSheetByName('リード_アーカイブ');
+  const lh = leads.getRange(1, 1, 1, leads.getLastColumn()).getValues()[0];
+  const av = arch.getDataRange().getValues();
+  const ah = av[0];
+
+  // 既存リードIDを収集（重複書き込み防止）
+  const existingData = leads.getDataRange().getValues();
+  const existingIdIdx = existingData[0].indexOf('リードID');
+  const existingIds = new Set(existingData.slice(1).map(r => String(r[existingIdIdx])).filter(String));
+
+  // アーカイブ行をリード管理の列順に変換
+  function toLeadsRow(archRow) {
+    return lh.map(leadsHeader => {
+      let archIdx;
+      if (leadsHeader === '購入頻度(月次)') {
+        archIdx = ah.indexOf('購入頻度(月次)') >= 0 ? ah.indexOf('購入頻度(月次)') : ah.indexOf('購入頻度');
+      } else {
+        archIdx = ah.indexOf(leadsHeader);
+      }
+      return archIdx >= 0 ? archRow[archIdx] : '';
+    });
+  }
+
+  // IDでグループ化 → 重複解決
+  const updateDateArchIdx = ah.indexOf('シート更新日');
+  const groups = {};
+  av.slice(1).forEach(row => {
+    const id = String(row[0]);
+    if (!groups[id]) groups[id] = [];
+    groups[id].push(row);
+  });
+
+  const resolved = [];
+  Object.entries(groups).forEach(([id, rows]) => {
+    if (rows.length === 1) { resolved.push(rows[0]); return; }
+    const identical = JSON.stringify(rows[0]) === JSON.stringify(rows[1]);
+    if (identical) { resolved.push(rows[0]); return; }
+    let chosen = rows[0];
+    if (updateDateArchIdx >= 0) {
+      const d0 = rows[0][updateDateArchIdx] instanceof Date ? rows[0][updateDateArchIdx] : new Date(rows[0][updateDateArchIdx] || 0);
+      const d1 = rows[1][updateDateArchIdx] instanceof Date ? rows[1][updateDateArchIdx] : new Date(rows[1][updateDateArchIdx] || 0);
+      if (d1 > d0) chosen = rows[1];
+    }
+    resolved.push(chosen);
+  });
+
+  // 未存在IDのみ、limit件まで書き込む
+  const leadIdArchIdx = ah.indexOf('リードID');
+  const statusIdx = lh.indexOf('商談進捗');
+  const writtenIds = [];
+  const skippedIds = [];
+
+  for (let i = 0; i < resolved.length && writtenIds.length < limit; i++) {
+    const id = String(resolved[i][leadIdArchIdx]);
+    if (existingIds.has(id)) { skippedIds.push(id); continue; }
+    const row = toLeadsRow(resolved[i]);
+    if (!row[statusIdx]) row[statusIdx] = 'アーカイブ';
+    leads.appendRow(row);
+    writtenIds.push(id);
+  }
+
+  return { writtenIds: writtenIds, skippedIds: skippedIds };
+}
+
+/**
  * アーカイブタブ行ずれ検査（一時検証用・検証後に削除すること）
  * 1列目がリードIDパターン（LDI/LDO-NNNNN）でない行を返す。
  */
