@@ -182,6 +182,30 @@ function getQuoteHistoryMapping(sheet) {
 }
 
 /**
+ * ヘッダー配列から 0-indexed の列インデックスマップを作成する。
+ * getDataRange().getValues() パターン（row[idx] アクセス）用。
+ * 1つでも見つからない列名があれば Error をスローする（サイレント -1 防止）。
+ *
+ * @param {Array<string>} headers - データ1行目のヘッダー配列
+ * @param {Array<string>} names   - 取得したい列名の配列
+ * @returns {Object} 列名 → 0-based インデックスのマッピング
+ *
+ * @example
+ * const colIndex = buildColIndex(data[0], ['顧客名', '担当者ID']);
+ * const name = row[colIndex['顧客名']];
+ */
+function buildColIndex(headers, names) {
+  const idx = {}, missing = [];
+  names.forEach(n => {
+    const i = headers.indexOf(n);
+    if (i < 0) missing.push(n);
+    idx[n] = i;
+  });
+  if (missing.length) throw new Error('列が見つかりません: ' + missing.join(', '));
+  return idx;
+}
+
+/**
  * テスト関数: ヘッダーマッピングの動作確認
  */
 function testHeaderMapping() {
