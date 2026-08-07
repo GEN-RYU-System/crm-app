@@ -217,6 +217,24 @@ function checkLeadDuplicates() {
 }
 
 /**
+ * リード進捗・商談進捗・商談結果の組み合わせ分布調査（一時検証用）
+ */
+function surveyStatusColumns() {
+  const ss = getSpreadsheet();
+  const v = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
+  const h = v[0];
+  const li = h.indexOf('リード進捗'), di = h.indexOf('商談進捗'), ri = h.indexOf('商談結果');
+  const combos = {};
+  v.slice(1).forEach(r => {
+    const key = [r[li]||'(空)', r[di]||'(空)', r[ri]||'(空)'].join(' | ');
+    combos[key] = (combos[key]||0) + 1;
+  });
+  // 件数降順で返す
+  return Object.entries(combos).sort((a,b) => b[1]-a[1])
+               .map(([k,c]) => c + '件: ' + k);
+}
+
+/**
  * アーカイブタブ行ずれ検査（一時検証用・検証後に削除すること）
  * 1列目がリードIDパターン（LDI/LDO-NNNNN）でない行を返す。
  */
