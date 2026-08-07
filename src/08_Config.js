@@ -127,7 +127,7 @@ const CONFIG = {
 
     // マスタ・設定シート
     STAFF: '担当者マスタ',
-    SETTINGS: '設定',
+    SETTINGS: '選択肢マスタ',
     PERMISSIONS: '権限設定',
     GOALS: '目標設定',
     TEMPLATES: 'テンプレート',
