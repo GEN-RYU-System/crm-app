@@ -278,6 +278,278 @@ function reconcileCustomers52() {
   return JSON.stringify(out, null, 2);
 }
 
+// ============================================================
+// 【PR12】write 実装
+// ============================================================
+
+/**
+ * 旧顧客マスタ52行 → 新3タブ構造へ書き込み
+ * 前提:
+ *   - 人間が「顧客マスタ」→「顧客マスタ_旧」に改名済み
+ *   - seedCustomerMasterTabs() で新スキーマのタブが空で作成済み
+ *   - 新顧客マスタ・配送先マスタ・支払先マスタがヘッダー行のみ（2行目以降空）
+ */
+function migrateCustomers52Write() {
+  const ss = getSpreadsheet();
+
+  // ---- 書き込み先の存在＆空チェック ----
+  const newCustSh = ss.getSheetByName(CONFIG.SHEETS.CRM_CUSTOMERS);
+  const newShipSh = ss.getSheetByName(CONFIG.SHEETS.CRM_SHIPPING);
+  const newPaySh  = ss.getSheetByName(CONFIG.SHEETS.CRM_PAYMENT);
+  if (!newCustSh || !newShipSh || !newPaySh) {
+    return 'ERROR: 新タブが存在しません。seedCustomerMasterTabs() を先に実行してください。';
+  }
+  if (newCustSh.getLastRow() > 1) {
+    return 'ERROR: 顧客マスタに既にデータがあります（' + (newCustSh.getLastRow() - 1) + '行）。二重書き込み防止。';
+  }
+  if (newShipSh.getLastRow() > 1) {
+    return 'ERROR: 配送先マスタに既にデータがあります。二重書き込み防止。';
+  }
+  if (newPaySh.getLastRow() > 1) {
+    return 'ERROR: 支払先マスタに既にデータがあります。二重書き込み防止。';
+  }
+
+  // ---- 旧タブを開く（改名後は「顧客マスタ_旧」） ----
+  const oldSh = ss.getSheetByName('顧客マスタ_旧') || ss.getSheetByName('顧客マスタ');
+  if (!oldSh) return 'ERROR: 旧顧客マスタが見つかりません（「顧客マスタ_旧」または「顧客マスタ」）';
+  const oldData = oldSh.getDataRange().getValues();
+  const oh = oldData[0];
+
+  // 旧ヘッダーインデックス
+  const o = {
+    ctId:    oh.indexOf('顧客ID'),
+    regDate: oh.indexOf('登録日時'),
+    bName:   oh.indexOf('B Name'),
+    bEmail:  oh.indexOf('B Email'),
+    bPhone:  oh.indexOf('B Telephone'),
+    bTaxId:  oh.indexOf('B Tax ID'),
+    bAddr1:  oh.indexOf('B Address 1'),
+    bAddr2:  oh.indexOf('B Address 2'),
+    bCity:   oh.indexOf('B City'),
+    bState:  oh.indexOf('B State'),
+    bZip:    oh.indexOf('B Zip'),
+    bCountry:oh.indexOf('B Country'),
+    dName:   oh.indexOf('D Name'),
+    dPhone:  oh.indexOf('D Telephone'),
+    dEmail:  oh.indexOf('D Email'),
+    dTaxId:  oh.indexOf('D Tax ID'),
+    dAddr1:  oh.indexOf('D Address 1'),
+    dAddr2:  oh.indexOf('D Address 2'),
+    dAddr3:  oh.indexOf('D Address 3'),
+    dCity:   oh.indexOf('D City'),
+    dState:  oh.indexOf('D State'),
+    dZip:    oh.indexOf('D Zip'),
+    dCountry:oh.indexOf('D Country'),
+    billing: oh.indexOf('支払い名義'),
+    salesRep:oh.indexOf('営業担当者'),
+    channel: oh.indexOf('連絡ツール'),
+    fedex:   oh.indexOf('FedEx ID'),
+    memo:    oh.indexOf('発送時メモ'),
+    discCh:  oh.indexOf('Discord チャンネルID'),
+    discUser:oh.indexOf('Discord ユーザーID'),
+    wh1:     oh.indexOf('Discrod 請求書 webhook'),
+    wh2:     oh.indexOf('Discrod 発送通知 webhook'),
+    shipWh:  oh.indexOf('Shippment webhook')
+  };
+
+  // ---- 成約リードの 源流リードID / 初回取引日 を名前引き ----
+  const leadData = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
+  const lh = leadData[0];
+  const liName = lh.indexOf('顧客名');
+  const liId   = lh.indexOf('リードID');
+  const liStat = lh.indexOf('リードステータス');
+  const liTx   = lh.indexOf('初回取引日');
+
+  const norm = v => String(v || '').toLowerCase().replace(/　/g, ' ').replace(/\s+/g, ' ').trim();
+  const leadByName = {};
+  leadData.slice(1).filter(r => String(r[liStat]) === '成約').forEach(r => {
+    const n = norm(r[liName]);
+    if (n) leadByName[n] = { leadId: String(r[liId]), firstTx: r[liTx] };
+  });
+
+  const g = (row, idx) => idx >= 0 ? row[idx] : '';
+  const joinAddr = (...parts) => parts.map(p => String(p || '').trim()).filter(Boolean).join(', ');
+  const fmtDate = v => (v instanceof Date && !isNaN(v)) ? Utilities.formatDate(v, 'Asia/Tokyo', 'yyyy/MM/dd') : String(v || '');
+
+  // CT-00001（テスト行）を除外した51行
+  const rows51 = oldData.slice(1).filter(r => String(r[o.ctId]) !== 'CT-00001');
+
+  const custRows = [], shipRows = [], payRows = [];
+  const errors = [];
+
+  rows51.forEach((r, i) => {
+    const ct    = String(r[o.ctId] || '');
+    const bName = String(r[o.bName] || '');
+    const lead  = leadByName[norm(bName)];
+    if (!lead) { errors.push(ct + '/' + bName + ': 名前不一致'); return; }
+
+    const regDt  = fmtDate(g(r, o.regDate));
+    const firstTx = (lead.firstTx instanceof Date && !isNaN(lead.firstTx))
+                    ? fmtDate(lead.firstTx) : regDt;
+    const pad = String(i + 1).padStart(5, '0');
+
+    // 新顧客マスタ 19列
+    custRows.push([
+      ct,                          // 顧客ID
+      lead.leadId,                 // 源流リードID
+      bName,                       // 顧客名
+      '',                          // 呼び方（英語）
+      g(r, o.bCountry),            // 国
+      g(r, o.bEmail),              // メール
+      g(r, o.bPhone),              // 電話番号
+      firstTx,                     // 初回取引日
+      regDt,                       // 登録日
+      g(r, o.salesRep),            // 営業担当者
+      g(r, o.bTaxId),              // B Tax ID
+      g(r, o.channel),             // 連絡ツール
+      g(r, o.fedex),               // FedEx ID
+      g(r, o.memo),                // 発送時メモ
+      g(r, o.discCh),              // Discord チャンネルID
+      g(r, o.discUser),            // Discord ユーザーID
+      g(r, o.wh1),                 // Discrod 請求書 webhook
+      g(r, o.wh2),                 // Discrod 発送通知 webhook
+      g(r, o.shipWh)               // Shippment webhook
+    ]);
+
+    // 配送先マスタ 10列
+    shipRows.push([
+      'AD-' + pad,                 // 配送先ID
+      ct,                          // 顧客ID
+      g(r, o.dName),               // 宛名
+      joinAddr(g(r,o.dAddr1), g(r,o.dAddr2), g(r,o.dAddr3), g(r,o.dCity), g(r,o.dState), g(r,o.dZip)), // 住所
+      g(r, o.dCountry),            // 国
+      g(r, o.dPhone),              // 電話
+      'TRUE',                      // 既定
+      'TRUE',                      // 有効
+      g(r, o.dEmail),              // D Email
+      g(r, o.dTaxId)               // D Tax ID
+    ]);
+
+    // 支払先マスタ 8列
+    const billing = String(g(r, o.billing) || '') || bName;
+    payRows.push([
+      'PY-' + pad,                 // 支払先ID
+      ct,                          // 顧客ID
+      billing,                     // 請求名義
+      joinAddr(g(r,o.bAddr1), g(r,o.bAddr2), g(r,o.bCity), g(r,o.bState), g(r,o.bZip), g(r,o.bCountry)), // 住所
+      '',                          // 支払方法
+      '',                          // 通貨
+      'TRUE',                      // 既定
+      'TRUE'                       // 有効
+    ]);
+  });
+
+  if (errors.length > 0) return 'ERROR（書き込み中止）:\n' + errors.join('\n');
+
+  // 一括書き込み
+  newCustSh.getRange(2, 1, custRows.length, custRows[0].length).setValues(custRows);
+  newShipSh.getRange(2, 1, shipRows.length, shipRows[0].length).setValues(shipRows);
+  newPaySh .getRange(2, 1, payRows.length,  payRows[0].length) .setValues(payRows);
+
+  return [
+    '書き込み完了:',
+    '  顧客マスタ   : ' + custRows.length + '行 / 19列',
+    '  配送先マスタ : ' + shipRows.length + '行 / 10列 (AD-00001〜AD-' + String(shipRows.length).padStart(5,'0') + ')',
+    '  支払先マスタ : ' + payRows.length  + '行 / 8列  (PY-00001〜PY-' + String(payRows.length).padStart(5,'0') + ')'
+  ].join('\n');
+}
+
+/**
+ * 移行後の総合検証（6点）
+ * 1. 顧客マスタ行数=51・顧客ID重複0・源流リードID重複0・全源流がリード管理に実在
+ * 2. 配送先/支払先マスタ各51行・親子照合（顧客ID全一致）
+ * 3. Discord連携・SalesSync が参照する列の存在確認
+ */
+function verifyMigration() {
+  const ss = getSpreadsheet();
+  const lines = ['=== verifyMigration ==='];
+
+  // ---- 顧客マスタ ----
+  const cSh = ss.getSheetByName(CONFIG.SHEETS.CRM_CUSTOMERS);
+  if (!cSh) { lines.push('ERROR: 顧客マスタが存在しません'); return lines.join('\n'); }
+  const cData = cSh.getDataRange().getValues();
+  const cH = cData[0];
+  const rows = cData.slice(1);
+
+  const cidIdx = cH.indexOf('顧客ID');
+  const srcIdx = cH.indexOf('源流リードID');
+  const discChIdx  = cH.indexOf('Discord チャンネルID');
+  const discUsrIdx = cH.indexOf('Discord ユーザーID');
+  const salesRepIdx= cH.indexOf('営業担当者');
+
+  const cidSeen = {}, srcSeen = {}, cidDups = [], srcDups = [];
+  rows.forEach(r => {
+    const c = String(r[cidIdx] || ''), s = String(r[srcIdx] || '');
+    if (cidSeen[c]) cidDups.push(c); cidSeen[c] = true;
+    if (srcSeen[s]) srcDups.push(s); srcSeen[s] = true;
+  });
+
+  // 参照整合性
+  const lData = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
+  const lH = lData[0];
+  const allLeadIds = {};
+  lData.slice(1).forEach(r => { const id = String(r[lH.indexOf('リードID')]||''); if(id) allLeadIds[id]=true; });
+  const missingRefs = rows.filter(r => !allLeadIds[String(r[srcIdx]||'')]).map(r => String(r[srcIdx]));
+
+  lines.push('[顧客マスタ]');
+  lines.push('  行数: ' + rows.length + (rows.length === 51 ? ' ✓' : ' ✗ (期待51)'));
+  lines.push('  顧客ID重複: ' + (cidDups.length === 0 ? '0 ✓' : cidDups.join(',')));
+  lines.push('  源流リードID重複: ' + (srcDups.length === 0 ? '0 ✓' : srcDups.join(',')));
+  lines.push('  参照整合性: ' + (missingRefs.length === 0 ? 'OK ✓' : 'NG ' + missingRefs.join(',')));
+  lines.push('  Discord チャンネルID列: ' + (discChIdx >= 0 ? '存在 (col' + (discChIdx+1) + ') ✓' : '存在しない ✗'));
+  lines.push('  Discord ユーザーID列: '   + (discUsrIdx >= 0 ? '存在 (col' + (discUsrIdx+1) + ') ✓' : '存在しない ✗'));
+  lines.push('  営業担当者列: '           + (salesRepIdx >= 0 ? '存在 (col' + (salesRepIdx+1) + ') ✓' : '存在しない ✗'));
+  lines.push('');
+
+  // ---- 配送先マスタ ----
+  const adSh = ss.getSheetByName(CONFIG.SHEETS.CRM_SHIPPING);
+  const adData = adSh.getDataRange().getValues();
+  const adH = adData[0];
+  const adRows = adData.slice(1);
+  const adCidIdx = adH.indexOf('顧客ID');
+  const custCtIds = new Set(rows.map(r => String(r[cidIdx])));
+  const adOrphan = adRows.filter(r => !custCtIds.has(String(r[adCidIdx]||''))).map(r => String(r[adCidIdx]));
+
+  lines.push('[配送先マスタ]');
+  lines.push('  行数: ' + adRows.length + (adRows.length === 51 ? ' ✓' : ' ✗ (期待51)'));
+  lines.push('  親子照合（孤立行）: ' + (adOrphan.length === 0 ? '0 ✓' : adOrphan.join(',')));
+  lines.push('');
+
+  // ---- 支払先マスタ ----
+  const pySh = ss.getSheetByName(CONFIG.SHEETS.CRM_PAYMENT);
+  const pyData = pySh.getDataRange().getValues();
+  const pyH = pyData[0];
+  const pyRows = pyData.slice(1);
+  const pyCidIdx = pyH.indexOf('顧客ID');
+  const pyOrphan = pyRows.filter(r => !custCtIds.has(String(r[pyCidIdx]||''))).map(r => String(r[pyCidIdx]));
+
+  lines.push('[支払先マスタ]');
+  lines.push('  行数: ' + pyRows.length + (pyRows.length === 51 ? ' ✓' : ' ✗ (期待51)'));
+  lines.push('  親子照合（孤立行）: ' + (pyOrphan.length === 0 ? '0 ✓' : pyOrphan.join(',')));
+  lines.push('');
+
+  // ---- 先頭3行実値 ----
+  lines.push('[先頭3行実値（CT列・源流・顧客名・Discord チャンネルID）]');
+  rows.slice(0, 3).forEach(r => {
+    lines.push('  ' + [
+      String(r[cidIdx]||''),
+      String(r[srcIdx]||''),
+      String(r[cH.indexOf('顧客名')]||''),
+      String(r[discChIdx]||'（空）')
+    ].join(' | '));
+  });
+  lines.push('[最終行（CT-00051相当）]');
+  const last = rows[rows.length - 1];
+  lines.push('  ' + [
+    String(last[cidIdx]||''),
+    String(last[srcIdx]||''),
+    String(last[cH.indexOf('顧客名')]||''),
+    String(last[discChIdx]||'（空）')
+  ].join(' | '));
+
+  return lines.join('\n');
+}
+
 /**
  * 既存タブの正体確認（読み取りのみ）— 平文返却
  */
