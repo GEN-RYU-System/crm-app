@@ -1024,3 +1024,99 @@ function _resolveSourceLead(startLeadId, allLeadsByIdMap, data, idCol, dupSrcCol
   return { sourceLeadId: null, sourceRowIdx: -1,
            error: '解決深度上限超過(>' + MAX_DEPTH + '): ' + startLeadId };
 }
+
+// ============================================================
+// PR13v2 ドライラン
+// ============================================================
+
+/**
+ * PR13v2 ドライラン
+ * - 新3タブの現行データ件数（クリア対象）
+ * - 旧タブから転記される B Tax ID 件数
+ * - 住所列の存在確認とサンプルマッピング
+ * - 名前不一致エラー数
+ * 読み取りのみ。クリア・書き込みは行わない。
+ */
+function dryRunSchemaV2() {
+  const ss = getSpreadsheet();
+  const lines = ['=== dryRunSchemaV2 ==='];
+
+  // ---- 旧タブ ----
+  const oldSh = ss.getSheetByName('顧客マスタ_旧') || ss.getSheetByName('顧客マスタ');
+  if (!oldSh) return 'ERROR: 顧客マスタ_旧 が存在しません';
+  const oldData = oldSh.getDataRange().getValues();
+  const oh = oldData[0];
+  const rows52 = oldData.slice(1);
+  const rows51 = rows52.filter(r => String(r[oh.indexOf('顧客ID')]) !== 'CT-00001');
+
+  // 旧列インデックス確認
+  const need = [
+    '顧客ID','B Name','B Email','B Telephone','B Tax ID',
+    'B Address 1','B Address 2','B City','B State','B Zip','B Country',
+    'D Name','D Telephone','D Email','D Tax ID',
+    'D Address 1','D Address 2','D Address 3','D City','D State','D Zip','D Country',
+    '支払い名義','営業担当者','連絡ツール','FedEx ID','発送時メモ',
+    'Discord参加','Discord チャンネルID','Discord ユーザーID',
+    'Discrod 請求書 webhook','Discrod 発送通知 webhook','Shippment webhook','登録日時'
+  ];
+  const missing = need.filter(n => oh.indexOf(n) < 0);
+  lines.push('[旧タブ列チェック]');
+  lines.push('  旧タブ: ' + oldSh.getName() + '  行数(除CT-00001): ' + rows51.length);
+  lines.push('  必須列 欠落: ' + (missing.length === 0 ? 'なし ✓' : missing.join(', ')));
+
+  // B Tax ID 件数
+  const bTaxIdx = oh.indexOf('B Tax ID');
+  const bTaxCount = rows51.filter(r => String(r[bTaxIdx] || '').trim() !== '').length;
+  lines.push('  B Tax ID 非空: ' + bTaxCount + '件 → 支払先マスタ B Tax ID 列へ移設');
+
+  // ---- 新3タブ現行データ件数（クリア対象） ----
+  lines.push('');
+  lines.push('[新3タブ現行データ（クリア対象）]');
+  ['顧客マスタ','配送先マスタ','支払先マスタ'].forEach(function(name) {
+    const sh = ss.getSheetByName(name);
+    if (!sh) { lines.push('  ' + name + ': 存在しない'); return; }
+    const lastRow = sh.getLastRow();
+    lines.push('  ' + name + ': データ行 ' + (lastRow > 1 ? lastRow - 1 : 0) + '行（行2〜' + lastRow + ' をクリア予定）');
+  });
+
+  // ---- 新スキーマ確認 ----
+  lines.push('');
+  lines.push('[新スキーマ（v2）]');
+  lines.push('  顧客マスタ 18列: 顧客ID|源流リードID|顧客名|国|メール|電話番号|初回取引日|登録日|営業担当者|連絡ツール|FedEx ID|発送時メモ|Discord参加|Discord チャンネルID|Discord ユーザーID|Discrod 請求書 webhook|Discrod 発送通知 webhook|Shippment webhook');
+  lines.push('  配送先マスタ 15列: 配送先ID|顧客ID|宛名|Address 1|Address 2|Address 3|City|State|Zip|国|電話|D Email|D Tax ID|既定|有効');
+  lines.push('  支払先マスタ 14列: 支払先ID|顧客ID|請求名義|Address 1|Address 2|City|State|Zip|国|支払方法|通貨|B Tax ID|既定|有効');
+
+  // ---- 名前突合 ----
+  const leadData = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
+  const lh = leadData[0];
+  const norm = function(v) { return String(v||'').toLowerCase().replace(/　/g,' ').replace(/\s+/g,' ').trim(); };
+  const leadByName = {};
+  leadData.slice(1).filter(function(r){ return String(r[lh.indexOf('リードステータス')]) === '成約'; }).forEach(function(r){
+    const n = norm(r[lh.indexOf('顧客名')]);
+    if (n) leadByName[n] = String(r[lh.indexOf('リードID')]);
+  });
+  const bNameIdx = oh.indexOf('B Name');
+  const errors = rows51.filter(function(r){ return !leadByName[norm(String(r[bNameIdx]||''))]; });
+
+  lines.push('');
+  lines.push('[名前突合]');
+  lines.push('  成約リード件数: ' + Object.keys(leadByName).length);
+  lines.push('  旧51行: 一致=' + (rows51.length - errors.length) + '件, 不一致=' + errors.length + '件');
+  if (errors.length > 0) {
+    errors.slice(0, 5).forEach(function(r){ lines.push('    NG: ' + String(r[oh.indexOf('顧客ID')]) + ' / ' + String(r[bNameIdx])); });
+  }
+
+  // ---- サンプルマッピング（先頭3行） ----
+  lines.push('');
+  lines.push('[先頭3行サンプルマッピング（旧→新）]');
+  const g = function(row, idx){ return idx >= 0 ? String(row[idx]||'').substring(0,30) : '(列なし)'; };
+  rows51.slice(0, 3).forEach(function(r) {
+    const ct = g(r, oh.indexOf('顧客ID'));
+    lines.push('  ' + ct + ':');
+    lines.push('    [顧客] 国=' + g(r,oh.indexOf('B Country')) + ' / Email=' + g(r,oh.indexOf('B Email')) + ' / BtaxID=' + g(r,oh.indexOf('B Tax ID')));
+    lines.push('    [配送] D Addr1=' + g(r,oh.indexOf('D Address 1')) + ' / D Addr3=' + g(r,oh.indexOf('D Address 3')) + ' / D Email=' + g(r,oh.indexOf('D Email')));
+    lines.push('    [支払] B Addr1=' + g(r,oh.indexOf('B Address 1')) + ' / B Country=' + g(r,oh.indexOf('B Country')) + ' / B TaxID=' + g(r,oh.indexOf('B Tax ID')));
+  });
+
+  return lines.join('\n');
+}
