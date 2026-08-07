@@ -599,7 +599,7 @@ const HEADERS = {
     '登録経路'            // 28: フォーム/手動/インポート
   ],
 
-  // CRM顧客マスタ（19列: 新9列 + 引き継ぎ10列）
+  // CRM顧客マスタ（20列: 新9列 + 引き継ぎ11列）
   CRM_CUSTOMERS: [
     // ★ 新スキーマ 9列
     '顧客ID',            // 1: CT-00001
@@ -617,11 +617,12 @@ const HEADERS = {
     '連絡ツール',                // 12
     'FedEx ID',                  // 13
     '発送時メモ',                // 14
-    'Discord チャンネルID',      // 15: 33_DiscordIntegrationService.js 参照中
-    'Discord ユーザーID',        // 16: 33_DiscordIntegrationService.js 参照中
-    'Discrod 請求書 webhook',    // 17: ※旧スペルミスを厳密維持
-    'Discrod 発送通知 webhook',  // 18: ※旧スペルミスを厳密維持
-    'Shippment webhook'          // 19: ※旧スペルミスを厳密維持
+    'Discord参加',               // 15
+    'Discord チャンネルID',      // 16: 33_DiscordIntegrationService.js 参照中
+    'Discord ユーザーID',        // 17: 33_DiscordIntegrationService.js 参照中
+    'Discrod 請求書 webhook',    // 18: ※旧スペルミスを厳密維持
+    'Discrod 発送通知 webhook',  // 19: ※旧スペルミスを厳密維持
+    'Shippment webhook'          // 20: ※旧スペルミスを厳密維持
   ],
 
   // 配送先マスタ（10列: 基本8列 + D Email / D Tax ID）
