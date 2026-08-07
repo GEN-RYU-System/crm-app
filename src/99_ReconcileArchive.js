@@ -204,6 +204,19 @@ function checkExistingArchiveLeak() {
 }
 
 /**
+ * リード管理シートをバックアップ（一時検証用）
+ */
+function backupLeadSheet() {
+  const ss = getSpreadsheet();
+  const src = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  const name = 'リード管理_backup_20260807';
+  if (ss.getSheetByName(name)) throw new Error('既に存在: ' + name);
+  src.copyTo(ss).setName(name);
+  const b = ss.getSheetByName(name);
+  return { rows: b.getLastRow(), cols: b.getLastColumn() };
+}
+
+/**
  * リード管理シートのID重複チェック（一時検証用）
  */
 function checkLeadDuplicates() {
