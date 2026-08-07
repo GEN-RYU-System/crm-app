@@ -414,3 +414,101 @@ function reconcileArchiveTab() {
   const onlyArch = [...A].filter(id => !L.has(id));
   return { leadCount: L.size, archCount: A.size, onlyInArchive: onlyArch };
 }
+
+/**
+ * ステータス1列化 書き込み（W2で実行）
+ * 第1パス: 全行lookup（unmappedが1件でもあればthrow・シート無変更）
+ * 第2パス: ヘッダー＋全データをsetValuesで一括書き込み → 削除行を下から削除
+ * @returns {{ writeCount: number, deleteCount: number }}
+ */
+function migrateStatusWrite() {
+  const ss = getSpreadsheet();
+  const leadsSheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  if (!leadsSheet) throw new Error('シートが見つかりません: ' + CONFIG.SHEETS.LEADS);
+
+  // 前提チェック: 現在61列であること（部分書き込み後の再実行を防ぐ）
+  const lastCol = leadsSheet.getLastColumn();
+  if (lastCol !== 61) throw new Error('列数が想定外です: ' + lastCol + '（期待値: 61）');
+
+  // ステータス移行表を読み込む
+  const migSheet = ss.getSheetByName('ステータス移行表');
+  if (!migSheet) throw new Error('シートが見つかりません: ステータス移行表');
+  const migData = migSheet.getDataRange().getValues();
+  const migRows = migData.slice(1).map(r => ({
+    L: String(r[0]), D: String(r[1]), R: String(r[2]), ns: String(r[3])
+  }));
+
+  function lookup(L, D, R) {
+    for (const row of migRows) {
+      if ((row.L === '*' || row.L === L) &&
+          (row.D === '*' || row.D === D) &&
+          (row.R === '*' || row.R === R)) return row.ns;
+    }
+    return null;
+  }
+
+  const allData = leadsSheet.getDataRange().getValues();
+  const h = allData[0];
+  const idIdx = h.indexOf('リードID');
+  const li = h.indexOf('リード進捗');
+  const di = h.indexOf('商談進捗');
+  const ri = h.indexOf('商談結果');
+  if ([idIdx, li, di, ri].some(i => i < 0)) {
+    throw new Error('必須列が見つかりません: リードID/' + [idIdx,li,di,ri].join('/'));
+  }
+
+  // === 第1パス: 全行lookup（シートへの書き込みなし） ===
+  const results = []; // 各データ行の判定結果: { delete: bool, value: string }
+  const unmapped = [];
+
+  for (let i = 1; i < allData.length; i++) {
+    const row = allData[i];
+    const ID = String(row[idIdx] || '');
+    const L = String(row[li] || '');
+    const D = String(row[di] || '');
+    const R = String(row[ri] || '');
+
+    if (!ID) {
+      results.push({ delete: true, value: '' });
+      continue;
+    }
+
+    const ns = lookup(L, D, R);
+    if (ns === null) {
+      unmapped.push('行' + (i + 1) + ': [' + [L, D, R].join('|') + ']');
+      results.push({ delete: false, value: '' }); // 後でthrowするので値は不使用
+      continue;
+    }
+    if (ns === '【削除】') {
+      results.push({ delete: true, value: '' });
+      continue;
+    }
+    results.push({ delete: false, value: ns });
+  }
+
+  // unmappedが1件でもあればシート無変更のままthrow
+  if (unmapped.length > 0) {
+    throw new Error('unmapped ' + unmapped.length + '件:\n' + unmapped.join('\n'));
+  }
+
+  // === 第2パス: 一括書き込み → 行削除 ===
+  // ヘッダー書き込み（62列目）
+  leadsSheet.getRange(1, 62).setValue('リードステータス');
+
+  // 全データ行の62列目を1回のsetValuesで書き込む
+  const colValues = results.map(r => [r.value]);
+  leadsSheet.getRange(2, 62, colValues.length, 1).setValues(colValues);
+
+  // 削除対象行を下から削除（行番号はシート上の1-indexed）
+  const deleteRowIndices = results
+    .map((r, i) => r.delete ? i + 2 : null)
+    .filter(n => n !== null)
+    .sort((a, b) => b - a);
+
+  for (const rowNum of deleteRowIndices) {
+    leadsSheet.deleteRow(rowNum);
+  }
+
+  const writeCount = results.filter(r => !r.delete).length;
+  return { writeCount: writeCount, deleteCount: deleteRowIndices.length };
+}
