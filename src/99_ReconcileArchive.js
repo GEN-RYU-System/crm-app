@@ -235,6 +235,83 @@ function surveyStatusColumns() {
 }
 
 /**
+ * ステータス移行表タブを新設してシードする（一時検証用）
+ * ヘッダー込み17行（データ16行）
+ */
+function seedStatusMigrationTable() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName('ステータス移行表');
+  if (sheet) {
+    sheet.clearContents();
+  } else {
+    sheet = ss.insertSheet('ステータス移行表');
+  }
+  const rows = [
+    ['旧リード進捗', '旧商談進捗', '旧商談結果', '新リードステータス'],
+    ['新規',         '',           '',           '新規'],
+    ['新規',         '',           '対象外',     'リード対象外'],
+    ['新規',         '',           '追客',       '失注'],
+    ['新規',         '対応中',     '失注',       '失注'],
+    ['',             '対応中',     '失注',       '失注'],
+    ['アサイン確定', 'アサイン確定', '',          'アサイン確定'],
+    ['アサイン確定', 'アサイン確定', '失注',      '失注'],
+    ['アサイン確定', 'アサイン確定', '見送り',    '失注'],
+    ['アサイン確定', '対応中',     '',           '商談中'],
+    ['アサイン確定', '対応中',     '対応中',     '商談中'],
+    ['アサイン確定', '商談中',     '対応中',     '商談中'],
+    ['アサイン確定', '対応中',     '失注',       '失注'],
+    ['アサイン確定', '対応中',     '見送り',     '失注'],
+    ['アサイン確定', '対応中',     '対象外',     '商談対象外'],
+    ['アサイン確定', 'クロージング対応', '成約',  '成約'],
+    ['アーカイブ',   '*',          '*',          '【削除】']
+  ];
+  sheet.getRange(1, 1, rows.length, 4).setValues(rows);
+  return { rowsWritten: rows.length - 1, sheetName: 'ステータス移行表' };
+}
+
+/**
+ * ステータス1列化 ドライランV2（移行表シート駆動・書き込みなし）
+ */
+function migrateStatusDryRunV2() {
+  const ss = getSpreadsheet();
+  const migSheet = ss.getSheetByName('ステータス移行表');
+  if (!migSheet) throw new Error('ステータス移行表シートが見つかりません。seedStatusMigrationTable() を先に実行してください');
+
+  // 移行表を読み込む（ヘッダー行を除く）
+  const migData = migSheet.getDataRange().getValues();
+  const migRows = migData.slice(1).map(r => ({
+    L: String(r[0]), D: String(r[1]), R: String(r[2]), ns: String(r[3])
+  }));
+
+  // マッチング（* はワイルドカード。表の上の行が優先）
+  function lookup(L, D, R) {
+    for (const row of migRows) {
+      if ((row.L === '*' || row.L === L) &&
+          (row.D === '*' || row.D === D) &&
+          (row.R === '*' || row.R === R)) return row.ns;
+    }
+    return null;
+  }
+
+  const v = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
+  const h = v[0];
+  const idIdx = h.indexOf('リードID'), li = h.indexOf('リード進捗'),
+        di = h.indexOf('商談進捗'), ri = h.indexOf('商談結果');
+  const out = { counts: {}, deleteRows: 0, unmapped: [] };
+
+  v.slice(1).forEach((r, i) => {
+    const L = String(r[li] || ''), D = String(r[di] || ''), R = String(r[ri] || '');
+    const ID = String(r[idIdx] || '');
+    if (!ID) { out.deleteRows++; return; }  // 空ID → コード固定ルールで削除
+    const ns = lookup(L, D, R);
+    if (ns === null) { out.unmapped.push('行' + (i + 2) + ': ' + [L, D, R].join('|')); return; }
+    if (ns === '【削除】') { out.deleteRows++; return; }
+    out.counts[ns] = (out.counts[ns] || 0) + 1;
+  });
+  return out;
+}
+
+/**
  * ステータス1列化 ドライラン（書き込みなし・一時検証用）
  */
 function migrateStatusDryRun() {
