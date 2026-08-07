@@ -715,14 +715,15 @@ function testUpdateCustomerTransactionStats() {
  */
 function inspectForm() {
   const formId = PropertiesService.getScriptProperties().getProperty('CUSTOMER_FORM_ID');
-  if (!formId) throw new Error('スクリプトプロパティ CUSTOMER_FORM_ID が未設定です');
+  if (!formId) throw new Error('CUSTOMER_FORM_ID 未設定');
   const form = FormApp.openById(formId);
   const items = form.getItems().map((it, i) =>
     (i+1) + '. [' + it.getType() + '] ' + it.getTitle());
-  return [
+  const out = [
     'タイトル: ' + form.getTitle(),
     '回答先シートID: ' + (form.getDestinationId() || '（未設定）'),
-    '質問数: ' + items.length,
-    items.join('\n')
-  ].join('\n');
+    '質問数: ' + items.length
+  ].concat(items).join('\n');
+  Logger.log(out);
+  return out;
 }
