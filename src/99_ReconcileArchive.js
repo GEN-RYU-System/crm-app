@@ -417,10 +417,8 @@ function reconcileArchiveTab() {
 
 /**
  * ステータス1列化 書き込み（W2で実行）
- * ① 62列目にヘッダー「リードステータス」を追加（既存62列目が空であること）
- * ② ステータス移行表に従い全行の新列を記入
- *    unmappedが出たら即throw（書き込み中断）
- * ③ 削除対象行（空ID or 【削除】判定）を下の行から削除
+ * 第1パス: 全行lookup（unmappedが1件でもあればthrow・シート無変更）
+ * 第2パス: ヘッダー＋全データをsetValuesで一括書き込み → 削除行を下から削除
  * @returns {{ writeCount: number, deleteCount: number }}
  */
 function migrateStatusWrite() {
@@ -428,7 +426,7 @@ function migrateStatusWrite() {
   const leadsSheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
   if (!leadsSheet) throw new Error('シートが見つかりません: ' + CONFIG.SHEETS.LEADS);
 
-  // ① 前提チェック: 現在61列であること
+  // 前提チェック: 現在61列であること（部分書き込み後の再実行を防ぐ）
   const lastCol = leadsSheet.getLastColumn();
   if (lastCol !== 61) throw new Error('列数が想定外です: ' + lastCol + '（期待値: 61）');
 
@@ -436,7 +434,6 @@ function migrateStatusWrite() {
   const migSheet = ss.getSheetByName('ステータス移行表');
   if (!migSheet) throw new Error('シートが見つかりません: ステータス移行表');
   const migData = migSheet.getDataRange().getValues();
-  // migData[0] はヘッダー行: [旧リード進捗, 旧商談進捗, 旧商談結果, 新リードステータス]
   const migRows = migData.slice(1).map(r => ({
     L: String(r[0]), D: String(r[1]), R: String(r[2]), ns: String(r[3])
   }));
@@ -457,15 +454,12 @@ function migrateStatusWrite() {
   const di = h.indexOf('商談進捗');
   const ri = h.indexOf('商談結果');
   if ([idIdx, li, di, ri].some(i => i < 0)) {
-    throw new Error('必須列が見つかりません: リードID/' + [li,di,ri].join('/'));
+    throw new Error('必須列が見つかりません: リードID/' + [idIdx,li,di,ri].join('/'));
   }
 
-  // ② ヘッダー書き込み（62列目）
-  leadsSheet.getRange(1, 62).setValue('リードステータス');
-
-  // ③ 全データ行を処理
-  const deleteRowIndices = []; // シート行番号（1-indexed）
-  let writeCount = 0;
+  // === 第1パス: 全行lookup（シートへの書き込みなし） ===
+  const results = []; // 各データ行の判定結果: { delete: bool, value: string }
+  const unmapped = [];
 
   for (let i = 1; i < allData.length; i++) {
     const row = allData[i];
@@ -475,59 +469,46 @@ function migrateStatusWrite() {
     const R = String(row[ri] || '');
 
     if (!ID) {
-      // 空ID行 → 削除対象
-      deleteRowIndices.push(i + 1);
+      results.push({ delete: true, value: '' });
       continue;
     }
 
     const ns = lookup(L, D, R);
     if (ns === null) {
-      throw new Error('unmapped: 行' + (i + 1) + ' [' + [L, D, R].join('|') + ']');
-    }
-    if (ns === '【削除】') {
-      deleteRowIndices.push(i + 1);
+      unmapped.push('行' + (i + 1) + ': [' + [L, D, R].join('|') + ']');
+      results.push({ delete: false, value: '' }); // 後でthrowするので値は不使用
       continue;
     }
-
-    // 新リードステータスを62列目に書き込む
-    leadsSheet.getRange(i + 1, 62).setValue(ns);
-    writeCount++;
+    if (ns === '【削除】') {
+      results.push({ delete: true, value: '' });
+      continue;
+    }
+    results.push({ delete: false, value: ns });
   }
 
-  // ④ 削除対象行を下から削除
-  deleteRowIndices.sort((a, b) => b - a);
+  // unmappedが1件でもあればシート無変更のままthrow
+  if (unmapped.length > 0) {
+    throw new Error('unmapped ' + unmapped.length + '件:\n' + unmapped.join('\n'));
+  }
+
+  // === 第2パス: 一括書き込み → 行削除 ===
+  // ヘッダー書き込み（62列目）
+  leadsSheet.getRange(1, 62).setValue('リードステータス');
+
+  // 全データ行の62列目を1回のsetValuesで書き込む
+  const colValues = results.map(r => [r.value]);
+  leadsSheet.getRange(2, 62, colValues.length, 1).setValues(colValues);
+
+  // 削除対象行を下から削除（行番号はシート上の1-indexed）
+  const deleteRowIndices = results
+    .map((r, i) => r.delete ? i + 2 : null)
+    .filter(n => n !== null)
+    .sort((a, b) => b - a);
+
   for (const rowNum of deleteRowIndices) {
     leadsSheet.deleteRow(rowNum);
   }
 
+  const writeCount = results.filter(r => !r.delete).length;
   return { writeCount: writeCount, deleteCount: deleteRowIndices.length };
-}
-
-/**
- * リード管理シートの実際のヘッダーと CONFIG.HEADERS.LEADS を比較（W3で実行）
- * @returns {{ actualCols: number, expectedCols: number, mismatches: Array }}
- */
-function compareLeadHeaders() {
-  const ss = getSpreadsheet();
-  const leadsSheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
-  if (!leadsSheet) throw new Error('シートが見つかりません: ' + CONFIG.SHEETS.LEADS);
-
-  const actualHeaders = leadsSheet.getRange(1, 1, 1, leadsSheet.getLastColumn()).getValues()[0];
-  const expectedHeaders = CONFIG.HEADERS.LEADS;
-
-  const mismatches = [];
-  const maxLen = Math.max(actualHeaders.length, expectedHeaders.length);
-  for (let i = 0; i < maxLen; i++) {
-    const actual = actualHeaders[i] !== undefined ? String(actualHeaders[i]) : '（なし）';
-    const expected = expectedHeaders[i] !== undefined ? String(expectedHeaders[i]) : '（なし）';
-    if (actual !== expected) {
-      mismatches.push({ col: i + 1, actual: actual, expected: expected });
-    }
-  }
-
-  return {
-    actualCols: actualHeaders.length,
-    expectedCols: expectedHeaders.length,
-    mismatches: mismatches
-  };
 }
