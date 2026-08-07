@@ -345,6 +345,7 @@ function migrateCustomers52Write() {
     channel: oh.indexOf('連絡ツール'),
     fedex:   oh.indexOf('FedEx ID'),
     memo:    oh.indexOf('発送時メモ'),
+    discJoin:oh.indexOf('Discord参加'),
     discCh:  oh.indexOf('Discord チャンネルID'),
     discUser:oh.indexOf('Discord ユーザーID'),
     wh1:     oh.indexOf('Discrod 請求書 webhook'),
@@ -388,7 +389,7 @@ function migrateCustomers52Write() {
                     ? fmtDate(lead.firstTx) : regDt;
     const pad = String(i + 1).padStart(5, '0');
 
-    // 新顧客マスタ 19列
+    // 新顧客マスタ 20列
     custRows.push([
       ct,                          // 顧客ID
       lead.leadId,                 // 源流リードID
@@ -404,6 +405,7 @@ function migrateCustomers52Write() {
       g(r, o.channel),             // 連絡ツール
       g(r, o.fedex),               // FedEx ID
       g(r, o.memo),                // 発送時メモ
+      g(r, o.discJoin),            // Discord参加
       g(r, o.discCh),              // Discord チャンネルID
       g(r, o.discUser),            // Discord ユーザーID
       g(r, o.wh1),                 // Discrod 請求書 webhook
@@ -448,7 +450,7 @@ function migrateCustomers52Write() {
 
   return [
     '書き込み完了:',
-    '  顧客マスタ   : ' + custRows.length + '行 / 19列',
+    '  顧客マスタ   : ' + custRows.length + '行 / 20列',
     '  配送先マスタ : ' + shipRows.length + '行 / 10列 (AD-00001〜AD-' + String(shipRows.length).padStart(5,'0') + ')',
     '  支払先マスタ : ' + payRows.length  + '行 / 8列  (PY-00001〜PY-' + String(payRows.length).padStart(5,'0') + ')'
   ].join('\n');
