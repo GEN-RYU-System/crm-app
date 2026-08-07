@@ -204,6 +204,19 @@ function checkExistingArchiveLeak() {
 }
 
 /**
+ * リード管理シートのID重複チェック（一時検証用）
+ */
+function checkLeadDuplicates() {
+  const ss = getSpreadsheet();
+  const v = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
+  const i = v[0].indexOf('リードID');
+  const counts = {};
+  v.slice(1).forEach(r => { const id = String(r[i]); if (id) counts[id] = (counts[id]||0)+1; });
+  const dups = Object.entries(counts).filter(([,c]) => c > 1).map(([id,c]) => id + ' x' + c);
+  return { total: Object.keys(counts).length, dupCount: dups.length, dups: dups };
+}
+
+/**
  * アーカイブタブ行ずれ検査（一時検証用・検証後に削除すること）
  * 1列目がリードIDパターン（LDI/LDO-NNNNN）でない行を返す。
  */
