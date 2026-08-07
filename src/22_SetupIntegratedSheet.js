@@ -328,7 +328,7 @@ function setDataValidationsForSetup(sheet, ss) {
   });
 
   // 設定シートを参照するプルダウン（流入経路、国）
-  const settingsSheet = ss.getSheetByName('設定');
+  const settingsSheet = ss.getSheetByName(CONFIG.SHEETS.SETTINGS);
   if (settingsSheet) {
     // 流入経路（IN）を流入経路列に適用
     setDropdownFromSettingsSheetForSetup(sheet, settingsSheet, '流入経路', '流入経路（IN）', maxRows);
