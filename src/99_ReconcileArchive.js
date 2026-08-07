@@ -235,6 +235,34 @@ function surveyStatusColumns() {
 }
 
 /**
+ * ステータス1列化 ドライラン（書き込みなし・一時検証用）
+ */
+function migrateStatusDryRun() {
+  const ss = getSpreadsheet();
+  const v = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
+  const h = v[0];
+  const id = h.indexOf('リードID'), li = h.indexOf('リード進捗'),
+        di = h.indexOf('商談進捗'), ri = h.indexOf('商談結果');
+  const out = { counts: {}, deleteRows: 0, unmapped: [] };
+  v.slice(1).forEach((r, i) => {
+    const L = r[li]||'', D = r[di]||'', R = r[ri]||'', ID = String(r[id]||'');
+    let ns = null;
+    if (!ID) { out.deleteRows++; return; }                    // 空ID → 削除
+    else if (L === 'アーカイブ') { out.deleteRows++; return; } // アーカイブ → 削除
+    else if (R === '成約') ns = '成約';
+    else if (R === '失注' || R === '見送り' || R === '追客') ns = '失注';
+    else if (R === '対象外') ns = (L === '新規') ? 'リード対象外' : '商談対象外';
+    else if (D === '対応中' || D === '商談中') ns = '商談中';
+    else if (L === 'アサイン確定') ns = 'アサイン確定';
+    else if (L === '対応中') ns = '対応中';
+    else if (L === '新規') ns = '新規';
+    if (!ns) { out.unmapped.push('行' + (i+2) + ': ' + [L,D,R].join('|')); return; }
+    out.counts[ns] = (out.counts[ns]||0) + 1;
+  });
+  return out;
+}
+
+/**
  * アーカイブタブ行ずれ検査（一時検証用・検証後に削除すること）
  * 1列目がリードIDパターン（LDI/LDO-NNNNN）でない行を返す。
  */
