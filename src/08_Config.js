@@ -599,56 +599,63 @@ const HEADERS = {
     '登録経路'            // 28: フォーム/手動/インポート
   ],
 
-  // CRM顧客マスタ（20列: 新9列 + 引き継ぎ11列）
+  // CRM顧客マスタ（18列: 呼び方（英語）・B Tax ID は支払先マスタへ分離）
   CRM_CUSTOMERS: [
-    // ★ 新スキーマ 9列
     '顧客ID',            // 1: CT-00001
     '源流リードID',      // 2: LDI-00001 / LDO-00001
     '顧客名',            // 3
-    '呼び方（英語）',    // 4
-    '国',                // 5
-    'メール',            // 6
-    '電話番号',          // 7
-    '初回取引日',        // 8
-    '登録日',            // 9
-    // ★ 引き継ぎ列（旧ヘッダー名を厳密維持）
-    '営業担当者',                // 10: 35_SalesDataSyncService.js 参照中
-    'B Tax ID',                  // 11: VAT/税番号
-    '連絡ツール',                // 12
-    'FedEx ID',                  // 13
-    '発送時メモ',                // 14
-    'Discord参加',               // 15
-    'Discord チャンネルID',      // 16: 33_DiscordIntegrationService.js 参照中
-    'Discord ユーザーID',        // 17: 33_DiscordIntegrationService.js 参照中
-    'Discrod 請求書 webhook',    // 18: ※旧スペルミスを厳密維持
-    'Discrod 発送通知 webhook',  // 19: ※旧スペルミスを厳密維持
-    'Shippment webhook'          // 20: ※旧スペルミスを厳密維持
+    '国',                // 4
+    'メール',            // 5
+    '電話番号',          // 6
+    '初回取引日',        // 7
+    '登録日',            // 8
+    '営業担当者',                // 9: 35_SalesDataSyncService.js 参照中
+    '連絡ツール',                // 10
+    'FedEx ID',                  // 11
+    '発送時メモ',                // 12
+    'Discord参加',               // 13
+    'Discord チャンネルID',      // 14: 33_DiscordIntegrationService.js 参照中
+    'Discord ユーザーID',        // 15: 33_DiscordIntegrationService.js 参照中
+    'Discrod 請求書 webhook',    // 16: ※旧スペルミスを厳密維持
+    'Discrod 発送通知 webhook',  // 17: ※旧スペルミスを厳密維持
+    'Shippment webhook'          // 18: ※旧スペルミスを厳密維持
   ],
 
-  // 配送先マスタ（10列: 基本8列 + D Email / D Tax ID）
+  // 配送先マスタ（15列: 住所を列ごと分割）
   CRM_SHIPPING: [
-    '配送先ID',  // 1: AD-00001
-    '顧客ID',    // 2: CT-00001
-    '宛名',      // 3
-    '住所',      // 4: Address 1〜Zip 結合
-    '国',        // 5
-    '電話',      // 6
-    '既定',      // 7: TRUE/FALSE
-    '有効',      // 8: TRUE/FALSE
-    'D Email',   // 9: 旧ヘッダー名維持
-    'D Tax ID'   // 10: 旧ヘッダー名維持
+    '配送先ID',   // 1: AD-00001
+    '顧客ID',     // 2: CT-00001
+    '宛名',       // 3: D Name
+    'Address 1',  // 4: D Address 1
+    'Address 2',  // 5: D Address 2
+    'Address 3',  // 6: D Address 3
+    'City',       // 7: D City
+    'State',      // 8: D State
+    'Zip',        // 9: D Zip
+    '国',         // 10: D Country
+    '電話',       // 11: D Telephone
+    'D Email',    // 12: 旧ヘッダー名維持
+    'D Tax ID',   // 13: 旧ヘッダー名維持
+    '既定',       // 14: TRUE/FALSE
+    '有効'        // 15: TRUE/FALSE
   ],
 
-  // 支払先マスタ（8列）
+  // 支払先マスタ（14列: 住所列ごと分割・B Tax ID 追加）
   CRM_PAYMENT: [
-    '支払先ID',  // 1: PY-00001
-    '顧客ID',    // 2: CT-00001
-    '請求名義',  // 3
-    '住所',      // 4: B Address 1〜B Country 結合
-    '支払方法',  // 5: 空欄（旧データになし）
-    '通貨',      // 6: 空欄（旧データになし）
-    '既定',      // 7: TRUE/FALSE
-    '有効'       // 8: TRUE/FALSE
+    '支払先ID',   // 1: PY-00001
+    '顧客ID',     // 2: CT-00001
+    '請求名義',   // 3: 支払い名義
+    'Address 1',  // 4: B Address 1
+    'Address 2',  // 5: B Address 2
+    'City',       // 6: B City
+    'State',      // 7: B State
+    'Zip',        // 8: B Zip
+    '国',         // 9: B Country
+    '支払方法',   // 10: 空欄（旧データになし）
+    '通貨',       // 11: 空欄（旧データになし）
+    'B Tax ID',   // 12: VAT/税番号（顧客マスタから移設）
+    '既定',       // 13: TRUE/FALSE
+    '有効'        // 14: TRUE/FALSE
   ]
 };
 
