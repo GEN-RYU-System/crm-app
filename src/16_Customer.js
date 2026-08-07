@@ -704,3 +704,25 @@ function testUpdateCustomerTransactionStats() {
   Logger.log('テスト結果: ' + JSON.stringify(result));
   return result;
 }
+
+// ============================================================
+// フォーム検査（PR15）
+// ============================================================
+
+/**
+ * 顧客登録フォームの構成を検査（読み取りのみ）
+ * スクリプトプロパティ CUSTOMER_FORM_ID が必要
+ */
+function inspectForm() {
+  const formId = PropertiesService.getScriptProperties().getProperty('CUSTOMER_FORM_ID');
+  if (!formId) throw new Error('スクリプトプロパティ CUSTOMER_FORM_ID が未設定です');
+  const form = FormApp.openById(formId);
+  const items = form.getItems().map((it, i) =>
+    (i+1) + '. [' + it.getType() + '] ' + it.getTitle());
+  return [
+    'タイトル: ' + form.getTitle(),
+    '回答先シートID: ' + (form.getDestinationId() || '（未設定）'),
+    '質問数: ' + items.length,
+    items.join('\n')
+  ].join('\n');
+}
