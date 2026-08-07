@@ -173,7 +173,12 @@ const CONFIG = {
     // ★ SCM統合: マスタデータ（IMPORTRANGE同期） ★
     SCM_PRODUCT_MASTER_SYNC: '商品マスタ同期',
     SCM_STOCK_SYNC: '集計同期',
-    SCM_SUPPLIER_MASTER_SYNC: '仕入元マスタ同期'
+    SCM_SUPPLIER_MASTER_SYNC: '仕入元マスタ同期',
+
+    // ★ CRM顧客マスタ（CRM内ネイティブ） ★
+    CRM_CUSTOMERS: '顧客マスタ',
+    CRM_SHIPPING: '配送先マスタ',
+    CRM_PAYMENT: '支払先マスタ'
   },
 
   // リードID接頭辞（インバウンド: LDI-, アウトバウンド: LDO-）
@@ -592,6 +597,43 @@ const HEADERS = {
     '備考',               // 26: テキスト
     '更新日',             // 27: 自動
     '登録経路'            // 28: フォーム/手動/インポート
+  ],
+
+  // CRM顧客マスタ（9列）
+  CRM_CUSTOMERS: [
+    '顧客ID',         // 1: CT-00001
+    '源流リードID',   // 2: LDI-00001 / LDO-00001
+    '顧客名',         // 3: 顧客名
+    '呼び方（英語）', // 4: ABC Trading
+    '国',             // 5: Japan
+    'メール',         // 6: contact@example.com
+    '電話番号',       // 7: +81-xxx-xxxx
+    '初回取引日',     // 8: 2026/02/01
+    '登録日'          // 9: 自動
+  ],
+
+  // 配送先マスタ（8列）
+  CRM_SHIPPING: [
+    '配送先ID',  // 1: SHP-00001
+    '顧客ID',    // 2: CT-00001
+    '宛名',      // 3: 宛先名
+    '住所',      // 4: 住所
+    '国',        // 5: Japan
+    '電話',      // 6: +81-xxx-xxxx
+    '既定',      // 7: TRUE/FALSE
+    '有効'       // 8: TRUE/FALSE
+  ],
+
+  // 支払先マスタ（8列）
+  CRM_PAYMENT: [
+    '支払先ID',  // 1: PAY-00001
+    '顧客ID',    // 2: CT-00001
+    '請求名義',  // 3: 請求先名
+    '住所',      // 4: 住所
+    '支払方法',  // 5: 銀行振込/PayPal/Wise等
+    '通貨',      // 6: JPY/USD等
+    '既定',      // 7: TRUE/FALSE
+    '有効'       // 8: TRUE/FALSE
   ]
 };
 
