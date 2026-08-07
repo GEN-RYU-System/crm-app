@@ -13,7 +13,7 @@ const ARCHIVE_SHEETS = {
   DEAL_LOST: '商談会話ログ_失注',
   DEAL_FOLLOWUP: '商談会話ログ_追客',
   DEAL_NOT_APPLICABLE: '商談会話ログ_対象外',
-  SETTINGS: '設定'
+  SETTINGS: CONFIG.SHEETS.SETTINGS
 };
 
 // ============================================================
@@ -45,7 +45,7 @@ function setupArchiveBook() {
 
     // 新しいシートを作成
     Object.entries(ARCHIVE_SHEETS).forEach(([key, sheetName]) => {
-      if (sheetName === '設定') {
+      if (sheetName === CONFIG.SHEETS.SETTINGS) {
         createArchiveSettingsSheet(archiveSs, sheetName);
       } else {
         createArchiveLogSheet(archiveSs, sheetName);
