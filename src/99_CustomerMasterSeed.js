@@ -1381,3 +1381,71 @@ function compareCustomerHeaders() {
   lines.push('総 mismatches: ' + totalMismatches + (totalMismatches === 0 ? ' ✓ 全タブ一致' : ' ✗'));
   return lines.join('\n');
 }
+
+// ============================================================
+// 【PR17】住所フル値取得（auditAddressLength の 40文字打ち切り対策）
+// ============================================================
+
+/**
+ * 長住所6社のフル値を返す（書き込みなし・閲覧専用）
+ * 対象: CT-00015 / CT-00017 / CT-00034 / CT-00037 / CT-00046 / CT-00051
+ */
+function readFullAddressValues() {
+  var ss = getSpreadsheet();
+  var targets = ['CT-00015','CT-00017','CT-00034','CT-00037','CT-00046','CT-00051'];
+  var lines = ['=== readFullAddressValues ==='];
+
+  // --- 配送先マスタ ---
+  var adSh = ss.getSheetByName(CONFIG.SHEETS.CRM_SHIPPING);
+  if (!adSh) return 'ERROR: 配送先マスタが存在しません';
+  var adData = adSh.getDataRange().getValues();
+  var adH = adData[0];
+  var adCidIdx  = adH.indexOf('顧客ID');
+  var adA1Idx   = adH.indexOf('Address 1');
+  var adA2Idx   = adH.indexOf('Address 2');
+  var adA3Idx   = adH.indexOf('Address 3');
+  var adCityIdx = adH.indexOf('City');
+  var adStIdx   = adH.indexOf('State');
+  var adZipIdx  = adH.indexOf('Zip');
+  var adNameIdx = adH.indexOf('宛名');
+
+  lines.push('[配送先マスタ]');
+  adData.slice(1).forEach(function(r) {
+    var cid = String(r[adCidIdx] || '');
+    if (targets.indexOf(cid) < 0) return;
+    lines.push('  ' + cid + ' / 宛名=' + String(r[adNameIdx]||''));
+    lines.push('    Address 1 (' + String(r[adA1Idx]||'').length + '): ' + String(r[adA1Idx]||''));
+    lines.push('    Address 2 (' + String(r[adA2Idx]||'').length + '): ' + String(r[adA2Idx]||''));
+    lines.push('    Address 3 (' + String(r[adA3Idx]||'').length + '): ' + String(r[adA3Idx]||''));
+    lines.push('    City  : ' + String(r[adCityIdx]||''));
+    lines.push('    State : ' + String(r[adStIdx]||''));
+    lines.push('    Zip   : ' + String(r[adZipIdx]||''));
+  });
+
+  // --- 支払先マスタ ---
+  var pySh = ss.getSheetByName(CONFIG.SHEETS.CRM_PAYMENT);
+  if (!pySh) return 'ERROR: 支払先マスタが存在しません';
+  var pyData = pySh.getDataRange().getValues();
+  var pyH = pyData[0];
+  var pyCidIdx  = pyH.indexOf('顧客ID');
+  var pyA1Idx   = pyH.indexOf('Address 1');
+  var pyA2Idx   = pyH.indexOf('Address 2');
+  var pyCityIdx = pyH.indexOf('City');
+  var pyStIdx   = pyH.indexOf('State');
+  var pyZipIdx  = pyH.indexOf('Zip');
+  var pyNameIdx = pyH.indexOf('請求名義');
+
+  lines.push('[支払先マスタ]');
+  pyData.slice(1).forEach(function(r) {
+    var cid = String(r[pyCidIdx] || '');
+    if (targets.indexOf(cid) < 0) return;
+    lines.push('  ' + cid + ' / 請求名義=' + String(r[pyNameIdx]||''));
+    lines.push('    Address 1 (' + String(r[pyA1Idx]||'').length + '): ' + String(r[pyA1Idx]||''));
+    lines.push('    Address 2 (' + String(r[pyA2Idx]||'').length + '): ' + String(r[pyA2Idx]||''));
+    lines.push('    City  : ' + String(r[pyCityIdx]||''));
+    lines.push('    State : ' + String(r[pyStIdx]||''));
+    lines.push('    Zip   : ' + String(r[pyZipIdx]||''));
+  });
+
+  return lines.join('\n');
+}

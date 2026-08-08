@@ -437,6 +437,337 @@ function testNormalizePhone() {
 // ============================================================
 // 4. auditAddressLength()
 // ============================================================
+// ============================================================
+// 5. fixAddressSplits(confirmArg)  ← PR17
+// ============================================================
+
+/**
+ * 35文字超の住所をカンマ位置で分割して是正する
+ *
+ * DRY RUN（デフォルト）: 変更予定の before/after 一覧を返す（書き込みなし）
+ * CONFIRM             : 全行を検証してから一括書き込み（2パス）
+ *
+ * @param {string} [confirmArg] - 'CONFIRM' のみ書き込みモード
+ * @returns {string} 実行ログ
+ */
+function fixAddressSplits(confirmArg) {
+  var dryRun = (String(confirmArg || '').trim().toUpperCase() !== 'CONFIRM');
+  var ss = getSpreadsheet();
+  var LIMIT = 35;
+  var lines = ['=== fixAddressSplits (' + (dryRun ? 'DRY RUN' : 'CONFIRM') + ') ==='];
+  var pendingWrites = [];   // {sh, rowIdx, changes:[{colIdx, val}]}
+  var totalChanges = 0;
+
+  var targets = [
+    {
+      key: CONFIG.SHEETS.CRM_SHIPPING,
+      addrCols: ['Address 1', 'Address 2', 'Address 3'],
+      maxAddrCol: 'Address 3'
+    },
+    {
+      key: CONFIG.SHEETS.CRM_PAYMENT,
+      addrCols: ['Address 1', 'Address 2'],
+      maxAddrCol: 'Address 2'
+    }
+  ];
+
+  targets.forEach(function(t) {
+    var sh = ss.getSheetByName(t.key);
+    if (!sh) { lines.push('[' + t.key + '] ERROR: シートが存在しません'); return; }
+    var data = sh.getDataRange().getValues();
+    var h = data[0];
+    var cidIdx  = h.indexOf('顧客ID');
+    var colIdxs = t.addrCols.map(function(c) { return h.indexOf(c); });
+
+    lines.push('[' + t.key + ']');
+    var sheetChanges = 0;
+
+    for (var i = 1; i < data.length; i++) {
+      var r = data[i];
+      var cid = String(r[cidIdx] || '');
+
+      // 現在の住所行を文字列配列として取得
+      var addrs = colIdxs.map(function(ci) { return ci >= 0 ? String(r[ci] || '') : ''; });
+
+      // すべて35字以内なら skip
+      if (addrs.every(function(a) { return a.length <= LIMIT; })) continue;
+
+      // 分割処理（各列を順に処理し、あふれを次の列へ）
+      var newAddrs = addrs.slice();
+      var overflow = '';
+
+      for (var j = 0; j < newAddrs.length; j++) {
+        var current = (j === 0 ? newAddrs[j] : '') + overflow;
+        overflow = '';
+        if (j > 0) { newAddrs[j] = current; }
+
+        if (newAddrs[j].length > LIMIT) {
+          var split = _splitAddrLine(newAddrs[j]);
+          newAddrs[j] = split[0];
+          overflow = split[1];
+        }
+      }
+
+      // 変更があるか比較
+      var changed = false;
+      var rowChanges = [];
+      for (var k = 0; k < colIdxs.length; k++) {
+        if (colIdxs[k] >= 0 && addrs[k] !== newAddrs[k]) {
+          changed = true;
+          rowChanges.push({ colIdx: colIdxs[k], newVal: newAddrs[k] });
+        }
+      }
+      if (!changed) continue;
+
+      sheetChanges++;
+      totalChanges++;
+
+      // レポート行
+      var reportLine = '  ' + cid + ' (row' + (i + 1) + ')';
+      for (var m = 0; m < t.addrCols.length; m++) {
+        if (addrs[m] !== newAddrs[m]) {
+          reportLine += '\n    ' + t.addrCols[m];
+          reportLine += '\n      BEFORE: "' + addrs[m] + '" (' + addrs[m].length + '字)';
+          reportLine += '\n      AFTER : "' + newAddrs[m] + '" (' + newAddrs[m].length + '字)';
+        }
+      }
+      if (overflow) {
+        reportLine += '\n    ⚠ overflow未収容: "' + overflow + '" — Address 3 に列を追加してください';
+      }
+      lines.push(reportLine);
+
+      if (!dryRun) {
+        pendingWrites.push({ sh: sh, rowIdx: i + 1, changes: rowChanges });
+      }
+    }
+
+    if (sheetChanges === 0) lines.push('  変更対象なし ✓');
+    lines.push('');
+  });
+
+  lines.push('変更対象合計: ' + totalChanges + '行');
+
+  if (!dryRun) {
+    if (pendingWrites.length === 0) {
+      lines.push('書き込み対象なし');
+      return lines.join('\n');
+    }
+    // 2パス目: 書き込み
+    pendingWrites.forEach(function(w) {
+      w.changes.forEach(function(c) {
+        w.sh.getRange(w.rowIdx, c.colIdx + 1).setValue(c.newVal);
+      });
+    });
+    lines.push('書き込み完了 ✓');
+  } else {
+    lines.push('（DRY RUN: 書き込みなし。CONFIRM モードで実行してください）');
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * 住所1行を LIMIT 以内で分割する内部ヘルパー
+ * @param {string} line
+ * @returns {Array<string>} [part1, overflow]
+ */
+function _splitAddrLine(line) {
+  var LIMIT = 35;
+  if (line.length <= LIMIT) return [line, ''];
+
+  // 最後のカンマを LIMIT 以内で探す
+  var best = -1;
+  for (var i = LIMIT - 1; i >= 0; i--) {
+    if (line.charAt(i) === ',') { best = i + 1; break; }
+  }
+  // カンマがなければ最後のスペース
+  if (best < 0) {
+    for (var j = LIMIT - 1; j >= 0; j--) {
+      if (line.charAt(j) === ' ') { best = j; break; }
+    }
+  }
+  // それもなければ強制35字
+  if (best < 0) best = LIMIT;
+
+  return [line.substring(0, best).trim(), line.substring(best).trim()];
+}
+
+// ============================================================
+// 6. auditAddressCharset()  ← PR17
+// ============================================================
+
+/**
+ * 配送先・支払先の住所フィールドで許容外文字を含む行を列挙
+ * 許容: 半角英数 + , . - # / ' スペース
+ * @returns {string} 実行ログ
+ */
+function auditAddressCharset() {
+  var ss = getSpreadsheet();
+  var ALLOWED = /^[A-Za-z0-9\s,.\-#\/']*$/;
+  var lines = ['=== auditAddressCharset ==='];
+  var total = 0;
+
+  var targets = [
+    {
+      name: CONFIG.SHEETS.CRM_SHIPPING,
+      cols: ['宛名', 'Address 1', 'Address 2', 'Address 3', 'City', 'State']
+    },
+    {
+      name: CONFIG.SHEETS.CRM_PAYMENT,
+      cols: ['請求名義', 'Address 1', 'Address 2', 'City', 'State']
+    },
+    {
+      name: CONFIG.SHEETS.CRM_CUSTOMERS,
+      cols: ['顧客名']
+    }
+  ];
+
+  targets.forEach(function(t) {
+    var sh = ss.getSheetByName(t.name);
+    if (!sh) { lines.push('[' + t.name + '] シートが存在しません'); return; }
+    var data = sh.getDataRange().getValues();
+    var h = data[0];
+    var cidIdx = h.indexOf('顧客ID');
+
+    lines.push('[' + t.name + ']');
+    var sheetFound = 0;
+
+    t.cols.forEach(function(col) {
+      var colIdx = h.indexOf(col);
+      if (colIdx < 0) { lines.push('  ' + col + ': 列なし'); return; }
+
+      data.slice(1).forEach(function(row, ri) {
+        var val = String(row[colIdx] || '');
+        if (val === '') return;
+        if (!ALLOWED.test(val)) {
+          sheetFound++;
+          total++;
+          // 許容外文字を抽出
+          var bad = val.split('').filter(function(c) { return !ALLOWED.test(c); });
+          var uniq = bad.filter(function(c, idx, arr) { return arr.indexOf(c) === idx; });
+          lines.push(
+            '  行' + (ri + 2) + ' ' + String(row[cidIdx] || '') +
+            ' [' + col + '] 許容外文字: ' + uniq.map(function(c) {
+              return '"' + c + '"(U+' + c.charCodeAt(0).toString(16).toUpperCase().padStart(4,'0') + ')';
+            }).join(', ') +
+            '\n    値: ' + val.substring(0, 60)
+          );
+        }
+      });
+    });
+
+    if (sheetFound === 0) lines.push('  許容外文字なし ✓');
+    lines.push('');
+  });
+
+  lines.push('合計: ' + total + '件' + (total === 0 ? ' ✓' : ''));
+  return lines.join('\n');
+}
+
+// ============================================================
+// 7. expandCountryMaster()  ← PR17
+// ============================================================
+
+/**
+ * 国マスタに 州必須・郵便番号必須 列を追加（冪等）
+ *
+ * 州必須: US・CA のみ TRUE（FedExで州コードが必須な国）
+ * 郵便番号必須: FedEx の郵便番号必須国リストに基づく
+ *
+ * @returns {string} 実行ログ
+ */
+function expandCountryMaster() {
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName('国マスタ');
+  if (!sh) return 'ERROR: 国マスタが存在しません。先に seedCountryMaster() を実行してください。';
+
+  var data = sh.getDataRange().getValues();
+  var h = data[0];
+  var lastCol = h.length;
+
+  // 冪等チェック
+  var stateIdx  = h.indexOf('州必須');
+  var postalIdx = h.indexOf('郵便番号必須');
+  if (stateIdx >= 0 && postalIdx >= 0) {
+    return '州必須・郵便番号必須 列は既に存在します（col' + (stateIdx+1) + '・col' + (postalIdx+1) + '）。スキップ。';
+  }
+
+  var isoIdx = h.indexOf('国ID(ISO2)');
+  if (isoIdx < 0) return 'ERROR: 国ID(ISO2) 列が見つかりません';
+
+  // 州必須: US, CA のみ
+  var STATE_REQUIRED = { 'US': true, 'CA': true };
+
+  // 郵便番号必須（FedEx基準）
+  var POSTAL_REQUIRED = {};
+  [
+    'AD','AR','AT','AU','AZ',
+    'BD','BE','BG','BM','BR','BN','BY',
+    'CA','CH','CN','CO','CR','CZ',
+    'DE','DK',
+    'EE','ES',
+    'FI','FO','FR',
+    'GB','GE','GL','GR',
+    'HR','HU',
+    'ID','IL','IN','IS','IT',
+    'JP',
+    'KG','KH','KR','KZ',
+    'LA','LI','LK','LT','LU','LV',
+    'MC','MD','ME','MK','MM','MT','MV','MX','MY',
+    'NL','NO','NP','NZ',
+    'PE','PH','PK','PL','PT',
+    'RO','RS','RU',
+    'SE','SG','SI','SK','TH','TN','TR','TW',
+    'UA','US','UZ',
+    'VN',
+    'ZA'
+  ].forEach(function(iso) { POSTAL_REQUIRED[iso] = true; });
+
+  var lines = ['=== expandCountryMaster ==='];
+
+  // ヘッダー追加（まだない列のみ）
+  var newCols = [];
+  if (stateIdx < 0) {
+    lastCol++;
+    stateIdx = lastCol - 1;
+    sh.getRange(1, lastCol).setValue('州必須').setFontWeight('bold').setBackground('#1565c0').setFontColor('#ffffff');
+    newCols.push('州必須 → col' + lastCol);
+  }
+  if (postalIdx < 0) {
+    lastCol++;
+    postalIdx = lastCol - 1;
+    sh.getRange(1, lastCol).setValue('郵便番号必須').setFontWeight('bold').setBackground('#1565c0').setFontColor('#ffffff');
+    newCols.push('郵便番号必須 → col' + lastCol);
+    sh.setColumnWidth(lastCol, 120);
+  }
+  lines.push('追加列: ' + newCols.join(', '));
+
+  // データ行に値をセット（行ごとに個別書き込み → スプレッドシートの行数が多くないので許容）
+  var stateRows  = [];
+  var postalRows = [];
+  var stateCount = 0, postalCount = 0;
+
+  for (var i = 1; i < data.length; i++) {
+    var iso2 = String(data[i][isoIdx] || '').trim();
+    var stateVal  = STATE_REQUIRED[iso2]  ? 'TRUE' : 'FALSE';
+    var postalVal = POSTAL_REQUIRED[iso2] ? 'TRUE' : 'FALSE';
+    stateRows.push([stateVal]);
+    postalRows.push([postalVal]);
+    if (stateVal  === 'TRUE') stateCount++;
+    if (postalVal === 'TRUE') postalCount++;
+  }
+
+  // 一括書き込み
+  var startRow = 2;
+  var rowCount = data.length - 1;
+  sh.getRange(startRow, stateIdx + 1,  rowCount, 1).setValues(stateRows);
+  sh.getRange(startRow, postalIdx + 1, rowCount, 1).setValues(postalRows);
+
+  lines.push('州必須=TRUE: ' + stateCount + '件 (US, CA)');
+  lines.push('郵便番号必須=TRUE: ' + postalCount + '件');
+  lines.push('書き込み完了 ✓');
+  return lines.join('\n');
+}
 
 /**
  * 配送先・支払先マスタの住所列で35文字超の行を全件リスト
