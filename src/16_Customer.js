@@ -717,8 +717,14 @@ function inspectForm() {
   const formId = PropertiesService.getScriptProperties().getProperty('CUSTOMER_FORM_ID');
   if (!formId) throw new Error('CUSTOMER_FORM_ID 未設定');
   const form = FormApp.openById(formId);
-  const items = form.getItems().map((it, i) =>
-    (i+1) + '. [' + it.getType() + '] ' + it.getTitle());
+  const items = form.getItems().map((it, i) => {
+    let req = '';
+    try { req = it.asTextItem && it.getType() === FormApp.ItemType.TEXT
+          ? (it.asTextItem().isRequired() ? '必須' : '任意') : ''; } catch(e) {}
+    if (it.getType() === FormApp.ItemType.MULTIPLE_CHOICE) {
+      req = it.asMultipleChoiceItem().isRequired() ? '必須' : '任意'; }
+    return (i+1) + '. [' + it.getType() + '][' + (req||'—') + '] ' + it.getTitle();
+  });
   const out = [
     'タイトル: ' + form.getTitle(),
     '回答先シートID: ' + (form.getDestinationId() || '（未設定）'),
