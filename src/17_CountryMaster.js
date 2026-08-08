@@ -337,7 +337,7 @@ function normalizePhone(countryName, raw) {
     });
     if (row) {
       countryCode  = String(row[codeIdx]);
-      trunkRemove  = String(row[trunkIdx]) === 'TRUE';
+      trunkRemove  = String(row[trunkIdx]).toUpperCase() === 'TRUE';
     }
   }
 
