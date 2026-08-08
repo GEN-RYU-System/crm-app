@@ -442,7 +442,8 @@ function testNormalizePhone() {
 // ============================================================
 
 /**
- * 35文字超の住所をカンマ位置で分割して是正する
+ * 35文字超の住所をカンマ位置で分割して是正する。
+ * CT-00037 の City 全角括弧修正も含む。
  *
  * DRY RUN（デフォルト）: 変更予定の before/after 一覧を返す（書き込みなし）
  * CONFIRM             : 全行を検証してから一括書き込み（2パス）
@@ -455,20 +456,12 @@ function fixAddressSplits(confirmArg) {
   var ss = getSpreadsheet();
   var LIMIT = 35;
   var lines = ['=== fixAddressSplits (' + (dryRun ? 'DRY RUN' : 'CONFIRM') + ') ==='];
-  var pendingWrites = [];   // {sh, rowIdx, changes:[{colIdx, val}]}
+  var pendingWrites = [];  // {sh, rowIdx, colIdx（1始まり）, newVal}
   var totalChanges = 0;
 
   var targets = [
-    {
-      key: CONFIG.SHEETS.CRM_SHIPPING,
-      addrCols: ['Address 1', 'Address 2', 'Address 3'],
-      maxAddrCol: 'Address 3'
-    },
-    {
-      key: CONFIG.SHEETS.CRM_PAYMENT,
-      addrCols: ['Address 1', 'Address 2'],
-      maxAddrCol: 'Address 2'
-    }
+    { key: CONFIG.SHEETS.CRM_SHIPPING, addrCols: ['Address 1', 'Address 2', 'Address 3'] },
+    { key: CONFIG.SHEETS.CRM_PAYMENT,  addrCols: ['Address 1', 'Address 2'] }
   ];
 
   targets.forEach(function(t) {
@@ -477,6 +470,7 @@ function fixAddressSplits(confirmArg) {
     var data = sh.getDataRange().getValues();
     var h = data[0];
     var cidIdx  = h.indexOf('顧客ID');
+    var cityIdx = h.indexOf('City');
     var colIdxs = t.addrCols.map(function(c) { return h.indexOf(c); });
 
     lines.push('[' + t.key + ']');
@@ -485,59 +479,56 @@ function fixAddressSplits(confirmArg) {
     for (var i = 1; i < data.length; i++) {
       var r = data[i];
       var cid = String(r[cidIdx] || '');
-
-      // 現在の住所行を文字列配列として取得
       var addrs = colIdxs.map(function(ci) { return ci >= 0 ? String(r[ci] || '') : ''; });
+      var cityVal  = cityIdx >= 0 ? String(r[cityIdx] || '') : '';
 
-      // すべて35字以内なら skip
-      if (addrs.every(function(a) { return a.length <= LIMIT; })) continue;
+      var needsAddrFix = addrs.some(function(a) { return a.length > LIMIT; });
 
-      // 分割処理（各列を順に処理し、あふれを次の列へ）
-      var newAddrs = addrs.slice();
-      var overflow = '';
-
-      for (var j = 0; j < newAddrs.length; j++) {
-        var current = (j === 0 ? newAddrs[j] : '') + overflow;
-        overflow = '';
-        if (j > 0) { newAddrs[j] = current; }
-
-        if (newAddrs[j].length > LIMIT) {
-          var split = _splitAddrLine(newAddrs[j]);
-          newAddrs[j] = split[0];
-          overflow = split[1];
-        }
+      // CT-00037: City 全角括弧除去
+      var newCity = cityVal;
+      if (cid === 'CT-00037' && /[（）]/.test(cityVal)) {
+        newCity = 'Jakarta Barat';
       }
 
-      // 変更があるか比較
-      var changed = false;
+      if (!needsAddrFix && newCity === cityVal) continue;
+
+      // 正しい shift-down 分割
+      var shifted   = _shiftDown(addrs, LIMIT);
+      var newAddrs  = shifted.result;
+      var overflow  = shifted.overflow;
+
+      // 変更セルを収集
       var rowChanges = [];
       for (var k = 0; k < colIdxs.length; k++) {
         if (colIdxs[k] >= 0 && addrs[k] !== newAddrs[k]) {
-          changed = true;
-          rowChanges.push({ colIdx: colIdxs[k], newVal: newAddrs[k] });
+          rowChanges.push({ colIdx: colIdxs[k], label: t.addrCols[k],
+                            oldVal: addrs[k], newVal: newAddrs[k] });
         }
       }
-      if (!changed) continue;
+      if (cityIdx >= 0 && cityVal !== newCity) {
+        rowChanges.push({ colIdx: cityIdx, label: 'City', oldVal: cityVal, newVal: newCity });
+      }
+      if (rowChanges.length === 0) continue;
 
       sheetChanges++;
       totalChanges++;
 
-      // レポート行
-      var reportLine = '  ' + cid + ' (row' + (i + 1) + ')';
-      for (var m = 0; m < t.addrCols.length; m++) {
-        if (addrs[m] !== newAddrs[m]) {
-          reportLine += '\n    ' + t.addrCols[m];
-          reportLine += '\n      BEFORE: "' + addrs[m] + '" (' + addrs[m].length + '字)';
-          reportLine += '\n      AFTER : "' + newAddrs[m] + '" (' + newAddrs[m].length + '字)';
-        }
-      }
+      // レポート
+      var rpt = '  ' + cid + ' (row' + (i + 1) + ')';
+      rowChanges.forEach(function(c) {
+        rpt += '\n    ' + c.label;
+        rpt += '\n      BEFORE: "' + c.oldVal + '" (' + c.oldVal.length + '字)';
+        rpt += '\n      AFTER : "' + c.newVal + '" (' + c.newVal.length + '字)';
+      });
       if (overflow) {
-        reportLine += '\n    ⚠ overflow未収容: "' + overflow + '" — Address 3 に列を追加してください';
+        rpt += '\n    ⚠ overflow未収容（格納列なし）: "' + overflow + '"';
       }
-      lines.push(reportLine);
+      lines.push(rpt);
 
       if (!dryRun) {
-        pendingWrites.push({ sh: sh, rowIdx: i + 1, changes: rowChanges });
+        rowChanges.forEach(function(c) {
+          pendingWrites.push({ sh: sh, rowIdx: i + 1, colIdx: c.colIdx + 1, newVal: c.newVal });
+        });
       }
     }
 
@@ -554,42 +545,85 @@ function fixAddressSplits(confirmArg) {
     }
     // 2パス目: 書き込み
     pendingWrites.forEach(function(w) {
-      w.changes.forEach(function(c) {
-        w.sh.getRange(w.rowIdx, c.colIdx + 1).setValue(c.newVal);
-      });
+      w.sh.getRange(w.rowIdx, w.colIdx).setValue(w.newVal);
     });
-    lines.push('書き込み完了 ✓');
+    lines.push('書き込み完了: ' + pendingWrites.length + 'セル ✓');
   } else {
-    lines.push('（DRY RUN: 書き込みなし。CONFIRM モードで実行してください）');
+    lines.push('（DRY RUN: 書き込みなし。CONFIRM で実行してください）');
   }
 
   return lines.join('\n');
 }
 
 /**
- * 住所1行を LIMIT 以内で分割する内部ヘルパー
- * @param {string} line
- * @returns {Array<string>} [part1, overflow]
+ * 住所行配列をシフトダウン方式で分割する
+ * overflow が既存の次列を上書きせず、キューの後ろへ押し込む正しいアルゴリズム。
+ * @param {string[]} addrs  元の住所行配列
+ * @param {number}   limit  文字数上限
+ * @returns {{result: string[], overflow: string}}
  */
-function _splitAddrLine(line) {
-  var LIMIT = 35;
-  if (line.length <= LIMIT) return [line, ''];
+function _shiftDown(addrs, limit) {
+  var queue  = addrs.slice();   // 元の内容をキューに投入
+  var result = [];
+  var i = 0;
 
-  // 最後のカンマを LIMIT 以内で探す
-  var best = -1;
-  for (var i = LIMIT - 1; i >= 0; i--) {
-    if (line.charAt(i) === ',') { best = i + 1; break; }
-  }
-  // カンマがなければ最後のスペース
-  if (best < 0) {
-    for (var j = LIMIT - 1; j >= 0; j--) {
-      if (line.charAt(j) === ' ') { best = j; break; }
+  while (result.length < addrs.length) {
+    var line = i < queue.length ? queue[i] : '';
+    i++;
+
+    if (!line || line.length <= limit) {
+      result.push(line);
+    } else {
+      var s = _splitAddrLine(line, limit);
+      result.push(s[0]);
+      queue.splice(i, 0, s[1]);   // overflow を次の位置に挿入（既存内容は後ろへ）
     }
   }
-  // それもなければ強制35字
-  if (best < 0) best = LIMIT;
 
-  return [line.substring(0, best).trim(), line.substring(best).trim()];
+  // 格納できなかった余剰
+  var overflow = queue.slice(i).filter(function(s) { return s && s.trim(); }).join(', ');
+  return { result: result, overflow: overflow };
+}
+
+/**
+ * 住所1行を limit 以内で分割する内部ヘルパー
+ * 優先順: カンマ > スペース > 強制35字
+ * @param {string} line
+ * @param {number} [limit=35]
+ * @returns {string[]} [part1, part2]
+ */
+function _splitAddrLine(line, limit) {
+  limit = limit || 35;
+  if (line.length <= limit) return [line, ''];
+
+  var splitAt   = -1;
+  var isComma   = false;
+
+  // 最後のカンマを limit 以内で探す（0始まりインデックス）
+  for (var i = limit - 1; i >= 0; i--) {
+    if (line.charAt(i) === ',') { splitAt = i; isComma = true; break; }
+  }
+  // カンマなければ最後のスペース
+  if (splitAt < 0) {
+    for (var j = limit - 1; j >= 0; j--) {
+      if (line.charAt(j) === ' ') { splitAt = j; break; }
+    }
+  }
+  // それもなければ強制カット
+  if (splitAt < 0) splitAt = limit;
+
+  var part1, part2;
+  if (isComma) {
+    // カンマの後ろで分割。カンマ自体は part1 に残すが末尾カンマは除去
+    part1 = line.substring(0, splitAt + 1).trim().replace(/,+$/, '').trim();
+    part2 = line.substring(splitAt + 1).trim().replace(/,+$/, '').trim();
+  } else {
+    // スペースまたは強制カット: 区切り文字は捨てる
+    part1 = line.substring(0, splitAt).trim();
+    part2 = line.substring(splitAt + 1).trim().replace(/,+$/, '').trim();
+  }
+
+  return [part1, part2];
 }
 
 // ============================================================
