@@ -644,8 +644,8 @@ function auditAddressCharset() {
   var ss = getSpreadsheet();
   // 名前系: ( ) & を追加許容
   var ALLOWED_NAME = /^[A-Za-z0-9\s,.\-#\/'()&]*$/;
-  // 住所系: Latin-1 Supplement (À-ÿ = U+00C0-U+00FF) を追加許容
-  var ALLOWED_ADDR = /^[A-Za-z0-9\s,.\-#\/'À-ÿ]*$/;
+  // 住所系: Latin-1 Supplement (U+00C0-U+00FF) を追加許容（欧州アクセント文字）
+  var ALLOWED_ADDR = /^[A-Za-z0-9\s,.\-#\/'\u00C0-\u00FF]*$/;
   // 名前系欄のセット
   var NAME_COLS = ['顧客名', '宛名', '請求名義'];
 
