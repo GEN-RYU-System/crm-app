@@ -534,7 +534,7 @@ function verifyMigration() {
 
   lines.push('[支払先マスタ]');
   lines.push('  行数: ' + pyRows.length + (pyRows.length === 51 ? ' ✓' : ' ✗ (期待51)'));
-  lines.push('  列数: ' + pyH.length + (pyH.length === 14 ? ' ✓' : ' ✗ (期待14)'));
+  lines.push('  列数: ' + pyH.length + (pyH.length === 15 ? ' ✓' : ' ✗ (期待15)'));
   lines.push('  親子照合（孤立行）: ' + (pyOrphan.length === 0 ? '0 ✓' : pyOrphan.join(',')));
   lines.push('  B Tax ID列: ' + (pyBTaxIdx >= 0 ? '存在 (col' + (pyBTaxIdx+1) + ') ✓' : '存在しない ✗'));
   lines.push('  B Tax ID非空: ' + pyBTaxCount + '件' + (pyBTaxCount === 24 ? ' ✓' : ' ✗ (期待24)'));
@@ -1094,7 +1094,7 @@ function dryRunSchemaV2() {
   lines.push('[新スキーマ（v2）]');
   lines.push('  顧客マスタ 18列: 顧客ID|源流リードID|顧客名|国|メール|電話番号|初回取引日|登録日|営業担当者|連絡ツール|FedEx ID|発送時メモ|Discord参加|Discord チャンネルID|Discord ユーザーID|Discrod 請求書 webhook|Discrod 発送通知 webhook|Shippment webhook');
   lines.push('  配送先マスタ 15列: 配送先ID|顧客ID|宛名|Address 1|Address 2|Address 3|City|State|Zip|国|電話|D Email|D Tax ID|既定|有効');
-  lines.push('  支払先マスタ 14列: 支払先ID|顧客ID|請求名義|Address 1|Address 2|City|State|Zip|国|支払方法|通貨|B Tax ID|既定|有効');
+  lines.push('  支払先マスタ 15列: 支払先ID|顧客ID|請求名義|Address 1|Address 2|Address 3|City|State|Zip|国|支払方法|通貨|B Tax ID|既定|有効');
 
   // ---- 名前突合 ----
   const leadData = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
@@ -1448,4 +1448,45 @@ function readFullAddressValues() {
   });
 
   return lines.join('\n');
+}
+
+// ============================================================
+// 【PR17改訂】支払先マスタ Address 3 列追加（冪等）
+// ============================================================
+
+/**
+ * 支払先マスタの 'Address 2' 直後に 'Address 3' 列を物理挿入する（冪等）
+ * CONFIG.HEADERS.CRM_PAYMENT の 15列化に対応させる実タブ側マイグレーション
+ * @returns {string} 実行ログ
+ */
+function addPaymentAddr3Column() {
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName(CONFIG.SHEETS.CRM_PAYMENT);
+  if (!sh) return 'ERROR: ' + CONFIG.SHEETS.CRM_PAYMENT + ' が存在しません';
+
+  var data = sh.getDataRange().getValues();
+  var h    = data[0];
+
+  if (h.indexOf('Address 3') >= 0) {
+    return CONFIG.SHEETS.CRM_PAYMENT + ': Address 3 列は既に存在します (col' +
+           (h.indexOf('Address 3') + 1) + ')。スキップ。';
+  }
+
+  var addr2Col = h.indexOf('Address 2');
+  if (addr2Col < 0) return 'ERROR: Address 2 列が見つかりません';
+
+  var insertAfterCol = addr2Col + 1;
+  sh.insertColumnAfter(insertAfterCol);
+
+  var hCell = sh.getRange(1, insertAfterCol + 1);
+  hCell.setValue('Address 3')
+       .setFontWeight('bold')
+       .setBackground('#1565c0')
+       .setFontColor('#ffffff');
+
+  return [
+    CONFIG.SHEETS.CRM_PAYMENT + ': Address 3 列を col' + (insertAfterCol + 1) + ' に挿入完了',
+    '  列数: 14 → 15 ✓',
+    '  既存データ行: Address 3 は空欄（fixAddressSplits CONFIRM で書き込み）'
+  ].join('\n');
 }

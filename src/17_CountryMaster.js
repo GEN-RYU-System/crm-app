@@ -461,7 +461,7 @@ function fixAddressSplits(confirmArg) {
 
   var targets = [
     { key: CONFIG.SHEETS.CRM_SHIPPING, addrCols: ['Address 1', 'Address 2', 'Address 3'] },
-    { key: CONFIG.SHEETS.CRM_PAYMENT,  addrCols: ['Address 1', 'Address 2'] }
+    { key: CONFIG.SHEETS.CRM_PAYMENT,  addrCols: ['Address 1', 'Address 2', 'Address 3'] }
   ];
 
   targets.forEach(function(t) {
