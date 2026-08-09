@@ -40,13 +40,13 @@ function doGet(e) {
     const token = params.token || '';
     const validation = validateFormToken(token);
     if (!validation.valid) {
-      return createOrderFormErrorPage('登録フォームにアクセスできません', validation.error);
+      return createOrderFormErrorPage('Registration Form Access Denied', validation.error);
     }
     const tmpl = HtmlService.createTemplateFromFile('order_form');
     tmpl.token     = token;
     tmpl.countries = JSON.stringify(getCountriesForForm());
     return tmpl.evaluate()
-      .setTitle('顧客登録フォーム')
+      .setTitle('Customer Registration Form')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
@@ -135,12 +135,12 @@ function doGet(e) {
  */
 function createOrderFormErrorPage(title, message) {
   const html = `<!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
   <base target="_top">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>アクセスエラー</title>
+  <title>Access Error</title>
   <style>
     body { font-family: -apple-system, sans-serif; background: #f5f5f5; min-height: 100vh;
            display: flex; align-items: center; justify-content: center; padding: 20px; }
@@ -160,7 +160,7 @@ function createOrderFormErrorPage(title, message) {
 </body>
 </html>`;
   return HtmlService.createHtmlOutput(html)
-    .setTitle('アクセスエラー')
+    .setTitle('Access Error')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 

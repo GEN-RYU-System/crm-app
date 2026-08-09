@@ -112,40 +112,40 @@ function _validateBlock(block, label, requireEmail, errors) {
   var b = block || {};
   function str(v) { return String(v || '').trim(); }
 
-  // 必須: name / phone / addr1 / city / country
+  // Required: name / phone / addr1 / city / country
   ['name', 'phone', 'addr1', 'city', 'country'].forEach(function(f) {
-    if (!str(b[f])) errors.push('[' + label + '] ' + f + ' は必須です');
+    if (!str(b[f])) errors.push('[' + label + '] ' + f + ' is required');
   });
   if (requireEmail && !str(b.email)) {
-    errors.push('[' + label + '] email は必須です');
+    errors.push('[' + label + '] email is required');
   }
 
-  // 国マスタ参照（country が空でも先へ進む）
+  // Country master lookup (proceed even if country is blank)
   var countryInfo = str(b.country) ? _lookupCountryInfo(str(b.country)) : null;
 
   if (str(b.country) && !countryInfo) {
-    errors.push('[' + label + '] country "' + str(b.country) + '" が国マスタに存在しません');
+    errors.push('[' + label + '] country "' + str(b.country) + '" is not in the country master');
   }
   if (countryInfo && countryInfo.stateRequired && !str(b.state)) {
-    errors.push('[' + label + '] ' + str(b.country) + ' は State（州）が必須です');
+    errors.push('[' + label + '] ' + str(b.country) + ': State / Province is required');
   }
   if (countryInfo && countryInfo.postalRequired && !str(b.zip)) {
-    errors.push('[' + label + '] ' + str(b.country) + ' は Zip（郵便番号）が必須です');
+    errors.push('[' + label + '] ' + str(b.country) + ': ZIP / Postal Code is required');
   }
 
-  // 35字制限
+  // 35-character limit
   ['addr1', 'addr2', 'addr3', 'city', 'state'].forEach(function(f) {
     var v = str(b[f]);
     if (v.length > 35) {
-      errors.push('[' + label + '] ' + f + ' は35字以内にしてください（現在' + v.length + '字）: "' + v + '"');
+      errors.push('[' + label + '] ' + f + ' must be 35 characters or fewer (currently ' + v.length + '): "' + v + '"');
     }
   });
 
-  // 文字種（住所フィールドのみ）
+  // Character validation (address fields only)
   ['addr1', 'addr2', 'addr3', 'city', 'state'].forEach(function(f) {
     var v = str(b[f]);
     if (v && !_ADDR_CHARSET.test(v)) {
-      errors.push('[' + label + '] ' + f + ' に許容外文字が含まれています: "' + v + '"');
+      errors.push('[' + label + '] ' + f + ' contains invalid characters: "' + v + '"');
     }
   });
 }
@@ -193,13 +193,13 @@ function registerCustomerFromForm(payload) {
   var shipping = (payload || {}).shipping || null;
   var shipBlock = shipping || billing;  // null の場合は billing と同一
 
-  if (!token) return ng(['token が空です']);
+  if (!token) return ng(['Token is missing']);
 
   var ss = getSpreadsheet();
 
-  // --- 1. トークン検証（ロック外で先行チェック）---
+  // --- 1. Token validation (pre-lock check) ---
   var tokSh = ss.getSheetByName(FORM_TOKEN_SHEET);
-  if (!tokSh) return ng(['フォームトークンタブが存在しません。seedFormTokenTab() を実行してください。']);
+  if (!tokSh) return ng(['Form token sheet not found. Run seedFormTokenTab() first.']);
 
   var tokData   = tokSh.getDataRange().getValues();
   var tokH      = tokData[0];
@@ -207,22 +207,22 @@ function registerCustomerFromForm(payload) {
   var tokLidIdx = tokH.indexOf('リードID');
   var tokUseIdx = tokH.indexOf('使用日');
   if (tokTokIdx < 0 || tokLidIdx < 0 || tokUseIdx < 0) {
-    return ng(['フォームトークンタブのヘッダーが不正です']);
+    return ng(['Form token sheet header is invalid']);
   }
 
-  var tokRowIdx = -1;  // シートの 1始まり行番号
+  var tokRowIdx = -1;  // 1-based row index in sheet
   var leadId    = '';
   for (var i = 1; i < tokData.length; i++) {
     if (String(tokData[i][tokTokIdx]).trim() === token) {
       tokRowIdx = i + 1;
       leadId    = String(tokData[i][tokLidIdx] || '').trim();
       var usedDate = String(tokData[i][tokUseIdx] || '').trim();
-      if (usedDate) return ng(['このトークンは既に使用済みです（使用日: ' + usedDate + '）']);
+      if (usedDate) return ng(['This URL has already been used (used on: ' + usedDate + ')']);
       break;
     }
   }
-  if (tokRowIdx < 0) return ng(['トークンが無効です（フォームトークンタブに存在しません）']);
-  if (!leadId)       return ng(['トークンにリードIDが紐付いていません']);
+  if (tokRowIdx < 0) return ng(['Invalid token. Please check the URL.']);
+  if (!leadId)       return ng(['No lead ID is associated with this token']);
 
   // --- 2. LockService 排他取得 ---
   var lock = LockService.getScriptLock();
@@ -231,7 +231,7 @@ function registerCustomerFromForm(payload) {
     lock.waitLock(5000);
     acquired = true;
   } catch (e) {
-    return ng(['サーバーが混雑しています。しばらくしてから再試行してください。']);
+    return ng(['Server is busy. Please try again in a moment.']);
   }
 
   try {
@@ -239,14 +239,14 @@ function registerCustomerFromForm(payload) {
     var tokDataLocked = tokSh.getDataRange().getValues();
     var usedDateLocked = String((tokDataLocked[tokRowIdx - 1] || [])[tokUseIdx] || '').trim();
     if (usedDateLocked) {
-      return ng(['このトークンは既に使用済みです（二重送信ガード）']);
+      return ng(['This submission has already been processed (duplicate guard)']);
     }
 
     // --- 3. バリデーション（全件収集）---
     var errors = [];
-    _validateBlock(billing,  '請求先', true,  errors);
+    _validateBlock(billing,  'Billing',  true,  errors);
     if (shipping !== null) {
-      _validateBlock(shipping, '配送先', false, errors);
+      _validateBlock(shipping, 'Shipping', false, errors);
     }
     if (errors.length > 0) return ng(errors);
 
@@ -461,7 +461,7 @@ function testRegisterCustomer() {
 
   // ---- シナリオ3: トークン再使用拒否 ----
   var r3 = registerCustomerFromForm({ token: token1, billing: p1.billing, shipping: null });
-  var s3 = !r3.success && r3.errors.some(function(e) { return e.indexOf('使用済み') >= 0; });
+  var s3 = !r3.success && r3.errors.some(function(e) { return e.indexOf('already been used') >= 0 || e.indexOf('already been processed') >= 0; });
   if (s3) pass++; else fail++;
   lines.push((s3 ? '✓' : '✗') + ' シナリオ3 トークン再使用拒否');
   lines.push('  errors: ' + r3.errors.join(' / '));
@@ -684,26 +684,26 @@ function debugMasterTails() {
  */
 function validateFormToken(token) {
   if (!token || String(token).trim() === '') {
-    return { valid: false, error: 'トークンが指定されていません。' };
+    return { valid: false, error: 'No token was provided.' };
   }
   var ss = getSpreadsheet();
   var sh = ss.getSheetByName(FORM_TOKEN_SHEET);
-  if (!sh) return { valid: false, error: 'フォームトークンシートが存在しません。' };
+  if (!sh) return { valid: false, error: 'Form token sheet not found.' };
   var data = sh.getDataRange().getValues();
   var h = data[0];
   var tokIdx = h.indexOf('トークン');
   var useIdx = h.indexOf('使用日');
-  if (tokIdx < 0) return { valid: false, error: 'トークン列が見つかりません。' };
+  if (tokIdx < 0) return { valid: false, error: 'Token column not found in sheet.' };
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][tokIdx]).trim() === String(token).trim()) {
       var usedDate = String(data[i][useIdx] || '').trim();
       if (usedDate !== '') {
-        return { valid: false, error: 'このURLは既に使用済みです（使用日: ' + usedDate + '）。' };
+        return { valid: false, error: 'This URL has already been used (used on: ' + usedDate + ').' };
       }
       return { valid: true };
     }
   }
-  return { valid: false, error: '無効なトークンです。URLが正しいか確認してください。' };
+  return { valid: false, error: 'Invalid or expired URL. Please contact your sales representative.' };
 }
 
 /**
