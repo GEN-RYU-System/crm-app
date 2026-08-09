@@ -552,3 +552,153 @@ function _cleanupTestData(custId, addrIds, payIds, tokens) {
     }
   }
 }
+
+// ============================================================
+// 6. フォームURL発行・トークン検証
+// ============================================================
+
+/**
+ * トークンが未使用で有効か検証
+ * @param {string} token
+ * @returns {{valid: boolean, error?: string}}
+ */
+function validateFormToken(token) {
+  if (!token || String(token).trim() === '') {
+    return { valid: false, error: 'トークンが指定されていません。' };
+  }
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName(FORM_TOKEN_SHEET);
+  if (!sh) return { valid: false, error: 'フォームトークンシートが存在しません。' };
+  var data = sh.getDataRange().getValues();
+  var h = data[0];
+  var tokIdx = h.indexOf('トークン');
+  var useIdx = h.indexOf('使用日');
+  if (tokIdx < 0) return { valid: false, error: 'トークン列が見つかりません。' };
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][tokIdx]).trim() === String(token).trim()) {
+      var usedDate = String(data[i][useIdx] || '').trim();
+      if (usedDate !== '') {
+        return { valid: false, error: 'このURLは既に使用済みです（使用日: ' + usedDate + '）。' };
+      }
+      return { valid: true };
+    }
+  }
+  return { valid: false, error: '無効なトークンです。URLが正しいか確認してください。' };
+}
+
+/**
+ * 国マスタから登録フォーム用の国リストを取得
+ * @returns {Array<{name, dialCode, stateRequired, postalRequired}>}
+ */
+function getCountriesForForm() {
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName('国マスタ');
+  if (!sh) return [];
+  var data = sh.getDataRange().getValues();
+  var h = data[0];
+  var nameIdx   = h.indexOf('国名（表示）');
+  var codeIdx   = h.indexOf('国番号');
+  var stateIdx  = h.indexOf('州必須');
+  var postalIdx = h.indexOf('郵便番号必須');
+  var validIdx  = h.indexOf('有効');
+  if (nameIdx < 0) return [];
+  return data.slice(1).filter(function(r) {
+    var name  = String(r[nameIdx]  || '').trim();
+    var valid = validIdx < 0 || String(r[validIdx] || '').toUpperCase() !== 'FALSE';
+    return name && valid;
+  }).map(function(r) {
+    return {
+      name:          String(r[nameIdx] || '').trim(),
+      dialCode:      codeIdx  >= 0 ? String(r[codeIdx]  || '').trim() : '',
+      stateRequired:  stateIdx  >= 0 && String(r[stateIdx]  || '').toUpperCase() === 'TRUE',
+      postalRequired: postalIdx >= 0 && String(r[postalIdx] || '').toUpperCase() === 'TRUE'
+    };
+  });
+}
+
+/**
+ * リードIDに紐付くフォームトークンを発行し、完全URLを返す
+ * @param {string} leadId
+ * @returns {{success: boolean, token?: string, url?: string, error?: string}}
+ */
+function issueFormTokenWithUrl(leadId) {
+  if (!leadId) return { success: false, error: 'リードIDが必要です' };
+  try {
+    var token   = issueFormToken(String(leadId));
+    var baseUrl = getWebAppUrl();
+    var url     = baseUrl + '?page=order-form&token=' + encodeURIComponent(token);
+    return { success: true, token: token, url: url };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+// ============================================================
+// 7. 機械テスト: testOrderFormFlow
+// ============================================================
+
+function testOrderFormFlow() {
+  var leadId = 'LDI-00001';
+  var lines  = ['=== testOrderFormFlow ==='];
+  var token  = null;
+
+  // T1: issueFormTokenWithUrl
+  var r1 = issueFormTokenWithUrl(leadId);
+  if (r1.success) {
+    token = r1.token;
+    lines.push('✓ T1 issueFormTokenWithUrl: token=' + token.substring(0, 8) + '...');
+    lines.push('  url 先頭60字: ' + r1.url.substring(0, 60) + '...');
+  } else {
+    lines.push('✗ T1: ' + r1.error);
+    return lines.join('\n') + '\n結果: 0/5 FAIL ✗';
+  }
+
+  // T2: トークンタブ記帳確認
+  var ss   = getSpreadsheet();
+  var sh   = ss.getSheetByName(FORM_TOKEN_SHEET);
+  var data = sh.getDataRange().getValues();
+  var h    = data[0];
+  var tokIdx  = h.indexOf('トークン');
+  var leadIdx = h.indexOf('リードID');
+  var useIdx  = h.indexOf('使用日');
+  var tokenRow = -1;
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][tokIdx]).trim() === token) { tokenRow = i; break; }
+  }
+  if (tokenRow < 0) {
+    lines.push('✗ T2: トークンがシートに見つかりません');
+  } else {
+    var leadOk = String(data[tokenRow][leadIdx]) === leadId;
+    var useOk  = String(data[tokenRow][useIdx] || '') === '';
+    lines.push((leadOk && useOk)
+      ? '✓ T2 記帳確認: リードID=' + String(data[tokenRow][leadIdx]) + ' 使用日=空欄'
+      : '✗ T2: leadOk=' + leadOk + ' useOk=' + useOk);
+  }
+
+  // T3: validateFormToken 未使用 → valid
+  var v1 = validateFormToken(token);
+  lines.push(v1.valid
+    ? '✓ T3 未使用トークン: valid=true'
+    : '✗ T3: ' + v1.error);
+
+  // T4: 無効トークン → invalid
+  var v2 = validateFormToken('00000000-0000-0000-0000-000000000000');
+  lines.push(!v2.valid
+    ? '✓ T4 無効トークン: valid=false error=' + v2.error
+    : '✗ T4: 無効トークンがvalidになる');
+
+  // T5: 空トークン → invalid
+  var v3 = validateFormToken('');
+  lines.push(!v3.valid
+    ? '✓ T5 空トークン: valid=false'
+    : '✗ T5: 空トークンがvalidになる');
+
+  // Cleanup
+  if (tokenRow >= 0) { sh.deleteRow(tokenRow + 1); }
+  lines.push('クリーンアップ完了 ✓');
+
+  var passed = lines.filter(function(l) { return l.charAt(0) === '\u2713'; }).length;
+  var total  = lines.filter(function(l) { return l.charAt(0) === '\u2713' || l.charAt(0) === '\u2717'; }).length;
+  lines.push('\n結果: ' + passed + '/' + total + (passed === total ? ' PASS \u2713' : ' FAIL \u2717'));
+  return lines.join('\n');
+}
