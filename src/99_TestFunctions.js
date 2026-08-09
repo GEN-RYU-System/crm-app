@@ -370,3 +370,126 @@ function dumpPayeeRow(payId) {
   }
   return { found: false, payId: payId };
 }
+
+/**
+ * 実弾テストデータ削除（DRY RUN / CONFIRM 2段式）
+ *
+ * DRY RUN  : 削除予定行の ID・主要値を一覧表示。シートは変更しない。
+ * CONFIRM  : 実際に削除し、事後行数 + verifyCustomerByLeadId で復帰確認。
+ *
+ * 削除対象（固定）:
+ *   顧客マスタ    CT-00053
+ *   配送先マスタ  AD-00052
+ *   支払先マスタ  PY-00052
+ *   フォームトークン  リードID=LDI-00235 の全行（2行）
+ *   リード管理    LDI-00235（TEST FORM CHECK）
+ *
+ * @param {string} mode - 'DRY_RUN'（省略可・デフォルト）または 'CONFIRM'
+ * @returns {string} 実行ログ
+ */
+function cleanupFormTestData(mode) {
+  var isConfirm = String(mode || '').trim().toUpperCase() === 'CONFIRM';
+  var ss = getSpreadsheet();
+  var lines = ['=== cleanupFormTestData [' + (isConfirm ? 'CONFIRM' : 'DRY RUN') + '] ===', ''];
+
+  // ---------- 削除対象定義 ----------
+  // idCol: 検索対象の列名  ids: 一致させる値  keyCol: ログ用補助列  matchAll: true=idColで全一致行を収集
+  var targets = [
+    {
+      sheet: CONFIG.SHEETS.CRM_CUSTOMERS,
+      idCol: '顧客ID',   ids: ['CT-00053'],  keyCol: '顧客名',
+      label: '顧客マスタ',   expectedDataRows: 51
+    },
+    {
+      sheet: CONFIG.SHEETS.CRM_SHIPPING,
+      idCol: '配送先ID', ids: ['AD-00052'],  keyCol: '宛名',
+      label: '配送先マスタ', expectedDataRows: 51
+    },
+    {
+      sheet: CONFIG.SHEETS.CRM_PAYMENT,
+      idCol: '支払先ID', ids: ['PY-00052'],  keyCol: '請求名義',
+      label: '支払先マスタ', expectedDataRows: 51
+    },
+    {
+      sheet: FORM_TOKEN_SHEET,
+      idCol: 'リードID',  ids: ['LDI-00235'], keyCol: 'トークン',
+      label: 'フォームトークン', expectedDataRows: 0
+    },
+    {
+      sheet: CONFIG.SHEETS.LEADS,
+      idCol: 'リードID',  ids: ['LDI-00235'], keyCol: '顧客名',
+      label: 'リード管理',  expectedDataRows: null  // 行数検証なし
+    }
+  ];
+
+  var totalFound = 0;
+
+  targets.forEach(function(t) {
+    var sh = ss.getSheetByName(t.sheet);
+    if (!sh) { lines.push('[' + t.label + '] シートなし'); return; }
+
+    var data  = sh.getDataRange().getValues();
+    var h     = data[0];
+    var idIdx  = h.indexOf(t.idCol);
+    var keyIdx = h.indexOf(t.keyCol);
+    if (idIdx < 0) { lines.push('[' + t.label + '] ' + t.idCol + ' 列なし'); return; }
+
+    // 対象行を収集
+    var toDelete = [];
+    for (var i = 1; i < data.length; i++) {
+      var rowId = String(data[i][idIdx] || '').trim();
+      if (t.ids.indexOf(rowId) >= 0) {
+        var keyVal = keyIdx >= 0 ? String(data[i][keyIdx] || '') : '?';
+        toDelete.push({ rowNum: i + 1, id: rowId, key: keyVal });
+      }
+    }
+
+    lines.push('[' + t.label + '] ' + toDelete.length + '行対象');
+    toDelete.forEach(function(r) {
+      lines.push('  行' + r.rowNum + ': ' + r.id + ' / ' + t.keyCol + '="' + r.key + '"');
+    });
+    totalFound += toDelete.length;
+
+    if (isConfirm) {
+      // 下から削除（行ズレ防止）
+      for (var d = toDelete.length - 1; d >= 0; d--) {
+        sh.deleteRow(toDelete[d].rowNum);
+      }
+      lines.push('  削除実行 ✓');
+    } else {
+      lines.push('  → DRY RUN: 変更なし');
+    }
+    lines.push('');
+  });
+
+  lines.push('合計 ' + totalFound + '行 ' + (isConfirm ? '削除完了' : '削除予定（DRY RUN）'));
+
+  // ---------- CONFIRM 後の事後検証 ----------
+  if (isConfirm) {
+    lines.push('');
+    lines.push('=== 事後検証 ===');
+
+    // 行数チェック
+    targets.forEach(function(t) {
+      if (t.expectedDataRows === null) return;
+      var sh = ss.getSheetByName(t.sheet);
+      if (!sh) { lines.push('[' + t.label + '] シートなし'); return; }
+      var dataRows = Math.max(0, sh.getLastRow() - 1);
+      var ok = dataRows === t.expectedDataRows;
+      lines.push('[' + t.label + '] データ行数: ' + dataRows +
+                 '行 (期待: ' + t.expectedDataRows + ')' + (ok ? ' ✓' : ' ✗'));
+    });
+
+    // verifyCustomerByLeadId で全タブ0件確認
+    lines.push('');
+    lines.push('[verifyCustomerByLeadId LDI-00235]');
+    try {
+      var result = verifyCustomerByLeadId('LDI-00235');
+      lines.push(result);
+    } catch (e) {
+      lines.push('ERROR: ' + e.message);
+    }
+  }
+
+  return lines.join('\n');
+}
