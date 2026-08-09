@@ -634,7 +634,49 @@ function issueFormTokenWithUrl(leadId) {
 }
 
 // ============================================================
-// 7. 機械テスト: testOrderFormFlow
+// 7. テスト用リード作成（実弾テスト準備）
+// ============================================================
+
+/**
+ * 実弾テスト用リードを1件作成してリードIDを返す
+ * 顧客名: 'TEST FORM CHECK' / リード種別: 'インバウンド'
+ */
+function createTestFormLead() {
+  var ss  = getSpreadsheet();
+  var sh  = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  if (!sh) return 'ERROR: リード管理シートが見つかりません';
+
+  var data = sh.getDataRange().getValues();
+  var h    = data[0];
+  var idIdx   = h.indexOf('リードID');
+  var dateIdx = h.indexOf('登録日');
+  var nameIdx = h.indexOf('顧客名');
+  var typeIdx = h.indexOf('リード種別');
+  if (idIdx < 0) return 'ERROR: リードID列が見つかりません';
+
+  // 次のLDI-IDを採番
+  var maxNum = 0;
+  var re = /^LDI-(\d+)$/;
+  data.slice(1).forEach(function(r) {
+    var m = String(r[idIdx] || '').match(re);
+    if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10));
+  });
+  var newId  = 'LDI-' + String(maxNum + 1).padStart(5, '0');
+  var today  = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd');
+
+  // 最小限の行を構築（ヘッダー列数ぶん空欄で埋める）
+  var row = Array(h.length).fill('');
+  row[idIdx]   = newId;
+  if (dateIdx >= 0) row[dateIdx] = today;
+  if (nameIdx >= 0) row[nameIdx] = 'TEST FORM CHECK';
+  if (typeIdx >= 0) row[typeIdx] = 'インバウンド';
+  sh.appendRow(row);
+
+  return '作成完了: ' + newId + ' / 顧客名: TEST FORM CHECK';
+}
+
+// ============================================================
+// 8. 機械テスト: testOrderFormFlow
 // ============================================================
 
 function testOrderFormFlow() {
