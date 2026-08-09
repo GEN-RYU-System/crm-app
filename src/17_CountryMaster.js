@@ -632,12 +632,23 @@ function _splitAddrLine(line, limit) {
 
 /**
  * 配送先・支払先の住所フィールドで許容外文字を含む行を列挙
- * 許容: 半角英数 + , . - # / ' スペース
+ *
+ * 欄種別許容セット:
+ *   名前系（顧客名・宛名・請求名義）: 半角英数 + , . - # / ' ( ) & スペース
+ *   住所系（Address*/City/State）   : 半角英数 + , . - # / ' スペース
+ *                                      + Latin-1 Supplement (U+00C0-U+00FF) ← 欧州アクセント文字
+ *
  * @returns {string} 実行ログ
  */
 function auditAddressCharset() {
   var ss = getSpreadsheet();
-  var ALLOWED = /^[A-Za-z0-9\s,.\-#\/']*$/;
+  // 名前系: ( ) & を追加許容
+  var ALLOWED_NAME = /^[A-Za-z0-9\s,.\-#\/'()&]*$/;
+  // 住所系: Latin-1 Supplement (À-ÿ = U+00C0-U+00FF) を追加許容
+  var ALLOWED_ADDR = /^[A-Za-z0-9\s,.\-#\/'À-ÿ]*$/;
+  // 名前系欄のセット
+  var NAME_COLS = ['顧客名', '宛名', '請求名義'];
+
   var lines = ['=== auditAddressCharset ==='];
   var total = 0;
 
@@ -670,14 +681,17 @@ function auditAddressCharset() {
       var colIdx = h.indexOf(col);
       if (colIdx < 0) { lines.push('  ' + col + ': 列なし'); return; }
 
+      var isNameCol = NAME_COLS.indexOf(col) >= 0;
+      var allowedRe = isNameCol ? ALLOWED_NAME : ALLOWED_ADDR;
+
       data.slice(1).forEach(function(row, ri) {
         var val = String(row[colIdx] || '');
         if (val === '') return;
-        if (!ALLOWED.test(val)) {
+        if (!allowedRe.test(val)) {
           sheetFound++;
           total++;
           // 許容外文字を抽出
-          var bad = val.split('').filter(function(c) { return !ALLOWED.test(c); });
+          var bad = val.split('').filter(function(c) { return !allowedRe.test(c); });
           var uniq = bad.filter(function(c, idx, arr) { return arr.indexOf(c) === idx; });
           lines.push(
             '  行' + (ri + 2) + ' ' + String(row[cidIdx] || '') +
