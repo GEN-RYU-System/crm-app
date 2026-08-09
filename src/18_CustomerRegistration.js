@@ -631,6 +631,48 @@ function verifyCustomerByLeadId(leadId) {
   return lines.join('\n');
 }
 
+/**
+ * 各マスタの末尾3行＋フォームトークン全件を確認（デバッグ用）
+ */
+function debugMasterTails() {
+  var ss = getSpreadsheet();
+  var lines = ['=== debugMasterTails ==='];
+
+  function tail(shName, n) {
+    var sh = ss.getSheetByName(shName);
+    if (!sh) return ['  シートなし'];
+    var data = sh.getDataRange().getValues();
+    var h = data[0];
+    var rows = data.slice(Math.max(1, data.length - n));
+    return rows.map(function(r) {
+      var obj = {};
+      h.forEach(function(k, i) { if (String(r[i] || '') !== '') obj[k] = r[i]; });
+      return '  ' + JSON.stringify(obj);
+    });
+  }
+
+  lines.push('\n[顧客マスタ 末尾3行]');
+  lines = lines.concat(tail(CONFIG.SHEETS.CRM_CUSTOMERS, 3));
+
+  lines.push('\n[配送先マスタ 末尾3行]');
+  lines = lines.concat(tail(CONFIG.SHEETS.CRM_SHIPPING, 3));
+
+  lines.push('\n[支払先マスタ 末尾3行]');
+  lines = lines.concat(tail(CONFIG.SHEETS.CRM_PAYMENT, 3));
+
+  lines.push('\n[フォームトークン 全件]');
+  var tokSh   = ss.getSheetByName(FORM_TOKEN_SHEET);
+  var tokData = tokSh ? tokSh.getDataRange().getValues() : [];
+  var tokH    = tokData[0] || [];
+  tokData.slice(1).forEach(function(r) {
+    var obj = {};
+    tokH.forEach(function(k, i) { obj[k] = r[i]; });
+    lines.push('  ' + JSON.stringify(obj));
+  });
+
+  return lines.join('\n');
+}
+
 // ============================================================
 // 7. フォームURL発行・トークン検証
 // ============================================================
