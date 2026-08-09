@@ -13750,44 +13750,6 @@
       </div>
 
       <!-- Clear Confirmation Popup Overlay -->
-      <!-- 顧客登録URL発行モーダル -->
-      <div x-show="regUrlModalOpen"
-           @click="regUrlModalOpen = false; regUrlResult = null; regUrlCopied = false"
-           @keydown.escape.window="regUrlModalOpen = false; regUrlResult = null; regUrlCopied = false"
-           style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.5); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;">
-        <div @click.stop
-             style="background: white; border-radius: 14px; padding: 28px 24px; max-width: 520px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,.2);">
-          <h3 style="font-size: 16px; font-weight: 700; color: #1a202c; margin-bottom: 16px;">顧客登録URL</h3>
-
-          <!-- Loading state -->
-          <div x-show="!regUrlResult" style="text-align: center; padding: 20px 0; color: #718096; font-size: 14px;">
-            発行中...
-          </div>
-
-          <!-- URL display -->
-          <div x-show="regUrlResult">
-            <p style="font-size: 12px; color: #718096; margin-bottom: 8px;">このURLを顧客にお送りください（1回のみ有効）</p>
-            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
-              <input type="text" :value="regUrlResult && regUrlResult.url" readonly
-                     style="flex: 1; border: 1.5px solid #cbd5e0; border-radius: 7px; padding: 9px 11px; font-size: 12px; color: #4a5568; background: #f7fafc; outline: none;"
-                     @click="$event.target.select()">
-              <button @click="copyRegUrl()"
-                      style="flex-shrink: 0; background: #276749; color: white; border: none; border-radius: 7px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;">
-                コピー
-              </button>
-            </div>
-            <p x-show="regUrlCopied" style="font-size: 12px; color: #276749; font-weight: 600;">✓ クリップボードにコピーしました</p>
-          </div>
-
-          <div style="text-align: right; margin-top: 20px;">
-            <button @click="regUrlModalOpen = false; regUrlResult = null; regUrlCopied = false"
-                    style="border: 1.5px solid #cbd5e0; background: white; border-radius: 7px; padding: 8px 18px; font-size: 13px; cursor: pointer; color: #4a5568;">
-              閉じる
-            </button>
-          </div>
-        </div>
-      </div>
-
       <div x-show="clearConfirmPopupOpen"
            @click="closeClearConfirmation()"
            @keydown.escape.window="clearConfirmPopupOpen && closeClearConfirmation()"
@@ -13859,17 +13821,6 @@
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
               </svg>
               チャットを開く
-            </button>
-            <!-- 顧客登録URL発行ボタン -->
-            <button
-              x-show="!isNewLead"
-              class="panel-tab"
-              style="background: #276749; color: white; border: none; display: flex; align-items: center; justify-content: center; gap: 6px;"
-              @click="issueRegistrationUrl()">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle;">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-              </svg>
-              顧客登録URL発行
             </button>
           </div>
 
@@ -14594,11 +14545,6 @@
 
         // Clear confirmation popup
         clearConfirmPopupOpen: false,
-
-        // 顧客登録URL発行モーダル
-        regUrlModalOpen: false,
-        regUrlResult: null,
-        regUrlCopied: false,
 
         // Slide-in panel state
         slideInOpen: false,
@@ -22857,42 +22803,6 @@
               }
             }, 500);
           });
-        },
-
-        // 顧客登録URL発行
-        async issueRegistrationUrl() {
-          const leadId = (this.slideInData && this.slideInData['リードID'])
-                      || (this.formData   && this.formData['リードID']);
-          if (!leadId) {
-            this.showToast('リードIDが取得できません', 'error');
-            return;
-          }
-          this.regUrlResult = null;
-          this.regUrlCopied = false;
-          this.regUrlModalOpen = true;
-          try {
-            const result = await runAsync('issueFormTokenWithUrl', leadId);
-            if (result && result.success) {
-              this.regUrlResult = result;
-            } else {
-              this.showToast((result && result.error) || 'URL発行に失敗しました', 'error');
-              this.regUrlModalOpen = false;
-            }
-          } catch (e) {
-            this.showToast('URL発行に失敗しました', 'error');
-            this.regUrlModalOpen = false;
-          }
-        },
-
-        copyRegUrl() {
-          if (this.regUrlResult && this.regUrlResult.url) {
-            navigator.clipboard.writeText(this.regUrlResult.url)
-              .then(() => {
-                this.regUrlCopied = true;
-                setTimeout(() => { this.regUrlCopied = false; }, 3000);
-              })
-              .catch(() => this.showToast('コピーに失敗しました', 'error'));
-          }
         },
 
         // Toggle dark mode
