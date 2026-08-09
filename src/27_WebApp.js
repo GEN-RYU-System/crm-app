@@ -35,6 +35,22 @@ function doGet(e) {
     }
   }
 
+  // 顧客登録フォーム（認証不要・token 必須）← 認証チェックより前に配置
+  if (params.page === 'order-form') {
+    const token = params.token || '';
+    const validation = validateFormToken(token);
+    if (!validation.valid) {
+      return createOrderFormErrorPage('登録フォームにアクセスできません', validation.error);
+    }
+    const tmpl = HtmlService.createTemplateFromFile('order_form');
+    tmpl.token     = token;
+    tmpl.countries = JSON.stringify(getCountriesForForm());
+    return tmpl.evaluate()
+      .setTitle('顧客登録フォーム')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
   // アクセス制御: 担当者マスタに登録されているユーザーのみアクセス可能
   const userEmail = Session.getActiveUser().getEmail();
 
@@ -108,6 +124,43 @@ function doGet(e) {
   return template.evaluate()
     .setTitle('CRM Dashboard')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * 顧客登録フォーム専用エラーページ
+ * @param {string} title
+ * @param {string} message
+ * @returns {HtmlOutput}
+ */
+function createOrderFormErrorPage(title, message) {
+  const html = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>アクセスエラー</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; background: #f5f5f5; min-height: 100vh;
+           display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .box { background: white; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,.12);
+           max-width: 480px; width: 100%; padding: 40px 32px; text-align: center; }
+    .icon { font-size: 48px; margin-bottom: 16px; }
+    h2 { color: #c0392b; margin-bottom: 12px; font-size: 20px; }
+    p  { color: #555; line-height: 1.6; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="icon">⚠️</div>
+    <h2>${title}</h2>
+    <p>${message}</p>
+  </div>
+</body>
+</html>`;
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('アクセスエラー')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
