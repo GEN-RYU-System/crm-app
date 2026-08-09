@@ -554,7 +554,85 @@ function _cleanupTestData(custId, addrIds, payIds, tokens) {
 }
 
 // ============================================================
-// 6. フォームURL発行・トークン検証
+// 6. 顧客マスタ登録確認（実弾テスト用）
+// ============================================================
+
+/**
+ * 指定リードIDで登録された顧客マスタ3タブの内容を確認
+ * @param {string} leadId
+ * @returns {string} 確認結果
+ */
+function verifyCustomerByLeadId(leadId) {
+  var ss   = getSpreadsheet();
+  var lines = ['=== verifyCustomerByLeadId: ' + leadId + ' ==='];
+
+  // 顧客マスタ
+  var custSh = ss.getSheetByName(CONFIG.SHEETS.CRM_CUSTOMERS);
+  var custData = custSh ? custSh.getDataRange().getValues() : [];
+  var custH = custData[0] || [];
+  var custLeadIdx = custH.indexOf('源流リードID');
+  var custIdIdx   = custH.indexOf('顧客ID');
+  var custRows = custData.slice(1).filter(function(r) {
+    return String(r[custLeadIdx] || '').trim() === leadId;
+  });
+  lines.push('\n[顧客マスタ] ' + custRows.length + '件');
+  custRows.forEach(function(r) {
+    var obj = {};
+    custH.forEach(function(k, i) { if (r[i] !== '' && r[i] !== false) obj[k] = r[i]; });
+    lines.push(JSON.stringify(obj));
+  });
+
+  var customerId = custRows.length > 0 ? String(custRows[0][custIdIdx] || '') : null;
+
+  // 配送先マスタ
+  var adSh   = ss.getSheetByName(CONFIG.SHEETS.CRM_SHIPPING);
+  var adData = adSh ? adSh.getDataRange().getValues() : [];
+  var adH    = adData[0] || [];
+  var adCidIdx = adH.indexOf('顧客ID');
+  var adRows = customerId
+    ? adData.slice(1).filter(function(r) { return String(r[adCidIdx] || '').trim() === customerId; })
+    : [];
+  lines.push('\n[配送先マスタ] ' + adRows.length + '件');
+  adRows.forEach(function(r) {
+    var obj = {};
+    adH.forEach(function(k, i) { if (r[i] !== '' && r[i] !== false) obj[k] = r[i]; });
+    lines.push(JSON.stringify(obj));
+  });
+
+  // 支払先マスタ
+  var pySh   = ss.getSheetByName(CONFIG.SHEETS.CRM_PAYMENT);
+  var pyData = pySh ? pySh.getDataRange().getValues() : [];
+  var pyH    = pyData[0] || [];
+  var pyCidIdx = pyH.indexOf('顧客ID');
+  var pyRows = customerId
+    ? pyData.slice(1).filter(function(r) { return String(r[pyCidIdx] || '').trim() === customerId; })
+    : [];
+  lines.push('\n[支払先マスタ] ' + pyRows.length + '件');
+  pyRows.forEach(function(r) {
+    var obj = {};
+    pyH.forEach(function(k, i) { if (r[i] !== '' && r[i] !== false) obj[k] = r[i]; });
+    lines.push(JSON.stringify(obj));
+  });
+
+  // フォームトークン使用日確認
+  var tokSh   = ss.getSheetByName(FORM_TOKEN_SHEET);
+  var tokData = tokSh ? tokSh.getDataRange().getValues() : [];
+  var tokH    = tokData[0] || [];
+  var tokLeadIdx = tokH.indexOf('リードID');
+  var tokUseIdx  = tokH.indexOf('使用日');
+  var tokRows = tokData.slice(1).filter(function(r) {
+    return String(r[tokLeadIdx] || '').trim() === leadId;
+  });
+  lines.push('\n[フォームトークン] ' + tokRows.length + '件');
+  tokRows.forEach(function(r) {
+    lines.push('  使用日: ' + String(r[tokUseIdx] || '（空欄）'));
+  });
+
+  return lines.join('\n');
+}
+
+// ============================================================
+// 7. フォームURL発行・トークン検証
 // ============================================================
 
 /**
