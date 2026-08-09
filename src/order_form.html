@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>顧客登録フォーム</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      padding: 24px 16px;
+      color: #1a202c;
+    }
+    .page-wrap { max-width: 680px; margin: 0 auto; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; color: #2d3748; }
+    .subtitle { font-size: 13px; color: #718096; margin-bottom: 24px; }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+      padding: 24px 20px;
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #4a5568;
+      border-bottom: 2px solid #ebf4ff;
+      padding-bottom: 10px;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card h2 .badge {
+      background: #3182ce;
+      color: white;
+      border-radius: 50%;
+      width: 22px; height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 520px) { .form-row { grid-template-columns: 1fr; } }
+
+    .field { margin-bottom: 14px; }
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #4a5568;
+      margin-bottom: 5px;
+    }
+    .field label .req {
+      color: #e53e3e;
+      margin-left: 3px;
+    }
+    .field input, .field select {
+      width: 100%;
+      border: 1.5px solid #cbd5e0;
+      border-radius: 7px;
+      padding: 9px 11px;
+      font-size: 14px;
+      color: #2d3748;
+      background: white;
+      transition: border-color .15s;
+      outline: none;
+    }
+    .field input:focus, .field select:focus { border-color: #3182ce; }
+    .field input.error, .field select.error { border-color: #e53e3e; background: #fff5f5; }
+    .field .hint {
+      font-size: 11px;
+      color: #a0aec0;
+      margin-top: 4px;
+    }
+    .field .error-msg {
+      font-size: 11px;
+      color: #e53e3e;
+      margin-top: 4px;
+      display: none;
+    }
+    .field .error-msg.visible { display: block; }
+
+    .addr-wrap { position: relative; }
+    .addr-counter {
+      position: absolute;
+      right: 10px; bottom: 10px;
+      font-size: 11px;
+      color: #a0aec0;
+      pointer-events: none;
+    }
+    .addr-counter.warn { color: #e53e3e; }
+    .addr-wrap input { padding-right: 44px; }
+
+    .dial-wrap { position: relative; }
+    .dial-preview {
+      position: absolute;
+      left: 11px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 13px;
+      color: #718096;
+      font-weight: 600;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .dial-wrap input { padding-left: 52px; }
+
+    .same-check-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #ebf8ff;
+      border: 1.5px solid #bee3f8;
+      border-radius: 9px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      cursor: pointer;
+    }
+    .same-check-wrap input[type=checkbox] {
+      width: 18px; height: 18px;
+      accent-color: #3182ce;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .same-check-wrap label { font-size: 14px; color: #2b6cb0; font-weight: 500; cursor: pointer; }
+
+    .submit-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #3182ce, #2b6cb0);
+      color: white;
+      border: none;
+      border-radius: 9px;
+      padding: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .submit-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+    /* Screens */
+    #screen-form, #screen-loading, #screen-success, #screen-error { display: none; }
+    #screen-form.active, #screen-loading.active,
+    #screen-success.active, #screen-error.active { display: block; }
+
+    #screen-loading {
+      text-align: center;
+      padding: 60px 20px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #e2e8f0;
+      border-top-color: #3182ce;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #screen-success {
+      text-align: center;
+      padding: 48px 24px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    #screen-success .icon { font-size: 56px; margin-bottom: 16px; }
+    #screen-success h2 { font-size: 22px; color: #276749; margin-bottom: 10px; }
+    #screen-success p { color: #4a5568; font-size: 14px; line-height: 1.7; }
+
+    #screen-error {
+      text-align: center;
+      padding: 40px 24px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    #screen-error .icon { font-size: 48px; margin-bottom: 12px; }
+    #screen-error h2 { font-size: 18px; color: #c53030; margin-bottom: 10px; }
+    #screen-error .err-list {
+      text-align: left;
+      background: #fff5f5;
+      border: 1px solid #fed7d7;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 16px 0;
+    }
+    #screen-error .err-list li { font-size: 13px; color: #c53030; margin-bottom: 6px; }
+    .retry-btn {
+      background: none;
+      border: 1.5px solid #3182ce;
+      border-radius: 8px;
+      color: #3182ce;
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .retry-btn:hover { background: #ebf8ff; }
+
+    .section-hidden { display: none; }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+  <h1>顧客登録フォーム</h1>
+  <p class="subtitle">必要事項をご入力のうえ、送信してください。</p>
+
+  <!-- Loading screen -->
+  <div id="screen-loading">
+    <div class="spinner"></div>
+    <p style="color:#718096">送信中...</p>
+  </div>
+
+  <!-- Success screen -->
+  <div id="screen-success">
+    <div class="icon">✅</div>
+    <h2>登録が完了しました</h2>
+    <p>お客様情報を受け付けました。<br>担当者よりご連絡いたします。</p>
+  </div>
+
+  <!-- Error screen (server validation errors) -->
+  <div id="screen-error">
+    <div class="icon">⚠️</div>
+    <h2>入力内容をご確認ください</h2>
+    <ul class="err-list" id="err-list-items"></ul>
+    <button class="retry-btn" onclick="showScreen('form')">戻って修正する</button>
+  </div>
+
+  <!-- Form screen -->
+  <div id="screen-form">
+
+    <!-- Section 1: Billing -->
+    <div class="card">
+      <h2><span class="badge">1</span> 請求先情報</h2>
+
+      <div class="form-row">
+        <div class="field">
+          <label>会社名 / お名前 <span class="req">*</span></label>
+          <input type="text" id="bil-name" placeholder="ABC Trading Co.">
+          <div class="error-msg" id="err-bil-name"></div>
+        </div>
+        <div class="field">
+          <label>Tax ID / 法人番号</label>
+          <input type="text" id="bil-taxid" placeholder="例: GB123456789">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label>メールアドレス <span class="req">*</span></label>
+          <input type="email" id="bil-email" placeholder="info@example.com">
+          <div class="error-msg" id="err-bil-email"></div>
+        </div>
+        <div class="field">
+          <label>電話番号 <span class="req">*</span></label>
+          <div class="dial-wrap">
+            <span class="dial-preview" id="bil-dial-preview">+</span>
+            <input type="tel" id="bil-phone" placeholder="数字のみ" inputmode="numeric">
+          </div>
+          <div class="hint">国選択後に国番号が表示されます</div>
+          <div class="error-msg" id="err-bil-phone"></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>国 <span class="req">*</span></label>
+        <select id="bil-country" onchange="onCountryChange('bil')">
+          <option value="">-- 国を選択 --</option>
+        </select>
+        <div class="error-msg" id="err-bil-country"></div>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label>Address 1 <span class="req">*</span></label>
+          <div class="addr-wrap">
+            <input type="text" id="bil-addr1" maxlength="35" oninput="onAddrInput(this,'bil-addr1-cnt')" placeholder="Street / Building">
+            <span class="addr-counter" id="bil-addr1-cnt">35</span>
+          </div>
+          <div class="error-msg" id="err-bil-addr1"></div>
+        </div>
+        <div class="field">
+          <label>Address 2</label>
+          <div class="addr-wrap">
+            <input type="text" id="bil-addr2" maxlength="35" oninput="onAddrInput(this,'bil-addr2-cnt')" placeholder="Room / Floor">
+            <span class="addr-counter" id="bil-addr2-cnt">35</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label>Address 3</label>
+          <div class="addr-wrap">
+            <input type="text" id="bil-addr3" maxlength="35" oninput="onAddrInput(this,'bil-addr3-cnt')" placeholder="District / Area">
+            <span class="addr-counter" id="bil-addr3-cnt">35</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>City <span class="req">*</span></label>
+          <input type="text" id="bil-city" placeholder="City">
+          <div class="error-msg" id="err-bil-city"></div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field" id="bil-state-field" style="display:none">
+          <label>State / Province <span class="req">*</span></label>
+          <input type="text" id="bil-state" placeholder="CA">
+          <div class="error-msg" id="err-bil-state"></div>
+        </div>
+        <div class="field" id="bil-zip-field" style="display:none">
+          <label>ZIP / Postal Code <span class="req">*</span></label>
+          <input type="text" id="bil-zip" placeholder="000-0000">
+          <div class="error-msg" id="err-bil-zip"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Same as billing checkbox -->
+    <label class="same-check-wrap">
+      <input type="checkbox" id="same-as-billing" checked onchange="toggleShipping()">
+      <span>配送先は請求先と同じ</span>
+    </label>
+
+    <!-- Section 2: Shipping -->
+    <div class="card section-hidden" id="shipping-section">
+      <h2><span class="badge">2</span> 配送先情報</h2>
+
+      <div class="form-row">
+        <div class="field">
+          <label>会社名 / お名前 <span class="req">*</span></label>
+          <input type="text" id="shp-name" placeholder="ABC Trading Co.">
+          <div class="error-msg" id="err-shp-name"></div>
+        </div>
+        <div class="field">
+          <label>電話番号 <span class="req">*</span></label>
+          <div class="dial-wrap">
+            <span class="dial-preview" id="shp-dial-preview">+</span>
+            <input type="tel" id="shp-phone" placeholder="数字のみ" inputmode="numeric">
+          </div>
+          <div class="error-msg" id="err-shp-phone"></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>国 <span class="req">*</span></label>
+        <select id="shp-country" onchange="onCountryChange('shp')">
+          <option value="">-- 国を選択 --</option>
+        </select>
+        <div class="error-msg" id="err-shp-country"></div>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label>Address 1 <span class="req">*</span></label>
+          <div class="addr-wrap">
+            <input type="text" id="shp-addr1" maxlength="35" oninput="onAddrInput(this,'shp-addr1-cnt')" placeholder="Street / Building">
+            <span class="addr-counter" id="shp-addr1-cnt">35</span>
+          </div>
+          <div class="error-msg" id="err-shp-addr1"></div>
+        </div>
+        <div class="field">
+          <label>Address 2</label>
+          <div class="addr-wrap">
+            <input type="text" id="shp-addr2" maxlength="35" oninput="onAddrInput(this,'shp-addr2-cnt')" placeholder="Room / Floor">
+            <span class="addr-counter" id="shp-addr2-cnt">35</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label>Address 3</label>
+          <div class="addr-wrap">
+            <input type="text" id="shp-addr3" maxlength="35" oninput="onAddrInput(this,'shp-addr3-cnt')" placeholder="District / Area">
+            <span class="addr-counter" id="shp-addr3-cnt">35</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>City <span class="req">*</span></label>
+          <input type="text" id="shp-city" placeholder="City">
+          <div class="error-msg" id="err-shp-city"></div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field" id="shp-state-field" style="display:none">
+          <label>State / Province <span class="req">*</span></label>
+          <input type="text" id="shp-state" placeholder="CA">
+          <div class="error-msg" id="err-shp-state"></div>
+        </div>
+        <div class="field" id="shp-zip-field" style="display:none">
+          <label>ZIP / Postal Code <span class="req">*</span></label>
+          <input type="text" id="shp-zip" placeholder="000-0000">
+          <div class="error-msg" id="err-shp-zip"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding-top:16px;padding-bottom:16px;">
+      <div id="global-err" style="color:#e53e3e;font-size:13px;margin-bottom:12px;display:none;"></div>
+      <button class="submit-btn" id="submit-btn" onclick="submitForm()">登録する</button>
+    </div>
+
+  </div><!-- /screen-form -->
+</div><!-- /page-wrap -->
+
+<script>
+  /* ---- Data injected from GAS template ---- */
+  var TOKEN    = <?= JSON.stringify(token) ?>;
+  var COUNTRIES = <?= countries ?>;
+
+  /* ---- Country map for quick lookup ---- */
+  var countryMap = {};
+  COUNTRIES.forEach(function(c) { countryMap[c.name] = c; });
+
+  /* ---- Populate country selects ---- */
+  function populateCountrySelect(selId) {
+    var sel = document.getElementById(selId);
+    COUNTRIES.forEach(function(c) {
+      var opt = document.createElement('option');
+      opt.value = c.name;
+      opt.textContent = c.name;
+      sel.appendChild(opt);
+    });
+  }
+  populateCountrySelect('bil-country');
+  populateCountrySelect('shp-country');
+
+  /* ---- Show/hide screens ---- */
+  function showScreen(name) {
+    ['form','loading','success','error'].forEach(function(s) {
+      document.getElementById('screen-' + s).classList.remove('active');
+    });
+    document.getElementById('screen-' + name).classList.add('active');
+  }
+  showScreen('form');
+
+  /* ---- Address input: ASCII enforcement + counter ---- */
+  var ALLOWED_ADDR = /^[A-Za-z0-9 ,.\-#\/']*$/;
+  function onAddrInput(input, cntId) {
+    // ASCII restriction: remove disallowed chars
+    var cursor = input.selectionStart;
+    var clean  = input.value.split('').filter(function(c) {
+      return ALLOWED_ADDR.test(c);
+    }).join('');
+    if (clean !== input.value) {
+      input.value = clean;
+      input.setSelectionRange(cursor - 1, cursor - 1);
+    }
+    // Character counter
+    var remaining = 35 - input.value.length;
+    var cnt = document.getElementById(cntId);
+    cnt.textContent = remaining;
+    cnt.className   = 'addr-counter' + (remaining < 5 ? ' warn' : '');
+  }
+
+  /* ---- Phone input: digits only ---- */
+  document.getElementById('bil-phone').addEventListener('input', function() {
+    this.value = this.value.replace(/[^0-9]/g, '');
+  });
+  document.getElementById('shp-phone').addEventListener('input', function() {
+    this.value = this.value.replace(/[^0-9]/g, '');
+  });
+
+  /* ---- Country change handler ---- */
+  function onCountryChange(prefix) {
+    var sel   = document.getElementById(prefix + '-country');
+    var name  = sel.value;
+    var info  = countryMap[name] || {};
+
+    // Dial code preview
+    var dialEl = document.getElementById(prefix + '-dial-preview');
+    dialEl.textContent = info.dialCode ? info.dialCode : '+';
+
+    // State field
+    var stateField = document.getElementById(prefix + '-state-field');
+    var stateLabel = stateField ? stateField.querySelector('label') : null;
+    if (stateField) {
+      stateField.style.display = info.stateRequired ? '' : 'none';
+    }
+
+    // ZIP field
+    var zipField = document.getElementById(prefix + '-zip-field');
+    if (zipField) {
+      zipField.style.display = info.postalRequired ? '' : 'none';
+    }
+  }
+
+  /* ---- Same-as-billing toggle ---- */
+  function toggleShipping() {
+    var checked  = document.getElementById('same-as-billing').checked;
+    var section  = document.getElementById('shipping-section');
+    section.classList.toggle('section-hidden', checked);
+  }
+
+  /* ---- Field value helper ---- */
+  function val(id) { return (document.getElementById(id) || {}).value || ''; }
+
+  /* ---- Build block from form ---- */
+  function buildBlock(prefix) {
+    return {
+      name:    val(prefix + '-name').trim(),
+      phone:   val(prefix + '-phone').trim(),
+      email:   prefix === 'bil' ? val(prefix + '-email').trim() : '',
+      taxId:   prefix === 'bil' ? val(prefix + '-taxid').trim() : '',
+      addr1:   val(prefix + '-addr1').trim(),
+      addr2:   val(prefix + '-addr2').trim(),
+      addr3:   val(prefix + '-addr3').trim(),
+      city:    val(prefix + '-city').trim(),
+      state:   val(prefix + '-state').trim(),
+      zip:     val(prefix + '-zip').trim(),
+      country: val(prefix + '-country').trim()
+    };
+  }
+
+  /* ---- Clear all field-level errors ---- */
+  function clearErrors() {
+    document.querySelectorAll('.error-msg').forEach(function(el) {
+      el.textContent = '';
+      el.classList.remove('visible');
+    });
+    document.querySelectorAll('input.error, select.error').forEach(function(el) {
+      el.classList.remove('error');
+    });
+    var ge = document.getElementById('global-err');
+    ge.style.display = 'none';
+    ge.textContent   = '';
+  }
+
+  /* ---- Map server error string → field ID ---- */
+  var ERROR_FIELD_MAP = {
+    '請求先.*name':    'bil-name',
+    '請求先.*phone':   'bil-phone',
+    '請求先.*email':   'bil-email',
+    '請求先.*addr1':   'bil-addr1',
+    '請求先.*addr2':   'bil-addr2',
+    '請求先.*addr3':   'bil-addr3',
+    '請求先.*city':    'bil-city',
+    '請求先.*state':   'bil-state',
+    '請求先.*[Ss]tate': 'bil-state',
+    '請求先.*zip':     'bil-zip',
+    '請求先.*[Zz]ip':  'bil-zip',
+    '請求先.*country': 'bil-country',
+    '配送先.*name':    'shp-name',
+    '配送先.*phone':   'shp-phone',
+    '配送先.*addr1':   'shp-addr1',
+    '配送先.*addr2':   'shp-addr2',
+    '配送先.*addr3':   'shp-addr3',
+    '配送先.*city':    'shp-city',
+    '配送先.*state':   'shp-state',
+    '配送先.*zip':     'shp-zip',
+    '配送先.*country': 'shp-country'
+  };
+
+  function showFieldError(errMsg) {
+    for (var pattern in ERROR_FIELD_MAP) {
+      if (new RegExp(pattern).test(errMsg)) {
+        var fid = ERROR_FIELD_MAP[pattern];
+        var inp = document.getElementById(fid);
+        var em  = document.getElementById('err-' + fid);
+        if (inp) inp.classList.add('error');
+        if (em)  { em.textContent = errMsg; em.classList.add('visible'); }
+        return;
+      }
+    }
+  }
+
+  /* ---- Submit ---- */
+  function submitForm() {
+    clearErrors();
+    var sameAsBilling = document.getElementById('same-as-billing').checked;
+    var billing  = buildBlock('bil');
+    var shipping = sameAsBilling ? null : buildBlock('shp');
+    var payload  = { token: TOKEN, billing: billing, shipping: shipping };
+
+    document.getElementById('submit-btn').disabled = true;
+    showScreen('loading');
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result && result.success) {
+          showScreen('success');
+        } else {
+          // Show errors
+          var errors = (result && result.errors) ? result.errors : ['不明なエラーが発生しました'];
+          // Error screen
+          var list = document.getElementById('err-list-items');
+          list.innerHTML = '';
+          errors.forEach(function(e) {
+            var li = document.createElement('li');
+            li.textContent = e;
+            list.appendChild(li);
+          });
+          showScreen('error');
+          // Also annotate form fields
+          showScreen('form');
+          errors.forEach(showFieldError);
+          document.getElementById('submit-btn').disabled = false;
+          // scroll to first error
+          var firstErr = document.querySelector('.error-msg.visible');
+          if (firstErr) firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Show error panel
+          var ge = document.getElementById('global-err');
+          ge.textContent = errors.length + '件の入力エラーがあります';
+          ge.style.display = 'block';
+        }
+      })
+      .withFailureHandler(function(err) {
+        document.getElementById('submit-btn').disabled = false;
+        showScreen('form');
+        var ge = document.getElementById('global-err');
+        ge.textContent = 'サーバーエラー: ' + (err && err.message ? err.message : String(err));
+        ge.style.display = 'block';
+      })
+      .registerCustomerFromForm(payload);
+  }
+</script>
+</body>
+</html>
