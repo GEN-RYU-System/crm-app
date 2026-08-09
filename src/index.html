@@ -15752,24 +15752,32 @@
           }
         },
 
-        // チャットメニュー全体の表示判定（getUserMenuPreferences の chat フラグで制御）
+        // チャットメニュー全体の表示判定（dashboard_view または lead_view があれば表示）
         hasChatMenuAccess() {
-          return this.menuExpanded && this.menuExpanded.chat === true;
+          const p = this.currentUser && this.currentUser.permissions;
+          if (!p) return false;
+          return p.dashboard_view === true || p.lead_view === true;
         },
 
-        // 営業メニュー全体の表示判定（getUserMenuPreferences の sales フラグで制御）
+        // 営業メニュー全体の表示判定（deal_view_all または deal_view_own があれば表示）
         hasSalesMenuAccess() {
-          return this.menuExpanded && this.menuExpanded.sales === true;
+          const p = this.currentUser && this.currentUser.permissions;
+          if (!p) return false;
+          return p.deal_view_all === true || p.deal_view_own === true;
         },
 
-        // 管理メニュー全体の表示判定（getUserMenuPreferences の admin フラグで制御）
+        // 管理メニュー全体の表示判定（admin_access / staff_manage / settings のいずれかがあれば表示）
         hasAdminAccess() {
-          return this.menuExpanded && this.menuExpanded.admin === true;
+          const p = this.currentUser && this.currentUser.permissions;
+          if (!p) return false;
+          return p.admin_access === true || p.staff_manage === true || p.settings === true;
         },
 
-        // Buddyメンテナンス権限チェック（getUserMenuPreferences の buddyMaintenance フラグで制御）
+        // Buddyメンテナンス権限チェック（admin_access または staff_manage があれば表示）
         hasBuddyMaintenanceAccess() {
-          return this.menuExpanded && this.menuExpanded.buddyMaintenance === true;
+          const p = this.currentUser && this.currentUser.permissions;
+          if (!p) return false;
+          return p.admin_access === true || p.staff_manage === true;
         },
 
         // 汎用権限チェック
