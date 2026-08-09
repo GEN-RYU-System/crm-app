@@ -156,9 +156,10 @@ function checkStaffData() {
 }
 
 /**
- * Web App URLを取得
+ * Web App URL を環境情報付きで取得（デバッグ用）
+ * NOTE: getWebAppUrl() は 08_Config_WebAppURL.js が正本。この関数は名前衝突を避けるため inspectWebAppUrl に改名。
  */
-function getWebAppUrl() {
+function inspectWebAppUrl() {
   try {
     const url = ScriptApp.getService().getUrl();
     return {
