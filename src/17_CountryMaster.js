@@ -642,12 +642,19 @@ function _splitAddrLine(line, limit) {
  */
 function auditAddressCharset() {
   var ss = getSpreadsheet();
-  // 名前系: ( ) & を追加許容
+  // 名前系: 半角英数 + , . - # / ' スペース + ( ) &
   var ALLOWED_NAME = /^[A-Za-z0-9\s,.\-#\/'()&]*$/;
-  // 住所系: Latin-1 Supplement (U+00C0-U+00FF) を追加許容（欧州アクセント文字）
-  var ALLOWED_ADDR = /^[A-Za-z0-9\s,.\-#\/'\u00C0-\u00FF]*$/;
+  // 住所系 ASCII 基本セット
+  var ALLOWED_ADDR_BASE = /^[A-Za-z0-9\s,.\-#\/']*$/;
   // 名前系欄のセット
   var NAME_COLS = ['顧客名', '宛名', '請求名義'];
+
+  // 住所系: 1文字が許容か（ASCII基本セット OR Latin-1補助 U+00C0-U+00FF）
+  function _isAddrCharOk(c) {
+    if (ALLOWED_ADDR_BASE.test(c)) return true;
+    var code = c.charCodeAt(0);
+    return code >= 192 && code <= 255; // U+00C0 = 192, U+00FF = 255
+  }
 
   var lines = ['=== auditAddressCharset ==='];
   var total = 0;
@@ -682,16 +689,21 @@ function auditAddressCharset() {
       if (colIdx < 0) { lines.push('  ' + col + ': 列なし'); return; }
 
       var isNameCol = NAME_COLS.indexOf(col) >= 0;
-      var allowedRe = isNameCol ? ALLOWED_NAME : ALLOWED_ADDR;
 
       data.slice(1).forEach(function(row, ri) {
         var val = String(row[colIdx] || '');
         if (val === '') return;
-        if (!allowedRe.test(val)) {
+
+        var ok = isNameCol
+          ? ALLOWED_NAME.test(val)
+          : val.split('').every(function(c) { return _isAddrCharOk(c); });
+
+        if (!ok) {
           sheetFound++;
           total++;
-          // 許容外文字を抽出
-          var bad = val.split('').filter(function(c) { return !allowedRe.test(c); });
+          var bad = val.split('').filter(function(c) {
+            return isNameCol ? !ALLOWED_NAME.test(c) : !_isAddrCharOk(c);
+          });
           var uniq = bad.filter(function(c, idx, arr) { return arr.indexOf(c) === idx; });
           lines.push(
             '  行' + (ri + 2) + ' ' + String(row[cidIdx] || '') +
