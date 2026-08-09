@@ -311,3 +311,34 @@ function fixLedgerCountryMismatches() {
   lines.push('合計修正: ' + totalFixed + '件');
   return lines.join('\n');
 }
+
+/**
+ * 台帳修正4件の ID 確認（fixLedgerCountryMismatches 適用後）
+ */
+function getFixedRowIds() {
+  var ss = getSpreadsheet();
+  var checks = [
+    { sheet: '顧客マスタ',   rowNum: 20, idCol: '顧客ID',  after: 'United States' },
+    { sheet: '配送先マスタ', rowNum: 17, idCol: '配送先ID', after: 'Hong Kong' },
+    { sheet: '配送先マスタ', rowNum: 39, idCol: '配送先ID', after: 'United States' },
+    { sheet: '支払先マスタ', rowNum: 20, idCol: '支払先ID', after: 'United States' }
+  ];
+  return checks.map(function(c) {
+    var sh = ss.getSheetByName(c.sheet);
+    if (!sh) return { sheet: c.sheet, error: 'not found' };
+    var data = sh.getDataRange().getValues();
+    var h = data[0];
+    var idIdx  = h.indexOf(c.idCol);
+    var cidIdx = h.indexOf('顧客ID');
+    var natIdx = h.indexOf('国');
+    var r = data[c.rowNum - 1];
+    return {
+      sheet:      c.sheet,
+      row:        c.rowNum,
+      id:         idIdx  >= 0 ? r[idIdx]  : '?',
+      customerId: cidIdx >= 0 ? r[cidIdx] : '?',
+      current:    natIdx >= 0 ? r[natIdx] : '?',
+      after:      c.after
+    };
+  });
+}
