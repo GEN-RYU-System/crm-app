@@ -262,3 +262,52 @@ function verifyLedgerCountries() {
   lines.push('合計不一致: ' + totalMismatch + '件' + (totalMismatch === 0 ? ' ✓' : ' ✗'));
   return lines.join('\n');
 }
+
+/**
+ * 台帳の '国' 列にある非標準値を国マスタの正規英語名に修正する（冪等）
+ * 修正マップ: 旧値 → 国マスタ上の正しい値
+ * @returns {string} 修正ログ
+ */
+function fixLedgerCountryMismatches() {
+  var CORRECTION_MAP = {
+    'United states of america': 'United States',
+    'United states':            'United States',
+    'Root (Hong Kong)':         'Hong Kong'
+  };
+
+  var ss = getSpreadsheet();
+  var lines = ['=== fixLedgerCountryMismatches ==='];
+  var totalFixed = 0;
+
+  var targets = [
+    { sheet: '顧客マスタ',   col: '国' },
+    { sheet: '配送先マスタ', col: '国' },
+    { sheet: '支払先マスタ', col: '国' }
+  ];
+
+  targets.forEach(function(t) {
+    var sh = ss.getSheetByName(t.sheet);
+    if (!sh) { lines.push('[' + t.sheet + '] シートが存在しません'); return; }
+    var data = sh.getDataRange().getValues();
+    var h = data[0];
+    var ci = h.indexOf(t.col);
+    if (ci < 0) { lines.push('[' + t.sheet + '] ' + t.col + ' 列なし'); return; }
+
+    var sheetFixed = 0;
+    for (var i = 1; i < data.length; i++) {
+      var v = String(data[i][ci] || '').trim();
+      if (CORRECTION_MAP[v]) {
+        var newVal = CORRECTION_MAP[v];
+        sh.getRange(i + 1, ci + 1).setValue(newVal);
+        lines.push('  ' + t.sheet + ' 行' + (i + 1) + ': "' + v + '" → "' + newVal + '"');
+        sheetFixed++;
+        totalFixed++;
+      }
+    }
+    if (sheetFixed === 0) lines.push('[' + t.sheet + '] 修正対象なし ✓');
+  });
+
+  lines.push('');
+  lines.push('合計修正: ' + totalFixed + '件');
+  return lines.join('\n');
+}
