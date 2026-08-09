@@ -1490,3 +1490,45 @@ function addPaymentAddr3Column() {
     '  既存データ行: Address 3 は空欄（fixAddressSplits CONFIRM で書き込み）'
   ].join('\n');
 }
+
+/**
+ * 【PR17 3b】CT-00017 支払先マスタ Address 3 を空欄化
+ * fixAddressSplits CONFIRM後、A1に "CHAWALPATTY, BAGUIATI" が残存するため
+ * splitで生成されたA3 "Chawalpatty Baguiati" を重複として除去する。
+ * 一回限り実行専用。
+ */
+function clearPaymentAddr3CT00017() {
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName(CONFIG.SHEETS.CRM_PAYMENT);
+  if (!sh) return 'ERROR: 支払先マスタ シートが見つかりません';
+
+  var data = sh.getDataRange().getValues();
+  var h = data[0];
+  var cidIdx   = h.indexOf('顧客ID');
+  var addr3Idx = h.indexOf('Address 3');
+  if (cidIdx < 0 || addr3Idx < 0) {
+    return 'ERROR: 顧客ID or Address 3 列が見つかりません (cidIdx=' + cidIdx + ', addr3Idx=' + addr3Idx + ')';
+  }
+
+  var targetRow = -1;
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][cidIdx]).trim() === 'CT-00017') {
+      targetRow = i;
+      break;
+    }
+  }
+  if (targetRow < 0) return 'ERROR: CT-00017 が 支払先マスタ に見つかりません';
+
+  var before = String(data[targetRow][addr3Idx] || '');
+  var cellRef = sh.getRange(targetRow + 1, addr3Idx + 1);
+  cellRef.setValue('');
+  var after = '';
+
+  return [
+    '=== clearPaymentAddr3CT00017 ===',
+    'CT-00017 支払先マスタ Address 3',
+    '  BEFORE: "' + before + '" (' + before.length + '字)',
+    '  AFTER : "' + after + '" (' + after.length + '字)',
+    '書き込み完了: 1セル ✓'
+  ].join('\n');
+}
