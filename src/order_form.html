@@ -270,14 +270,6 @@
         </div>
       </div>
 
-      <div class="field">
-        <label>Country <span class="req">*</span></label>
-        <select id="bil-country" onchange="onCountryChange('bil')">
-          <option value="">-- Select a country --</option>
-        </select>
-        <div class="error-msg" id="err-bil-country"></div>
-      </div>
-
       <div class="form-row">
         <div class="field">
           <label>Address 1 <span class="req">*</span></label>
@@ -296,31 +288,39 @@
         </div>
       </div>
 
-      <div class="form-row">
-        <div class="field">
-          <label>Address 3</label>
-          <div class="addr-wrap">
-            <input type="text" id="bil-addr3" maxlength="35" oninput="onAddrInput(this,'bil-addr3-cnt')" placeholder="District / Area">
-            <span class="addr-counter" id="bil-addr3-cnt">35</span>
-          </div>
+      <div class="field">
+        <label>Address 3</label>
+        <div class="addr-wrap">
+          <input type="text" id="bil-addr3" maxlength="35" oninput="onAddrInput(this,'bil-addr3-cnt')" placeholder="District / Area">
+          <span class="addr-counter" id="bil-addr3-cnt">35</span>
         </div>
+      </div>
+
+      <div class="form-row">
         <div class="field">
           <label>City <span class="req">*</span></label>
           <input type="text" id="bil-city" placeholder="City">
           <div class="error-msg" id="err-bil-city"></div>
         </div>
-      </div>
-
-      <div class="form-row">
-        <div class="field" id="bil-state-field" style="display:none">
-          <label>State / Province <span class="req">*</span></label>
+        <div class="field">
+          <label>State / Province <span class="req" id="bil-state-req" style="display:none">*</span></label>
           <input type="text" id="bil-state" placeholder="CA">
           <div class="error-msg" id="err-bil-state"></div>
         </div>
-        <div class="field" id="bil-zip-field" style="display:none">
-          <label>ZIP / Postal Code <span class="req">*</span></label>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label>ZIP / Postal Code <span class="req" id="bil-zip-req" style="display:none">*</span></label>
           <input type="text" id="bil-zip" placeholder="000-0000">
           <div class="error-msg" id="err-bil-zip"></div>
+        </div>
+        <div class="field">
+          <label>Country <span class="req">*</span></label>
+          <select id="bil-country" onchange="onCountryChange('bil')">
+            <option value="">-- Select a country --</option>
+          </select>
+          <div class="error-msg" id="err-bil-country"></div>
         </div>
       </div>
     </div>
@@ -351,14 +351,6 @@
         </div>
       </div>
 
-      <div class="field">
-        <label>Country <span class="req">*</span></label>
-        <select id="shp-country" onchange="onCountryChange('shp')">
-          <option value="">-- Select a country --</option>
-        </select>
-        <div class="error-msg" id="err-shp-country"></div>
-      </div>
-
       <div class="form-row">
         <div class="field">
           <label>Address 1 <span class="req">*</span></label>
@@ -377,31 +369,39 @@
         </div>
       </div>
 
-      <div class="form-row">
-        <div class="field">
-          <label>Address 3</label>
-          <div class="addr-wrap">
-            <input type="text" id="shp-addr3" maxlength="35" oninput="onAddrInput(this,'shp-addr3-cnt')" placeholder="District / Area">
-            <span class="addr-counter" id="shp-addr3-cnt">35</span>
-          </div>
+      <div class="field">
+        <label>Address 3</label>
+        <div class="addr-wrap">
+          <input type="text" id="shp-addr3" maxlength="35" oninput="onAddrInput(this,'shp-addr3-cnt')" placeholder="District / Area">
+          <span class="addr-counter" id="shp-addr3-cnt">35</span>
         </div>
+      </div>
+
+      <div class="form-row">
         <div class="field">
           <label>City <span class="req">*</span></label>
           <input type="text" id="shp-city" placeholder="City">
           <div class="error-msg" id="err-shp-city"></div>
         </div>
-      </div>
-
-      <div class="form-row">
-        <div class="field" id="shp-state-field" style="display:none">
-          <label>State / Province <span class="req">*</span></label>
+        <div class="field">
+          <label>State / Province <span class="req" id="shp-state-req" style="display:none">*</span></label>
           <input type="text" id="shp-state" placeholder="CA">
           <div class="error-msg" id="err-shp-state"></div>
         </div>
-        <div class="field" id="shp-zip-field" style="display:none">
-          <label>ZIP / Postal Code <span class="req">*</span></label>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label>ZIP / Postal Code <span class="req" id="shp-zip-req" style="display:none">*</span></label>
           <input type="text" id="shp-zip" placeholder="000-0000">
           <div class="error-msg" id="err-shp-zip"></div>
+        </div>
+        <div class="field">
+          <label>Country <span class="req">*</span></label>
+          <select id="shp-country" onchange="onCountryChange('shp')">
+            <option value="">-- Select a country --</option>
+          </select>
+          <div class="error-msg" id="err-shp-country"></div>
         </div>
       </div>
     </div>
@@ -482,18 +482,13 @@
     var dialEl = document.getElementById(prefix + '-dial-preview');
     dialEl.textContent = info.dialCode ? info.dialCode : '+';
 
-    // State field
-    var stateField = document.getElementById(prefix + '-state-field');
-    var stateLabel = stateField ? stateField.querySelector('label') : null;
-    if (stateField) {
-      stateField.style.display = info.stateRequired ? '' : 'none';
-    }
+    // State required mark (field always visible; only * toggles)
+    var stateReq = document.getElementById(prefix + '-state-req');
+    if (stateReq) stateReq.style.display = info.stateRequired ? '' : 'none';
 
-    // ZIP field
-    var zipField = document.getElementById(prefix + '-zip-field');
-    if (zipField) {
-      zipField.style.display = info.postalRequired ? '' : 'none';
-    }
+    // ZIP required mark (field always visible; only * toggles)
+    var zipReq = document.getElementById(prefix + '-zip-req');
+    if (zipReq) zipReq.style.display = info.postalRequired ? '' : 'none';
   }
 
   /* ---- Same-as-billing toggle ---- */
