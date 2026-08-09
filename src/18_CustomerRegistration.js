@@ -424,7 +424,7 @@ function testRegisterCustomer() {
       name: 'TEST Customer PR18', phone: '0312345678',
       email: 'test.pr18@example.com', taxId: 'TX001',
       addr1: '1-2-3 Test Street', addr2: 'Suite 100', addr3: '',
-      city: 'Tokyo', state: 'Tokyo', zip: '100-0001', country: '日本'
+      city: 'Tokyo', state: 'Tokyo', zip: '100-0001', country: 'Japan'
     },
     shipping: null
   };
@@ -445,7 +445,7 @@ function testRegisterCustomer() {
       name: 'TEST Customer PR18', phone: '06-9876-5432',
       email: 'test.pr18.2nd@example.com', taxId: '',
       addr1: '4-5-6 Another St', addr2: '', addr3: '',
-      city: 'Osaka', state: 'Osaka', zip: '530-0001', country: '日本'
+      city: 'Osaka', state: 'Osaka', zip: '530-0001', country: 'Japan'
     },
     shipping: null
   };
@@ -478,8 +478,8 @@ function testRegisterCustomer() {
       addr1: 'A'.repeat(40),             // 35字超エラー
       addr2: 'Full-width テスト通り',    // 文字種エラー
       addr3: '',
-      city: 'Tokyo', state: '', zip: '', country: '日本'
-      // 日本は郵便番号必須（expandCountryMaster後）→ zip空でエラー
+      city: 'Tokyo', state: '', zip: '', country: 'Japan'
+      // Japan is postal-required → zip empty triggers error
     },
     shipping: null
   };
