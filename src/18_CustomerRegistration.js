@@ -347,6 +347,7 @@ function registerCustomerFromForm(payload) {
       bb.name,                        // 請求名義
       bb.addr1 || '',                 // Address 1
       bb.addr2 || '',                 // Address 2
+      bb.addr3 || '',                 // Address 3
       bb.city  || '',                 // City
       bb.state || '',                 // State
       bb.zip   || '',                 // Zip
