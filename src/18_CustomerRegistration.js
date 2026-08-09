@@ -316,7 +316,7 @@ function registerCustomerFromForm(payload) {
         ''                  // Shippment webhook
       ];
       // 電話番号列はテキスト書式で格納（+付き文字列がSheetsの数値変換で化けるのを防ぐ）
-      var custPhoneIdx = CONFIG.HEADERS.CRM_CUSTOMERS.indexOf('電話番号');
+      var custPhoneIdx = HEADERS.CRM_CUSTOMERS.indexOf('電話番号');
       var custFmts = custRow.map(function(_, i) { return i === custPhoneIdx ? '@' : ''; });
       var custNextRow = custSh.getLastRow() + 1;
       custSh.getRange(custNextRow, 1, 1, custRow.length)
@@ -344,7 +344,7 @@ function registerCustomerFromForm(payload) {
       'TRUE'                          // 有効
     ];
     // 電話列はテキスト書式で格納
-    var shipPhoneIdx = CONFIG.HEADERS.CRM_SHIPPING.indexOf('電話');
+    var shipPhoneIdx = HEADERS.CRM_SHIPPING.indexOf('電話');
     var shipFmts = shipRow.map(function(_, i) { return i === shipPhoneIdx ? '@' : ''; });
     var shipNextRow = adSh.getLastRow() + 1;
     adSh.getRange(shipNextRow, 1, 1, shipRow.length)
