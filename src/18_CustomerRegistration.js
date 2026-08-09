@@ -315,7 +315,13 @@ function registerCustomerFromForm(payload) {
         '',                 // Discrod 発送通知 webhook
         ''                  // Shippment webhook
       ];
-      custSh.appendRow(custRow);
+      // 電話番号列はテキスト書式で格納（+付き文字列がSheetsの数値変換で化けるのを防ぐ）
+      var custPhoneIdx = CONFIG.HEADERS.CRM_CUSTOMERS.indexOf('電話番号');
+      var custFmts = custRow.map(function(_, i) { return i === custPhoneIdx ? '@' : ''; });
+      var custNextRow = custSh.getLastRow() + 1;
+      custSh.getRange(custNextRow, 1, 1, custRow.length)
+            .setNumberFormats([custFmts])
+            .setValues([custRow]);
     }
 
     // 8b. 配送先マスタ
@@ -337,7 +343,13 @@ function registerCustomerFromForm(payload) {
       defaultFlag,                    // 既定
       'TRUE'                          // 有効
     ];
-    adSh.appendRow(shipRow);
+    // 電話列はテキスト書式で格納
+    var shipPhoneIdx = CONFIG.HEADERS.CRM_SHIPPING.indexOf('電話');
+    var shipFmts = shipRow.map(function(_, i) { return i === shipPhoneIdx ? '@' : ''; });
+    var shipNextRow = adSh.getLastRow() + 1;
+    adSh.getRange(shipNextRow, 1, 1, shipRow.length)
+        .setNumberFormats([shipFmts])
+        .setValues([shipRow]);
 
     // 8c. 支払先マスタ
     var bb = billing;
@@ -430,9 +442,48 @@ function testRegisterCustomer() {
   };
   var r1 = registerCustomerFromForm(p1);
   var s1 = r1.success && r1.customerId && /^CT-\d{5}$/.test(r1.customerId);
+
+  // 支払先マスタ住所・顧客マスタ電話型の実値検証
+  var addrOk = false, phoneOk = false;
+  if (s1) {
+    // 支払先住所確認（ヘッダー名引き）
+    var pySh2   = ss.getSheetByName(CONFIG.SHEETS.CRM_PAYMENT);
+    var pyData2 = pySh2 ? pySh2.getDataRange().getValues() : [];
+    var pyH2    = pyData2[0] || [];
+    var pyIdIdx = pyH2.indexOf('支払先ID');
+    for (var pi = 1; pi < pyData2.length; pi++) {
+      if (String(pyData2[pi][pyIdIdx]).trim() !== r1.payId) continue;
+      var pr = pyData2[pi];
+      var a1   = pr[pyH2.indexOf('Address 1')];
+      var city = pr[pyH2.indexOf('City')];
+      var zip  = pr[pyH2.indexOf('Zip')];
+      var ctry = pr[pyH2.indexOf('国')];
+      addrOk = (a1 === p1.billing.addr1 && city === p1.billing.city &&
+                zip === p1.billing.zip   && ctry === p1.billing.country);
+      lines.push('  PY住所: A1="' + a1 + '" City="' + city + '" Zip="' + zip +
+                 '" 国="' + ctry + '"' + (addrOk ? ' ✓' : ' ✗'));
+      break;
+    }
+    // 顧客マスタ電話型確認（string かつ '+' で始まること）
+    var custSh2   = ss.getSheetByName(CONFIG.SHEETS.CRM_CUSTOMERS);
+    var custData2 = custSh2 ? custSh2.getDataRange().getValues() : [];
+    var custH2    = custData2[0] || [];
+    var custIdIdx2 = custH2.indexOf('顧客ID');
+    var phoneIdx2  = custH2.indexOf('電話番号');
+    for (var ci2 = 1; ci2 < custData2.length; ci2++) {
+      if (String(custData2[ci2][custIdIdx2]).trim() !== r1.customerId) continue;
+      var storedPhone = custData2[ci2][phoneIdx2];
+      phoneOk = typeof storedPhone === 'string' && storedPhone.charAt(0) === '+';
+      lines.push('  電話番号: type=' + typeof storedPhone + ' value="' + storedPhone + '"' +
+                 (phoneOk ? ' ✓' : ' ✗(数値変換バグ)'));
+      break;
+    }
+    if (!addrOk || !phoneOk) { s1 = false; }
+  }
+
   if (s1) { pass++; testCustomerId = r1.customerId; testAddrIds.push(r1.addrId); testPayIds.push(r1.payId); }
-  else    { fail++; }
-  lines.push((s1 ? '✓' : '✗') + ' シナリオ1 新規登録');
+  else    { fail++; testCustomerId = r1.customerId; testAddrIds.push(r1.addrId); testPayIds.push(r1.payId); }
+  lines.push((s1 ? '✓' : '✗') + ' シナリオ1 新規登録（住所・電話型含む）');
   lines.push('  success=' + r1.success + ' customerId=' + r1.customerId + ' addrId=' + r1.addrId + ' payId=' + r1.payId);
   if (r1.warnings.length) lines.push('  warnings: ' + r1.warnings.join(' / '));
   if (r1.errors.length)   lines.push('  errors: '   + r1.errors.join(' / '));
