@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
   <base target="_top">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>顧客登録フォーム</title>
+  <title>Customer Registration Form</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -210,28 +210,28 @@
 </head>
 <body>
 <div class="page-wrap">
-  <h1>顧客登録フォーム</h1>
-  <p class="subtitle">必要事項をご入力のうえ、送信してください。</p>
+  <h1>Customer Registration Form</h1>
+  <p class="subtitle">Please fill in all required fields and submit.</p>
 
   <!-- Loading screen -->
   <div id="screen-loading">
     <div class="spinner"></div>
-    <p style="color:#718096">送信中...</p>
+    <p style="color:#718096">Submitting...</p>
   </div>
 
   <!-- Success screen -->
   <div id="screen-success">
     <div class="icon">✅</div>
-    <h2>登録が完了しました</h2>
-    <p>お客様情報を受け付けました。<br>担当者よりご連絡いたします。</p>
+    <h2>Thank you. Your information has been registered.</h2>
+    <p>We have received your details.<br>Our team will be in touch shortly.</p>
   </div>
 
   <!-- Error screen (server validation errors) -->
   <div id="screen-error">
     <div class="icon">⚠️</div>
-    <h2>入力内容をご確認ください</h2>
+    <h2>Please review your input</h2>
     <ul class="err-list" id="err-list-items"></ul>
-    <button class="retry-btn" onclick="showScreen('form')">戻って修正する</button>
+    <button class="retry-btn" onclick="showScreen('form')">Go back and correct</button>
   </div>
 
   <!-- Form screen -->
@@ -239,41 +239,41 @@
 
     <!-- Section 1: Billing -->
     <div class="card">
-      <h2><span class="badge">1</span> 請求先情報</h2>
+      <h2><span class="badge">1</span> Billing Information</h2>
 
       <div class="form-row">
         <div class="field">
-          <label>会社名 / お名前 <span class="req">*</span></label>
+          <label>Company / Name <span class="req">*</span></label>
           <input type="text" id="bil-name" placeholder="ABC Trading Co.">
           <div class="error-msg" id="err-bil-name"></div>
         </div>
         <div class="field">
-          <label>Tax ID / 法人番号</label>
-          <input type="text" id="bil-taxid" placeholder="例: GB123456789">
+          <label>Tax ID / Business ID (EORI, VAT, TIN, etc.)</label>
+          <input type="text" id="bil-taxid" placeholder="e.g. GB123456789">
         </div>
       </div>
 
       <div class="form-row">
         <div class="field">
-          <label>メールアドレス <span class="req">*</span></label>
+          <label>Email Address <span class="req">*</span></label>
           <input type="email" id="bil-email" placeholder="info@example.com">
           <div class="error-msg" id="err-bil-email"></div>
         </div>
         <div class="field">
-          <label>電話番号 <span class="req">*</span></label>
+          <label>Phone Number <span class="req">*</span></label>
           <div class="dial-wrap">
             <span class="dial-preview" id="bil-dial-preview">+</span>
-            <input type="tel" id="bil-phone" placeholder="数字のみ" inputmode="numeric">
+            <input type="tel" id="bil-phone" placeholder="Digits only" inputmode="numeric">
           </div>
-          <div class="hint">国選択後に国番号が表示されます</div>
+          <div class="hint">Country code will appear after selecting your country</div>
           <div class="error-msg" id="err-bil-phone"></div>
         </div>
       </div>
 
       <div class="field">
-        <label>国 <span class="req">*</span></label>
+        <label>Country <span class="req">*</span></label>
         <select id="bil-country" onchange="onCountryChange('bil')">
-          <option value="">-- 国を選択 --</option>
+          <option value="">-- Select a country --</option>
         </select>
         <div class="error-msg" id="err-bil-country"></div>
       </div>
@@ -328,33 +328,33 @@
     <!-- Same as billing checkbox -->
     <label class="same-check-wrap">
       <input type="checkbox" id="same-as-billing" checked onchange="toggleShipping()">
-      <span>配送先は請求先と同じ</span>
+      <span>Shipping address is the same as billing address</span>
     </label>
 
     <!-- Section 2: Shipping -->
     <div class="card section-hidden" id="shipping-section">
-      <h2><span class="badge">2</span> 配送先情報</h2>
+      <h2><span class="badge">2</span> Shipping Information</h2>
 
       <div class="form-row">
         <div class="field">
-          <label>会社名 / お名前 <span class="req">*</span></label>
+          <label>Company / Name <span class="req">*</span></label>
           <input type="text" id="shp-name" placeholder="ABC Trading Co.">
           <div class="error-msg" id="err-shp-name"></div>
         </div>
         <div class="field">
-          <label>電話番号 <span class="req">*</span></label>
+          <label>Phone Number <span class="req">*</span></label>
           <div class="dial-wrap">
             <span class="dial-preview" id="shp-dial-preview">+</span>
-            <input type="tel" id="shp-phone" placeholder="数字のみ" inputmode="numeric">
+            <input type="tel" id="shp-phone" placeholder="Digits only" inputmode="numeric">
           </div>
           <div class="error-msg" id="err-shp-phone"></div>
         </div>
       </div>
 
       <div class="field">
-        <label>国 <span class="req">*</span></label>
+        <label>Country <span class="req">*</span></label>
         <select id="shp-country" onchange="onCountryChange('shp')">
-          <option value="">-- 国を選択 --</option>
+          <option value="">-- Select a country --</option>
         </select>
         <div class="error-msg" id="err-shp-country"></div>
       </div>
@@ -408,7 +408,7 @@
 
     <div class="card" style="padding-top:16px;padding-bottom:16px;">
       <div id="global-err" style="color:#e53e3e;font-size:13px;margin-bottom:12px;display:none;"></div>
-      <button class="submit-btn" id="submit-btn" onclick="submitForm()">登録する</button>
+      <button class="submit-btn" id="submit-btn" onclick="submitForm()">Submit</button>
     </div>
 
   </div><!-- /screen-form -->
@@ -539,27 +539,25 @@
 
   /* ---- Map server error string → field ID ---- */
   var ERROR_FIELD_MAP = {
-    '請求先.*name':    'bil-name',
-    '請求先.*phone':   'bil-phone',
-    '請求先.*email':   'bil-email',
-    '請求先.*addr1':   'bil-addr1',
-    '請求先.*addr2':   'bil-addr2',
-    '請求先.*addr3':   'bil-addr3',
-    '請求先.*city':    'bil-city',
-    '請求先.*state':   'bil-state',
-    '請求先.*[Ss]tate': 'bil-state',
-    '請求先.*zip':     'bil-zip',
-    '請求先.*[Zz]ip':  'bil-zip',
-    '請求先.*country': 'bil-country',
-    '配送先.*name':    'shp-name',
-    '配送先.*phone':   'shp-phone',
-    '配送先.*addr1':   'shp-addr1',
-    '配送先.*addr2':   'shp-addr2',
-    '配送先.*addr3':   'shp-addr3',
-    '配送先.*city':    'shp-city',
-    '配送先.*state':   'shp-state',
-    '配送先.*zip':     'shp-zip',
-    '配送先.*country': 'shp-country'
+    '\\[Billing\\].*name':    'bil-name',
+    '\\[Billing\\].*phone':   'bil-phone',
+    '\\[Billing\\].*email':   'bil-email',
+    '\\[Billing\\].*addr1':   'bil-addr1',
+    '\\[Billing\\].*addr2':   'bil-addr2',
+    '\\[Billing\\].*addr3':   'bil-addr3',
+    '\\[Billing\\].*city':    'bil-city',
+    '\\[Billing\\].*state':   'bil-state',
+    '\\[Billing\\].*zip':     'bil-zip',
+    '\\[Billing\\].*country': 'bil-country',
+    '\\[Shipping\\].*name':    'shp-name',
+    '\\[Shipping\\].*phone':   'shp-phone',
+    '\\[Shipping\\].*addr1':   'shp-addr1',
+    '\\[Shipping\\].*addr2':   'shp-addr2',
+    '\\[Shipping\\].*addr3':   'shp-addr3',
+    '\\[Shipping\\].*city':    'shp-city',
+    '\\[Shipping\\].*state':   'shp-state',
+    '\\[Shipping\\].*zip':     'shp-zip',
+    '\\[Shipping\\].*country': 'shp-country'
   };
 
   function showFieldError(errMsg) {
@@ -592,7 +590,7 @@
           showScreen('success');
         } else {
           // Show errors
-          var errors = (result && result.errors) ? result.errors : ['不明なエラーが発生しました'];
+          var errors = (result && result.errors) ? result.errors : ['An unexpected error occurred'];
           // Error screen
           var list = document.getElementById('err-list-items');
           list.innerHTML = '';
@@ -611,7 +609,7 @@
           if (firstErr) firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
           // Show error panel
           var ge = document.getElementById('global-err');
-          ge.textContent = errors.length + '件の入力エラーがあります';
+          ge.textContent = errors.length + ' error(s) found. Please review the fields below.';
           ge.style.display = 'block';
         }
       })
@@ -619,7 +617,7 @@
         document.getElementById('submit-btn').disabled = false;
         showScreen('form');
         var ge = document.getElementById('global-err');
-        ge.textContent = 'サーバーエラー: ' + (err && err.message ? err.message : String(err));
+        ge.textContent = 'Server error: ' + (err && err.message ? err.message : String(err));
         ge.style.display = 'block';
       })
       .registerCustomerFromForm(payload);
