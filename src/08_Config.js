@@ -640,22 +640,23 @@ const HEADERS = {
     '有効'        // 15: TRUE/FALSE
   ],
 
-  // 支払先マスタ（14列: 住所列ごと分割・B Tax ID 追加）
+  // 支払先マスタ（15列: Address 3 追加）
   CRM_PAYMENT: [
     '支払先ID',   // 1: PY-00001
     '顧客ID',     // 2: CT-00001
     '請求名義',   // 3: 支払い名義
     'Address 1',  // 4: B Address 1
     'Address 2',  // 5: B Address 2
-    'City',       // 6: B City
-    'State',      // 7: B State
-    'Zip',        // 8: B Zip
-    '国',         // 9: B Country
-    '支払方法',   // 10: 空欄（旧データになし）
-    '通貨',       // 11: 空欄（旧データになし）
-    'B Tax ID',   // 12: VAT/税番号（顧客マスタから移設）
-    '既定',       // 13: TRUE/FALSE
-    '有効'        // 14: TRUE/FALSE
+    'Address 3',  // 6: B Address 3 ← PR17改訂で追加
+    'City',       // 7: B City
+    'State',      // 8: B State
+    'Zip',        // 9: B Zip
+    '国',         // 10: B Country
+    '支払方法',   // 11: 空欄（旧データになし）
+    '通貨',       // 12: 空欄（旧データになし）
+    'B Tax ID',   // 13: VAT/税番号（顧客マスタから移設）
+    '既定',       // 14: TRUE/FALSE
+    '有効'        // 15: TRUE/FALSE
   ]
 };
 
