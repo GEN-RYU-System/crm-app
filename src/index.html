@@ -4773,7 +4773,7 @@
       <!-- 上部メニュー -->
       <div class="icon-nav-main">
         <!-- ダッシュボード -->
-        <template x-if="hasPermission('ダッシュボード')">
+        <template x-if="hasPermission('dashboard_view')">
           <a
             href="#/"
             class="icon-nav-item"
@@ -4788,7 +4788,7 @@
         </template>
 
         <!-- リードチャット -->
-        <template x-if="hasPermission('リードチャット')">
+        <template x-if="hasPermission('lead_view')">
           <a
             href="#/leads-chat"
             class="icon-nav-item"
@@ -4803,7 +4803,7 @@
         </template>
 
         <!-- 新規顧客チャット -->
-        <template x-if="hasPermission('新規顧客チャット')">
+        <template x-if="hasPermission('lead_view')">
           <a
             href="#/new-chat"
             class="icon-nav-item"
@@ -4819,7 +4819,7 @@
         </template>
 
         <!-- ルート顧客チャット -->
-        <template x-if="hasPermission('ルート顧客チャット')">
+        <template x-if="hasPermission('lead_view')">
           <a
             href="#/route-chat"
             class="icon-nav-item"
@@ -4834,7 +4834,7 @@
         </template>
 
         <!-- アーカイブチャット -->
-        <template x-if="hasPermission('アーカイブチャット')">
+        <template x-if="hasPermission('lead_view')">
           <a
             href="#/archive-chat"
             class="icon-nav-item"
@@ -4854,7 +4854,7 @@
         </template>
 
         <!-- 在庫 -->
-        <template x-if="hasPermission('在庫')">
+        <template x-if="hasSalesMenuAccess()">
           <a
             href="#/inventory"
             class="icon-nav-item"
@@ -4872,7 +4872,7 @@
         </template>
 
         <!-- 見積もり作成 -->
-        <template x-if="hasPermission('見積もり作成')">
+        <template x-if="hasSalesMenuAccess()">
           <a
             href="#/quotes"
             class="icon-nav-item"
@@ -4888,7 +4888,7 @@
         </template>
 
         <!-- 見積もり履歴 -->
-        <template x-if="hasPermission('見積もり履歴')">
+        <template x-if="hasSalesMenuAccess()">
           <a
             href="#/quote-history"
             class="icon-nav-item"
@@ -4906,7 +4906,7 @@
         </template>
 
         <!-- 請求書作成 -->
-        <template x-if="hasPermission('請求書作成')">
+        <template x-if="hasSalesMenuAccess()">
           <a
             href="#/invoices"
             class="icon-nav-item"
@@ -4924,7 +4924,7 @@
         </template>
 
         <!-- レポート -->
-        <template x-if="hasPermission('レポート')">
+        <template x-if="hasSalesMenuAccess()">
           <a
             href="#/reports"
             class="icon-nav-item"
@@ -4938,12 +4938,12 @@
         </template>
 
         <!-- セパレーター（FAQ） -->
-        <template x-if="hasPermission('FAQ')">
+        <template x-if="true">
           <div class="icon-nav-separator"></div>
         </template>
 
         <!-- FAQ -->
-        <template x-if="hasPermission('FAQ')">
+        <template x-if="true">
           <a
             href="#/faq"
             class="icon-nav-item"
@@ -4995,7 +4995,7 @@
           <!-- プルダウンメニュー -->
           <div class="icon-nav-more-dropdown" :class="{ 'show': moreDropdownOpen }" @click.stop>
             <!-- Buddyナレッジ -->
-            <template x-if="hasPermission('商材ナレッジ')">
+            <template x-if="hasBuddyMaintenanceAccess()">
               <a href="#/knowledge" @click="moreDropdownOpen = false">
                 <span class="menu-icon">
                   <span class="knowledge-icon" style="margin: 0; width: 20px; height: 20px;">
@@ -5011,7 +5011,7 @@
             </template>
 
             <!-- 翻訳プロンプト -->
-            <template x-if="hasPermission('翻訳プロンプト')">
+            <template x-if="hasBuddyMaintenanceAccess()">
               <a href="#/translation-prompts" @click="moreDropdownOpen = false">
                 <span class="menu-icon">
                   <span class="translation-prompts-icon" style="margin: 0; width: 20px; height: 20px;">
@@ -5030,7 +5030,7 @@
             </template>
 
             <!-- 管理者メニュー（個別権限チェック） -->
-            <template x-if="hasPermission('商談管理')">
+            <template x-if="hasPermission('deal_view_all')">
               <a href="#/deals" @click="moreDropdownOpen = false">
                 <span class="menu-icon">
                   <span class="deals-icon" style="margin: 0; width: 20px; height: 20px;">
@@ -5047,7 +5047,7 @@
               </a>
             </template>
 
-            <template x-if="hasPermission('スタッフ管理')">
+            <template x-if="hasPermission('staff_manage')">
               <a href="#/staff" @click="moreDropdownOpen = false">
                 <span class="menu-icon">
                   <span class="staff-icon" style="margin: 0; width: 20px; height: 20px;">
@@ -5062,7 +5062,7 @@
               </a>
             </template>
 
-            <template x-if="hasPermission('データ管理')">
+            <template x-if="hasPermission('settings')">
               <a href="#/settings" @click="moreDropdownOpen = false">
                 <span class="menu-icon">
                   <span class="data-management-icon" style="margin: 0; width: 20px; height: 20px;">
@@ -5090,7 +5090,7 @@
         </template>
 
         <!-- 商談管理 -->
-        <template x-if="hasPermission('商談管理')">
+        <template x-if="hasPermission('deal_view_all')">
           <a
             href="#/deals"
             class="icon-nav-item"
@@ -5109,7 +5109,7 @@
         </template>
 
         <!-- スタッフ -->
-        <template x-if="hasPermission('スタッフ管理')">
+        <template x-if="hasPermission('staff_manage')">
           <a
             href="#/staff"
             class="icon-nav-item"
@@ -5125,7 +5125,7 @@
         </template>
 
         <!-- データ管理 -->
-        <template x-if="hasPermission('データ管理')">
+        <template x-if="hasPermission('settings')">
           <a
             href="#/settings"
             class="icon-nav-item"
@@ -5235,7 +5235,7 @@
           href="#/"
           class="top-tab-item"
           :class="{ 'active': currentRoute === '/' }"
-          x-show="hasPermission('ダッシュボード')">
+          x-show="hasPermission('dashboard_view')">
           ダッシュボード
         </a>
 
@@ -5247,16 +5247,16 @@
           <span class="dropdown-icon">▾</span>
 
           <div class="top-tab-dropdown-menu">
-            <a href="#/leads-chat" x-show="hasPermission('リードチャット')">
+            <a href="#/leads-chat" x-show="hasPermission('lead_view')">
               リードチャット
             </a>
-            <a href="#/new-chat" x-show="hasPermission('新規顧客チャット')">
+            <a href="#/new-chat" x-show="hasPermission('lead_view')">
               新規顧客チャット
             </a>
-            <a href="#/route-chat" x-show="hasPermission('ルート顧客チャット')">
+            <a href="#/route-chat" x-show="hasPermission('lead_view')">
               ルート顧客チャット
             </a>
-            <a href="#/archive-chat" x-show="hasPermission('アーカイブチャット')">
+            <a href="#/archive-chat" x-show="hasPermission('lead_view')">
               アーカイブ
             </a>
           </div>
@@ -5267,7 +5267,7 @@
           href="#/inventory"
           class="top-tab-item"
           :class="{ 'active': currentRoute === '/inventory' }"
-          x-show="hasPermission('在庫')">
+          x-show="hasSalesMenuAccess()">
           在庫
         </a>
 
@@ -5279,13 +5279,13 @@
           <span class="dropdown-icon">▾</span>
 
           <div class="top-tab-dropdown-menu">
-            <a href="#/quotes" x-show="hasPermission('見積もり作成')">
+            <a href="#/quotes" x-show="hasSalesMenuAccess()">
               見積もり作成
             </a>
-            <a href="#/quote-history" x-show="hasPermission('見積もり履歴')">
+            <a href="#/quote-history" x-show="hasSalesMenuAccess()">
               見積もり履歴
             </a>
-            <a href="#/invoices" x-show="hasPermission('請求書作成')">
+            <a href="#/invoices" x-show="hasSalesMenuAccess()">
               請求書作成
             </a>
           </div>
@@ -5296,7 +5296,7 @@
           href="#/reports"
           class="top-tab-item"
           :class="{ 'active': currentRoute === '/reports' }"
-          x-show="hasPermission('レポート')">
+          x-show="hasSalesMenuAccess()">
           レポート
         </a>
 
@@ -5305,7 +5305,7 @@
           href="#/faq"
           class="top-tab-item"
           :class="{ 'active': currentRoute === '/faq' }"
-          x-show="hasPermission('FAQ')">
+          x-show="true">
           FAQ
         </a>
 
@@ -5317,16 +5317,16 @@
           <span class="dropdown-icon">▾</span>
 
           <div class="top-tab-dropdown-menu">
-            <a href="#/deals" x-show="hasPermission('商談管理')">
+            <a href="#/deals" x-show="hasPermission('deal_view_all')">
               商談管理
             </a>
-            <a href="#/staff" x-show="hasPermission('スタッフ管理')">
+            <a href="#/staff" x-show="hasPermission('staff_manage')">
               スタッフ管理
             </a>
-            <a href="#/permissions" x-show="hasPermission('権限管理')">
+            <a href="#/permissions" x-show="hasPermission('admin_access')">
               権限管理
             </a>
-            <a href="#/settings" x-show="hasPermission('データ管理')">
+            <a href="#/settings" x-show="hasPermission('settings')">
               データ管理
             </a>
           </div>
@@ -5337,7 +5337,7 @@
           href="#/preferences"
           class="top-tab-item"
           :class="{ 'active': currentRoute === '/preferences' }"
-          x-show="hasPermission('表示設定')">
+          x-show="true">
           設定
         </a>
 
@@ -5347,13 +5347,13 @@
           <span class="dropdown-icon">▾</span>
 
           <div class="top-tab-dropdown-menu">
-            <a href="#/knowledge" x-show="hasPermission('商材ナレッジ')">
+            <a href="#/knowledge" x-show="hasBuddyMaintenanceAccess()">
               商材ナレッジ
             </a>
-            <a href="#/translation-prompts" x-show="hasPermission('翻訳プロンプト')">
+            <a href="#/translation-prompts" x-show="hasBuddyMaintenanceAccess()">
               翻訳プロンプト
             </a>
-            <a href="#/templates" x-show="hasPermission('テンプレート管理')">
+            <a href="#/templates" x-show="hasPermission('admin_access')">
               テンプレート管理
             </a>
           </div>
@@ -5408,7 +5408,7 @@
             <div x-show="menuExpanded.chat" x-collapse>
               <!-- ダッシュボード -->
               <a
-                x-show="hasPermission('ダッシュボード')"
+                x-show="hasPermission('dashboard_view')"
                 href="#/"
                 class="nav-item"
                 :class="{ 'active': currentRoute === '/' }"
@@ -5425,7 +5425,7 @@
 
               <!-- リード -->
               <a
-                x-show="hasPermission('リードチャット')"
+                x-show="hasPermission('lead_view')"
                 href="#/leads-chat"
                 class="nav-item"
                 :class="{ 'active': currentRoute === '/leads-chat' }"
@@ -5442,7 +5442,7 @@
 
               <!-- 新規 -->
               <a
-                x-show="hasPermission('新規顧客チャット')"
+                x-show="hasPermission('lead_view')"
                 href="#/new-chat"
                 class="nav-item"
                 :class="{ 'active': currentRoute === '/new-chat' }"
@@ -5460,7 +5460,7 @@
 
               <!-- ルート -->
               <a
-                x-show="hasPermission('ルート顧客チャット')"
+                x-show="hasPermission('lead_view')"
                 href="#/route-chat"
                 class="nav-item"
                 :class="{ 'active': currentRoute === '/route-chat' }"
@@ -5480,7 +5480,7 @@
 
               <!-- アーカイブ -->
               <a
-                x-show="hasPermission('アーカイブチャット')"
+                x-show="hasPermission('lead_view')"
                 href="#/archive-chat"
                 class="nav-item"
                 :class="{ 'active': currentRoute === '/archive-chat' }"
@@ -5520,7 +5520,7 @@
             <div x-show="menuExpanded.sales" x-collapse>
               <!-- 在庫 -->
               <a
-                x-show="hasPermission('在庫')"
+                x-show="hasSalesMenuAccess()"
                 href="#/inventory"
                 class="nav-item"
                 :class="{ 'active': currentRoute === '/inventory' }"
@@ -5538,7 +5538,7 @@
 
               <!-- 見積もり作成 -->
               <a
-                x-show="hasPermission('見積もり作成')"
+                x-show="hasSalesMenuAccess()"
                 href="#/quotes"
                 class="nav-item"
                 :class="{ 'active': currentRoute === '/quotes' }"
@@ -5556,7 +5556,7 @@
 
               <!-- 見積もり履歴 -->
               <a
-                x-show="hasPermission('見積もり履歴')"
+                x-show="hasSalesMenuAccess()"
                 href="#/quote-history"
                 class="nav-item"
                 :class="{ 'active': currentRoute === '/quote-history' }"
@@ -5576,7 +5576,7 @@
 
               <!-- 請求書作成 -->
               <a
-                x-show="hasPermission('請求書作成')"
+                x-show="hasSalesMenuAccess()"
                 href="#/invoices"
                 class="nav-item"
                 :class="{ 'active': currentRoute === '/invoices' }"
@@ -5595,7 +5595,7 @@
 
               <!-- レポート -->
               <a
-                x-show="hasPermission('レポート')"
+                x-show="hasSalesMenuAccess()"
                 href="#/reports"
                 class="nav-item"
                 :class="{ 'active': currentRoute === '/reports' }"
@@ -5633,7 +5633,7 @@
           <div x-show="menuExpanded.settings" x-collapse>
             <!-- 表示設定 -->
             <a
-              x-show="hasPermission('表示設定')"
+              x-show="true"
               href="#/preferences"
               class="nav-item"
               :class="{ 'active': currentRoute === '/preferences' }"
@@ -5674,7 +5674,7 @@
           <div x-show="menuExpanded.buddyMaintenance" x-collapse>
             <!-- 商材ナレッジ -->
             <a
-              x-show="hasPermission('商材ナレッジ')"
+              x-show="hasBuddyMaintenanceAccess()"
               href="#/knowledge"
               class="nav-item"
               :class="{ 'active': currentRoute === '/knowledge' }"
@@ -5693,7 +5693,7 @@
 
             <!-- 翻訳プロンプト -->
             <a
-              x-show="hasPermission('翻訳プロンプト')"
+              x-show="hasBuddyMaintenanceAccess()"
               href="#/translation-prompts"
               class="nav-item"
               :class="{ 'active': currentRoute === '/translation-prompts' }"
@@ -5732,7 +5732,7 @@
 
           <div x-show="menuExpanded.admin" x-collapse>
             <!-- 商談管理 -->
-            <a x-show="hasPermission('商談管理')" href="#/deals" class="nav-item" :class="{ 'active': currentRoute === '/deals' }">
+            <a x-show="hasPermission('deal_view_all')" href="#/deals" class="nav-item" :class="{ 'active': currentRoute === '/deals' }">
               <span class="nav-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M3 3v16a2 2 0 0 0 2 2h16"/>
@@ -5745,7 +5745,7 @@
             </a>
 
             <!-- テンプレート管理 -->
-            <a x-show="hasPermission('テンプレート管理')" href="#/templates" class="nav-item" :class="{ 'active': currentRoute === '/templates' }">
+            <a x-show="hasPermission('admin_access')" href="#/templates" class="nav-item" :class="{ 'active': currentRoute === '/templates' }">
               <span class="nav-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
@@ -5757,7 +5757,7 @@
             </a>
 
             <!-- 権限管理 -->
-            <a x-show="hasPermission('権限管理')" href="#/permissions" class="nav-item" :class="{ 'active': currentRoute === '/permissions' }">
+            <a x-show="hasPermission('admin_access')" href="#/permissions" class="nav-item" :class="{ 'active': currentRoute === '/permissions' }">
               <span class="nav-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/>
@@ -5768,7 +5768,7 @@
             </a>
 
             <!-- スタッフ -->
-            <a x-show="hasPermission('スタッフ')" href="#/staff" class="nav-item" :class="{ 'active': currentRoute === '/staff' }">
+            <a x-show="hasPermission('staff_manage')" href="#/staff" class="nav-item" :class="{ 'active': currentRoute === '/staff' }">
               <span class="nav-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -5781,7 +5781,7 @@
             </a>
 
             <!-- データ管理 -->
-            <a x-show="hasPermission('データ管理')" href="#/settings" class="nav-item" :class="{ 'active': currentRoute === '/settings' }">
+            <a x-show="hasPermission('settings')" href="#/settings" class="nav-item" :class="{ 'active': currentRoute === '/settings' }">
               <span class="nav-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M12 13v8l-4-4"/>
@@ -14267,7 +14267,7 @@
       </a>
 
       <!-- 新規 -->
-      <template x-if="hasPermission('新規顧客チャット')">
+      <template x-if="hasPermission('lead_view')">
         <a
           href="#/new-chat"
           class="mobile-tab-item"
@@ -14288,7 +14288,7 @@
       </template>
 
       <!-- ルート -->
-      <template x-if="hasPermission('ルート顧客チャット')">
+      <template x-if="hasPermission('lead_view')">
         <a
           href="#/route-chat"
           class="mobile-tab-item"
@@ -14403,26 +14403,26 @@
           admin: true
         },
 
-        // ページごとの必要権限定義（廃止予定 - pageToMenuを使用）
+        // ページごとの必要権限定義（snake_case: DEFAULT_ROLESキーと対応）
         pagePermissions: {
-          '/': 'ダッシュボード',
-          '/leads-chat': 'リードチャット',
-          '/new-chat': '新規顧客チャット',
-          '/route-chat': 'ルート顧客チャット',
-          '/archive-chat': 'アーカイブチャット',
-          '/inventory': '在庫',
-          '/quotes': '見積もり作成',
-          '/quote-history': '見積もり履歴',
-          '/invoices': '請求書作成',
-          '/reports': 'レポート',
-          '/faq': 'FAQ',
-          '/knowledge': '商材ナレッジ',
-          '/translation-prompts': '翻訳プロンプト',
-          '/deals': '商談管理',
-          '/templates': 'テンプレート管理',
-          '/staff': 'スタッフ管理',
-          '/settings': 'データ管理',
-          '/preferences': '表示設定'
+          '/': 'dashboard_view',
+          '/leads-chat': 'lead_view',
+          '/new-chat': 'lead_view',
+          '/route-chat': 'lead_view',
+          '/archive-chat': 'lead_view',
+          '/inventory': null,           // 営業メニューアクセスで制御
+          '/quotes': null,
+          '/quote-history': null,
+          '/invoices': null,
+          '/reports': null,
+          '/faq': null,                 // 全員アクセス可
+          '/knowledge': null,           // Buddyメニューアクセスで制御
+          '/translation-prompts': null,
+          '/deals': 'deal_view_all',
+          '/templates': 'admin_access',
+          '/staff': 'staff_manage',
+          '/settings': 'settings',
+          '/preferences': null          // 全員OK
         },
 
         // ページ→メニューマッピング（メニュー表示権限でアクセス制御）
@@ -14450,40 +14450,40 @@
 
         // チャットメニュー（権限情報付き）
         chatRoutes: [
-          { path: '/', name: 'ダッシュボード', icon: '', permission: 'ダッシュボード' },
-          { path: '/leads-chat', name: 'リード', icon: '', permission: 'リードチャット' },
-          { path: '/new-chat', name: '新規', icon: '', permission: '新規顧客チャット' },
-          { path: '/route-chat', name: 'ルート', icon: '', permission: 'ルート顧客チャット' },
-          { path: '/archive-chat', name: 'アーカイブ', icon: '', permission: 'アーカイブチャット' }
+          { path: '/', name: 'ダッシュボード', icon: '', permission: 'dashboard_view' },
+          { path: '/leads-chat', name: 'リード', icon: '', permission: 'lead_view' },
+          { path: '/new-chat', name: '新規', icon: '', permission: 'lead_view' },
+          { path: '/route-chat', name: 'ルート', icon: '', permission: 'lead_view' },
+          { path: '/archive-chat', name: 'アーカイブ', icon: '', permission: 'lead_view' }
         ],
 
-        // 営業メニュー
+        // 営業メニュー（メニュー表示権限で制御、個別権限なし）
         salesRoutes: [
-          { path: '/inventory', name: '在庫', icon: '', permission: '在庫' },
-          { path: '/quotes', name: '見積もり作成', icon: '', permission: '見積もり作成' },
-          { path: '/quote-history', name: '見積もり履歴', icon: '📋', permission: '見積もり履歴' },
-          { path: '/invoices', name: '請求書作成', icon: '', permission: '請求書作成' },
-          { path: '/reports', name: 'レポート', icon: '📈', permission: 'レポート' }
+          { path: '/inventory', name: '在庫', icon: '', permission: null },
+          { path: '/quotes', name: '見積もり作成', icon: '', permission: null },
+          { path: '/quote-history', name: '見積もり履歴', icon: '📋', permission: null },
+          { path: '/invoices', name: '請求書作成', icon: '', permission: null },
+          { path: '/reports', name: 'レポート', icon: '📈', permission: null }
         ],
 
         // 設定メニュー
         settingsRoutes: [
-          { path: '/preferences', name: '🖥️  表示設定', icon: '', permission: '表示設定' }
+          { path: '/preferences', name: '🖥️  表示設定', icon: '', permission: null }
         ],
 
-        // Buddyメンテナンスメニュー
+        // Buddyメンテナンスメニュー（メニュー表示権限で制御）
         buddyMaintenanceRoutes: [
-          { path: '/knowledge', name: '📚  商材ナレッジ', icon: '', permission: '商材ナレッジ' },
-          { path: '/translation-prompts', name: '🤖  翻訳プロンプト', icon: '', permission: '翻訳プロンプト' }
+          { path: '/knowledge', name: '📚  商材ナレッジ', icon: '', permission: null },
+          { path: '/translation-prompts', name: '🤖  翻訳プロンプト', icon: '', permission: null }
         ],
 
         // 管理者メニュー（オーナー・リーダーのみ表示）
         adminRoutes: [
-          { path: '/deals',       name: '商談管理',         icon: '💼', permission: '商談管理' },
-          { path: '/templates',   name: 'テンプレート管理', icon: '📝', permission: 'テンプレート管理' },
-          { path: '/permissions', name: '権限管理',         icon: '🔐', permission: '権限管理' },
-          { path: '/staff',       name: 'スタッフ管理',     icon: '👥', permission: 'スタッフ管理' },
-          { path: '/settings',    name: 'データ管理',       icon: '🔗', permission: 'データ管理' }
+          { path: '/deals',       name: '商談管理',         icon: '💼', permission: 'deal_view_all' },
+          { path: '/templates',   name: 'テンプレート管理', icon: '📝', permission: 'admin_access' },
+          { path: '/permissions', name: '権限管理',         icon: '🔐', permission: 'admin_access' },
+          { path: '/staff',       name: 'スタッフ管理',     icon: '👥', permission: 'staff_manage' },
+          { path: '/settings',    name: 'データ管理',       icon: '🔗', permission: 'settings' }
         ],
         stats: {
           leadsIn: 0,
@@ -15752,34 +15752,24 @@
           }
         },
 
-        // 管理者メニュー権限チェック（商談管理、テンプレート管理、スタッフ管理、データ管理のいずれかがあればOK）
-        // チャットメニュー全体の表示判定（メニュー表示権限のみでチェック）
+        // チャットメニュー全体の表示判定（getUserMenuPreferences の chat フラグで制御）
         hasChatMenuAccess() {
-          if (!this.currentUser.permissions) {
-            return false;
-          }
-
-          // メニュー表示権限でチェック
-          return this.hasPermission('チャットメニュー');
+          return this.menuExpanded && this.menuExpanded.chat === true;
         },
 
-        // 営業メニュー全体の表示判定（メニュー表示権限のみでチェック）
+        // 営業メニュー全体の表示判定（getUserMenuPreferences の sales フラグで制御）
         hasSalesMenuAccess() {
-          if (!this.currentUser.permissions) return false;
-          return this.hasPermission('営業メニュー');
+          return this.menuExpanded && this.menuExpanded.sales === true;
         },
 
-        // 管理メニュー全体の表示判定（メニュー表示権限のみでチェック）
+        // 管理メニュー全体の表示判定（getUserMenuPreferences の admin フラグで制御）
         hasAdminAccess() {
-          if (!this.currentUser.permissions) return false;
-          return this.hasPermission('管理メニュー');
+          return this.menuExpanded && this.menuExpanded.admin === true;
         },
 
-        // Buddyメンテナンス権限チェック（商材ナレッジ、翻訳プロンプトのいずれかがあればOK）
+        // Buddyメンテナンス権限チェック（getUserMenuPreferences の buddyMaintenance フラグで制御）
         hasBuddyMaintenanceAccess() {
-          if (!this.currentUser.permissions) return false;
-          return this.hasPermission('商材ナレッジ') ||
-                 this.hasPermission('翻訳プロンプト');
+          return this.menuExpanded && this.menuExpanded.buddyMaintenance === true;
         },
 
         // 汎用権限チェック
