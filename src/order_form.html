@@ -480,7 +480,7 @@
 
     // Dial code preview
     var dialEl = document.getElementById(prefix + '-dial-preview');
-    dialEl.textContent = info.dialCode ? info.dialCode : '+';
+    dialEl.textContent = info.dialCode ? '+' + info.dialCode : '+';
 
     // State required mark (field always visible; only * toggles)
     var stateReq = document.getElementById(prefix + '-state-req');
