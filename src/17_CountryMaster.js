@@ -635,8 +635,8 @@ function _splitAddrLine(line, limit) {
  *
  * 欄種別許容セット:
  *   名前系（顧客名・宛名・請求名義）: 半角英数 + , . - # / ' ( ) & スペース
- *   住所系（Address*/City/State）   : 半角英数 + , . - # / ' スペース
- *                                      + Latin-1 Supplement (U+00C0-U+00FF) ← 欧州アクセント文字
+ *   住所系（Address1-3, City, State）: 半角英数 + , . - # / ' スペース
+ *                                      + Latin-1 Supplement (U+00C0-U+00FF) 欧州アクセント文字
  *
  * @returns {string} 実行ログ
  */
