@@ -228,9 +228,9 @@ function verifyLedgerCountries() {
   lines.push('');
 
   var targets = [
-    { sheet: '顧客マスタ',   col: 'Country' },
-    { sheet: '配送先マスタ', col: 'Country' },
-    { sheet: '支払先マスタ', col: 'Country' }
+    { sheet: '顧客マスタ',   col: '国' },
+    { sheet: '配送先マスタ', col: '国' },
+    { sheet: '支払先マスタ', col: '国' }
   ];
 
   var totalMismatch = 0;
