@@ -342,3 +342,31 @@ function getFixedRowIds() {
     };
   });
 }
+
+/**
+ * 支払先マスタの特定行を全列ヘッダー付きでダンプ（列ずれ診断用）
+ * @param {string} payId - 'PY-XXXXX'
+ * @returns {Object} { totalCols, headers, row, types }
+ */
+function dumpPayeeRow(payId) {
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName(CONFIG.SHEETS.CRM_PAYMENT);
+  if (!sh) return { error: CONFIG.SHEETS.CRM_PAYMENT + ' が存在しません' };
+  var data = sh.getDataRange().getValues();
+  var h    = data[0];
+  var idIdx = h.indexOf('支払先ID');
+  if (idIdx < 0) return { error: '支払先ID列が見つかりません' };
+
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idIdx]).trim() !== payId) continue;
+    var row   = {};
+    var types = {};
+    h.forEach(function(col, ci) {
+      var label = 'col' + (ci + 1) + ':' + col;
+      row[label]   = data[i][ci];
+      types[label] = typeof data[i][ci];
+    });
+    return { found: true, totalCols: h.length, headers: h, row: row, types: types };
+  }
+  return { found: false, payId: payId };
+}
