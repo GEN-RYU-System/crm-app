@@ -416,8 +416,8 @@
 
 <script>
   /* ---- Data injected from GAS template ---- */
-  var TOKEN    = <?= JSON.stringify(token) ?>;
-  var COUNTRIES = <?= countries ?>;
+  var TOKEN    = <?!= JSON.stringify(token) ?>;
+  var COUNTRIES = <?!= countries ?>;
 
   /* ---- Country map for quick lookup ---- */
   var countryMap = {};
