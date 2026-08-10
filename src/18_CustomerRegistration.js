@@ -343,9 +343,12 @@ function registerCustomerFromForm(payload) {
       defaultFlag,                    // 既定
       'TRUE'                          // 有効
     ];
-    // 電話列はテキスト書式で格納
+    // 電話・Zip列はテキスト書式で格納（数字のみの値がSheetsで数値変換されるのを防ぐ）
     var shipPhoneIdx = HEADERS.CRM_SHIPPING.indexOf('電話');
-    var shipFmts = shipRow.map(function(_, i) { return i === shipPhoneIdx ? '@' : ''; });
+    var shipZipIdx   = HEADERS.CRM_SHIPPING.indexOf('Zip');
+    var shipFmts = shipRow.map(function(_, i) {
+      return (i === shipPhoneIdx || i === shipZipIdx) ? '@' : '';
+    });
     var shipNextRow = adSh.getLastRow() + 1;
     adSh.getRange(shipNextRow, 1, 1, shipRow.length)
         .setNumberFormats([shipFmts])
@@ -370,7 +373,13 @@ function registerCustomerFromForm(payload) {
       defaultFlag,                    // 既定
       'TRUE'                          // 有効
     ];
-    pySh.appendRow(payRow);
+    // Zip列はテキスト書式で格納
+    var payZipIdx = HEADERS.CRM_PAYMENT.indexOf('Zip');
+    var payFmts = payRow.map(function(_, i) { return i === payZipIdx ? '@' : ''; });
+    var payNextRow = pySh.getLastRow() + 1;
+    pySh.getRange(payNextRow, 1, 1, payRow.length)
+        .setNumberFormats([payFmts])
+        .setValues([payRow]);
 
     // --- 9. トークン使用日を記録 ---
     tokSh.getRange(tokRowIdx, tokUseIdx + 1).setValue(today);
@@ -436,7 +445,8 @@ function testRegisterCustomer() {
       name: 'TEST Customer PR18', phone: '0312345678',
       email: 'test.pr18@example.com', taxId: 'TX001',
       addr1: '1-2-3 Test Street', addr2: 'Suite 100', addr3: '',
-      city: 'Tokyo', state: 'Tokyo', zip: '100-0001', country: 'Japan'
+      city: 'Tokyo', state: 'Tokyo', zip: '4710006', country: 'Japan'
+      // zip: 純数字7桁でSheetsの数値変換バグを実弾検証
     },
     shipping: null
   };
@@ -478,12 +488,27 @@ function testRegisterCustomer() {
                  (phoneOk ? ' ✓' : ' ✗(数値変換バグ)'));
       break;
     }
-    if (!addrOk || !phoneOk) { s1 = false; }
+    // 配送先Zip型確認（string であること）
+    var zipOk = false;
+    var adSh2    = ss.getSheetByName(CONFIG.SHEETS.CRM_SHIPPING);
+    var adData2  = adSh2 ? adSh2.getDataRange().getValues() : [];
+    var adH2     = adData2[0] || [];
+    var adIdIdx2 = adH2.indexOf('配送先ID');
+    var adZipIdx2 = adH2.indexOf('Zip');
+    for (var ai2 = 1; ai2 < adData2.length; ai2++) {
+      if (String(adData2[ai2][adIdIdx2]).trim() !== r1.addrId) continue;
+      var storedZip = adData2[ai2][adZipIdx2];
+      zipOk = typeof storedZip === 'string';
+      lines.push('  配送先Zip: type=' + typeof storedZip + ' value="' + storedZip + '"' +
+                 (zipOk ? ' ✓' : ' ✗(数値変換バグ)'));
+      break;
+    }
+    if (!addrOk || !phoneOk || !zipOk) { s1 = false; }
   }
 
   if (s1) { pass++; testCustomerId = r1.customerId; testAddrIds.push(r1.addrId); testPayIds.push(r1.payId); }
   else    { fail++; testCustomerId = r1.customerId; testAddrIds.push(r1.addrId); testPayIds.push(r1.payId); }
-  lines.push((s1 ? '✓' : '✗') + ' シナリオ1 新規登録（住所・電話型含む）');
+  lines.push((s1 ? '✓' : '✗') + ' シナリオ1 新規登録（住所・電話型・Zip型含む）');
   lines.push('  success=' + r1.success + ' customerId=' + r1.customerId + ' addrId=' + r1.addrId + ' payId=' + r1.payId);
   if (r1.warnings.length) lines.push('  warnings: ' + r1.warnings.join(' / '));
   if (r1.errors.length)   lines.push('  errors: '   + r1.errors.join(' / '));
