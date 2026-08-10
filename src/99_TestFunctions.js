@@ -1042,28 +1042,52 @@ function dumpSalesDataStructure() {
     return lines.join('\n') + '\nシートが空です';
   }
 
-  // ---- 1. ヘッダー行の特定（最初の空でない行） ----
-  var headerRowIdx = -1; // 0始まり
-  var headers = [];
+  // ---- 全データ取得 ----
   var allData = sh.getDataRange().getValues();
 
-  for (var r = 0; r < Math.min(allData.length, 10); r++) {
-    var nonEmpty = allData[r].filter(function(v) { return String(v).trim() !== ''; }).length;
-    if (nonEmpty >= 3) { headerRowIdx = r; headers = allData[r]; break; }
+  // ---- 0. rows 55-62 raw dump（ヘッダー境界確認用） ----
+  lines.push('--- 0. row55〜62 生値（ヘッダー境界確認用・非空セルのみ） ---');
+  for (var rr = 54; rr <= 61 && rr < allData.length; rr++) {
+    var nonEmptyCells = [];
+    allData[rr].forEach(function(v, ci) {
+      if (String(v).trim() !== '' && v !== false) {
+        nonEmptyCells.push('col' + (ci + 1) + '=' + JSON.stringify(v));
+      }
+    });
+    lines.push('  row' + (rr + 1) + ': ' + nonEmptyCells.join(' | '));
+  }
+  lines.push('');
+
+  // ---- 1. ヘッダー行の特定:
+  //   DATA_START_ROW(61)より前の行で、「短い文字列セルの数」が最大の行をヘッダーとみなす
+  //   （タイトル行・集計行は数値や長文URLを含むため低スコア） ----
+  var DATA_START_ROW = 61; // 1始まり
+  var dataStartIdx = DATA_START_ROW - 1; // 0始まり
+
+  var headerRowIdx = -1; // 0始まり
+  var headers = [];
+  var bestScore = 0;
+  var scanLimit = Math.min(allData.length, dataStartIdx); // row60まで
+  for (var r = 0; r < scanLimit; r++) {
+    var score = 0;
+    allData[r].forEach(function(v) {
+      var s = String(v).trim();
+      // 非空・50文字未満・URLでない文字列をカウント
+      if (typeof v === 'string' && s !== '' && s.length < 50 && s.indexOf('http') < 0) score++;
+    });
+    if (score > bestScore) { bestScore = score; headerRowIdx = r; headers = allData[r]; }
   }
   if (headerRowIdx < 0) {
-    lines.push('ヘッダー行が特定できませんでした（先頭10行に3列以上の値がなし）');
+    lines.push('ヘッダー行が特定できませんでした（row1〜60に候補なし）');
     return lines.join('\n');
   }
-  lines.push('--- 1. ヘッダー行 (シート上の行番号: ' + (headerRowIdx + 1) + ') ---');
+  lines.push('--- 1. ヘッダー行 (シート行番号: ' + (headerRowIdx + 1) + ', score=' + bestScore + ') ---');
   headers.forEach(function(h, ci) {
     lines.push('  col' + (ci + 1) + ': ' + (String(h).trim() || '(空)'));
   });
   lines.push('');
 
   // ---- 2. 総行数 / 61行目以降の実データ行数 ----
-  var DATA_START_ROW = 61; // 1始まり
-  var dataStartIdx = DATA_START_ROW - 1; // 0始まり
   var totalRows = allData.length;
   var dataRows = (totalRows >= dataStartIdx) ? (totalRows - dataStartIdx) : 0;
   lines.push('--- 2. 行数 ---');
