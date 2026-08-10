@@ -475,3 +475,151 @@ function migrateSalesData(mode) {
   Logger.log(result);
   return result;
 }
+
+// ============================================================
+// auditSalesDataTail — 読み取り専用・監査調査関数
+// 用途: DRY_RUN結果の検証（差額8行 / 仕入れ11行）
+// ============================================================
+/**
+ * 売上データ行640-711の詳細ダンプ + 差額8行分析 + 仕入れ11行一覧
+ */
+function auditSalesDataTail() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var salesSh = ss.getSheetByName(CONFIG.SHEETS.SALES_DATA);
+  if (!salesSh) { Logger.log('ERROR: 売上データシートが見つかりません'); return; }
+
+  // 全データ取得（1行目=ヘッダー、2行目以降=データ、シート行=配列インデックス+1）
+  var allData = salesSh.getDataRange().getValues();
+  // allData[0] = row1(ヘッダー), allData[N-1] = rowN
+
+  var out = [];
+
+  // --------------------------------------------------
+  // §1: row640〜711 全行詳細ダンプ
+  // --------------------------------------------------
+  out.push('=== §1: 売上データ row640〜711 詳細ダンプ ===');
+  out.push('行番号 | ステータス | 取引先名 | 請求書番号 | 請求書内容 | 数量 | 単価 | 小計 | 合計(col14) | 送料 | 発送日 | 運送状番号');
+  out.push('------+----------+---------+-----------+-----------+-----+-----+-----+------------+-----+------+----------');
+
+  for (var sr = 640; sr <= 711; sr++) {
+    var idx = sr - 1; // 0-based配列インデックス
+    if (idx >= allData.length) {
+      out.push('row' + sr + ' | (データなし)');
+      continue;
+    }
+    var r = allData[idx];
+    var status   = r[SALES_COL.STATUS]    || '';
+    var name     = r[SALES_COL.NAME]      || '';
+    var invNo    = r[SALES_COL.INV_NO]    || '';
+    var invCont  = r[SALES_COL.INV_CONT]  || '';
+    var qty      = r[SALES_COL.QTY]       || '';
+    var price    = r[SALES_COL.UNIT_PRICE]|| '';
+    var subtotal = r[SALES_COL.SUBTOTAL]  || '';
+    var col14    = r[SALES_COL.COL14]     || '';
+    var shipping = r[SALES_COL.SHIPPING]  || '';
+    var shipDate = r[SALES_COL.SHIP_DATE] || '';
+    var tracking = r[SALES_COL.TRACKING]  || '';
+
+    out.push(
+      'row' + sr + ' | ' + status + ' | ' + name + ' | ' + invNo + ' | ' +
+      invCont + ' | ' + qty + ' | ' + price + ' | ' + subtotal + ' | ' +
+      col14 + ' | ' + shipping + ' | ' + shipDate + ' | ' + tracking
+    );
+  }
+
+  // --------------------------------------------------
+  // §2: 差額8行の詳細分析
+  // --------------------------------------------------
+  out.push('');
+  out.push('=== §2: 差額8行 詳細分析 ===');
+  var DIFF_ROWS = [651, 668, 673, 679, 681, 689, 694, 700];
+
+  DIFF_ROWS.forEach(function(sr) {
+    var idx = sr - 1;
+    if (idx >= allData.length) { out.push('row' + sr + ': データなし'); return; }
+    var r = allData[idx];
+    var name    = r[SALES_COL.NAME]     || '';
+    var invNo   = r[SALES_COL.INV_NO]   || '';
+    var tracking= r[SALES_COL.TRACKING] || '';
+    var invCont = r[SALES_COL.INV_CONT] || '';
+    var col14   = r[SALES_COL.COL14]    || 0;
+
+    out.push('');
+    out.push('--- row' + sr + ' / ' + name + ' ---');
+    out.push('  請求書番号: ' + invNo);
+    out.push('  運送状番号: ' + tracking);
+    out.push('  col14(合計): ' + col14);
+    out.push('  請求書内容(全文): ' + invCont);
+
+    // 前後5行（±5）を走査して同じ請求書番号 or 運送状番号を持つ行を列挙
+    out.push('  --- 前後5行スキャン（同INV_NO or 同TRACKING）---');
+    var rangeStart = Math.max(2, sr - 5);
+    var rangeEnd   = Math.min(allData.length, sr + 5);
+    var matchedRows = [];
+    var sumQtyPrice = 0;
+    for (var s2 = rangeStart; s2 <= rangeEnd; s2++) {
+      if (s2 === sr) continue;
+      var r2 = allData[s2 - 1];
+      var r2inv  = r2[SALES_COL.INV_NO]    || '';
+      var r2trk  = r2[SALES_COL.TRACKING]  || '';
+      var r2name = r2[SALES_COL.NAME]       || '';
+      var r2cont = r2[SALES_COL.INV_CONT]   || '';
+      var r2qty  = Number(r2[SALES_COL.QTY])        || 0;
+      var r2prc  = Number(r2[SALES_COL.UNIT_PRICE]) || 0;
+      var r2sub  = Number(r2[SALES_COL.SUBTOTAL])   || 0;
+      var r2c14  = r2[SALES_COL.COL14]     || '';
+
+      var sameInv = (invNo   && r2inv  === invNo);
+      var sameTrk = (tracking && tracking !== '' && r2trk === tracking);
+      if (sameInv || sameTrk) {
+        var tag = sameInv ? '[同INV]' : '[同TRK]';
+        sumQtyPrice += (r2qty * r2prc) || r2sub;
+        matchedRows.push('    row' + s2 + ' ' + tag + ' | ' + r2name + ' | cont=' + r2cont +
+          ' | qty=' + r2qty + ' @' + r2prc + ' sub=' + r2sub + ' c14=' + r2c14);
+      }
+    }
+    if (matchedRows.length === 0) {
+      out.push('    (一致行なし)');
+    } else {
+      matchedRows.forEach(function(line){ out.push(line); });
+      var myQty   = Number(r[SALES_COL.QTY])        || 0;
+      var myPrice = Number(r[SALES_COL.UNIT_PRICE])  || 0;
+      var mySub   = Number(r[SALES_COL.SUBTOTAL])    || 0;
+      var myContrib = (myQty * myPrice) || mySub;
+      var totalCalc = myContrib + sumQtyPrice;
+      var diff = Number(col14) - totalCalc;
+      out.push('    合計確認: 本行=' + myContrib + ' 隣接合計=' + sumQtyPrice +
+        ' 全合計=' + totalCalc + ' col14=' + col14 + ' 差額=' + diff);
+    }
+  });
+
+  // --------------------------------------------------
+  // §3: 仕入れ11行 一覧
+  // --------------------------------------------------
+  out.push('');
+  out.push('=== §3: 除外B(仕入れ) 11行 詳細 ===');
+  var SHIIRE_ROWS = [194, 199, 219, 226, 238, 241, 301, 324, 360, 449, 672];
+  out.push('行番号 | 取引先名 | 請求書内容 | 数量 | 単価 | 小計 | 合計(col14) | 通貨 | ステータス');
+  SHIIRE_ROWS.forEach(function(sr) {
+    var idx = sr - 1;
+    if (idx >= allData.length) { out.push('row' + sr + ': データなし'); return; }
+    var r = allData[idx];
+    var name    = r[SALES_COL.NAME]       || '';
+    var invCont = r[SALES_COL.INV_CONT]   || '';
+    var qty     = r[SALES_COL.QTY]        || '';
+    var price   = r[SALES_COL.UNIT_PRICE] || '';
+    var subtotal= r[SALES_COL.SUBTOTAL]   || '';
+    var col14   = r[SALES_COL.COL14]      || '';
+    var currency= r[SALES_COL.CURRENCY]   || '';
+    var status  = r[SALES_COL.STATUS]     || '';
+    out.push('row' + sr + ' | ' + name + ' | ' + invCont + ' | ' + qty + ' | ' + price +
+      ' | ' + subtotal + ' | ' + col14 + ' | ' + currency + ' | ' + status);
+  });
+
+  out.push('');
+  out.push('=== audit完了 ===');
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
