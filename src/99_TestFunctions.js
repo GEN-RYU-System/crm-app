@@ -994,3 +994,200 @@ function fixShiftedShippingRows(mode) {
   lines.push('（④ verifyLedgerCountries は別途 clasp run verifyLedgerCountries で確認してください）');
   return lines.join('\n');
 }
+
+/**
+ * 「売上データ」タブの構造と実態を読み取り専用で調査する
+ * （書き込み・列追加は一切行わない）
+ *
+ * 調査内容:
+ *   1. ヘッダー行の全列（何行目かも含む）
+ *   2. 総行数 / 61行目以降の実データ行数
+ *   3. 61・62・63行目の全列フルダンプ（値＋型）
+ *   4. 61行目以降の主要列の充足率
+ *   5. 顧客名ユニーク一覧と顧客マスタ51件との突合
+ *
+ * @returns {string} 調査ログ
+ */
+function dumpSalesDataStructure() {
+  var lines = ['=== dumpSalesDataStructure ===', ''];
+
+  // ----------------------------------------------------------------
+  // シート取得: CRM本体を優先、なければ ERP スプレッドシートを試行
+  // ----------------------------------------------------------------
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName(CONFIG.SHEETS.SALES_DATA);
+  var sourceLabel = 'CRM: ' + CONFIG.SHEETS.SALES_DATA;
+  if (!sh) {
+    try {
+      var erpSs = SpreadsheetApp.openById(CONFIG.ERP.SPREADSHEET_ID);
+      sh = erpSs.getSheetByName(CONFIG.ERP.SHEETS.SALES_DATA);
+      sourceLabel = 'ERP: ' + CONFIG.ERP.SHEETS.SALES_DATA;
+    } catch (e) { /* fall through */ }
+  }
+  if (!sh) {
+    return 'エラー: 売上データ タブが CRM / ERP どちらにも見つかりません';
+  }
+  lines.push('【取得元】' + sourceLabel);
+  lines.push('');
+
+  // ----------------------------------------------------------------
+  // 全データ取得
+  // ----------------------------------------------------------------
+  var lastRow = sh.getLastRow();
+  var lastCol = sh.getLastColumn();
+  lines.push('【基本情報】 lastRow=' + lastRow + '  lastCol=' + lastCol);
+  lines.push('');
+
+  if (lastRow === 0 || lastCol === 0) {
+    return lines.join('\n') + '\nシートが空です';
+  }
+
+  // ---- 1. ヘッダー行の特定（最初の空でない行） ----
+  var headerRowIdx = -1; // 0始まり
+  var headers = [];
+  var allData = sh.getDataRange().getValues();
+
+  for (var r = 0; r < Math.min(allData.length, 10); r++) {
+    var nonEmpty = allData[r].filter(function(v) { return String(v).trim() !== ''; }).length;
+    if (nonEmpty >= 3) { headerRowIdx = r; headers = allData[r]; break; }
+  }
+  if (headerRowIdx < 0) {
+    lines.push('ヘッダー行が特定できませんでした（先頭10行に3列以上の値がなし）');
+    return lines.join('\n');
+  }
+  lines.push('--- 1. ヘッダー行 (シート上の行番号: ' + (headerRowIdx + 1) + ') ---');
+  headers.forEach(function(h, ci) {
+    lines.push('  col' + (ci + 1) + ': ' + (String(h).trim() || '(空)'));
+  });
+  lines.push('');
+
+  // ---- 2. 総行数 / 61行目以降の実データ行数 ----
+  var DATA_START_ROW = 61; // 1始まり
+  var dataStartIdx = DATA_START_ROW - 1; // 0始まり
+  var totalRows = allData.length;
+  var dataRows = (totalRows >= dataStartIdx) ? (totalRows - dataStartIdx) : 0;
+  lines.push('--- 2. 行数 ---');
+  lines.push('  総行数 (allData): ' + totalRows);
+  lines.push('  61行目以降の行数: ' + dataRows);
+  lines.push('');
+
+  // ---- 3. 61・62・63行目のフルダンプ ----
+  lines.push('--- 3. 61・62・63行目フルダンプ ---');
+  [61, 62, 63].forEach(function(rowNum) {
+    var idx = rowNum - 1;
+    if (idx >= totalRows) { lines.push('  row' + rowNum + ': データなし'); return; }
+    lines.push('  row' + rowNum + ':');
+    headers.forEach(function(h, ci) {
+      var v = allData[idx][ci];
+      lines.push('    col' + (ci + 1) + ':' + (String(h).trim() || '(空)') + ' = ' + JSON.stringify(v) + ' (' + typeof v + ')');
+    });
+  });
+  lines.push('');
+
+  // ---- 4. 61行目以降の主要列充足率 ----
+  var checkColNames = [
+    '顧客名', '取引先名', 'リードID', '請求書番号', '請求書発行日',
+    '支払確認日', '合計', '小計', '通貨', '発送日', '運送状番号', '商品名', '数量'
+  ];
+  // ヘッダー列インデックスを解決（完全一致、なければ部分一致）
+  function resolveColIdx(name) {
+    var exact = headers.indexOf(name);
+    if (exact >= 0) return exact;
+    for (var ci = 0; ci < headers.length; ci++) {
+      if (String(headers[ci]).indexOf(name) >= 0) return ci;
+    }
+    return -1;
+  }
+
+  lines.push('--- 4. 主要列充足率 (61行目以降, 全' + dataRows + '件) ---');
+  var dataSlice = allData.slice(dataStartIdx);
+  // 顧客名と取引先名を「どちらかあれば1件」でカウント
+  var custNameIdx  = resolveColIdx('顧客名');
+  var partnerIdx   = resolveColIdx('取引先名');
+  var custOrPartnerCount = dataSlice.filter(function(row) {
+    var a = (custNameIdx >= 0) ? String(row[custNameIdx] || '').trim() : '';
+    var b = (partnerIdx  >= 0) ? String(row[partnerIdx]  || '').trim() : '';
+    return a !== '' || b !== '';
+  }).length;
+  lines.push('  顧客名or取引先名 : ' + custOrPartnerCount + '/' + dataRows +
+             ' (col顧客名=' + (custNameIdx + 1) + ' col取引先名=' + (partnerIdx + 1) + ')');
+
+  var singleChecks = ['リードID', '請求書番号', '請求書発行日', '支払確認日',
+                      '合計', '小計', '通貨', '発送日', '運送状番号', '商品名', '数量'];
+  singleChecks.forEach(function(colName) {
+    var ci = resolveColIdx(colName);
+    if (ci < 0) {
+      lines.push('  ' + colName + ': 列なし (未定義)');
+      return;
+    }
+    var count = dataSlice.filter(function(row) {
+      return String(row[ci] || '').trim() !== '';
+    }).length;
+    lines.push('  ' + colName + ' (col' + (ci + 1) + '): ' + count + '/' + dataRows);
+  });
+  lines.push('');
+
+  // ---- 5. 顧客名ユニーク一覧と顧客マスタ突合 ----
+  lines.push('--- 5. 顧客名ユニーク一覧と顧客マスタ突合 ---');
+
+  // 売上データから顧客名収集（顧客名 or 取引先名）
+  var salesNamesMap = {};
+  dataSlice.forEach(function(row) {
+    var a = (custNameIdx >= 0) ? String(row[custNameIdx] || '').trim() : '';
+    var b = (partnerIdx  >= 0) ? String(row[partnerIdx]  || '').trim() : '';
+    var name = a !== '' ? a : b;
+    if (name !== '') salesNamesMap[name] = (salesNamesMap[name] || 0) + 1;
+  });
+  var salesNames = Object.keys(salesNamesMap).sort();
+  lines.push('  売上データ ユニーク顧客名 ' + salesNames.length + ' 件:');
+  salesNames.forEach(function(n) {
+    lines.push('    "' + n + '" (' + salesNamesMap[n] + '件)');
+  });
+  lines.push('');
+
+  // 顧客マスタ取得
+  var custSheet = ss.getSheetByName(CONFIG.SHEETS.CRM_CUSTOMERS);
+  if (!custSheet) {
+    lines.push('  顧客マスタ取得失敗: シートなし');
+    return lines.join('\n');
+  }
+  var custData = custSheet.getDataRange().getValues();
+  var custH = custData[0];
+  var custIdIdx   = custH.indexOf('顧客ID');
+  var custNameColIdx = custH.indexOf('顧客名');
+  if (custNameColIdx < 0) custNameColIdx = custH.indexOf('会社名');
+  if (custNameColIdx < 0) custNameColIdx = custH.indexOf('取引先名');
+  lines.push('  顧客マスタ: 顧客名列=col' + (custNameColIdx + 1) + ':' + custH[custNameColIdx]);
+
+  var custMap = {}; // 顧客名 → 顧客ID
+  for (var i = 1; i < custData.length; i++) {
+    var cName = String(custData[i][custNameColIdx] || '').trim();
+    var cId   = String(custData[i][custIdIdx]      || '').trim();
+    if (cName) custMap[cName] = cId;
+  }
+  lines.push('  顧客マスタ件数: ' + Object.keys(custMap).length + ' 件');
+  lines.push('');
+
+  var matched = [];
+  var unmatched = [];
+  salesNames.forEach(function(n) {
+    if (custMap[n] !== undefined) {
+      matched.push({ name: n, id: custMap[n], count: salesNamesMap[n] });
+    } else {
+      unmatched.push(n);
+    }
+  });
+
+  lines.push('  完全一致: ' + matched.length + ' 件');
+  matched.forEach(function(m) {
+    lines.push('    ✓ ' + m.id + ' "' + m.name + '" (' + m.count + '件)');
+  });
+  lines.push('');
+  lines.push('  不一致（未マッチ）: ' + unmatched.length + ' 件');
+  unmatched.forEach(function(n) {
+    lines.push('    ✗ "' + n + '" (' + salesNamesMap[n] + '件)');
+  });
+  lines.push('');
+
+  return lines.join('\n');
+}
