@@ -1619,3 +1619,48 @@ function nextOrderLineId() {
   Logger.log('nextOrderLineId: ' + nextId + ' (現在の最大: ' + (maxNum === 0 ? 'なし' : 'ODL-' + ('00000' + maxNum).slice(-5)) + ')');
   return nextId;
 }
+
+/**
+ * 顧客マスタの全件を「顧客ID / 顧客名 / 国」で一覧出力する（読み取り専用）
+ *
+ * 用途: 名寄せ確定表の検証など
+ */
+function dumpCustomerNameList() {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(CONFIG.SHEETS.CRM_CUSTOMERS);
+  if (!sheet) {
+    Logger.log('ERROR: 顧客マスタシートが見つかりません: ' + CONFIG.SHEETS.CRM_CUSTOMERS);
+    return;
+  }
+
+  var data = sheet.getDataRange().getValues();
+  var h = data[0];
+
+  var idIdx   = h.indexOf('顧客ID');
+  var nameIdx = h.indexOf('顧客名');
+  var ctryIdx = h.indexOf('国');
+
+  if (idIdx < 0 || nameIdx < 0) {
+    Logger.log('ERROR: 必須列が見つかりません (顧客ID idx=' + idIdx + ', 顧客名 idx=' + nameIdx + ')');
+    return;
+  }
+
+  var lines = ['=== dumpCustomerNameList ==='];
+  lines.push('顧客マスタ データ行数: ' + (data.length - 1));
+  lines.push('');
+  lines.push('col: 顧客ID | 顧客名 | 国');
+  lines.push('---');
+
+  for (var i = 1; i < data.length; i++) {
+    var cid  = String(data[i][idIdx]   || '').trim();
+    var name = String(data[i][nameIdx] || '').trim();
+    var ctry = (ctryIdx >= 0) ? String(data[i][ctryIdx] || '').trim() : '(列なし)';
+    lines.push(cid + ' | ' + name + ' | ' + ctry);
+  }
+
+  lines.push('');
+  lines.push('[DONE] 計 ' + (data.length - 1) + ' 件');
+
+  Logger.log(lines.join('\n'));
+  return lines.join('\n');
+}
