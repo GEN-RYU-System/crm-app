@@ -157,9 +157,32 @@ function migrateSalesData(mode) {
   };
 
   // ============================================================
+  // 事前パス: 仕入れ行の混在系列判定
+  // 「請求書番号があり、同じ基番号の系列に他の非仕入れ行が存在する」 → 売上として含める
+  // ============================================================
+  var baseInvMixed = {};  // baseNo → true（仕入れ＋非仕入れ が混在する系列）
+  (function() {
+    var bHas = {};
+    rawData.forEach(function(row) {
+      var invNo = String(row[SALES_COL.INV_NO] || '').trim();
+      if (!invNo) return;
+      var base = baseInvNo(invNo);
+      if (!bHas[base]) bHas[base] = { s: false, n: false };
+      if (String(row[SALES_COL.STATUS] || '').trim() === '仕入れ') {
+        bHas[base].s = true;
+      } else {
+        bHas[base].n = true;
+      }
+    });
+    Object.keys(bHas).forEach(function(b) {
+      if (bHas[b].s && bHas[b].n) baseInvMixed[b] = true;
+    });
+  })();
+
+  // ============================================================
   // フィルタリング
   // ============================================================
-  var exA = [], exB = [], exC = [], exD = [];
+  var exA = [], exBPure = [], exBIncluded = [], exC = [], exD = [];
   var included = [];
 
   rawData.forEach(function(row, idx) {
@@ -168,8 +191,17 @@ function migrateSalesData(mode) {
     var name   = String(row[SALES_COL.NAME]   || '').trim();
     var qty    = row[SALES_COL.QTY];
     var price  = row[SALES_COL.UNIT_PRICE];
+    var invNo  = String(row[SALES_COL.INV_NO] || '').trim();
 
-    if (status === '仕入れ')                        { exB.push(sr); return; }
+    if (status === '仕入れ') {
+      // 系列に他の売上行がある → 売上明細として含める
+      if (invNo && baseInvMixed[baseInvNo(invNo)]) {
+        exBIncluded.push(sr);
+        included.push({ row: row, sr: sr });
+        return;
+      }
+      exBPure.push(sr); return;
+    }
     if (name === 'AKS Holding Ltd - FAO: LUKY')     { exC.push(sr); return; }
     if (name.indexOf('支払い太郎') === 0)            { exD.push(sr); return; }
     var nameEm  = (name  === '');
@@ -339,6 +371,17 @@ function migrateSalesData(mode) {
       .map(function(it) { return { sr: it.sr, v: it.row[SALES_COL.COL14] }; })
       .filter(function(x) { return x.v !== '' && x.v !== null && !isNaN(Number(x.v)) && Number(x.v) !== 0; });
 
+    // ステータス: 仕入れ行が系列先頭に来る場合は非仕入れ行の値を採用
+    var statusItem = null;
+    items.forEach(function(it) {
+      if (!statusItem && String(it.row[SALES_COL.STATUS] || '').trim() !== '仕入れ') {
+        statusItem = it;
+      }
+    });
+    var orderStatus = statusItem
+      ? String(statusItem.row[SALES_COL.STATUS] || '').trim()
+      : String(fr[SALES_COL.STATUS] || '').trim();
+
     var ord = {
       key: key,  odId: 'OD-' + ('00000' + odSeq++).slice(-5),
       invNo:    baseInvNo(String(fr[SALES_COL.INV_NO] || '').trim()),
@@ -347,7 +390,7 @@ function migrateSalesData(mode) {
       adId:     adR.id,
       pyId:     pyR.id,
       srcLead:  ctId ? (ctToSrc[ctId] || '') : '',
-      status:   String(fr[SALES_COL.STATUS]     || '').trim(),
+      status:   orderStatus,
       currency: currFinal,
       rate:     fr[SALES_COL.RATE],
       lineTotal: lineTotal, ship: totalShip, cust: totalCust, grand: grand,
@@ -420,21 +463,51 @@ function migrateSalesData(mode) {
   // ============================================================
   // レポート出力
   // ============================================================
-  var totalEx = exA.length + exB.length + exC.length + exD.length;
+  var totalEx = exA.length + exBPure.length + exC.length + exD.length;
   var totalLines = orders.reduce(function(s, o) { return s + o.lineItems.length; }, 0);
 
   // 1. 集計
   out.push('');
   out.push('=== 1. 集計 ===');
-  out.push('元データ行数         : ' + rawData.length + '  (row' + DATA_START + '〜' + lastRow + ')');
-  out.push('除外A 実質空行       : ' + exA.length + '行');
-  out.push('除外B 仕入れ         : ' + exB.length + '行  rows=' + exB.join(','));
-  out.push('除外C AKS            : ' + exC.length + '行  rows=' + exC.join(','));
-  out.push('除外D 支払い太郎     : ' + exD.length + '行  rows=' + exD.join(','));
-  out.push('除外合計             : ' + totalEx + '行');
-  out.push('処理対象行数         : ' + included.length + '行');
-  out.push('生成オーダー数       : ' + orders.length);
-  out.push('生成明細数           : ' + totalLines);
+  out.push('元データ行数              : ' + rawData.length + '  (row' + DATA_START + '〜' + lastRow + ')');
+  out.push('除外A 実質空行            : ' + exA.length + '行');
+  out.push('除外B 仕入れ(純粋除外)   : ' + exBPure.length + '行  rows=' + exBPure.join(','));
+  out.push('除外B 仕入れ(系列含・再分類): ' + exBIncluded.length + '行  rows=' + exBIncluded.join(','));
+  out.push('除外C AKS                 : ' + exC.length + '行  rows=' + exC.join(','));
+  out.push('除外D 支払い太郎          : ' + exD.length + '行  rows=' + exD.join(','));
+  out.push('除外合計(純粋除外のみ)    : ' + totalEx + '行');
+  out.push('処理対象行数              : ' + included.length + '行');
+  out.push('生成オーダー数            : ' + orders.length);
+  out.push('生成明細数                : ' + totalLines);
+
+  // 1b. 仕入れ行 個別判定
+  out.push('');
+  out.push('=== 1b. 仕入れ11行 個別判定 ===');
+  var SHIIRE_ALL = [194,199,219,226,238,241,301,324,360,449,672];
+  SHIIRE_ALL.forEach(function(sr) {
+    var row    = rawData[sr - DATA_START];
+    if (!row) { out.push('row' + sr + ': データなし'); return; }
+    var invNo  = String(row[SALES_COL.INV_NO] || '').trim();
+    var base   = invNo ? baseInvNo(invNo) : '';
+    var name   = String(row[SALES_COL.NAME]   || '').trim();
+    var cont   = String(row[SALES_COL.INV_CONT] || '').trim();
+    var isIncl = exBIncluded.indexOf(sr) >= 0;
+    var reason, series;
+    if (isIncl) {
+      reason = '売上含める';
+      series = base + '(混在系列)';
+    } else if (!invNo) {
+      reason = '除外: 請求書番号なし';
+      series = '-';
+    } else if (!baseInvMixed[base]) {
+      reason = '除外: 系列に他の売上行なし';
+      series = base + '(仕入れのみ)';
+    } else {
+      reason = '除外: (その他)';
+      series = base;
+    }
+    out.push('row' + sr + ' | ' + name + ' | ' + cont + ' | → ' + reason + ' | 系列: ' + series);
+  });
   out.push('うち複数明細オーダー : ' + multiOrders.length + '件');
 
   // 2. 先頭10オーダー
