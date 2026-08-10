@@ -812,3 +812,185 @@ function backfillPhoneSplit(mode) {
   lines.push('監査結果: ' + (auditPass ? '✓ 全チェック PASS' : '✗ 要確認あり'));
   return lines.join('\n');
 }
+
+/**
+ * 配送先マスタ AD-00050/AD-00051 の列ズレを是正する（DRY_RUN / CONFIRM）
+ *
+ * AD-00050 (CT-00051 ARSEL SLU, Andorra) : データは正常。電話・国番号・Zip を '@'書式で保証。
+ * AD-00051 (CT-00052 KantoKillz, US)    : 列ズレ是正。Address3→空/City→Santa Clarita/
+ *                                          State→CA/Zip→91387/国→United States に修正。
+ *
+ * @param {string} mode - 'DRY_RUN'（省略可・デフォルト）または 'CONFIRM'
+ * @returns {string} 実行ログ
+ */
+function fixShiftedShippingRows(mode) {
+  var isConfirm = String(mode || '').trim().toUpperCase() === 'CONFIRM';
+  var ss = getSpreadsheet();
+  var lines = ['=== fixShiftedShippingRows [' + (isConfirm ? 'CONFIRM' : 'DRY RUN') + '] ===', ''];
+
+  // ----------------------------------------------------------------
+  // 是正表（定数）
+  // 16列: 配送先ID / 顧客ID / 宛名 / Address 1 / Address 2 / Address 3 /
+  //       City / State / Zip / 国 / 電話 / 国番号 / D Email / D Tax ID / 既定 / 有効
+  // textCols: '@' テキスト書式を適用する列番号（1始まり）
+  // ----------------------------------------------------------------
+  var CORRECTION_TABLE = [
+    {
+      id: 'AD-00050',
+      values: [
+        'AD-00050', 'CT-00051', 'ARSEL SLU',
+        'Carrer Hort de Godi', 'Edifici Tintorell', 'Ground Floor, 2nd Door',
+        'Encamp', 'Andorra', 'AD200', 'Andorra',
+        '367830', '376', 'arselcontacto@gmail.com', 'L-718880-G',
+        true, true
+      ],
+      textCols: [9, 11, 12]  // Zip, 電話, 国番号
+    },
+    {
+      id: 'AD-00051',
+      values: [
+        'AD-00051', 'CT-00052', 'Vishal Rajasekhar',
+        '27124 Silver Oak Lane', '1222', '',
+        'Santa Clarita', 'CA', '91387', 'United States',
+        '4082024995', '1', 'kantokillz@gmail.com', '332796234',
+        true, true
+      ],
+      textCols: [5, 9, 11, 12, 14]  // Address 2, Zip, 電話, 国番号, D Tax ID
+    }
+  ];
+
+  var sh = ss.getSheetByName(CONFIG.SHEETS.CRM_SHIPPING);
+  if (!sh) { return 'エラー: 配送先マスタ シートなし'; }
+
+  var data = sh.getDataRange().getValues();
+  var headers = data[0];
+  var idIdx = headers.indexOf('配送先ID');
+  if (idIdx < 0) { return 'エラー: 配送先ID 列なし (headers: ' + headers.slice(0, 5).join('|') + ')'; }
+
+  CORRECTION_TABLE.forEach(function(entry) {
+    var rowIdx = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][idIdx]).trim() === entry.id) { rowIdx = i; break; }
+    }
+    if (rowIdx < 0) {
+      lines.push('[' + entry.id + '] 行が見つかりません');
+      return;
+    }
+
+    var before = data[rowIdx];
+    lines.push('--- ' + entry.id + ' ---');
+    lines.push('  BEFORE:');
+    headers.forEach(function(h, ci) {
+      lines.push('    col' + (ci + 1) + ':' + h + ' = ' + JSON.stringify(before[ci]) + ' (' + typeof before[ci] + ')');
+    });
+    lines.push('  AFTER:');
+    entry.values.forEach(function(v, ci) {
+      lines.push('    col' + (ci + 1) + ':' + headers[ci] + ' = ' + JSON.stringify(v) + ' (' + typeof v + ')');
+    });
+    lines.push('');
+
+    if (isConfirm) {
+      var formats = new Array(entry.values.length).fill('');
+      entry.textCols.forEach(function(col1) { formats[col1 - 1] = '@'; });
+      var range = sh.getRange(rowIdx + 1, 1, 1, entry.values.length);
+      range.setNumberFormats([formats]);
+      range.setValues([entry.values]);
+      lines.push('  [' + entry.id + '] 書込済み');
+    }
+  });
+
+  if (!isConfirm) {
+    lines.push('--- DRY RUN 完了。CONFIRM で実行してください ---');
+    return lines.join('\n');
+  }
+
+  SpreadsheetApp.flush();
+  lines.push('');
+  lines.push('=== 監査 ===');
+
+  var data2 = sh.getDataRange().getValues();
+  var h2 = data2[0];
+
+  // ① AD-00050: 電話/国番号/D Email の値と型確認
+  var row50 = null;
+  for (var i = 1; i < data2.length; i++) {
+    if (String(data2[i][idIdx]).trim() === 'AD-00050') { row50 = data2[i]; break; }
+  }
+  if (row50) {
+    var p50 = row50[h2.indexOf('電話')];
+    var d50 = row50[h2.indexOf('国番号')];
+    var e50 = row50[h2.indexOf('D Email')];
+    var ok50 = (p50 === '367830' && typeof p50 === 'string') &&
+               (d50 === '376'    && typeof d50 === 'string') &&
+               (e50 === 'arselcontacto@gmail.com' && typeof e50 === 'string');
+    lines.push('① AD-00050: 電話="' + p50 + '"(' + typeof p50 + ') 国番号="' + d50 + '"(' + typeof d50 + ') Email="' + e50 + '"(' + typeof e50 + ') → ' + (ok50 ? '✓' : '✗'));
+  } else {
+    lines.push('① AD-00050: 行なし ✗');
+  }
+
+  // ② AD-00051: City/State/Zip/国・Address3空・電話/国番号
+  var row51 = null;
+  for (var i = 1; i < data2.length; i++) {
+    if (String(data2[i][idIdx]).trim() === 'AD-00051') { row51 = data2[i]; break; }
+  }
+  if (row51) {
+    var city51  = row51[h2.indexOf('City')];
+    var state51 = row51[h2.indexOf('State')];
+    var zip51   = row51[h2.indexOf('Zip')];
+    var koku51  = row51[h2.indexOf('国')];
+    var addr3   = row51[h2.indexOf('Address 3')];
+    var p51     = row51[h2.indexOf('電話')];
+    var d51     = row51[h2.indexOf('国番号')];
+    var ok51 = (city51 === 'Santa Clarita') &&
+               (state51 === 'CA') &&
+               (typeof zip51 === 'string' && zip51 === '91387') &&
+               (koku51 === 'United States') &&
+               (String(addr3 || '') === '') &&
+               (typeof p51 === 'string' && p51 === '4082024995') &&
+               (typeof d51 === 'string' && d51 === '1');
+    lines.push('② AD-00051: City="' + city51 + '" State="' + state51 + '" Zip="' + zip51 + '"(' + typeof zip51 + ') 国="' + koku51 + '" Addr3="' + String(addr3 || '') + '" 電話="' + p51 + '"(' + typeof p51 + ') 国番号="' + d51 + '"(' + typeof d51 + ') → ' + (ok51 ? '✓' : '✗'));
+  } else {
+    lines.push('② AD-00051: 行なし ✗');
+  }
+
+  // ③ PY-00050/PY-00051 と住所本体（Address1/2・City・Zip・国）が一致すること
+  var shPay = ss.getSheetByName(CONFIG.SHEETS.CRM_PAYMENT);
+  if (shPay) {
+    var dataPay = shPay.getDataRange().getValues();
+    var hPay = dataPay[0];
+    var payIdIdx = hPay.indexOf('支払先ID');
+    var checkCols = ['Address 1', 'Address 2', 'City', 'Zip', '国'];
+    var pairs = [['AD-00050', 'PY-00050'], ['AD-00051', 'PY-00051']];
+    pairs.forEach(function(pair) {
+      var adId = pair[0], pyId = pair[1];
+      var adRow = null;
+      for (var i = 1; i < data2.length; i++) {
+        if (String(data2[i][idIdx]).trim() === adId) { adRow = data2[i]; break; }
+      }
+      var pyRow = null;
+      for (var i = 1; i < dataPay.length; i++) {
+        if (String(dataPay[i][payIdIdx]).trim() === pyId) { pyRow = dataPay[i]; break; }
+      }
+      if (!adRow || !pyRow) {
+        lines.push('③ ' + adId + '/' + pyId + ': 行なし ✗');
+        return;
+      }
+      var ok3 = true;
+      var details = [];
+      checkCols.forEach(function(col) {
+        var av = String(adRow[h2.indexOf(col)] || '');
+        var pv = String(pyRow[hPay.indexOf(col)] || '');
+        var m = (av === pv);
+        details.push(col + ':"' + av + '"vs"' + pv + '"' + (m ? '✓' : '✗'));
+        if (!m) ok3 = false;
+      });
+      lines.push('③ ' + adId + '/' + pyId + ': ' + details.join(' | ') + ' → ' + (ok3 ? '✓' : '✗'));
+    });
+  } else {
+    lines.push('③ 支払先マスタ シートなし ✗');
+  }
+
+  lines.push('');
+  lines.push('（④ verifyLedgerCountries は別途 clasp run verifyLedgerCountries で確認してください）');
+  return lines.join('\n');
+}
