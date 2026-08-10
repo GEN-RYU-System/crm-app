@@ -1447,3 +1447,220 @@ function dumpEmptyInvoiceRows() {
 
   return lines.join('\n');
 }
+
+// ============================================================
+// ★ オーダー管理タブ関連関数 ★
+// ============================================================
+
+/**
+ * オーダー管理 / オーダー明細タブを新規作成する
+ *
+ * - 既に同名タブが存在する場合は作成せず中止して報告
+ * - ヘッダー行を書き込み、文字列固定が必要な列（運送状番号）に '@' 書式を適用
+ * - データ投入は行わない
+ */
+function createOrderTabs() {
+  var ss = getSpreadsheet();
+  var lines = [];
+
+  // ---------- 存在チェック ----------
+  var existingNames = ss.getSheets().map(function(s) { return s.getName(); });
+  var masterName = CONFIG.SHEETS.ORDER_MASTER;
+  var linesName  = CONFIG.SHEETS.ORDER_LINES;
+
+  if (existingNames.indexOf(masterName) !== -1) {
+    lines.push('[ABORT] タブ「' + masterName + '」は既に存在します。作成をスキップしました。');
+    Logger.log(lines.join('\n'));
+    return lines.join('\n');
+  }
+  if (existingNames.indexOf(linesName) !== -1) {
+    lines.push('[ABORT] タブ「' + linesName + '」は既に存在します。作成をスキップしました。');
+    Logger.log(lines.join('\n'));
+    return lines.join('\n');
+  }
+
+  // ---------- オーダー管理タブ作成 ----------
+  var masterSheet = ss.insertSheet(masterName);
+  var masterHeaders = HEADERS.ORDER_MASTER;
+  masterSheet.getRange(1, 1, 1, masterHeaders.length).setValues([masterHeaders]);
+
+  // 運送状番号（col22）を文字列書式に固定（数値変換防止）
+  var trackingCol = 22; // '運送状番号'
+  masterSheet.getRange(2, trackingCol, 1000, 1).setNumberFormat('@');
+
+  lines.push('[OK] タブ作成: ' + masterName + '（' + masterHeaders.length + '列）');
+  lines.push('  ヘッダー: ' + masterHeaders.join(' | '));
+  lines.push('  運送状番号 col' + trackingCol + ' → 文字列書式適用（rows 2–1001）');
+
+  // ---------- オーダー明細タブ作成 ----------
+  var linesSheet = ss.insertSheet(linesName);
+  var linesHeaders = HEADERS.ORDER_LINES;
+  linesSheet.getRange(1, 1, 1, linesHeaders.length).setValues([linesHeaders]);
+
+  lines.push('[OK] タブ作成: ' + linesName + '（' + linesHeaders.length + '列）');
+  lines.push('  ヘッダー: ' + linesHeaders.join(' | '));
+
+  SpreadsheetApp.flush();
+  lines.push('');
+  lines.push('[DONE] 両タブの作成が完了しました。');
+
+  Logger.log(lines.join('\n'));
+  return lines.join('\n');
+}
+
+/**
+ * オーダー管理 / オーダー明細タブの実ヘッダーと CONFIG 定義を比較する
+ *
+ * 報告形式:
+ *   - 列番号 / CONFIG定義 / 実シート値 / 一致
+ * 最後に mismatches=N を出力する
+ */
+function compareOrderHeaders() {
+  var ss = getSpreadsheet();
+  var lines = [];
+
+  [
+    { sheetKey: 'ORDER_MASTER', sheetName: CONFIG.SHEETS.ORDER_MASTER, headers: HEADERS.ORDER_MASTER },
+    { sheetKey: 'ORDER_LINES',  sheetName: CONFIG.SHEETS.ORDER_LINES,  headers: HEADERS.ORDER_LINES  }
+  ].forEach(function(def) {
+    lines.push('=== ' + def.sheetName + ' (' + def.sheetKey + ') ===');
+
+    var sheet = ss.getSheetByName(def.sheetName);
+    if (!sheet) {
+      lines.push('  [ERROR] タブが見つかりません: ' + def.sheetName);
+      return;
+    }
+
+    var actual = sheet.getRange(1, 1, 1, def.headers.length).getValues()[0];
+    var mismatches = 0;
+
+    def.headers.forEach(function(expected, idx) {
+      var colNum = idx + 1;
+      var act = String(actual[idx] || '');
+      var match = (act === expected) ? 'OK' : 'MISMATCH';
+      if (match === 'MISMATCH') mismatches++;
+      lines.push('  col' + colNum + ': [' + match + '] CONFIG="' + expected + '" / 実="' + act + '"');
+    });
+
+    lines.push('  mismatches=' + mismatches);
+    lines.push('');
+  });
+
+  Logger.log(lines.join('\n'));
+  return lines.join('\n');
+}
+
+/**
+ * オーダー管理シートの最大 OD-XXXXX を読み取り、次の ID を返す
+ *
+ * - シートが空（ヘッダーのみ）なら OD-00001 を返す
+ * - ID形式が不正な行はスキップする
+ */
+function nextOrderId() {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(CONFIG.SHEETS.ORDER_MASTER);
+  if (!sheet) {
+    throw new Error('タブが見つかりません: ' + CONFIG.SHEETS.ORDER_MASTER);
+  }
+
+  var lastRow = sheet.getLastRow();
+  var maxNum = 0;
+
+  if (lastRow >= 2) {
+    var ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    ids.forEach(function(row) {
+      var id = String(row[0] || '').trim();
+      var m = id.match(/^OD-(\d{5})$/);
+      if (m) {
+        var n = parseInt(m[1], 10);
+        if (n > maxNum) maxNum = n;
+      }
+    });
+  }
+
+  var nextNum = maxNum + 1;
+  var nextId = 'OD-' + ('00000' + nextNum).slice(-5);
+
+  Logger.log('nextOrderId: ' + nextId + ' (現在の最大: ' + (maxNum === 0 ? 'なし' : 'OD-' + ('00000' + maxNum).slice(-5)) + ')');
+  return nextId;
+}
+
+/**
+ * オーダー明細シートの最大 ODL-XXXXX を読み取り、次の ID を返す
+ *
+ * - シートが空（ヘッダーのみ）なら ODL-00001 を返す
+ * - ID形式が不正な行はスキップする
+ */
+function nextOrderLineId() {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(CONFIG.SHEETS.ORDER_LINES);
+  if (!sheet) {
+    throw new Error('タブが見つかりません: ' + CONFIG.SHEETS.ORDER_LINES);
+  }
+
+  var lastRow = sheet.getLastRow();
+  var maxNum = 0;
+
+  if (lastRow >= 2) {
+    var ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    ids.forEach(function(row) {
+      var id = String(row[0] || '').trim();
+      var m = id.match(/^ODL-(\d{5})$/);
+      if (m) {
+        var n = parseInt(m[1], 10);
+        if (n > maxNum) maxNum = n;
+      }
+    });
+  }
+
+  var nextNum = maxNum + 1;
+  var nextId = 'ODL-' + ('00000' + nextNum).slice(-5);
+
+  Logger.log('nextOrderLineId: ' + nextId + ' (現在の最大: ' + (maxNum === 0 ? 'なし' : 'ODL-' + ('00000' + maxNum).slice(-5)) + ')');
+  return nextId;
+}
+
+/**
+ * 顧客マスタの全件を「顧客ID / 顧客名 / 国」で一覧出力する（読み取り専用）
+ *
+ * 用途: 名寄せ確定表の検証など
+ */
+function dumpCustomerNameList() {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(CONFIG.SHEETS.CRM_CUSTOMERS);
+  if (!sheet) {
+    Logger.log('ERROR: 顧客マスタシートが見つかりません: ' + CONFIG.SHEETS.CRM_CUSTOMERS);
+    return;
+  }
+
+  var data = sheet.getDataRange().getValues();
+  var h = data[0];
+
+  var idIdx   = h.indexOf('顧客ID');
+  var nameIdx = h.indexOf('顧客名');
+  var ctryIdx = h.indexOf('国');
+
+  if (idIdx < 0 || nameIdx < 0) {
+    Logger.log('ERROR: 必須列が見つかりません (顧客ID idx=' + idIdx + ', 顧客名 idx=' + nameIdx + ')');
+    return;
+  }
+
+  var lines = ['=== dumpCustomerNameList ==='];
+  lines.push('顧客マスタ データ行数: ' + (data.length - 1));
+  lines.push('');
+  lines.push('col: 顧客ID | 顧客名 | 国');
+  lines.push('---');
+
+  for (var i = 1; i < data.length; i++) {
+    var cid  = String(data[i][idIdx]   || '').trim();
+    var name = String(data[i][nameIdx] || '').trim();
+    var ctry = (ctryIdx >= 0) ? String(data[i][ctryIdx] || '').trim() : '(列なし)';
+    lines.push(cid + ' | ' + name + ' | ' + ctry);
+  }
+
+  lines.push('');
+  lines.push('[DONE] 計 ' + (data.length - 1) + ' 件');
+
+  Logger.log(lines.join('\n'));
+  return lines.join('\n');
+}
