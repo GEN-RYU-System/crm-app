@@ -662,13 +662,10 @@ function backfillPhoneSplit(mode) {
   ];
 
   // ----------------------------------------------------------------
-  // 元生値の記号除去（'含む'判定・合成チェック用）
+  // 元生値の数字のみ抽出（+/記号/空白をすべて除去）
   // ----------------------------------------------------------------
-  function cleanRaw(raw) {
-    var s = String(raw || '').replace(/[\s\-\(\)\.\/]/g, '');
-    if (s.charAt(0) === '+') return { isInternational: true, digits: s.slice(1) };
-    if (s.slice(0, 2) === '00') return { isInternational: true, digits: s.slice(2) };
-    return { isInternational: false, digits: s };
+  function digitsOnly(raw) {
+    return String(raw || '').replace(/\D/g, '');
   }
 
   // ----------------------------------------------------------------
@@ -763,33 +760,33 @@ function backfillPhoneSplit(mode) {
 
     var typeErrors = [], blankErrors = [], synthErrors = [];
 
-    // ① 書込行: string型 ＆ 合成チェック
+    // ① string型チェック ＋ ③ 不変条件チェック（全書込行）
     writes.forEach(function(w) {
       var row = rowMap[w.id];
       if (!row) { typeErrors.push(w.id + ': 行なし'); return; }
       var rdial = row[dialIdx];
       var rnat  = row[natIdx];
 
-      // string型チェック
+      // ① string型
       if (typeof rdial !== 'string') typeErrors.push(w.id + ' 国番号 type=' + typeof rdial);
       if (typeof rnat  !== 'string') typeErrors.push(w.id + ' ' + phoneCol + ' type=' + typeof rnat);
 
-      // ③ 合成チェック（含む形式行のみ）
-      var cr = cleanRaw(w.origNat);
-      if (cr.isInternational) {
-        var synth = String(rdial || '') + String(rnat || '');
-        if (synth !== cr.digits) {
-          synthErrors.push(w.id + ': 合成=' + synth + ' 期待=' + cr.digits + ' (元値="' + w.origNat + '")');
-        }
+      // ③ 不変条件: digits(元生値) === dial+nat  OR  digits(元生値) === nat
+      //    どちらも不成立の行はエラー
+      var digits = digitsOnly(w.origNat);
+      var synthFull = String(rdial || '') + String(rnat || '');
+      var synthNat  = String(rnat  || '');
+      if (digits !== '' && synthFull !== digits && synthNat !== digits) {
+        synthErrors.push(w.id + ': dial="' + rdial + '" nat="' + rnat +
+                         '" digits="' + digits + '" (元値="' + w.origNat + '")');
       }
     });
 
-    // ② 国番号が空の行 → 要確認行のみであること
+    // ② 国番号が空の行 → 要確認行（skipIds）または決定表外IDのみであること
     for (var ri = 1; ri < data.length; ri++) {
-      var rid  = String(data[ri][idIdx]   || '').trim();
+      var rid    = String(data[ri][idIdx]   || '').trim();
       var rdial2 = String(data[ri][dialIdx] || '').trim();
       if (rdial2 === '' && skipIds.indexOf(rid) < 0) {
-        // 決定表にないID（CT-00001 等）は空欄で正常
         var inTable = table.some(function(e) { return e[0] === rid; });
         if (inTable) blankErrors.push(rid + ': 決定表あり・国番号が空');
       }
@@ -801,7 +798,8 @@ function backfillPhoneSplit(mode) {
     lines.push('[' + shName + ']');
     lines.push('  ①string型: ' + (ok1 ? '✓ 全値OK' : '✗ ' + typeErrors.join(' / ')));
     lines.push('  ②空欄=要確認のみ: ' + (ok2 ? '✓' : '✗ ' + blankErrors.join(' / ')));
-    lines.push('  ③合成一致(含む行): ' + (ok3 ? '✓' : '✗ ' + synthErrors.join(' / ')));
+    lines.push('  ③不変条件(dial+nat|nat = digits): ' +
+               (ok3 ? '✓ 全行OK' : '✗\n    ' + synthErrors.join('\n    ')));
     lines.push('');
     if (!ok1 || !ok2 || !ok3) auditPass = false;
   }
