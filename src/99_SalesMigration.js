@@ -1343,3 +1343,179 @@ function auditSalesColumns() {
   Logger.log(result);
   return result;
 }
+
+// ============================================================
+// auditProfitFormulas — 売上情報 利益計算ロジック証拠確立（読取専用）
+// ============================================================
+function auditProfitFormulas() {
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName(CONFIG.SHEETS.SALES_DATA);
+
+  var DATA_START = 61, DATA_END = 711;
+  var nRows = DATA_END - DATA_START + 1; // 651
+
+  // --- データ取得 ---
+  // 数式原文: row61, col126-151 (26列)
+  var fmls = sh.getRange(61, 126, 1, 26).getFormulas()[0];
+  // 列名: row3, col1-158
+  var allNames = sh.getRange(3, 1, 1, 158).getValues()[0];
+  // 値: rows61-711, col1-147
+  var data = sh.getRange(DATA_START, 1, nRows, 147).getValues();
+
+  function colName(n) { return String(allNames[n - 1] || '').trim() || '(列名なし)'; }
+  function a1ToNum(s) {
+    var n = 0;
+    for (var i = 0; i < s.length; i++) n = n * 26 + s.charCodeAt(i) - 64;
+    return n;
+  }
+  function toNum(v) {
+    if (typeof v === 'number') return v;
+    var p = parseFloat(String(v || ''));
+    return isNaN(p) ? 0 : p;
+  }
+
+  var lines = ['=== 売上情報 利益計算ロジック調査 ===', ''];
+
+  // ============================================================
+  // Section 1: 数式原文（省略なし）
+  // ============================================================
+  lines.push('--- Section1: 数式原文（row61・A1形式・省略なし）---');
+  for (var i = 0; i < 26; i++) {
+    var cn = 126 + i;
+    lines.push('col' + cn + ' ' + colName(cn) + ':');
+    lines.push('  ' + (fmls[i] || '(数式なし)'));
+  }
+  lines.push('');
+
+  // ============================================================
+  // Section 2: 参照列マッピング
+  // ============================================================
+  lines.push('--- Section2: 参照列マッピング（数式内の全セル参照）---');
+  var allFmlStr = fmls.join(' ');
+  var refRe = /([A-Z]{1,2})61/g, m;
+  var seen = {};
+  while ((m = refRe.exec(allFmlStr)) !== null) seen[m[1]] = true;
+  Object.keys(seen).sort(function(a, b) { return a1ToNum(a) - a1ToNum(b); }).forEach(function(letters) {
+    var num = a1ToNum(letters);
+    var nm = (num >= 1 && num <= 158) ? colName(num) : '(範囲外)';
+    lines.push(letters + '61 = col' + num + ' ' + nm);
+  });
+  lines.push('');
+
+  // ============================================================
+  // Section 3: 日本語計算仕様
+  // ============================================================
+  lines.push('--- Section3: 日本語計算仕様 ---');
+  var specs = [
+    'col126 売上高:          [col2]="キャンセル"→0  /  他→ 単価[col15]×数量[col11] + 送料[col18]',
+    'col127 仕入れ費用:      [col2]="キャンセル"→0  /  他→ 仕入れ総額[col94]',
+    'col128 仕入れ送料:      [col2]="キャンセル"→0  /  他→ 仕入れ送料/代行費[col95]',
+    'col129 PayPal手数料:    [col2]="キャンセル"→0  /  決済[col19]="PayPal"→売上高[col126]×5%  /  他→"0"(文字列)',
+    'col130 WISE手数料:      [col2]="キャンセル"→0  /  決済[col19]="WISE"→219円固定  /  他→0',
+    'col131 外注費用:        [col2]="キャンセル"→0  /  他→ SUM([営業]報酬[col132]+[受注][col133]+[発送][col134]+[仕入れ][col135]+[トラブル][col136])',
+    'col132 [営業]報酬:      [col2]="キャンセル"→0  /  受注担当[col4]=""→0  /  受注担当≠"谷澤"→インセンティブ計算用[col146]×10%  /  他→0',
+    'col133 [受注]報酬:      col132と同式',
+    'col134 [発送]報酬:      [col2]="キャンセル"→0  /  発送担当[col40]=""→0  /  発送担当≠"谷澤"→200円固定  /  他→0',
+    'col135 [仕入れ]報酬:    仕入れ担当[col87]=""→0  /  担当≠"谷澤"→100円固定  /  他→0',
+    'col136 [トラブル]報酬:  トラブル担当[col112]=""→0  /  担当≠"谷澤"→500円固定  /  他→0',
+    'col137 売上原価:        [col2]="キャンセル"→0  /  他→ SUM(col127〜col131)',
+    '                        = 仕入れ費用+仕入れ送料+PayPal手数料+WISE手数料+外注費用',
+    'col138 売上原価率:      [col2]="キャンセル"→0  /  他→ 売上原価[col137]÷売上高[col126]  (0除算→空)',
+    'col139 売上総利益:      [col2]="キャンセル"→0  /  他→ 売上高[col126]-売上原価[col137]',
+    'col140 売上純利益率:    [col2]="キャンセル"→0  /  他→ 売上総利益[col139]÷売上高[col126]',
+    'col141 (列名なし):      入力（常に空）',
+    'col142 荷造運賃:        [col2]="キャンセル"→0  /  他→ 見積もり送料[col81]',
+    'col143 広告費:          入力（常に空）',
+    'col144 返送料:          トラブル情報返送料[col121]をそのまま参照',
+    'col145 返金額:          トラブル情報返金額[col117]をそのまま参照',
+    'col146 インセンティブ計算用: [col2]="キャンセル"→0  /  他→ 売上高[col126]−(各種費用の複合式) ※数式全文はSection1参照',
+    'col147 営業利益:        [col1]≠"キャンセル"→ col126−col127−col128−col130−col131−col142−col143',
+    '                        ★注意①: PayPal手数料[col129]は営業利益に含まれない (売上原価[col137]には含まれる不整合)',
+    '                        ★注意②: 条件がA61([col1])参照。他のほとんどはB61([col2])参照',
+    'col148 営業利益率:      [col2]="キャンセル"→0  /  他→ 営業利益[col147]÷売上高[col126]',
+    'col149 消費税還付込:    [col2]="キャンセル"→0  /  他→ 営業利益[col147]+消費税還[col150]',
+    'col150 消費税還:        [col1]≠"キャンセル"→ ROUND(仕入れ費用[col127]÷11, 0)',
+    'col151 営業利益率(消費税還付込): [col2]="キャンセル"→0  /  他→ 消費税還付込[col149]÷売上高[col126]',
+  ];
+  specs.forEach(function(s) { lines.push(s); });
+  lines.push('');
+
+  // ============================================================
+  // Section 4: 再計算照合（651行）
+  // ============================================================
+  lines.push('--- Section4: 再計算照合（651行）---');
+  lines.push('中間値(col127〜131, col142, col143)はシートの値を使用');
+  lines.push('');
+
+  var res126 = { match: 0, miss: [] };
+  var res137 = { match: 0, miss: [] };
+  var res147 = { match: 0, miss: [] };
+
+  for (var r = 0; r < nRows; r++) {
+    var row = data[r];
+    var sr = DATA_START + r;
+    var statA = String(row[0] || '').trim(); // col1
+    var statB = String(row[1] || '').trim(); // col2
+
+    // --- col126 売上高: IF(B="キャンセル",0,(O*K)+R) ---
+    var shSales  = toNum(row[125]); // col126
+    var calcSales = statB === 'キャンセル'
+      ? 0
+      : toNum(row[10]) * toNum(row[14]) + toNum(row[17]); // K*O+R = col11*col15+col18
+    if (Math.abs(shSales - calcSales) < 0.01) {
+      res126.match++;
+    } else {
+      res126.miss.push('row' + sr + ' | シート=' + shSales + ' | 計算=' + calcSales + ' | 差額=' + (shSales - calcSales));
+    }
+
+    // --- col137 売上原価: IF(B="キャンセル",0,SUM(DW:EA)) = SUM(col127〜131) ---
+    var shCost   = toNum(row[136]); // col137
+    var pyFee    = toNum(row[128]); // col129 PayPal手数料（文字列"0"→0に変換済み）
+    var calcCost = statB === 'キャンセル'
+      ? 0
+      : toNum(row[126]) + toNum(row[127]) + pyFee + toNum(row[129]) + toNum(row[130]);
+      // col127       col128          col129    col130          col131
+    if (Math.abs(shCost - calcCost) < 0.01) {
+      res137.match++;
+    } else {
+      res137.miss.push('row' + sr + ' | シート=' + shCost + ' | 計算=' + calcCost + ' | 差額=' + (shCost - calcCost)
+        + ' | 内訳: 仕入=' + toNum(row[126]) + ' 仕入送=' + toNum(row[127]) + ' PayPal=' + pyFee + ' WISE=' + toNum(row[129]) + ' 外注=' + toNum(row[130]));
+    }
+
+    // --- col147 営業利益: IF(A<>"キャンセル",DV-DW-DX-DZ-EA-EL-EM,0) ---
+    // = col126-127-128-130-131-142-143  (col129 PayPalは含まない)
+    var shProfit   = toNum(row[146]); // col147
+    var calcProfit = statA === 'キャンセル'
+      ? 0
+      : toNum(row[125]) - toNum(row[126]) - toNum(row[127])
+        - toNum(row[129]) - toNum(row[130])
+        - toNum(row[141]) - toNum(row[142]);
+      // DV(col126) -DW(col127) -DX(col128) -DZ(col130) -EA(col131) -EL(col142) -EM(col143)
+    if (Math.abs(shProfit - calcProfit) < 0.01) {
+      res147.match++;
+    } else {
+      res147.miss.push('row' + sr + ' | シート=' + shProfit + ' | 計算=' + calcProfit + ' | 差額=' + (shProfit - calcProfit)
+        + ' | 内訳: 売上=' + toNum(row[125]) + ' 仕入=' + toNum(row[126]) + ' 仕入送=' + toNum(row[127]) + ' WISE=' + toNum(row[129]) + ' 外注=' + toNum(row[130]) + ' 荷=' + toNum(row[141]) + ' 広=' + toNum(row[142]));
+    }
+  }
+
+  lines.push('【col126 売上高: (単価×数量+送料) or 0】');
+  lines.push('一致: ' + res126.match + '/651 / 不一致: ' + res126.miss.length + '件');
+  res126.miss.forEach(function(m) { lines.push('  ' + m); });
+  lines.push('');
+
+  lines.push('【col137 売上原価: SUM(col127〜131) or 0】');
+  lines.push('一致: ' + res137.match + '/651 / 不一致: ' + res137.miss.length + '件');
+  res137.miss.forEach(function(m) { lines.push('  ' + m); });
+  lines.push('');
+
+  lines.push('【col147 営業利益: col126-127-128-130-131-142-143 or 0】');
+  lines.push('一致: ' + res147.match + '/651 / 不一致: ' + res147.miss.length + '件');
+  res147.miss.forEach(function(m) { lines.push('  ' + m); });
+  lines.push('');
+
+  lines.push('=== 調査完了 ===');
+  var result = lines.join('\n');
+  Logger.log(result);
+  return result;
+}
