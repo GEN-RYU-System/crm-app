@@ -520,3 +520,60 @@ function cleanupFormTestData(mode) {
 
   return lines.join('\n');
 }
+
+/**
+ * フォームトークンシートから指定リードIDの全行を削除する（DRY_RUN / CONFIRM）
+ * before/after を生ログで返す
+ * @param {string} leadId - 対象リードID（例: 'LDI-00001'）
+ * @param {string} mode   - 'DRY_RUN'（デフォルト）または 'CONFIRM'
+ * @returns {string}
+ */
+function clearFormTokensByLeadId(leadId, mode) {
+  var isConfirm = String(mode || '').trim().toUpperCase() === 'CONFIRM';
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName(FORM_TOKEN_SHEET);
+  if (!sh) return 'ERROR: ' + FORM_TOKEN_SHEET + ' シートが存在しません';
+
+  var lines = ['=== clearFormTokensByLeadId [' + leadId + '] [' +
+               (isConfirm ? 'CONFIRM' : 'DRY RUN') + '] ===', ''];
+
+  var data   = sh.getDataRange().getValues();
+  var h      = data[0];
+  var lidIdx = h.indexOf('リードID');
+  var tokIdx = h.indexOf('トークン');
+  if (lidIdx < 0) return 'ERROR: リードID 列なし';
+
+  // --- before: 全行を表示 ---
+  lines.push('[before] フォームトークン全行（ヘッダー除く ' + (data.length - 1) + '行）:');
+  for (var i = 1; i < data.length; i++) {
+    var rowTok = tokIdx >= 0 ? String(data[i][tokIdx] || '').substring(0, 12) + '...' : '?';
+    var rowLid = String(data[i][lidIdx] || '');
+    lines.push('  行' + (i + 1) + ': リードID="' + rowLid + '" トークン=' + rowTok);
+  }
+  lines.push('');
+
+  // --- 対象行を収集 ---
+  var toDelete = [];
+  for (var j = 1; j < data.length; j++) {
+    if (String(data[j][lidIdx] || '').trim() === String(leadId).trim()) {
+      toDelete.push(j + 1);
+    }
+  }
+  lines.push('[対象] ' + toDelete.length + '行 (リードID=' + leadId + ')');
+
+  if (isConfirm) {
+    for (var d = toDelete.length - 1; d >= 0; d--) {
+      sh.deleteRow(toDelete[d]);
+    }
+    var afterRows = Math.max(0, sh.getLastRow() - 1);
+    lines.push('  削除実行 ✓');
+    lines.push('');
+    lines.push('[after] フォームトークン残行数: ' + afterRows + '行' +
+               (afterRows === 0 ? ' ✓ (シートが空)' : ''));
+  } else {
+    lines.push('  → DRY RUN: 変更なし');
+    lines.push('[after] （DRY RUN のため変更なし・現在 ' + (data.length - 1) + '行）');
+  }
+
+  return lines.join('\n');
+}
