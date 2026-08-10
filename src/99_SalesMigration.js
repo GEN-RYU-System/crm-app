@@ -1145,7 +1145,7 @@ function auditSalesDataTail() {
 // ============================================================
 function auditSalesColumns() {
   var ss = getSpreadsheet();
-  var sh = ss.getSheetByName('売上データ');
+  var sh = ss.getSheetByName(CONFIG.SHEETS.SALES_DATA);
   var lastCol = sh.getLastColumn();
 
   // ヘッダ行取得
