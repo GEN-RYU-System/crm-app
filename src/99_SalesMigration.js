@@ -1722,3 +1722,255 @@ function auditShippingMatch() {
   Logger.log(result);
   return result;
 }
+
+// ============================================================
+// row624 調査: 請求書番号が空の行が OM に存在するか
+// ============================================================
+function checkRow624() {
+  var ss = getSpreadsheet();
+  var lines = ['=== row624 調査 ===', ''];
+
+  var sdSheet = ss.getSheetByName(CONFIG.SHEETS.SALES_DATA);
+  // col1-80: 取引先名(col6)・運送状番号(col80)まで取得
+  var sdRow = sdSheet.getRange(624, 1, 1, 80).getValues()[0];
+
+  lines.push('--- row624 主要フィールド ---');
+  lines.push('col1  ステータス:   ' + sdRow[0]);
+  lines.push('col2  トラブル:     ' + sdRow[1]);
+  lines.push('col6  取引先名:     ' + sdRow[5]);
+  lines.push('col12 請求書番号:   "' + sdRow[11] + '"');
+  lines.push('col29 受取人:       ' + sdRow[28]);
+  lines.push('col30 電話:         ' + sdRow[29]);
+  lines.push('col33 住所1:        ' + sdRow[32]);
+  lines.push('col36 都市:         ' + sdRow[35]);
+  lines.push('col39 国:           ' + sdRow[38]);
+  lines.push('col79 発送日:       ' + sdRow[78]);
+  lines.push('col80 運送状番号:   "' + sdRow[79] + '"');
+  lines.push('');
+
+  var custName = String(sdRow[5]  || '').trim();
+  var tracking  = String(sdRow[79] || '').trim();
+
+  // CT から顧客ID取得
+  var ctSheet = ss.getSheetByName(CONFIG.SHEETS.CRM_CUSTOMERS);
+  var ctLast  = ctSheet.getLastRow();
+  var ctData  = ctLast >= 2 ? ctSheet.getRange(2, 1, ctLast - 1, 3).getValues() : [];
+  var matchCtIds = [];
+  ctData.forEach(function(r) {
+    if (String(r[2] || '').trim() === custName) matchCtIds.push(String(r[0] || '').trim());
+  });
+  lines.push('取引先名 "' + custName + '" に対応するCT-ID: ' + (matchCtIds.length > 0 ? matchCtIds.join(', ') : 'なし'));
+  lines.push('運送状番号: "' + tracking + '"');
+  lines.push('');
+
+  // OM を顧客ID または 運送状番号で検索
+  var omSheet = ss.getSheetByName(CONFIG.SHEETS.ORDER_MASTER);
+  var omLast  = omSheet.getLastRow();
+  var omData  = omLast >= 2 ? omSheet.getRange(2, 1, omLast - 1, 22).getValues() : [];
+  // OM 0-based: odId=0, inv=1, ctId=2, adId=3, status=6, tracking=21
+
+  var found = [];
+  omData.forEach(function(r, idx) {
+    var ctId      = String(r[2]  || '').trim();
+    var omTracking = String(r[21] || '').trim();
+    var byCt      = matchCtIds.indexOf(ctId) >= 0;
+    var byTrack   = tracking !== '' && omTracking === tracking;
+    if (byCt || byTrack) {
+      found.push('OMrow' + (idx + 2) + ' odId=' + String(r[0] || '').trim()
+        + ' inv=' + String(r[1] || '').trim()
+        + ' ctId=' + ctId
+        + ' adId=' + String(r[3] || '').trim()
+        + ' status=' + String(r[6] || '').trim()
+        + ' tracking=' + omTracking
+        + ' [by: ' + (byCt ? 'ctId' : '') + (byTrack ? ' tracking' : '') + ']');
+    }
+  });
+
+  lines.push('--- OM検索結果 ---');
+  if (found.length === 0) {
+    lines.push('OM一致なし → 移行漏れの疑い');
+  } else {
+    found.forEach(function(l) { lines.push(l); });
+  }
+
+  lines.push('');
+  lines.push('=== 調査完了 ===');
+  var result = lines.join('\n');
+  Logger.log(result);
+  return result;
+}
+
+// ============================================================
+// ARSEL SLU 別発送先 DRY_RUN
+//   住所A (#0909/#0911用): Endika Perez Alonso スペイン住所
+//   住所B (#0914/#0915用): N-145 Km.9 / La Farga de Moles / Lleida
+// ============================================================
+function addArselShippingDryRun() {
+  var ss = getSpreadsheet();
+  var lines = ['=== ARSEL SLU 別発送先 DRY_RUN ===', ''];
+
+  // ── SD実値読み取り ──
+  // 住所A: row625 (#0909-1 の1行目)
+  // 住所B: row651 (#0914-01 の1行目)
+  var sdSheet = ss.getSheetByName(CONFIG.SHEETS.SALES_DATA);
+  var sdA = sdSheet.getRange(625, 1, 1, 39).getValues()[0];
+  var sdB = sdSheet.getRange(651, 1, 1, 39).getValues()[0];
+
+  function extractAddr(row) {
+    return {
+      recip:   String(row[28] || '').trim(), // col29
+      phone:   String(row[29] || '').trim(), // col30
+      addr1:   String(row[32] || '').trim(), // col33
+      addr2:   String(row[33] || '').trim(), // col34
+      addr3:   String(row[34] || '').trim(), // col35
+      city:    String(row[35] || '').trim(), // col36
+      state:   String(row[36] || '').trim(), // col37
+      zip:     String(row[37] || '').trim(), // col38
+      country: String(row[38] || '').trim()  // col39
+    };
+  }
+
+  var addrA = extractAddr(sdA);
+  var addrB = extractAddr(sdB);
+
+  lines.push('--- SD実値確認 ---');
+  lines.push('【住所A: row625(#0909-1)】');
+  Object.keys(addrA).forEach(function(k) { lines.push('  ' + k + ': "' + addrA[k] + '"'); });
+  lines.push('【住所B: row651(#0914-01)】');
+  Object.keys(addrB).forEach(function(k) { lines.push('  ' + k + ': "' + addrB[k] + '"'); });
+  lines.push('');
+
+  // ── 国番号・電話分離 ──
+  // 先頭に国番号が付いていれば分離する（3桁→2桁→1桁の順で試行）
+  function splitPhone(phone) {
+    if (!phone) return { national: '', cc: '' };
+    // 試行順: 376(Andorra), 34(Spain), 81(Japan), 1(US) 等
+    var ccList = ['376', '81', '34', '44', '33', '49', '86', '82', '61', '55', '52', '39', '31', '1'];
+    for (var i = 0; i < ccList.length; i++) {
+      if (phone.indexOf(ccList[i]) === 0) {
+        return { cc: ccList[i], national: phone.slice(ccList[i].length) };
+      }
+    }
+    return { cc: '', national: phone };
+  }
+
+  var phoneA = splitPhone(addrA.phone);
+  var phoneB = splitPhone(addrB.phone);
+
+  lines.push('--- 電話分離 ---');
+  lines.push('住所A raw="' + addrA.phone + '" → cc="' + phoneA.cc + '" national="' + phoneA.national + '"');
+  lines.push('住所B raw="' + addrB.phone + '" → cc="' + phoneB.cc + '" national="' + phoneB.national + '"');
+  lines.push('');
+
+  // ── 配送先マスタから現在の最大ADと ARSEL SLU の ctId 取得 ──
+  var adSheet = ss.getSheetByName(CONFIG.SHEETS.CRM_SHIPPING);
+  var adLast  = adSheet.getLastRow();
+  var adData  = adLast >= 2 ? adSheet.getRange(2, 1, adLast - 1, 16).getValues() : [];
+
+  var maxAdNum = 0;
+  var arselCtId = '';
+  adData.forEach(function(r) {
+    var id = String(r[0] || '').trim();
+    if (id === 'AD-00050') arselCtId = String(r[1] || '').trim();
+    var m = id.match(/^AD-(\d+)$/);
+    if (m) { var n = parseInt(m[1], 10); if (n > maxAdNum) maxAdNum = n; }
+  });
+
+  var newAdIdA = 'AD-' + ('00000' + (maxAdNum + 1)).slice(-5);
+  var newAdIdB = 'AD-' + ('00000' + (maxAdNum + 2)).slice(-5);
+
+  lines.push('ARSEL SLU ctId: ' + arselCtId);
+  lines.push('現在の最大AD番号: AD-' + ('00000' + maxAdNum).slice(-5));
+  lines.push('住所A 新ID: ' + newAdIdA);
+  lines.push('住所B 新ID: ' + newAdIdB);
+  lines.push('');
+
+  // 住所B の受取人が空なら ARSEL SLU をデフォルト
+  var recipB = addrB.recip !== '' ? addrB.recip : 'ARSEL SLU';
+
+  // ── 16列行を生成 ──
+  // 配送先ID(1) 顧客ID(2) 宛名(3) Addr1(4) Addr2(5) Addr3(6)
+  // City(7) State(8) Zip(9) 国(10) 電話(11) 国番号(12)
+  // D Email(13) D Tax ID(14) 既定(15) 有効(16)
+  var newRowA = [
+    newAdIdA, arselCtId, addrA.recip,
+    addrA.addr1, addrA.addr2, addrA.addr3,
+    addrA.city, addrA.state, addrA.zip, addrA.country,
+    phoneA.national, phoneA.cc,
+    '', '', false, false
+  ];
+
+  var newRowB = [
+    newAdIdB, arselCtId, recipB,
+    addrB.addr1, addrB.addr2, addrB.addr3,
+    addrB.city, addrB.state, addrB.zip, addrB.country,
+    phoneB.national, phoneB.cc,
+    '', '', false, false
+  ];
+
+  var colNames = [
+    '配送先ID','顧客ID','宛名','Address 1','Address 2','Address 3',
+    'City','State','Zip','国','電話','国番号',
+    'D Email','D Tax ID','既定','有効'
+  ];
+
+  function fmtRow(label, id, row) {
+    var out = ['【' + label + ': ' + id + '】'];
+    row.forEach(function(v, i) {
+      out.push('  col' + (i + 1) + ' ' + colNames[i] + ': "' + v + '"');
+    });
+    return out.join('\n');
+  }
+
+  lines.push('--- DRY_RUN: 追加行（書き込みなし）---');
+  lines.push(fmtRow('住所A', newAdIdA, newRowA));
+  lines.push('');
+  lines.push(fmtRow('住所B', newAdIdB, newRowB));
+  lines.push('');
+
+  // ── 対象オーダーの配送先ID付け替え before/after ──
+  var targetMap = {};
+  targetMap['#0909'] = { newAdId: newAdIdA, label: '住所A' };
+  targetMap['#0911'] = { newAdId: newAdIdA, label: '住所A' };
+  targetMap['#0914'] = { newAdId: newAdIdB, label: '住所B' };
+  targetMap['#0915'] = { newAdId: newAdIdB, label: '住所B' };
+
+  var omSheet = ss.getSheetByName(CONFIG.SHEETS.ORDER_MASTER);
+  var omLast  = omSheet.getLastRow();
+  var omData  = omLast >= 2 ? omSheet.getRange(2, 1, omLast - 1, 4).getValues() : [];
+
+  lines.push('--- DRY_RUN: 配送先ID付け替え before/after ---');
+  var updates = [];
+  omData.forEach(function(r, idx) {
+    var odId  = String(r[0] || '').trim();
+    var inv   = String(r[1] || '').trim();
+    var adId  = String(r[3] || '').trim();
+    var baseInv = inv.replace(/-\d+$/, '');
+    var target = targetMap[baseInv];
+    if (target) {
+      updates.push({
+        omRow: idx + 2,
+        odId:  odId,
+        inv:   inv,
+        before: adId,
+        after:  target.newAdId,
+        label:  target.label
+      });
+      lines.push('OMrow' + (idx + 2) + ' ' + odId + ' inv=' + inv + ' [' + target.label + '] ' + adId + ' → ' + target.newAdId);
+    }
+  });
+
+  if (updates.length === 0) lines.push('対象オーダーが見つかりません（OM内の請求書番号形式を確認）');
+
+  lines.push('');
+  lines.push('--- 件数サマリ ---');
+  lines.push('付け替え対象: ' + updates.length + 'オーダー');
+  lines.push('  住所A(' + newAdIdA + '): ' + updates.filter(function(u) { return u.label === '住所A'; }).length + '件');
+  lines.push('  住所B(' + newAdIdB + '): ' + updates.filter(function(u) { return u.label === '住所B'; }).length + '件');
+  lines.push('');
+  lines.push('=== DRY_RUN完了 (書き込みなし) ===');
+
+  var result = lines.join('\n');
+  Logger.log(result);
+  return result;
+}
