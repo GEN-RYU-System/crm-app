@@ -1215,3 +1215,145 @@ function dumpSalesDataStructure() {
 
   return lines.join('\n');
 }
+
+/**
+ * 売上データ追加調査（読み取り専用）
+ *   1. row1〜4 の col1〜25 生値でヘッダー行を目視確定
+ *   2. 請求書番号(col12) のユニーク件数・複数行跨り事例
+ *   3. 61〜80行の金額列サンプル + 合計col14入り全件の内訳
+ */
+function dumpSalesDataDetails() {
+  var lines = ['=== dumpSalesDataDetails ===', ''];
+
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName(CONFIG.SHEETS.SALES_DATA);
+  if (!sh) { return 'エラー: 売上データ タブなし'; }
+
+  var allData = sh.getDataRange().getValues();
+  var totalRows = allData.length;
+
+  // ヘッダー（前回調査でrow3=0-indexed:2 と確定）
+  var HEADER_IDX = 2;  // 0-indexed
+  var DATA_START = 60; // 0-indexed（row61〜）
+  var headers = allData[HEADER_IDX];
+
+  // 列インデックス（0-indexed）
+  var C_INVNO = 11;  // col12 請求書番号
+  var C_CUST  = 5;   // col6  取引先名
+  var C_ITEM  = 9;   // col10 請求書内容
+  var C_QTY   = 10;  // col11 数量
+  var C_PRICE = 14;  // col15 単価
+  var C_SUB   = 15;  // col16 小計
+  var C_TOTAL = 13;  // col14 合計
+  var C_SHIP  = 17;  // col18 送料
+  var C_CURR  = 19;  // col20 通貨
+
+  // ================================================================
+  // 1. row1〜4 の col1〜25 生値
+  // ================================================================
+  lines.push('--- 1. row1〜4 の col1〜col25 生値 ---');
+  for (var r = 0; r <= 3 && r < totalRows; r++) {
+    lines.push('  row' + (r + 1) + ':');
+    for (var c = 0; c < 25 && c < allData[r].length; c++) {
+      var v = allData[r][c];
+      var display = (v instanceof Date) ? v.toISOString() : JSON.stringify(v);
+      lines.push('    col' + (c + 1) + ' = ' + display + ' (' + typeof v + ')');
+    }
+  }
+  lines.push('');
+
+  // ================================================================
+  // 2. 請求書番号(col12) ユニーク件数・複数行跨り
+  // ================================================================
+  lines.push('--- 2. 請求書番号(col12) ユニーク件数・複数行跨り ---');
+  var invMap = {};
+  for (var i = DATA_START; i < totalRows; i++) {
+    var row = allData[i];
+    var inv = String(row[C_INVNO] || '').trim();
+    if (inv === '') continue;
+    if (!invMap[inv]) invMap[inv] = [];
+    invMap[inv].push({
+      rowNum: i + 1,
+      cust:  String(row[C_CUST]  || '').trim(),
+      item:  String(row[C_ITEM]  || '').trim(),
+      qty:   row[C_QTY],
+      price: row[C_PRICE]
+    });
+  }
+
+  var allInvNos  = Object.keys(invMap);
+  var singleRows = allInvNos.filter(function(k) { return invMap[k].length === 1; });
+  var multiRows  = allInvNos.filter(function(k) { return invMap[k].length  >  1; });
+  multiRows.sort(function(a, b) { return invMap[b].length - invMap[a].length; });
+
+  lines.push('  ユニーク請求書番号: ' + allInvNos.length + ' 件');
+  lines.push('  1行のみ: ' + singleRows.length + ' 件');
+  lines.push('  2行以上に跨る: ' + multiRows.length + ' 件');
+  lines.push('');
+  lines.push('  代表例 3組（行数が多い順）:');
+  multiRows.slice(0, 3).forEach(function(inv) {
+    var entries = invMap[inv];
+    lines.push('  ■ 請求書番号: "' + inv + '" (' + entries.length + '行)');
+    entries.forEach(function(e) {
+      lines.push('    row' + e.rowNum +
+                 ' | 取引先名: "' + e.cust  + '"' +
+                 ' | 内容: "' + e.item.slice(0, 50) + '"' +
+                 ' | 数量: ' + JSON.stringify(e.qty) +
+                 ' | 単価: ' + JSON.stringify(e.price));
+    });
+  });
+  lines.push('');
+
+  // ================================================================
+  // 3. 61〜80行 金額列サンプル + col14入り全件
+  // ================================================================
+  var hdr = '  row | 取引先名(col6 先20字)         | 数量(11) |   単価(15) |  小計(16) |   合計(14) |   送料(18) | 通貨(20) |  数量×単価';
+  var sep = '  ' + '-'.repeat(120);
+
+  lines.push('--- 3-A. row61〜80 金額列サンプル20行 ---');
+  lines.push(hdr);
+  lines.push(sep);
+  for (var i = DATA_START; i < Math.min(DATA_START + 20, totalRows); i++) {
+    var row   = allData[i];
+    var qty   = row[C_QTY];
+    var price = row[C_PRICE];
+    var calc  = (typeof qty === 'number' && typeof price === 'number') ? String(qty * price) : '';
+    lines.push('  row' + String(i + 1).padStart(3) +
+               ' | ' + String(row[C_CUST] || '').slice(0, 20).padEnd(20) +
+               ' | ' + String(qty   !== '' ? qty   : '').padStart(8) +
+               ' | ' + String(price !== '' ? price : '').padStart(10) +
+               ' | ' + String(row[C_SUB]   || '').padStart(9) +
+               ' | ' + String(row[C_TOTAL] || '').padStart(10) +
+               ' | ' + String(row[C_SHIP]  || '').padStart(10) +
+               ' | ' + String(row[C_CURR]  || '').padStart(8) +
+               ' | ' + calc);
+  }
+  lines.push('');
+
+  lines.push('--- 3-B. col14(合計)が入っている行 全件（61行目以降） ---');
+  lines.push(hdr);
+  lines.push(sep);
+  var totalCount = 0;
+  for (var i = DATA_START; i < totalRows; i++) {
+    var row = allData[i];
+    var tot = row[C_TOTAL];
+    if (String(tot || '').trim() === '' || tot === 0) continue;
+    totalCount++;
+    var qty   = row[C_QTY];
+    var price = row[C_PRICE];
+    var calc  = (typeof qty === 'number' && typeof price === 'number') ? String(qty * price) : '';
+    lines.push('  row' + String(i + 1).padStart(3) +
+               ' | ' + String(row[C_CUST] || '').slice(0, 20).padEnd(20) +
+               ' | ' + String(qty   !== '' ? qty   : '').padStart(8) +
+               ' | ' + String(price !== '' ? price : '').padStart(10) +
+               ' | ' + String(row[C_SUB]   || '').padStart(9) +
+               ' | ' + String(tot          || '').padStart(10) +
+               ' | ' + String(row[C_SHIP]  || '').padStart(10) +
+               ' | ' + String(row[C_CURR]  || '').padStart(8) +
+               ' | ' + calc);
+  }
+  lines.push('  合計: ' + totalCount + '件');
+  lines.push('');
+
+  return lines.join('\n');
+}
