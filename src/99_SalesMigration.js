@@ -1139,3 +1139,207 @@ function auditSalesDataTail() {
   Logger.log(result);
   return result;
 }
+
+// ============================================================
+// auditSalesColumns — 売上データ 158列 性質全件調査（読取専用）
+// ============================================================
+function auditSalesColumns() {
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName('売上データ');
+  var lastCol = sh.getLastColumn();
+
+  // ヘッダ行取得
+  var row1 = sh.getRange(1, 1, 1, lastCol).getValues()[0]; // グループ名
+  var row3 = sh.getRange(3, 1, 1, lastCol).getValues()[0]; // 列名
+
+  // row1は結合セルのため値のある列から引き継ぎ
+  var groupNames = [];
+  var cur = '';
+  for (var c = 0; c < lastCol; c++) {
+    var g = String(row1[c] || '').trim();
+    if (g) cur = g;
+    groupNames.push(cur || '(グループ名なし)');
+  }
+
+  // データ行 61〜711（651行）
+  var DATA_START = 61;
+  var DATA_END   = 711;
+  var nRows = DATA_END - DATA_START + 1;
+  var dRange = sh.getRange(DATA_START, 1, nRows, lastCol);
+  var vals = dRange.getValues();
+  var fmls = dRange.getFormulas();
+
+  // 各列を分析
+  var colInfos = [];
+  for (var c = 0; c < lastCol; c++) {
+    var hasFml = false, fmlEx = '';
+    for (var r = 0; r < nRows; r++) {
+      if (fmls[r][c]) { hasFml = true; fmlEx = fmls[r][c]; break; }
+    }
+    var fillCount = 0;
+    var samples = [];
+    var typeMap = {};
+    for (var r = 0; r < nRows; r++) {
+      var v = vals[r][c];
+      if (v !== '' && v !== null && v !== undefined) {
+        fillCount++;
+        if (samples.length < 3) {
+          var sv = v instanceof Date
+            ? Utilities.formatDate(v, 'Asia/Tokyo', 'yyyy/MM/dd')
+            : String(v).substring(0, 40);
+          samples.push(sv);
+        }
+        var tp = v instanceof Date ? 'date' : typeof v;
+        typeMap[tp] = (typeMap[tp] || 0) + 1;
+      }
+    }
+    var domType = 'empty';
+    var maxCnt = 0;
+    Object.keys(typeMap).forEach(function(t) {
+      if (typeMap[t] > maxCnt) { maxCnt = typeMap[t]; domType = t; }
+    });
+    colInfos.push({
+      c: c,
+      colNum: c + 1,
+      group: groupNames[c],
+      name: String(row3[c] || '').trim() || '(列名なし)',
+      hasFml: hasFml,
+      fmlEx: fmlEx.substring(0, 80),
+      fill: fillCount,
+      type: domType,
+      samples: samples
+    });
+  }
+
+  // グループ別に整理
+  var seenGroups = [];
+  var groupMap = {};
+  colInfos.forEach(function(ci) {
+    if (!groupMap[ci.group]) { groupMap[ci.group] = []; seenGroups.push(ci.group); }
+    groupMap[ci.group].push(ci);
+  });
+
+  var lines = [
+    '=== 売上データ 列性質調査（' + lastCol + '列）===',
+    'データ行: ' + DATA_START + '〜' + DATA_END + '（' + nRows + '行）',
+    ''
+  ];
+
+  seenGroups.forEach(function(g) {
+    var cols = groupMap[g];
+    lines.push('【' + g + '】（' + cols.length + '列: col' + cols[0].colNum + '〜col' + cols[cols.length-1].colNum + '）');
+    cols.forEach(function(ci) {
+      var fmlStr = ci.hasFml ? ('数式[' + ci.fmlEx + ']') : '入力';
+      lines.push(
+        'col' + ci.colNum + ' | ' + ci.name + ' | ' + fmlStr +
+        ' | ' + ci.fill + '/651 | ' + ci.type +
+        ' | ' + ci.samples.join(' / ')
+      );
+    });
+    lines.push('');
+  });
+
+  // 売上情報の数式列まとめ
+  lines.push('=== 売上情報 数式列サマリ ===');
+  var salesGroup = null;
+  seenGroups.forEach(function(g) { if (g.indexOf('売上') >= 0) salesGroup = g; });
+  if (salesGroup && groupMap[salesGroup]) {
+    groupMap[salesGroup].forEach(function(ci) {
+      if (ci.hasFml) lines.push('col' + ci.colNum + ' ' + ci.name + ': ' + ci.fmlEx);
+    });
+  } else {
+    lines.push('売上情報グループが見つかりませんでした（実グループ名: ' + seenGroups.join(', ') + '）');
+  }
+  lines.push('');
+
+  // 仕入れ情報のオーダー参照候補列
+  lines.push('=== 仕入れ情報 オーダー参照候補 ===');
+  var siiGroup = null;
+  seenGroups.forEach(function(g) { if (g.indexOf('仕入') >= 0) siiGroup = g; });
+  if (siiGroup && groupMap[siiGroup]) {
+    groupMap[siiGroup].forEach(function(ci) {
+      var nm = ci.name;
+      if (nm.match(/請求|オーダー|order|inv|参照|対応|紐付|NO|番号/i) || ci.hasFml || ci.fill > 0) {
+        lines.push('col' + ci.colNum + ' ' + ci.name +
+          ' | hasFml=' + ci.hasFml + ' | fill=' + ci.fill + '/651' +
+          ' | サンプル: ' + ci.samples.join(' / '));
+      }
+    });
+  } else {
+    lines.push('仕入れ情報グループが見つかりませんでした');
+  }
+  lines.push('');
+
+  // 予約販売・トラブル充足率
+  lines.push('=== 予約販売・トラブル 充足率 ===');
+  seenGroups.forEach(function(g) {
+    if (g.indexOf('予約') >= 0 || g.indexOf('トラブル') >= 0) {
+      var cols = groupMap[g];
+      var totalFill = 0;
+      cols.forEach(function(ci) { totalFill += ci.fill; });
+      var avgFill = cols.length > 0 ? Math.round(totalFill / cols.length) : 0;
+      lines.push(g + ': ' + cols.length + '列 / 平均充足=' + avgFill + '/651行');
+      cols.forEach(function(ci) {
+        lines.push('  col' + ci.colNum + ' ' + ci.name + ': ' + ci.fill + '/651');
+      });
+    }
+  });
+  lines.push('');
+
+  // 複数個口オーダー分析
+  lines.push('=== 複数個口オーダー分析 ===');
+  var koguchiCol = -1;
+  colInfos.forEach(function(ci) {
+    if (ci.name.indexOf('個口') >= 0 || ci.name.indexOf('箱数') >= 0) koguchiCol = ci.c;
+  });
+
+  if (koguchiCol < 0) {
+    lines.push('個口数列(個口/箱数)が見つかりませんでした。発送グループの数値列:');
+    seenGroups.forEach(function(g) {
+      if (g.indexOf('発送') >= 0) {
+        groupMap[g].forEach(function(ci) {
+          if (ci.type === 'number' && ci.fill > 0)
+            lines.push('  col' + ci.colNum + ' ' + ci.name + ' fill=' + ci.fill + ' サンプル:' + ci.samples.join('/'));
+        });
+      }
+    });
+  } else {
+    var multiRows = [];
+    for (var r2 = 0; r2 < nRows; r2++) {
+      var kv = vals[r2][koguchiCol];
+      if (typeof kv === 'number' && kv > 1) multiRows.push(r2);
+    }
+    lines.push('個口数列: col' + (koguchiCol + 1) + ' / 複数個口行数: ' + multiRows.length);
+
+    // 発送グループの寸法・重量関連列
+    var dimCols = [];
+    colInfos.forEach(function(ci) {
+      if (ci.group.indexOf('発送') >= 0 || ci.group.indexOf('elogi') >= 0 || ci.group.indexOf('ogi') >= 0) {
+        if (ci.name.match(/寸法|重量|縦|横|高さ|幅|長さ|cm|kg|weight|size|箱|個口|数量/i) || ci.type === 'number')
+          dimCols.push(ci);
+      }
+    });
+
+    var shown = 0;
+    for (var i = 0; i < multiRows.length && shown < 2; i++) {
+      var r3 = multiRows[i];
+      lines.push('--- 例' + (shown + 1) + ': データ行' + (DATA_START + r3) + '（個口数=' + vals[r3][koguchiCol] + '）---');
+      lines.push('  名前(col6): ' + String(vals[r3][5] || ''));
+      lines.push('  請求書番号(col12): ' + String(vals[r3][11] || ''));
+      dimCols.forEach(function(ci) {
+        var dv = vals[r3][ci.c];
+        if (dv !== '' && dv !== null && dv !== undefined) {
+          var ds = dv instanceof Date ? Utilities.formatDate(dv, 'Asia/Tokyo', 'yyyy/MM/dd') : String(dv);
+          lines.push('  col' + ci.colNum + ' ' + ci.name + ': ' + ds);
+        }
+      });
+      shown++;
+    }
+  }
+
+  lines.push('');
+  lines.push('=== 調査完了 ===');
+  var result = lines.join('\n');
+  Logger.log(result);
+  return result;
+}
