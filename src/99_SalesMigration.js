@@ -43,16 +43,12 @@ var SALES_NAME_EXCEPTIONS = {
   'Grapecat boosters': 'CT-00025'
 };
 
-// オーダー内フィールド一致チェック対象
+// オーダー内フィールド一致チェック対象（先頭行採用・不一致を異常出力）
+// ※ 通貨/発送日/運送状番号/発送方法/請求書リンクは個別ロジックで処理
 var SALES_CONSISTENCY_COLS = [
-  { c: SALES_COL.CURRENCY,    label: '通貨' },
   { c: SALES_COL.INV_DATE,    label: '請求書発行日' },
   { c: SALES_COL.DUE_DATE,    label: '支払期日' },
-  { c: SALES_COL.PAY_CONF,    label: '支払確認日' },
-  { c: SALES_COL.SHIP_DATE,   label: '発送日' },
-  { c: SALES_COL.TRACKING,    label: '運送状番号' },
-  { c: SALES_COL.SHIP_METHOD, label: '発送方法' },
-  { c: SALES_COL.INV_LINK,    label: '請求書リンク' }
+  { c: SALES_COL.PAY_CONF,    label: '支払確認日' }
 ];
 
 /**
@@ -209,6 +205,7 @@ function migrateSalesData(mode) {
   // ============================================================
   var orders = [], multiOrders = [];
   var odSeq = 1, odlSeq = 1;
+  var concatLog = [];   // 運送状番号/発送方法の連結イベント記録
 
   orderKeys.forEach(function(key) {
     var items = orderMap[key];
@@ -226,10 +223,66 @@ function migrateSalesData(mode) {
     if (adR.err) anomalies.push({ type: 'AD_ERR', ctId: ctId || '?', name: custName, key: key, msg: adR.err });
     if (pyR.err) anomalies.push({ type: 'PY_ERR', ctId: ctId || '?', name: custName, key: key, msg: pyR.err });
 
-    var currRes = normCurr(fr[SALES_COL.CURRENCY]);
-    if (!currRes.ok) anomalies.push({ type: 'CURRENCY', key: key, name: custName, val: currRes.val });
+    // ── 通貨: 非空優先。複数種類があれば異常 ──────────────────────
+    var currVals = [];
+    items.forEach(function(it) {
+      var res = normCurr(it.row[SALES_COL.CURRENCY]);
+      if (res.val === '') return;
+      if (!res.ok) {
+        anomalies.push({ type: 'CURRENCY', key: key, name: custName, val: res.val });
+      } else if (currVals.indexOf(res.val) < 0) {
+        currVals.push(res.val);
+      }
+    });
+    if (currVals.length > 1) {
+      anomalies.push({ type: 'MULTI_CURRENCY', key: key, name: custName, vals: currVals.join(',') });
+    }
+    var currFinal = currVals.length > 0 ? currVals[0] : '';
 
-    // オーダー内フィールド一致チェック
+    // ── 運送状番号: 非空値を重複除去して " / " 連結 ──────────────
+    var trackVals = [];
+    items.forEach(function(it) {
+      var v = String(it.row[SALES_COL.TRACKING] || '').trim();
+      if (v && trackVals.indexOf(v) < 0) trackVals.push(v);
+    });
+    var trackStr = trackVals.join(' / ');
+    if (trackVals.length > 1) {
+      concatLog.push({ key: key, name: custName, field: '運送状番号', vals: trackVals });
+    }
+
+    // ── 発送方法: 非空値を重複除去して " / " 連結 ────────────────
+    var shipMethVals = [];
+    items.forEach(function(it) {
+      var v = String(it.row[SALES_COL.SHIP_METHOD] || '').trim();
+      if (v && shipMethVals.indexOf(v) < 0) shipMethVals.push(v);
+    });
+    var shipMethStr = shipMethVals.join(' / ');
+    if (shipMethVals.length > 1) {
+      concatLog.push({ key: key, name: custName, field: '発送方法', vals: shipMethVals });
+    }
+
+    // ── 発送日: 系列内の最も早い日付を採用 ───────────────────────
+    var shipDateVal = null;
+    items.forEach(function(it) {
+      var v = it.row[SALES_COL.SHIP_DATE];
+      if (v instanceof Date && !isNaN(v.getTime())) {
+        if (!shipDateVal || v < shipDateVal) shipDateVal = v;
+      }
+    });
+
+    // ── 請求書リンク: 最初の非空値を採用。他と異なれば異常 ───────
+    var invLinkVals = [];
+    items.forEach(function(it) {
+      var v = String(it.row[SALES_COL.INV_LINK] || '').trim();
+      if (v && invLinkVals.indexOf(v) < 0) invLinkVals.push(v);
+    });
+    var invLinkFinal = invLinkVals.length > 0 ? invLinkVals[0] : '';
+    if (invLinkVals.length > 1) {
+      anomalies.push({ type: 'INV_LINK_MISMATCH', key: key, name: custName,
+        detail: invLinkVals.join(' / ') });
+    }
+
+    // ── 請求書発行日/支払期日/支払確認日: 先頭行、食い違いは異常 ─
     if (items.length > 1) {
       SALES_CONSISTENCY_COLS.forEach(function(fc) {
         var first = fmtD(fr[fc.c]);
@@ -295,17 +348,17 @@ function migrateSalesData(mode) {
       pyId:     pyR.id,
       srcLead:  ctId ? (ctToSrc[ctId] || '') : '',
       status:   String(fr[SALES_COL.STATUS]     || '').trim(),
-      currency: currRes.val,
+      currency: currFinal,
       rate:     fr[SALES_COL.RATE],
       lineTotal: lineTotal, ship: totalShip, cust: totalCust, grand: grand,
       payment:    String(fr[SALES_COL.PAYMENT]    || '').trim(),
-      invLink:    String(fr[SALES_COL.INV_LINK]   || '').trim(),
+      invLink:    invLinkFinal,
       invDate:    fr[SALES_COL.INV_DATE],
       dueDate:    fr[SALES_COL.DUE_DATE],
       payConf:    fr[SALES_COL.PAY_CONF],
-      shipMethod: String(fr[SALES_COL.SHIP_METHOD] || '').trim(),
-      shipDate:   fr[SALES_COL.SHIP_DATE],
-      tracking:   String(fr[SALES_COL.TRACKING]   || '').trim(),
+      shipMethod: shipMethStr,
+      shipDate:   shipDateVal,
+      tracking:   trackStr,
       shipMemo:   String(fr[SALES_COL.SHIP_MEMO]  || '').trim(),
       lineItems: lineItems,
       col14s:   col14s,
@@ -427,6 +480,14 @@ function migrateSalesData(mode) {
           msg = '[通貨不正規化] 値="' + a.val + '" 取引先="' + a.name
               + '" key=' + a.key;
           break;
+        case 'MULTI_CURRENCY':
+          msg = '[通貨複数種類] vals="' + a.vals + '" 取引先="' + a.name
+              + '" key=' + a.key;
+          break;
+        case 'INV_LINK_MISMATCH':
+          msg = '[請求書リンク不一致] 取引先="' + a.name + '" key=' + a.key
+              + ' | ' + a.detail;
+          break;
         case 'INCONSISTENT':
           msg = '[値不一致] ' + a.field + ' | 取引先="' + a.name
               + '" | key=' + a.key + ' | ' + a.detail;
@@ -444,9 +505,22 @@ function migrateSalesData(mode) {
     });
   }
 
-  // 5. 監査: col14 vs 算出請求総額
+  // 5. 連結ログ
   out.push('');
-  out.push('=== 5. 監査: col14(合計)が入っている行 vs 算出請求総額 ===');
+  var concatTrack = concatLog.filter(function(c) { return c.field === '運送状番号'; });
+  var concatMeth  = concatLog.filter(function(c) { return c.field === '発送方法'; });
+  out.push('=== 5. 連結ログ ===');
+  out.push('運送状番号を連結したオーダー: ' + concatTrack.length + '件');
+  out.push('発送方法を連結したオーダー  : ' + concatMeth.length + '件');
+  out.push('');
+  out.push('運送状番号 連結実例（先頭5件）:');
+  concatTrack.slice(0, 5).forEach(function(c) {
+    out.push('  ' + c.key + ' | ' + c.name + ' → ' + c.vals.join(' / '));
+  });
+
+  // 6. 監査: col14 vs 算出請求総額
+  out.push('');
+  out.push('=== 6. 監査: col14(合計)が入っている行 vs 算出請求総額 ===');
   var auditRows = [];
   rawData.forEach(function(row, idx) {
     var v = row[SALES_COL.COL14];
