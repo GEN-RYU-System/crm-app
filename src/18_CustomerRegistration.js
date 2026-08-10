@@ -28,6 +28,41 @@ var FORM_TOKEN_HEADERS = ['トークン', 'リードID', '発行日', '使用日
 // ============================================================
 
 /**
+ * 顧客マスタ・配送先マスタに国番号列を追加するマイグレーション（冪等）
+ * - 顧客マスタ: '電話番号' 列の直後に '国番号' を挿入 → 19列化
+ * - 配送先マスタ: '電話' 列の直後に '国番号' を挿入 → 16列化
+ * @returns {string} 実行ログ
+ */
+function addDialCodeColumns() {
+  var ss = getSpreadsheet();
+  var results = [];
+
+  function insertAfter(sh, afterHeader, newHeader) {
+    var h = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    if (h.indexOf(newHeader) >= 0) {
+      return sh.getName() + ': ' + newHeader + ' 列は既に存在（スキップ）';
+    }
+    var afterIdx = h.indexOf(afterHeader);
+    if (afterIdx < 0) return sh.getName() + ': ' + afterHeader + ' 列なし（スキップ）';
+    var newCol = afterIdx + 2;  // 1-based position of the new column
+    sh.insertColumnAfter(afterIdx + 1);  // insertColumnAfter takes 1-based col num
+    sh.getRange(1, newCol).setValue(newHeader);
+    sh.getRange(1, newCol).setFontWeight('bold').setBackground('#1565c0').setFontColor('#ffffff');
+    return sh.getName() + ': 列' + newCol + ' に "' + newHeader + '" 追加完了（' + (sh.getLastColumn()) + '列）';
+  }
+
+  var custSh = ss.getSheetByName(CONFIG.SHEETS.CRM_CUSTOMERS);
+  if (custSh) results.push(insertAfter(custSh, '電話番号', '国番号'));
+  else results.push('顧客マスタ: シートなし');
+
+  var adSh = ss.getSheetByName(CONFIG.SHEETS.CRM_SHIPPING);
+  if (adSh) results.push(insertAfter(adSh, '電話', '国番号'));
+  else results.push('配送先マスタ: シートなし');
+
+  return results.join('\n');
+}
+
+/**
  * フォームトークンタブを新設（冪等）
  * @returns {string}
  */
@@ -296,28 +331,32 @@ function registerCustomerFromForm(payload) {
     // 8a. 顧客マスタ（新規のみ）
     if (isNew) {
       var custRow = [
-        customerId,         // 顧客ID
-        leadId,             // 源流リードID
-        billing.name,       // 顧客名
-        billing.country,    // 国
-        billing.email,      // メール
-        bPhone.value || billing.phone, // 電話番号（正規化済）
-        '',                 // 初回取引日
-        today,              // 登録日
-        '',                 // 営業担当者
-        '',                 // 連絡ツール
-        '',                 // FedEx ID
-        '',                 // 発送時メモ
-        '',                 // Discord参加
-        '',                 // Discord チャンネルID
-        '',                 // Discord ユーザーID
-        '',                 // Discrod 請求書 webhook
-        '',                 // Discrod 発送通知 webhook
-        ''                  // Shippment webhook
+        customerId,              // 顧客ID
+        leadId,                  // 源流リードID
+        billing.name,            // 顧客名
+        billing.country,         // 国
+        billing.email,           // メール
+        bPhone.national || '',   // 電話番号: ナショナル番号（例: 312345678）
+        bPhone.dialCode  || '',  // 国番号: 国番号のみ（例: 81）
+        '',                      // 初回取引日
+        today,                   // 登録日
+        '',                      // 営業担当者
+        '',                      // 連絡ツール
+        '',                      // FedEx ID
+        '',                      // 発送時メモ
+        '',                      // Discord参加
+        '',                      // Discord チャンネルID
+        '',                      // Discord ユーザーID
+        '',                      // Discrod 請求書 webhook
+        '',                      // Discrod 発送通知 webhook
+        ''                       // Shippment webhook
       ];
-      // 電話番号列はテキスト書式で格納（+付き文字列がSheetsの数値変換で化けるのを防ぐ）
-      var custPhoneIdx = HEADERS.CRM_CUSTOMERS.indexOf('電話番号');
-      var custFmts = custRow.map(function(_, i) { return i === custPhoneIdx ? '@' : ''; });
+      // 電話番号・国番号列はテキスト書式で格納（数字がSheetsで数値変換されるのを防ぐ）
+      var custPhoneIdx   = HEADERS.CRM_CUSTOMERS.indexOf('電話番号');
+      var custDialIdx    = HEADERS.CRM_CUSTOMERS.indexOf('国番号');
+      var custFmts = custRow.map(function(_, i) {
+        return (i === custPhoneIdx || i === custDialIdx) ? '@' : '';
+      });
       var custNextRow = custSh.getLastRow() + 1;
       custSh.getRange(custNextRow, 1, 1, custRow.length)
             .setNumberFormats([custFmts])
@@ -327,27 +366,29 @@ function registerCustomerFromForm(payload) {
     // 8b. 配送先マスタ
     var sb = shipBlock;
     var shipRow = [
-      addrId,                         // 配送先ID
-      customerId,                     // 顧客ID
-      sb.name,                        // 宛名
-      sb.addr1 || '',                 // Address 1
-      sb.addr2 || '',                 // Address 2
-      sb.addr3 || '',                 // Address 3
-      sb.city  || '',                 // City
-      sb.state || '',                 // State
-      sb.zip   || '',                 // Zip
-      sb.country || '',               // 国
-      sPhone.value || sb.phone || '', // 電話
-      sb.email || billing.email || '',// D Email
-      sb.taxId || '',                 // D Tax ID
-      defaultFlag,                    // 既定
-      'TRUE'                          // 有効
+      addrId,                          // 配送先ID
+      customerId,                      // 顧客ID
+      sb.name,                         // 宛名
+      sb.addr1 || '',                  // Address 1
+      sb.addr2 || '',                  // Address 2
+      sb.addr3 || '',                  // Address 3
+      sb.city  || '',                  // City
+      sb.state || '',                  // State
+      sb.zip   || '',                  // Zip
+      sb.country || '',                // 国
+      sPhone.national || sb.phone || '',// 電話: ナショナル番号
+      sPhone.dialCode  || '',          // 国番号
+      sb.email || billing.email || '', // D Email
+      sb.taxId || '',                  // D Tax ID
+      defaultFlag,                     // 既定
+      'TRUE'                           // 有効
     ];
-    // 電話・Zip列はテキスト書式で格納（数字のみの値がSheetsで数値変換されるのを防ぐ）
+    // 電話・国番号・Zip列はテキスト書式で格納
     var shipPhoneIdx = HEADERS.CRM_SHIPPING.indexOf('電話');
+    var shipDialIdx  = HEADERS.CRM_SHIPPING.indexOf('国番号');
     var shipZipIdx   = HEADERS.CRM_SHIPPING.indexOf('Zip');
     var shipFmts = shipRow.map(function(_, i) {
-      return (i === shipPhoneIdx || i === shipZipIdx) ? '@' : '';
+      return (i === shipPhoneIdx || i === shipDialIdx || i === shipZipIdx) ? '@' : '';
     });
     var shipNextRow = adSh.getLastRow() + 1;
     adSh.getRange(shipNextRow, 1, 1, shipRow.length)
@@ -478,29 +519,53 @@ function testRegisterCustomer() {
     var custSh2   = ss.getSheetByName(CONFIG.SHEETS.CRM_CUSTOMERS);
     var custData2 = custSh2 ? custSh2.getDataRange().getValues() : [];
     var custH2    = custData2[0] || [];
-    var custIdIdx2 = custH2.indexOf('顧客ID');
-    var phoneIdx2  = custH2.indexOf('電話番号');
+    var custIdIdx2  = custH2.indexOf('顧客ID');
+    var phoneIdx2   = custH2.indexOf('電話番号');
+    var dialIdx2    = custH2.indexOf('国番号');
     for (var ci2 = 1; ci2 < custData2.length; ci2++) {
       if (String(custData2[ci2][custIdIdx2]).trim() !== r1.customerId) continue;
       var storedPhone = custData2[ci2][phoneIdx2];
-      phoneOk = typeof storedPhone === 'string' && storedPhone.charAt(0) === '+';
-      lines.push('  電話番号: type=' + typeof storedPhone + ' value="' + storedPhone + '"' +
-                 (phoneOk ? ' ✓' : ' ✗(数値変換バグ)'));
+      var storedDial  = dialIdx2 >= 0 ? custData2[ci2][dialIdx2] : null;
+      // 電話番号: ナショナル番号（digits のみ）
+      phoneOk = typeof storedPhone === 'string' && /^\d+$/.test(storedPhone) && storedPhone.length > 0;
+      lines.push('  顧客電話番号(national): type=' + typeof storedPhone + ' value="' + storedPhone + '"' +
+                 (phoneOk ? ' ✓' : ' ✗'));
+      // 国番号: digits のみ（+なし）
+      if (storedDial !== null) {
+        var dialOk = typeof storedDial === 'string' && /^\d+$/.test(storedDial) && storedDial.length > 0;
+        phoneOk = phoneOk && dialOk;
+        lines.push('  顧客国番号(dialCode):   type=' + typeof storedDial + ' value="' + storedDial + '"' +
+                   (dialOk ? ' ✓' : ' ✗'));
+      }
       break;
     }
-    // 配送先Zip型確認（string であること）
+    // 配送先Zip・電話・国番号の型確認
     var zipOk = false;
     var adSh2    = ss.getSheetByName(CONFIG.SHEETS.CRM_SHIPPING);
     var adData2  = adSh2 ? adSh2.getDataRange().getValues() : [];
     var adH2     = adData2[0] || [];
-    var adIdIdx2 = adH2.indexOf('配送先ID');
+    var adIdIdx2  = adH2.indexOf('配送先ID');
     var adZipIdx2 = adH2.indexOf('Zip');
+    var adPhIdx2  = adH2.indexOf('電話');
+    var adDlIdx2  = adH2.indexOf('国番号');
     for (var ai2 = 1; ai2 < adData2.length; ai2++) {
       if (String(adData2[ai2][adIdIdx2]).trim() !== r1.addrId) continue;
-      var storedZip = adData2[ai2][adZipIdx2];
+      var storedZip    = adData2[ai2][adZipIdx2];
+      var storedShPhone = adPhIdx2 >= 0 ? adData2[ai2][adPhIdx2] : null;
+      var storedShDial  = adDlIdx2 >= 0 ? adData2[ai2][adDlIdx2] : null;
       zipOk = typeof storedZip === 'string';
-      lines.push('  配送先Zip: type=' + typeof storedZip + ' value="' + storedZip + '"' +
+      lines.push('  配送先Zip:              type=' + typeof storedZip + ' value="' + storedZip + '"' +
                  (zipOk ? ' ✓' : ' ✗(数値変換バグ)'));
+      if (storedShPhone !== null) {
+        var shPhOk = typeof storedShPhone === 'string';
+        lines.push('  配送先電話(national):   type=' + typeof storedShPhone + ' value="' + storedShPhone + '"' +
+                   (shPhOk ? ' ✓' : ' ✗'));
+      }
+      if (storedShDial !== null) {
+        var shDlOk = typeof storedShDial === 'string';
+        lines.push('  配送先国番号(dialCode): type=' + typeof storedShDial + ' value="' + storedShDial + '"' +
+                   (shDlOk ? ' ✓' : ' ✗'));
+      }
       break;
     }
     if (!addrOk || !phoneOk || !zipOk) { s1 = false; }
@@ -508,7 +573,7 @@ function testRegisterCustomer() {
 
   if (s1) { pass++; testCustomerId = r1.customerId; testAddrIds.push(r1.addrId); testPayIds.push(r1.payId); }
   else    { fail++; testCustomerId = r1.customerId; testAddrIds.push(r1.addrId); testPayIds.push(r1.payId); }
-  lines.push((s1 ? '✓' : '✗') + ' シナリオ1 新規登録（住所・電話型・Zip型含む）');
+  lines.push((s1 ? '✓' : '✗') + ' シナリオ1 新規登録（住所・電話分離・Zip型含む）');
   lines.push('  success=' + r1.success + ' customerId=' + r1.customerId + ' addrId=' + r1.addrId + ' payId=' + r1.payId);
   if (r1.warnings.length) lines.push('  warnings: ' + r1.warnings.join(' / '));
   if (r1.errors.length)   lines.push('  errors: '   + r1.errors.join(' / '));

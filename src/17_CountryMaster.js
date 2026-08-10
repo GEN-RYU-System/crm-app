@@ -334,9 +334,19 @@ function seedCountryMaster(forceArg) {
  * @returns {{value: string, flag: string}}
  *   flag: '✓' / '空欄' / '要確認(国番号不一致)' / '要確認(桁数異常:N)' / '要確認(国不明)' / '要確認(非数字)'
  */
+/**
+ * 電話番号を正規化し E.164・国番号・ナショナル番号に分解して返す
+ * @param {string} countryName - 国名（表示）
+ * @param {string} raw         - 入力電話番号
+ * @returns {{value: string, dialCode: string, national: string, flag: string}}
+ *   value:    E.164形式 '+81312345678'（検証・表示用）
+ *   dialCode: 国番号桁のみ '81'（国番号列に格納）
+ *   national: ナショナル番号 '312345678'（電話番号列に格納）
+ *   flag:     '✓' | '空欄' | '要確認(…)'
+ */
 function normalizePhone(countryName, raw) {
   const rawStr = String(raw || '').trim();
-  if (!rawStr) return { value: '', flag: '空欄' };
+  if (!rawStr) return { value: '', dialCode: '', national: '', flag: '空欄' };
 
   // 国マスタ引き
   const ss = getSpreadsheet();
@@ -360,32 +370,53 @@ function normalizePhone(countryName, raw) {
   // 記号除去（スペース・ハイフン・括弧・ドット・スラッシュ）、+ は先頭のみ保持
   const cleaned = rawStr.replace(/[\s\-\(\)\.\/]/g, '');
 
+  /** E.164 文字列から dialCode・national を抽出するヘルパー */
+  function splitE164(e164str, cc) {
+    // e164str = '+81312345678', cc = '81'
+    var digits = e164str.charAt(0) === '+' ? e164str.slice(1) : e164str;
+    if (cc && digits.startsWith(cc)) {
+      return { dialCode: cc, national: digits.slice(cc.length) };
+    }
+    return { dialCode: '', national: digits };
+  }
+
   // ---- +始まり（E.164 候補） ----
   if (cleaned.charAt(0) === '+') {
     const digits = cleaned.slice(1);
-    if (!/^\d+$/.test(digits)) return { value: rawStr, flag: '要確認(非数字)' };
+    if (!/^\d+$/.test(digits)) {
+      return { value: rawStr, dialCode: '', national: rawStr, flag: '要確認(非数字)' };
+    }
     if (countryCode && !digits.startsWith(countryCode)) {
-      return { value: cleaned, flag: '要確認(国番号不一致)' };
+      return { value: cleaned, dialCode: '', national: digits, flag: '要確認(国番号不一致)' };
     }
     if (digits.length < 7 || digits.length > 15) {
-      return { value: cleaned, flag: '要確認(桁数異常:' + digits.length + ')' };
+      return { value: cleaned, dialCode: countryCode || '', national: digits, flag: '要確認(桁数異常:' + digits.length + ')' };
     }
-    return { value: cleaned, flag: '✓' };
+    var sp1 = splitE164(cleaned, countryCode);
+    return { value: cleaned, dialCode: sp1.dialCode, national: sp1.national, flag: '✓' };
   }
 
   // ---- 00始まり（国際プレフィックス） ----
   if (cleaned.startsWith('00')) {
     const digits = cleaned.slice(2);
-    if (!/^\d+$/.test(digits)) return { value: rawStr, flag: '要確認(非数字)' };
-    if (digits.length < 7 || digits.length > 15) {
-      return { value: '+' + digits, flag: '要確認(桁数異常:' + digits.length + ')' };
+    if (!/^\d+$/.test(digits)) {
+      return { value: rawStr, dialCode: '', national: rawStr, flag: '要確認(非数字)' };
     }
-    return { value: '+' + digits, flag: '✓' };
+    const e164cc = '+' + digits;
+    if (digits.length < 7 || digits.length > 15) {
+      return { value: e164cc, dialCode: '', national: digits, flag: '要確認(桁数異常:' + digits.length + ')' };
+    }
+    var sp2 = splitE164(e164cc, countryCode);
+    return { value: e164cc, dialCode: sp2.dialCode, national: sp2.national, flag: '✓' };
   }
 
   // ---- 国内形式 ----
-  if (!countryCode) return { value: rawStr, flag: '要確認(国不明)' };
-  if (!/^\d+$/.test(cleaned)) return { value: rawStr, flag: '要確認(非数字)' };
+  if (!countryCode) {
+    return { value: rawStr, dialCode: '', national: cleaned, flag: '要確認(国不明)' };
+  }
+  if (!/^\d+$/.test(cleaned)) {
+    return { value: rawStr, dialCode: '', national: cleaned, flag: '要確認(非数字)' };
+  }
 
   var national = cleaned;
   if (cleaned.charAt(0) === '0' && trunkRemove) {
@@ -396,9 +427,9 @@ function normalizePhone(countryName, raw) {
   var totalDigits = countryCode.length + national.length;
   var e164 = '+' + countryCode + national;
   if (totalDigits < 7 || totalDigits > 15) {
-    return { value: e164, flag: '要確認(桁数異常:' + totalDigits + ')' };
+    return { value: e164, dialCode: countryCode, national: national, flag: '要確認(桁数異常:' + totalDigits + ')' };
   }
-  return { value: e164, flag: '✓' };
+  return { value: e164, dialCode: countryCode, national: national, flag: '✓' };
 }
 
 // ============================================================
