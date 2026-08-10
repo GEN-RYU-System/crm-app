@@ -484,7 +484,7 @@ function migrateSalesData(mode) {
  * 売上データ行640-711の詳細ダンプ + 差額8行分析 + 仕入れ11行一覧
  */
 function auditSalesDataTail() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSpreadsheet();
   var salesSh = ss.getSheetByName(CONFIG.SHEETS.SALES_DATA);
   if (!salesSh) { Logger.log('ERROR: 売上データシートが見つかりません'); return; }
 
