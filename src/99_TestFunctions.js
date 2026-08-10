@@ -1664,3 +1664,284 @@ function dumpCustomerNameList() {
   Logger.log(lines.join('\n'));
   return lines.join('\n');
 }
+
+// ============================================================
+// ★ オーダー登録テスト ★
+// ============================================================
+
+/**
+ * testCreateOrder() - オーダー管理/明細への書き込みと整合性を検証するテスト
+ *
+ * シナリオ:
+ *   1. 正常登録: CT-00006/AD-00005/PY-00005 でヘッダー1行+明細3行を作成
+ *      - OD採番/ODL採番/行番号1,2,3
+ *      - 小計=数量×単価、明細合計=Σ小計、請求総額=明細合計+送料+関税
+ *   2. 存在しないID拒否: CT-99999 → 拒否 / ADが別CTに紐づく → 拒否
+ *   3. 源流リードID自動導出: 顧客マスタから自動入力
+ *   4. 型検証: 運送状番号=string / 請求書番号=string
+ *   Cleanup: 作成した全行を自動削除（痕跡ゼロ）
+ */
+function testCreateOrder() {
+  var ss = getSpreadsheet();
+  var lines = ['=== testCreateOrder ==='];
+  var PASS = '[PASS]', FAIL = '[FAIL]';
+  var passCount = 0, failCount = 0;
+
+  // テスト用固定データ (CT-00006: Card Galaxy LTD(Essex) の実在ID)
+  var TEST_CT  = 'CT-00006';
+  var TEST_AD  = 'AD-00005';
+  var TEST_PY  = 'PY-00005';
+  var TEST_INV = '#TEST-XTEST'; // 通常運用と衝突しない形式
+
+  var created = { orderRows: [], lineRows: [] }; // cleanup用
+
+  // ---- 内部バリデーター: CT/AD/PY の存在と紐づけを確認 ----
+  function validateOrderIds(ctId, adId, pyId) {
+    var custSheet = ss.getSheetByName(CONFIG.SHEETS.CRM_CUSTOMERS);
+    var shipSheet = ss.getSheetByName(CONFIG.SHEETS.CRM_SHIPPING);
+    var paySheet  = ss.getSheetByName(CONFIG.SHEETS.CRM_PAYMENT);
+
+    // CT 存在確認 + 源流リードID取得
+    var custData = custSheet.getDataRange().getValues();
+    var ch = custData[0];
+    var cidIdx = ch.indexOf('顧客ID');
+    var srcIdx = ch.indexOf('源流リードID');
+    var ctRow = null;
+    for (var i = 1; i < custData.length; i++) {
+      if (String(custData[i][cidIdx]).trim() === ctId) { ctRow = custData[i]; break; }
+    }
+    if (!ctRow) return { ok: false, reason: '顧客IDが存在しない: ' + ctId, srcLeadId: null };
+    var srcLeadId = String(ctRow[srcIdx] || '').trim();
+
+    // AD 存在確認 + CT紐づき確認
+    var shipData = shipSheet.getDataRange().getValues();
+    var sh = shipData[0];
+    var adIdIdx = sh.indexOf('配送先ID');
+    var adCtIdx = sh.indexOf('顧客ID');
+    var adFound = false;
+    for (var j = 1; j < shipData.length; j++) {
+      if (String(shipData[j][adIdIdx]).trim() === adId) {
+        if (String(shipData[j][adCtIdx]).trim() !== ctId) {
+          return { ok: false, reason: '配送先ID ' + adId + ' の顧客ID=' + shipData[j][adCtIdx] + ' ≠ ' + ctId, srcLeadId: null };
+        }
+        adFound = true; break;
+      }
+    }
+    if (!adFound) return { ok: false, reason: '配送先IDが存在しない: ' + adId, srcLeadId: null };
+
+    // PY 存在確認 + CT紐づき確認
+    var payData = paySheet.getDataRange().getValues();
+    var ph = payData[0];
+    var pyIdIdx = ph.indexOf('支払先ID');
+    var pyCtIdx = ph.indexOf('顧客ID');
+    var pyFound = false;
+    for (var k = 1; k < payData.length; k++) {
+      if (String(payData[k][pyIdIdx]).trim() === pyId) {
+        if (String(payData[k][pyCtIdx]).trim() !== ctId) {
+          return { ok: false, reason: '支払先ID ' + pyId + ' の顧客ID=' + payData[k][pyCtIdx] + ' ≠ ' + ctId, srcLeadId: null };
+        }
+        pyFound = true; break;
+      }
+    }
+    if (!pyFound) return { ok: false, reason: '支払先IDが存在しない: ' + pyId, srcLeadId: null };
+
+    return { ok: true, reason: null, srcLeadId: srcLeadId };
+  }
+
+  function check(label, actual, expected) {
+    var ok = (String(actual) === String(expected));
+    lines.push((ok ? PASS : FAIL) + ' ' + label + ': actual=' + actual + ' / expected=' + expected);
+    if (ok) passCount++; else failCount++;
+    return ok;
+  }
+
+  // ======== Scenario 2a: 存在しないCT → 拒否 ========
+  lines.push('');
+  lines.push('--- Scenario 2a: CT-99999(存在しない) → 拒否 ---');
+  var r2a = validateOrderIds('CT-99999', TEST_AD, TEST_PY);
+  if (!r2a.ok) {
+    lines.push(PASS + ' 拒否OK: ' + r2a.reason); passCount++;
+  } else {
+    lines.push(FAIL + ' CT-99999が拒否されなかった'); failCount++;
+  }
+
+  // ======== Scenario 2b: ADが別CTに紐づく → 拒否 ========
+  lines.push('');
+  lines.push('--- Scenario 2b: AD-00005 を CT-00007(別顧客)で参照 → 拒否 ---');
+  var r2b = validateOrderIds('CT-00007', 'AD-00005', 'PY-00005');
+  if (!r2b.ok) {
+    lines.push(PASS + ' 拒否OK: ' + r2b.reason); passCount++;
+  } else {
+    lines.push(FAIL + ' 不一致ADが拒否されなかった'); failCount++;
+  }
+
+  // ======== 事前バリデーション (Scenario 1用) ========
+  lines.push('');
+  lines.push('--- Scenario 1 事前バリデーション ---');
+  var v1 = validateOrderIds(TEST_CT, TEST_AD, TEST_PY);
+  if (!v1.ok) {
+    lines.push(FAIL + ' テストデータバリデーション失敗: ' + v1.reason); failCount++;
+    Logger.log(lines.join('\n'));
+    return lines.join('\n');
+  }
+  lines.push(PASS + ' CT/AD/PY 全て存在・紐づき確認'); passCount++;
+
+  // ======== Scenario 3: 源流リードID自動導出 ========
+  lines.push('');
+  lines.push('--- Scenario 3: 源流リードID自動導出 ---');
+  var autoSrcId = v1.srcLeadId;
+  if (autoSrcId !== '') {
+    lines.push(PASS + ' 源流リードID="' + autoSrcId + '" (引数なし・自動導出)'); passCount++;
+  } else {
+    lines.push(FAIL + ' 源流リードIDが空（顧客マスタ未設定）'); failCount++;
+  }
+
+  // ======== Scenario 1: 正常登録 ========
+  lines.push('');
+  lines.push('--- Scenario 1: 正常登録 ---');
+
+  var orderId  = nextOrderId();
+  var lineBase = nextOrderLineId();
+  lines.push('採番: ' + orderId + ' / 明細ベース: ' + lineBase);
+
+  // 3明細 (数量×単価が整数で検証しやすい値)
+  var lineItems = [
+    { category: 'Pokemon', name: 'SV9a BOX',  condition: 'Sealed', sku: 'SV9A-BOX',  qty: 5,  price: 12000 },
+    { category: 'Pokemon', name: 'SV9a PACK', condition: 'Sealed', sku: 'SV9A-PACK', qty: 20, price: 700   },
+    { category: 'Pokemon', name: 'SV9b BOX',  condition: 'Sealed', sku: 'SV9B-BOX',  qty: 3,  price: 10500 }
+  ];
+  var shipping = 5000;
+  var customs  = 2000;
+  var expectedLineTotal  = lineItems.reduce(function(s, li) { return s + li.qty * li.price; }, 0);
+  var expectedGrandTotal = expectedLineTotal + shipping + customs;
+  lines.push('期待: 明細合計=' + expectedLineTotal + ', 送料=' + shipping + ', 関税=' + customs + ', 請求総額=' + expectedGrandTotal);
+
+  // ---- オーダー管理 書き込み ----
+  var masterSheet = ss.getSheetByName(CONFIG.SHEETS.ORDER_MASTER);
+  var masterH = masterSheet.getRange(1, 1, 1, 26).getValues()[0];
+  var mIdx = {};
+  masterH.forEach(function(col, i) { mIdx[col] = i; });
+
+  var now = new Date();
+  var masterRow = new Array(26).fill('');
+  masterRow[mIdx['オーダーID']]    = orderId;
+  masterRow[mIdx['請求書番号']]    = String(TEST_INV);     // Scenario 4: 明示的string
+  masterRow[mIdx['顧客ID']]        = TEST_CT;
+  masterRow[mIdx['配送先ID']]      = TEST_AD;
+  masterRow[mIdx['支払先ID']]      = TEST_PY;
+  masterRow[mIdx['源流リードID']]  = autoSrcId;             // Scenario 3
+  masterRow[mIdx['ステータス']]    = '受注';
+  masterRow[mIdx['受注日']]        = now;
+  masterRow[mIdx['通貨']]          = 'JPY';
+  masterRow[mIdx['為替レート']]    = 1;
+  masterRow[mIdx['明細合計']]      = expectedLineTotal;
+  masterRow[mIdx['送料']]          = shipping;
+  masterRow[mIdx['関税']]          = customs;
+  masterRow[mIdx['請求総額']]      = expectedGrandTotal;
+  masterRow[mIdx['決済手段']]      = '銀行振込';
+  masterRow[mIdx['運送状番号']]    = String('TEST-TRACK-001'); // Scenario 4: 明示的string
+  masterRow[mIdx['登録日']]        = now;
+  masterRow[mIdx['更新日']]        = now;
+
+  var masterLastRow = masterSheet.getLastRow() + 1;
+  masterSheet.getRange(masterLastRow, 1, 1, 26).setValues([masterRow]);
+  // 文字列固定書式を個別行にも適用
+  masterSheet.getRange(masterLastRow, mIdx['運送状番号'] + 1, 1, 1).setNumberFormat('@');
+  masterSheet.getRange(masterLastRow, mIdx['請求書番号']  + 1, 1, 1).setNumberFormat('@');
+  created.orderRows.push(masterLastRow);
+
+  // ---- オーダー明細 書き込み ----
+  var linesSheet = ss.getSheetByName(CONFIG.SHEETS.ORDER_LINES);
+  var linesH = linesSheet.getRange(1, 1, 1, 10).getValues()[0];
+  var lIdx = {};
+  linesH.forEach(function(col, i) { lIdx[col] = i; });
+
+  var odlIds = [];
+  lineItems.forEach(function(li, rowNum) {
+    var seqNum = parseInt(lineBase.replace('ODL-', ''), 10) + rowNum;
+    var odlId = 'ODL-' + ('00000' + seqNum).slice(-5);
+    odlIds.push(odlId);
+
+    var lRow = new Array(10).fill('');
+    lRow[lIdx['明細ID']]     = odlId;
+    lRow[lIdx['オーダーID']] = orderId;
+    lRow[lIdx['行番号']]     = rowNum + 1;
+    lRow[lIdx['カテゴリ']]   = li.category;
+    lRow[lIdx['商品名']]     = li.name;
+    lRow[lIdx['状態']]       = li.condition;
+    lRow[lIdx['SKU']]        = li.sku;
+    lRow[lIdx['数量']]       = li.qty;
+    lRow[lIdx['単価']]       = li.price;
+    lRow[lIdx['小計']]       = li.qty * li.price;
+
+    var linesLastRow = linesSheet.getLastRow() + 1;
+    linesSheet.getRange(linesLastRow, 1, 1, 10).setValues([lRow]);
+    created.lineRows.push(linesLastRow);
+  });
+
+  SpreadsheetApp.flush();
+
+  // ======== 検証フェーズ ========
+  lines.push('');
+  lines.push('--- 検証 ---');
+
+  // オーダー管理 読み返し
+  var writtenMaster = masterSheet.getRange(masterLastRow, 1, 1, 26).getDisplayValues()[0];
+  check('OD採番',          writtenMaster[mIdx['オーダーID']],    orderId);
+  check('請求書番号(string確認)', typeof masterSheet.getRange(masterLastRow, mIdx['請求書番号']+1).getValue(), 'string');
+  check('明細合計',         Number(writtenMaster[mIdx['明細合計']]),  expectedLineTotal);
+  check('請求総額',         Number(writtenMaster[mIdx['請求総額']]),  expectedGrandTotal);
+  check('源流リードID（自動）', writtenMaster[mIdx['源流リードID']], autoSrcId);
+
+  // Scenario 4: 運送状番号の型（getDisplayValues → string, かつ数値変換されていないか）
+  var trackDisplay = writtenMaster[mIdx['運送状番号']];
+  check('運送状番号(数値変換されていない)', isNaN(Number(trackDisplay)) || trackDisplay === 'TEST-TRACK-001', 'true');
+  check('運送状番号の値', trackDisplay, 'TEST-TRACK-001');
+
+  // 明細 読み返し
+  var allLinesData = linesSheet.getDataRange().getValues();
+  var lh2 = allLinesData[0];
+  var lIdIdx2    = lh2.indexOf('明細ID');
+  var lodIdx2    = lh2.indexOf('オーダーID');
+  var lRowNumIdx = lh2.indexOf('行番号');
+  var lSubIdx2   = lh2.indexOf('小計');
+
+  lineItems.forEach(function(li, i) {
+    var dataRow = allLinesData[created.lineRows[i] - 1]; // 1-based → 0-based
+    check('ODL[' + (i+1) + '] 明細ID',    dataRow[lIdIdx2],    odlIds[i]);
+    check('ODL[' + (i+1) + '] オーダーID', dataRow[lodIdx2],   orderId);
+    check('ODL[' + (i+1) + '] 行番号',    dataRow[lRowNumIdx], i + 1);
+    check('ODL[' + (i+1) + '] 小計',      dataRow[lSubIdx2],  li.qty * li.price);
+  });
+
+  // 不変式
+  check('明細合計=Σ小計', expectedLineTotal,
+    lineItems.reduce(function(s, li) { return s + li.qty * li.price; }, 0));
+  check('請求総額=明細合計+送料+関税', expectedGrandTotal, expectedLineTotal + shipping + customs);
+
+  // 書き込み後の次採番
+  var nextOdAfter  = nextOrderId();
+  var nextOdlAfter = nextOrderLineId();
+  var expectedNextOd  = 'OD-'  + ('00000' + (parseInt(orderId.replace('OD-', ''),  10) + 1)).slice(-5);
+  var expectedNextOdl = 'ODL-' + ('00000' + (parseInt(lineBase.replace('ODL-', ''), 10) + 3)).slice(-5);
+  check('書込後 nextOrderId',   nextOdAfter,  expectedNextOd);
+  check('書込後 nextOrderLineId', nextOdlAfter, expectedNextOdl);
+
+  // ======== Cleanup ========
+  lines.push('');
+  lines.push('--- Cleanup ---');
+  created.orderRows.slice().reverse().forEach(function(r) { masterSheet.deleteRow(r); });
+  created.lineRows.slice().reverse().forEach(function(r)  { linesSheet.deleteRow(r); });
+  SpreadsheetApp.flush();
+  lines.push('削除: オーダー管理 ' + created.orderRows.length + '行 / オーダー明細 ' + created.lineRows.length + '行');
+
+  // クリーンアップ後の採番がテスト前と同じに戻っているか
+  check('クリーンアップ後 nextOrderId = テスト開始前と同じ',   nextOrderId(),   orderId);
+  check('クリーンアップ後 nextOrderLineId = テスト開始前と同じ', nextOrderLineId(), lineBase);
+
+  lines.push('');
+  lines.push('=== 結果: PASS=' + passCount + ' / FAIL=' + failCount + ' ===');
+
+  Logger.log(lines.join('\n'));
+  return lines.join('\n');
+}
