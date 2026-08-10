@@ -58,10 +58,6 @@ function migrateSalesData(mode) {
   if (mode !== 'DRY_RUN' && mode !== 'CONFIRM') {
     return 'ERROR: mode は "DRY_RUN" または "CONFIRM" を指定してください';
   }
-  if (mode === 'CONFIRM') {
-    return 'ERROR: CONFIRM は未実装。DRY_RUN で内容確認後に実装します';
-  }
-
   var ss  = getSpreadsheet();
   var out = ['=== migrateSalesData(DRY_RUN) ==='];
   var anomalies = [];
@@ -410,6 +406,232 @@ function migrateSalesData(mode) {
     orders.push(ord);
     if (lineItems.length > 1) multiOrders.push(ord);
   });
+
+  // ============================================================
+  // CONFIRM モード: 書込 → 検証8点 → 移行完了判定
+  // ============================================================
+  if (mode === 'CONFIRM') {
+    var cOut  = ['=== migrateSalesData(CONFIRM) ==='];
+    var now   = new Date();
+    var nowStr = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss');
+    var ve    = [];  // 検証エラー収集
+
+    // ── シート取得 ─────────────────────────────────────────────
+    var omSh = ss.getSheetByName(CONFIG.SHEETS.ORDER_MASTER);
+    var olSh = ss.getSheetByName(CONFIG.SHEETS.ORDER_LINES);
+    if (!omSh || !olSh) {
+      Logger.log('ERROR: シートが見つかりません。createOrderTabs() を先に実行してください');
+      return 'ERROR: シートが見つかりません';
+    }
+
+    // ── 既存データ クリア (ヘッダー行を除くデータ行) ───────────
+    var omLast = omSh.getLastRow();
+    if (omLast > 1) omSh.getRange(2, 1, omLast - 1, 26).clearContent();
+    var olLast = olSh.getLastRow();
+    if (olLast > 1) olSh.getRange(2, 1, olLast - 1, 10).clearContent();
+
+    // ── 行配列 構築 ─────────────────────────────────────────────
+    var omRows = orders.map(function(o) {
+      return [
+        o.odId,                                           // 1: オーダーID
+        o.invNo,                                          // 2: 請求書番号
+        o.ctId,                                           // 3: 顧客ID
+        o.adId,                                           // 4: 配送先ID
+        o.pyId,                                           // 5: 支払先ID
+        o.srcLead,                                        // 6: 源流リードID
+        o.status,                                         // 7: ステータス
+        '',                                               // 8: 受注日（空欄）
+        o.currency,                                       // 9: 通貨
+        (o.rate !== '' && o.rate !== null && o.rate !== undefined) ? o.rate : '',  // 10: 為替レート
+        o.lineTotal,                                      // 11: 明細合計
+        o.ship,                                           // 12: 送料
+        o.cust,                                           // 13: 関税
+        o.grand,                                          // 14: 請求総額
+        o.payment,                                        // 15: 決済手段
+        o.invLink,                                        // 16: 請求書リンク
+        fmtD(o.invDate),                                  // 17: 請求書発行日
+        fmtD(o.dueDate),                                  // 18: 支払期日
+        fmtD(o.payConf),                                  // 19: 支払確認日
+        o.shipMethod,                                     // 20: 発送方法
+        fmtD(o.shipDate),                                 // 21: 発送日
+        String(o.tracking),                               // 22: 運送状番号（必ず string）
+        o.shipMemo,                                       // 23: 発送時メモ
+        '',                                               // 24: 備考
+        nowStr,                                           // 25: 登録日
+        nowStr                                            // 26: 更新日
+      ];
+    });
+
+    var olRows = [];
+    orders.forEach(function(o) {
+      o.lineItems.forEach(function(li) {
+        olRows.push([
+          li.odlId, o.odId, li.rowNum, li.category,
+          li.name, li.cond, li.sku, li.qty, li.prc, li.sub
+        ]);
+      });
+    });
+
+    // ── バッチ書込 ───────────────────────────────────────────────
+    // 運送状番号列(col22)をテキスト形式に設定してから書込
+    omSh.getRange(2, 22, omRows.length, 1).setNumberFormat('@');
+    omSh.getRange(2, 1, omRows.length, 26).setValues(omRows);
+    olSh.getRange(2, 1, olRows.length, 10).setValues(olRows);
+
+    cOut.push('');
+    cOut.push('書込完了: オーダー管理=' + omRows.length + '行 / オーダー明細=' + olRows.length + '行');
+
+    // ── 検証 8点 ────────────────────────────────────────────────
+    cOut.push('');
+    cOut.push('=== 検証 ===');
+
+    // [1] 行数
+    var omAct = omSh.getLastRow() - 1;
+    var olAct = olSh.getLastRow() - 1;
+    var p1 = (omAct === omRows.length && olAct === olRows.length);
+    cOut.push('[1] 行数: オーダー管理=' + omAct + ' / オーダー明細=' + olAct + ' → ' + (p1 ? '合格' : '★不合格'));
+    if (!p1) ve.push('[1]行数');
+
+    // [2] 請求総額 = 明細合計 + 送料 + 関税
+    var p2f = [];
+    orders.forEach(function(o) {
+      var calc = o.lineTotal + o.ship + o.cust;
+      if (Math.abs(o.grand - calc) > 0.01) p2f.push(o.odId + '(grand=' + o.grand + ' calc=' + calc + ')');
+    });
+    cOut.push('[2] 請求総額=明細合計+送料+関税: ' + orders.length + '件中 不一致=' + p2f.length + ' → ' + (p2f.length === 0 ? '合格' : '★不合格 ' + p2f.slice(0,5).join(' ')));
+    if (p2f.length > 0) ve.push('[2]');
+
+    // [3] 小計 = 数量 × 単価
+    var p3f = [];
+    orders.forEach(function(o) {
+      o.lineItems.forEach(function(li) {
+        var calc = li.qty * li.prc;
+        if (Math.abs(li.sub - calc) > 0.01) p3f.push(li.odlId + '(sub=' + li.sub + ' calc=' + calc + ')');
+      });
+    });
+    cOut.push('[3] 小計=数量×単価: ' + olRows.length + '明細中 不一致=' + p3f.length + ' → ' + (p3f.length === 0 ? '合格' : '★不合格 ' + p3f.slice(0,5).join(' ')));
+    if (p3f.length > 0) ve.push('[3]');
+
+    // [4] CT/AD/PY 実在・紐付け
+    var ctSet = {};
+    for (var ci4 = 1; ci4 < custAll.length; ci4++) {
+      var cd4 = String(custAll[ci4][cHId] || '').trim();
+      if (cd4) ctSet[cd4] = true;
+    }
+    var adByCt4 = {};
+    for (var si4 = 1; si4 < shipAll.length; si4++) {
+      var sc4 = String(shipAll[si4][sHCt] || '').trim();
+      var sa4 = String(shipAll[si4][sHAd] || '').trim();
+      if (!sc4 || !sa4) continue;
+      if (!adByCt4[sc4]) adByCt4[sc4] = {};
+      adByCt4[sc4][sa4] = true;
+    }
+    var pyByCt4 = {};
+    for (var pi4 = 1; pi4 < payAll.length; pi4++) {
+      var pc4 = String(payAll[pi4][pHCt] || '').trim();
+      var pp4 = String(payAll[pi4][pHPy] || '').trim();
+      if (!pc4 || !pp4) continue;
+      if (!pyByCt4[pc4]) pyByCt4[pc4] = {};
+      pyByCt4[pc4][pp4] = true;
+    }
+    var p4f = [];
+    orders.forEach(function(o) {
+      if (o.ctId && !ctSet[o.ctId]) p4f.push('CT不存在:' + o.ctId + '(' + o.odId + ')');
+      if (o.ctId && o.adId && !(adByCt4[o.ctId] && adByCt4[o.ctId][o.adId]))
+        p4f.push('AD紐付け不整合:' + o.adId + '∉' + o.ctId + '(' + o.odId + ')');
+      if (o.ctId && o.pyId && !(pyByCt4[o.ctId] && pyByCt4[o.ctId][o.pyId]))
+        p4f.push('PY紐付け不整合:' + o.pyId + '∉' + o.ctId + '(' + o.odId + ')');
+    });
+    cOut.push('[4] CT/AD/PY 親子整合: 不整合=' + p4f.length + '件 → ' + (p4f.length === 0 ? '合格' : '★不合格 ' + p4f.slice(0,5).join(' ')));
+    if (p4f.length > 0) ve.push('[4]');
+
+    // [5] 孤児明細（書込後実データで検証）
+    var odIdSet5 = {};
+    orders.forEach(function(o) { odIdSet5[o.odId] = true; });
+    var olCheck = olSh.getRange(2, 2, olAct, 1).getValues();  // col2 = オーダーID
+    var p5f = 0;
+    olCheck.forEach(function(r) {
+      var pid = String(r[0] || '').trim();
+      if (pid && !odIdSet5[pid]) p5f++;
+    });
+    cOut.push('[5] 孤児明細: ' + p5f + '件 → ' + (p5f === 0 ? '合格' : '★不合格'));
+    if (p5f > 0) ve.push('[5]');
+
+    // [6] 採番 連番・重複なし
+    var odArr = orders.map(function(o) { return o.odId; });
+    var odDup = 0, odSeq = 0;
+    var odSeen = {};
+    odArr.forEach(function(id, i) {
+      if (odSeen[id]) odDup++;
+      odSeen[id] = true;
+      if (id !== 'OD-' + ('00000' + (i + 1)).slice(-5)) odSeq++;
+    });
+    var odlArr = [];
+    orders.forEach(function(o) { o.lineItems.forEach(function(li) { odlArr.push(li.odlId); }); });
+    var odlDup = 0, odlSeq = 0;
+    var odlSeen = {};
+    odlArr.forEach(function(id, i) {
+      if (odlSeen[id]) odlDup++;
+      odlSeen[id] = true;
+      if (id !== 'ODL-' + ('00000' + (i + 1)).slice(-5)) odlSeq++;
+    });
+    var p6ok = (odDup + odSeq + odlDup + odlSeq === 0);
+    cOut.push('[6] 採番: OD重複=' + odDup + ' OD連番エラー=' + odSeq + ' / ODL重複=' + odlDup + ' ODL連番エラー=' + odlSeq + ' → ' + (p6ok ? '合格' : '★不合格'));
+    if (!p6ok) ve.push('[6]');
+
+    // [7] 運送状番号 string型（書込後実データ）
+    var trkData = omSh.getRange(2, 22, omAct, 1).getValues();
+    var p7f = 0;
+    trkData.forEach(function(r) { if (typeof r[0] !== 'string') p7f++; });
+    cOut.push('[7] 運送状番号 string型: ' + omAct + '件中 非string=' + p7f + '件 → ' + (p7f === 0 ? '合格' : '★不合格'));
+    if (p7f > 0) ve.push('[7]');
+
+    // [8] col14 8件 書込後実データ再検証
+    var omData14 = omSh.getRange(2, 1, omAct, 14).getValues();
+    var odGrandMap = {};
+    omData14.forEach(function(r) {
+      var id = String(r[0] || '').trim();
+      if (id) odGrandMap[id] = Number(r[13]);
+    });
+    var c14Rows = [];
+    rawData.forEach(function(row, idx) {
+      var v = row[SALES_COL.COL14];
+      if (v !== '' && v !== null && v !== undefined && !isNaN(Number(v)) && Number(v) !== 0) {
+        c14Rows.push({ sr: DATA_START + idx, c14: Number(v) });
+      }
+    });
+    var p8ok = 0, p8ng = 0;
+    cOut.push('[8] col14 書込後再検証:');
+    c14Rows.forEach(function(ar) {
+      var mo = null;
+      orders.forEach(function(o) { if (o.srs.indexOf(ar.sr) >= 0) mo = o; });
+      if (!mo) { cOut.push('  row' + ar.sr + ': 対象外(除外行)'); return; }
+      var wg = odGrandMap[mo.odId];
+      var diff = ar.c14 - wg;
+      var ok = Math.abs(diff) < 0.01;
+      if (ok) p8ok++; else p8ng++;
+      cOut.push('  row' + ar.sr + ' | col14=' + ar.c14 + ' | 書込grand=' + wg + ' | ' + (ok ? '一致' : '★差額=' + diff));
+    });
+    cOut.push('  ' + p8ok + '件一致 / ' + p8ng + '件不一致 → ' + (p8ng === 0 ? '合格' : '★不合格'));
+    if (p8ng > 0) ve.push('[8]');
+
+    // 異常件数
+    cOut.push('');
+    cOut.push('DRY_RUN時の異常件数 (参考): ' + anomalies.length + '件（CONFIRM時に書込は完了済み）');
+
+    // ── 最終判定 ────────────────────────────────────────────────
+    cOut.push('');
+    cOut.push('=== 最終判定 ===');
+    if (ve.length === 0) {
+      cOut.push('8点すべて合格 — 移行完了');
+    } else {
+      cOut.push('★不合格 ' + ve.length + '件: ' + ve.join(' / '));
+    }
+
+    var cResult = cOut.join('\n');
+    Logger.log(cResult);
+    return cResult;
+  }
 
   // ============================================================
   // フォーマッタ
