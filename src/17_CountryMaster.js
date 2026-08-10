@@ -441,20 +441,21 @@ function normalizePhone(countryName, raw) {
  * 全件突合して PASS/FAIL を報告
  */
 function testNormalizePhone() {
-  // [id, countryName, raw, expectValue, expectFlag]
+  // [id, countryName, raw, expectValue, expectFlag, expectDialCode, expectNational]
+  // expectDialCode/expectNational が null = エラーケースのためスキップ
   var CASES = [
-    ['01', 'Japan',          '03-1234-5678',     '+81312345678',    '✓'],
-    ['02', 'Japan',          '312345678',         '+81312345678',    '✓'],
-    ['03', 'United States',  '+12125551234',       '+12125551234',    '✓'],
-    ['04', 'United States',  '0012125551234',      '+12125551234',    '✓'],
-    ['05', 'Japan',          '03 1234 5678',       '+81312345678',    '✓'],
-    ['06', 'Japan',          '(03).1234-5678',     '+81312345678',    '✓'],
-    ['07', 'Japan',          '+442071234567',       '+442071234567',   '要確認(国番号不一致)'],
-    ['08', 'Japan',          '+8112',              '+8112',           '要確認(桁数異常:4)'],
-    ['09', 'Italy',          '06-12345678',        '+390612345678',   '✓'],
-    ['10', 'Japan',          '',                   '',                '空欄'],
-    ['11', 'Japan',          '+81312345678',       '+81312345678',    '✓'],
-    ['12', 'Japan',          '0-1-2',              '+8112',           '要確認(桁数異常:4)']
+    ['01', 'Japan',         '03-1234-5678',    '+81312345678',  '✓',                    '81', '312345678'],
+    ['02', 'Japan',         '312345678',        '+81312345678',  '✓',                    '81', '312345678'],
+    ['03', 'United States', '+12125551234',      '+12125551234',  '✓',                    '1',  '2125551234'],
+    ['04', 'United States', '0012125551234',     '+12125551234',  '✓',                    '1',  '2125551234'],
+    ['05', 'Japan',         '03 1234 5678',      '+81312345678',  '✓',                    '81', '312345678'],
+    ['06', 'Japan',         '(03).1234-5678',    '+81312345678',  '✓',                    '81', '312345678'],
+    ['07', 'Japan',         '+442071234567',      '+442071234567', '要確認(国番号不一致)', null, null],
+    ['08', 'Japan',         '+8112',             '+8112',         '要確認(桁数異常:4)',   null, null],
+    ['09', 'Italy',         '06-12345678',       '+390612345678', '✓',                    '39', '0612345678'],
+    ['10', 'Japan',         '',                  '',              '空欄',                 '',   ''],
+    ['11', 'Japan',         '+81312345678',      '+81312345678',  '✓',                    '81', '312345678'],
+    ['12', 'Japan',         '0-1-2',             '+8112',         '要確認(桁数異常:4)',   null, null]
   ];
 
   var lines = ['=== testNormalizePhone ==='];
@@ -462,17 +463,24 @@ function testNormalizePhone() {
 
   CASES.forEach(function(c) {
     var id = c[0], country = c[1], raw = c[2];
-    var expectValue = c[3], expectFlag = c[4];
+    var expectValue = c[3], expectFlag = c[4], expectDial = c[5], expectNat = c[6];
     var result = normalizePhone(country, raw);
-    var valueOk = (result.value === expectValue);
-    var flagOk  = (result.flag  === expectFlag);
-    var ok = valueOk && flagOk;
+    var valueOk = (result.value    === expectValue);
+    var flagOk  = (result.flag     === expectFlag);
+    var dialOk  = (expectDial === null) || (result.dialCode === expectDial);
+    var natOk   = (expectNat  === null) || (result.national === expectNat);
+    var ok = valueOk && flagOk && dialOk && natOk;
     if (ok) { pass++; } else { fail++; }
-    lines.push(
-      (ok ? '✓' : '✗') + ' [' + id + '] ' + country + ' / "' + raw + '"' +
-      '\n  期待: value=' + expectValue + '  flag=' + expectFlag +
-      (!ok ? '\n  実際: value=' + result.value + '  flag=' + result.flag : '')
-    );
+    var detail = '';
+    if (!ok) {
+      detail = '\n  期待: value=' + expectValue + ' flag=' + expectFlag;
+      if (expectDial !== null) detail += ' dialCode=' + expectDial + ' national=' + expectNat;
+      detail += '\n  実際: value=' + result.value + ' flag=' + result.flag +
+                ' dialCode=' + result.dialCode + ' national=' + result.national;
+    } else if (expectDial !== null) {
+      detail = '\n  dialCode=' + result.dialCode + ' national=' + result.national;
+    }
+    lines.push((ok ? '✓' : '✗') + ' [' + id + '] ' + country + ' / "' + raw + '"' + detail);
   });
 
   lines.push('');
