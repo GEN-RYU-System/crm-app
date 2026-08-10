@@ -569,7 +569,7 @@ function testRegisterCustomer() {
 
   // ---- クリーンアップ ----
   try {
-    _cleanupTestData(testCustomerId, testAddrIds, testPayIds, [token1, token2, token4]);
+    _cleanupTestData(testCustomerId, testAddrIds, testPayIds, testLeadId);
     lines.push('クリーンアップ完了 ✓');
   } catch (e) {
     lines.push('クリーンアップ失敗（手動確認が必要）: ' + e.message);
@@ -583,15 +583,16 @@ function testRegisterCustomer() {
 /**
  * テストデータのクリーンアップ（下から削除して行ズレ防止）
  * @param {string}   custId    - CT-XXXXX
- * @param {string[]} addrIds   - AD-XXXXX 配列
- * @param {string[]} payIds    - PY-XXXXX 配列
- * @param {string[]} tokens    - トークン文字列配列
+ * @param {string[]} addrIds   - AD-XXXXX 配列（未使用・後方互換のため残置）
+ * @param {string[]} payIds    - PY-XXXXX 配列（未使用・後方互換のため残置）
+ * @param {string}   leadId    - テストで使用したリードID（フォームトークン削除に使用）
  */
-function _cleanupTestData(custId, addrIds, payIds, tokens) {
+function _cleanupTestData(custId, addrIds, payIds, leadId) {
   var ss = getSpreadsheet();
 
   function deleteRowsByIds(sh, colName, ids) {
     if (!sh || !ids || ids.length === 0) return;
+    SpreadsheetApp.flush();  // 直前の書き込みをシートに確定させてから読む
     var data = sh.getDataRange().getValues();
     var h    = data[0];
     var idx  = h.indexOf(colName);
@@ -607,26 +608,12 @@ function _cleanupTestData(custId, addrIds, payIds, tokens) {
 
   // 顧客マスタ
   if (custId) deleteRowsByIds(ss.getSheetByName(CONFIG.SHEETS.CRM_CUSTOMERS), '顧客ID', [custId]);
-  // 配送先
-  if (addrIds && addrIds.length) deleteRowsByIds(ss.getSheetByName(CONFIG.SHEETS.CRM_SHIPPING), '配送先ID', addrIds);
-  // 支払先
-  if (payIds  && payIds.length)  deleteRowsByIds(ss.getSheetByName(CONFIG.SHEETS.CRM_PAYMENT),  '支払先ID', payIds);
-  // フォームトークン
-  if (tokens  && tokens.length) {
-    var tokSh = ss.getSheetByName(FORM_TOKEN_SHEET);
-    if (tokSh) {
-      var tokData = tokSh.getDataRange().getValues();
-      var tokH    = tokData[0];
-      var tokIdx  = tokH.indexOf('トークン');
-      if (tokIdx >= 0) {
-        var toDelTok = [];
-        for (var t = 1; t < tokData.length; t++) {
-          if (tokens.indexOf(String(tokData[t][tokIdx] || '').trim()) >= 0) toDelTok.push(t + 1);
-        }
-        for (var dt = toDelTok.length - 1; dt >= 0; dt--) tokSh.deleteRow(toDelTok[dt]);
-      }
-    }
-  }
+  // 配送先: 顧客IDで全紐づき行を一括削除（個別AD-IDより確実）
+  if (custId) deleteRowsByIds(ss.getSheetByName(CONFIG.SHEETS.CRM_SHIPPING), '顧客ID', [custId]);
+  // 支払先: 顧客IDで全紐づき行を一括削除
+  if (custId) deleteRowsByIds(ss.getSheetByName(CONFIG.SHEETS.CRM_PAYMENT),  '顧客ID', [custId]);
+  // フォームトークン: リードIDで全行削除（UUID値マッチより確実）
+  if (leadId) deleteRowsByIds(ss.getSheetByName(FORM_TOKEN_SHEET), 'リードID', [leadId]);
 }
 
 // ============================================================
