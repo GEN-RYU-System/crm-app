@@ -133,6 +133,10 @@ function migrateSalesData(mode) {
     if (v instanceof Date && !isNaN(v)) return Utilities.formatDate(v, 'Asia/Tokyo', 'yyyyMMdd');
     return String(v || '').trim();
   };
+  // 末尾の -数字 を除いた基番号（例: "#0914-03" → "#0914"）
+  var baseInvNo = function(invNo) {
+    return invNo.replace(/-\d+$/, '');
+  };
   var resolveCtId = function(name) {
     if (SALES_NAME_EXCEPTIONS[name] !== undefined) return SALES_NAME_EXCEPTIONS[name];
     return nameToCtId[name] !== undefined ? nameToCtId[name] : null;
@@ -191,7 +195,7 @@ function migrateSalesData(mode) {
     var tracking = String(row[SALES_COL.TRACKING]  || '').trim();
     var shipDs   = fmtDKey(row[SALES_COL.SHIP_DATE]);
     var key;
-    if      (invNo    !== '') key = 'INV:' + invNo;
+    if      (invNo    !== '') key = 'INV:' + baseInvNo(invNo);
     else if (tracking !== '') key = 'TRK:' + name + '|' + tracking;
     else if (shipDs   !== '') key = 'DAT:' + name + '|' + shipDs;
     else                      key = 'ROW:' + item.sr;
@@ -284,7 +288,7 @@ function migrateSalesData(mode) {
 
     var ord = {
       key: key,  odId: 'OD-' + ('00000' + odSeq++).slice(-5),
-      invNo:    String(fr[SALES_COL.INV_NO]     || '').trim(),
+      invNo:    baseInvNo(String(fr[SALES_COL.INV_NO] || '').trim()),
       name:     custName,
       ctId:     ctId || '',
       adId:     adR.id,
@@ -471,6 +475,149 @@ function migrateSalesData(mode) {
   out.push('');
   out.push('=== DRY_RUN 完了 ===');
 
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
+
+// ============================================================
+// auditInvoiceFormat — 請求書番号フォーマット分布 + 仕入れ混在検出
+// 読み取り専用
+// ============================================================
+function auditInvoiceFormat() {
+  var ss = getSpreadsheet();
+  var salesSh = ss.getSheetByName(CONFIG.SHEETS.SALES_DATA);
+  if (!salesSh) { Logger.log('ERROR: 売上データシートが見つかりません'); return; }
+  var allData = salesSh.getDataRange().getValues();
+
+  var DATA_START = 61;
+  var out = ['=== §1: 請求書番号フォーマット分布 ==='];
+
+  var cat = {
+    suffix:  { count: 0, ex: [] },  // #XXXX-NN
+    plain:   { count: 0, ex: [] },  // #XXXXのみ
+    pSeries: { count: 0, ex: [] },  // PXXXX系
+    other:   { count: 0, ex: [] }   // その他
+  };
+  var rawInvSet  = {};  // raw invNo → true
+  var baseInvSet = {};  // base invNo → true
+  var baseToRaws = {};  // base → { rawInvNo: true }
+  var baseShiire = {};  // base → { included:[sr], shiire:[sr], name:'' }
+
+  for (var i = 0; i < allData.length; i++) {
+    var sr    = i + 1;
+    if (sr < DATA_START) continue;
+    var row   = allData[i];
+    var invNo = String(row[SALES_COL.INV_NO] || '').trim();
+    var stat  = String(row[SALES_COL.STATUS] || '').trim();
+    var name  = String(row[SALES_COL.NAME]   || '').trim();
+    var qty   = row[SALES_COL.QTY];
+    var price = row[SALES_COL.UNIT_PRICE];
+
+    // 実質空行(exA)はスキップ
+    if (!name && (qty === '' || qty === null || qty === undefined)
+              && (price === '' || price === null || price === undefined)) continue;
+
+    if (invNo === '') continue;  // 請求書番号なし行はフォーマット分析対象外
+
+    rawInvSet[invNo] = true;
+
+    // フォーマット分類 & 基番号算出
+    var base;
+    if (/^#\d+-\d+$/.test(invNo)) {
+      cat.suffix.count++;
+      if (cat.suffix.ex.length < 5) cat.suffix.ex.push(invNo + '(row' + sr + ')');
+      base = invNo.replace(/-\d+$/, '');
+    } else if (/^#\d+$/.test(invNo)) {
+      cat.plain.count++;
+      if (cat.plain.ex.length < 5) cat.plain.ex.push(invNo + '(row' + sr + ')');
+      base = invNo;
+    } else if (/^[Pp]\d/.test(invNo)) {
+      cat.pSeries.count++;
+      if (cat.pSeries.ex.length < 5) cat.pSeries.ex.push(invNo + '(row' + sr + ')');
+      base = invNo;
+    } else {
+      cat.other.count++;
+      if (cat.other.ex.length < 10) cat.other.ex.push(invNo + '(row' + sr + ')');
+      base = invNo;
+    }
+
+    baseInvSet[base] = true;
+    if (!baseToRaws[base]) baseToRaws[base] = {};
+    baseToRaws[base][invNo] = true;
+
+    // 仕入れ混在チェック（exBのみ。exA/C/Dは除外済み）
+    if (!baseShiire[base]) baseShiire[base] = { included: [], shiire: [], name: '' };
+    if (!baseShiire[base].name && name) baseShiire[base].name = name;
+    if (stat === '仕入れ') {
+      baseShiire[base].shiire.push(sr);
+    } else {
+      baseShiire[base].included.push(sr);
+    }
+  }
+
+  var totalWithInv = cat.suffix.count + cat.plain.count + cat.pSeries.count + cat.other.count;
+  var rawUnique    = Object.keys(rawInvSet).length;
+  var baseUnique   = Object.keys(baseInvSet).length;
+
+  out.push('');
+  out.push('フォーマット別集計:');
+  out.push('  #XXXX-NN形式 : ' + cat.suffix.count  + '行  例: ' + cat.suffix.ex.join(' / '));
+  out.push('  #XXXXのみ   : ' + cat.plain.count   + '行  例: ' + cat.plain.ex.join(' / '));
+  out.push('  PXXXX系     : ' + cat.pSeries.count + '行  例: ' + cat.pSeries.ex.join(' / '));
+  out.push('  その他      : ' + cat.other.count   + '行  例: ' + cat.other.ex.join(' / '));
+  out.push('');
+  out.push('請求書番号あり行合計   : ' + totalWithInv + '行');
+  out.push('ユニーク請求書番号(生) : ' + rawUnique + '件');
+  out.push('ユニーク基番号(-NN除去): ' + baseUnique + '件');
+
+  // 複数rawが同一基番号を持つ系列一覧
+  var mergeList = [];
+  Object.keys(baseToRaws).forEach(function(b) {
+    var raws = Object.keys(baseToRaws[b]);
+    if (raws.length > 1) mergeList.push({ base: b, raws: raws.sort() });
+  });
+  mergeList.sort(function(a, b) { return b.raws.length - a.raws.length; });
+  out.push('');
+  out.push('--- 複数rawが同一基番号に束まる系列: ' + mergeList.length + '件 ---');
+  mergeList.forEach(function(m) {
+    out.push('  ' + m.base + ' (' + m.raws.length + '種) → ' + m.raws.join(', '));
+  });
+
+  // §2: 仕入れ混在系列
+  out.push('');
+  out.push('=== §2: 仕入れ行が混在する基番号系列 ===');
+  var mixedList = [];
+  Object.keys(baseShiire).forEach(function(base) {
+    var b = baseShiire[base];
+    if (b.shiire.length > 0 && b.included.length > 0) {
+      mixedList.push({ base: base, included: b.included, shiire: b.shiire, name: b.name });
+    }
+  });
+
+  if (mixedList.length === 0) {
+    out.push('  (混在なし)');
+  } else {
+    out.push('混在系列数: ' + mixedList.length + '件');
+    mixedList.forEach(function(m) {
+      out.push('');
+      out.push('  基番号: ' + m.base + ' / 取引先: ' + m.name);
+
+      // 仕入れ行の金額も表示
+      var shiireDetail = m.shiire.map(function(sr) {
+        var r = allData[sr - 1];
+        var cont = String(r[SALES_COL.INV_CONT]   || '').trim();
+        var qty  = r[SALES_COL.QTY]               || '';
+        var prc  = r[SALES_COL.UNIT_PRICE]        || '';
+        return 'row' + sr + '(仕入れ|' + cont + '|qty=' + qty + '@' + prc + ')';
+      });
+      out.push('  仕入れ: ' + shiireDetail.join(' / '));
+      out.push('  売上: rows=' + m.included.join(','));
+    });
+  }
+
+  out.push('');
+  out.push('=== audit完了 ===');
   var result = out.join('\n');
   Logger.log(result);
   return result;
