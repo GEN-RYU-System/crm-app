@@ -344,31 +344,42 @@ function getFixedRowIds() {
 }
 
 /**
+ * 任意マスタの特定行を全列ヘッダー付きでダンプ（列ずれ・値確認用）
+ * @param {string} sheetName  - シート名（例: '配送先マスタ'）
+ * @param {string} idHeader   - 検索列名（例: '配送先ID'）
+ * @param {string} idValue    - 検索値（例: 'AD-00053'）
+ * @returns {Object} { found, totalCols, headers, row, types }
+ */
+function dumpMasterRow(sheetName, idHeader, idValue) {
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName(sheetName);
+  if (!sh) return { error: sheetName + ' が存在しません' };
+  var data = sh.getDataRange().getValues();
+  var h    = data[0];
+  var idIdx = h.indexOf(idHeader);
+  if (idIdx < 0) return { error: idHeader + ' 列が見つかりません (headers: ' + h.slice(0, 10).join('|') + ')' };
+
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idIdx]).trim() !== String(idValue).trim()) continue;
+    var row   = {};
+    var types = {};
+    h.forEach(function(col, ci) {
+      var label = 'col' + (ci + 1) + ':' + (col || '(空)');
+      row[label]   = data[i][ci];
+      types[label] = typeof data[i][ci];
+    });
+    return { found: true, sheet: sheetName, totalCols: h.length, headers: h, row: row, types: types };
+  }
+  return { found: false, sheet: sheetName, idHeader: idHeader, idValue: idValue };
+}
+
+/**
  * 支払先マスタの特定行を全列ヘッダー付きでダンプ（列ずれ診断用）
  * @param {string} payId - 'PY-XXXXX'
  * @returns {Object} { totalCols, headers, row, types }
  */
 function dumpPayeeRow(payId) {
-  var ss = getSpreadsheet();
-  var sh = ss.getSheetByName(CONFIG.SHEETS.CRM_PAYMENT);
-  if (!sh) return { error: CONFIG.SHEETS.CRM_PAYMENT + ' が存在しません' };
-  var data = sh.getDataRange().getValues();
-  var h    = data[0];
-  var idIdx = h.indexOf('支払先ID');
-  if (idIdx < 0) return { error: '支払先ID列が見つかりません' };
-
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][idIdx]).trim() !== payId) continue;
-    var row   = {};
-    var types = {};
-    h.forEach(function(col, ci) {
-      var label = 'col' + (ci + 1) + ':' + col;
-      row[label]   = data[i][ci];
-      types[label] = typeof data[i][ci];
-    });
-    return { found: true, totalCols: h.length, headers: h, row: row, types: types };
-  }
-  return { found: false, payId: payId };
+  return dumpMasterRow(CONFIG.SHEETS.CRM_PAYMENT, '支払先ID', payId);
 }
 
 /**
