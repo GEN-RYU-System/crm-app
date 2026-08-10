@@ -1519,3 +1519,206 @@ function auditProfitFormulas() {
   Logger.log(result);
   return result;
 }
+
+// ============================================================
+// Phase3: 発送先突合（売上データ vs オーダー管理/配送先マスタ）
+// 読み取り専用・書き込みなし
+// ============================================================
+function auditShippingMatch() {
+  var ss = getSpreadsheet();
+  var lines = ['=== Phase3: 発送先突合 ===', ''];
+
+  // ── 売上データ ──
+  var sdSheet = ss.getSheetByName(CONFIG.SHEETS.SALES_DATA);
+  if (!sdSheet) { lines.push('[ERROR] シートが見つかりません: ' + CONFIG.SHEETS.SALES_DATA); Logger.log(lines.join('\n')); return lines.join('\n'); }
+  var DATA_START = 61;
+  var N_ROWS     = 651;
+  // col1-39 (idx0-38): country(col39/idx38) が最終
+  var sdData = sdSheet.getRange(DATA_START, 1, N_ROWS, 39).getValues();
+
+  // ── オーダー管理 ──
+  var omSheet = ss.getSheetByName(CONFIG.SHEETS.ORDER_MASTER);
+  if (!omSheet) { lines.push('[ERROR] シートが見つかりません: ' + CONFIG.SHEETS.ORDER_MASTER); Logger.log(lines.join('\n')); return lines.join('\n'); }
+  var omLast = omSheet.getLastRow();
+  var omData  = omLast >= 2 ? omSheet.getRange(2, 1, omLast - 1, 4).getValues() : [];
+  // OM 0-based: odId=0, inv=1, ctId=2, adId=3
+  var omMap = {};  // baseInvNo → {odId, ctId, adId}
+  omData.forEach(function(r) {
+    var inv  = String(r[1] || '').trim();
+    if (!inv) return;
+    var base = inv.replace(/-\d+$/, '');
+    if (!omMap[base]) omMap[base] = { odId: String(r[0] || '').trim(), ctId: String(r[2] || '').trim(), adId: String(r[3] || '').trim() };
+  });
+
+  // ── 配送先マスタ ──
+  var adSheet = ss.getSheetByName(CONFIG.SHEETS.CRM_SHIPPING);
+  if (!adSheet) { lines.push('[ERROR] シートが見つかりません: ' + CONFIG.SHEETS.CRM_SHIPPING); Logger.log(lines.join('\n')); return lines.join('\n'); }
+  var adLast = adSheet.getLastRow();
+  var adData  = adLast >= 2 ? adSheet.getRange(2, 1, adLast - 1, 11).getValues() : [];
+  // AD 0-based: adId=0, ctId=1, name=2, a1=3, a2=4, a3=5, city=6, state=7, zip=8, country=9, phone=10
+  var adMap = {};  // adId → row
+  adData.forEach(function(r) {
+    var id = String(r[0] || '').trim();
+    if (id) adMap[id] = r;
+  });
+
+  // ── 顧客マスタ ──
+  var ctSheet = ss.getSheetByName(CONFIG.SHEETS.CRM_CUSTOMERS);
+  if (!ctSheet) { lines.push('[ERROR] シートが見つかりません: ' + CONFIG.SHEETS.CRM_CUSTOMERS); Logger.log(lines.join('\n')); return lines.join('\n'); }
+  var ctLast = ctSheet.getLastRow();
+  var ctData  = ctLast >= 2 ? ctSheet.getRange(2, 1, ctLast - 1, 3).getValues() : [];
+  // CT 0-based: ctId=0, custName=2
+  var ctMap = {};
+  ctData.forEach(function(r) {
+    var id = String(r[0] || '').trim();
+    if (id) ctMap[id] = String(r[2] || '').trim();
+  });
+
+  // ── フィルタ: col29(idx28)受取人 または col33(idx32)住所1 に値あり ──
+  var targets = [];
+  sdData.forEach(function(row, idx) {
+    var recip = String(row[28] || '').trim();
+    var addr1 = String(row[32] || '').trim();
+    if (recip || addr1) targets.push({ row: row, sdRow: DATA_START + idx });
+  });
+  lines.push('対象行数（col29 or col33 に値あり）: ' + targets.length + '件');
+  lines.push('OM登録済みオーダー数: ' + Object.keys(omMap).length);
+  lines.push('配送先マスタ件数: ' + Object.keys(adMap).length);
+  lines.push('');
+
+  // ── 正規化ヘルパー ──
+  function norm(s) {
+    s = String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    var abbr = { 'st.': 'street', 'ave.': 'avenue', 'blvd.': 'boulevard',
+                 'rd.': 'road', 'dr.': 'drive', 'ln.': 'lane', 'ct.': 'court',
+                 'pl.': 'place', 'apt.': 'apartment', 'ste.': 'suite' };
+    Object.keys(abbr).forEach(function(k) { s = s.split(k).join(abbr[k]); });
+    return s.trim();
+  }
+
+  function cmp(sdVal, adVal) {
+    var sd = String(sdVal || '').trim();
+    var ad = String(adVal || '').trim();
+    if (sd === '' && ad === '') return 'BOTH_EMPTY';
+    if (sd === '' && ad !== '') return 'SD_EMPTY';
+    if (sd !== '' && ad === '') return 'AD_EMPTY';
+    if (sd === ad)              return 'EXACT';
+    if (norm(sd) === norm(ad))  return 'TYPO';
+    return 'MISMATCH';
+  }
+
+  // ── 行ごと突合 ──
+  var stats = { total: targets.length, exact: 0, typo: 0, sdPartial: 0, mismatch: 0, noOrder: 0, noAd: 0 };
+  var mismatchOdSet = {};
+  var mismatchCtSet = {};
+  var detLines = [];
+
+  targets.forEach(function(item) {
+    var row   = item.row;
+    var sdRow = item.sdRow;
+
+    // SD shipping fields (0-based)
+    var sdInvNo   = String(row[11] || '').trim(); // col12: 請求書番号
+    var sdRecip   = String(row[28] || '').trim(); // col29: 受取人
+    var sdPhone   = String(row[29] || '').trim(); // col30: 電話
+    var sdAddr1   = String(row[32] || '').trim(); // col33: 住所1
+    var sdAddr2   = String(row[33] || '').trim(); // col34: 住所2
+    var sdCity    = String(row[35] || '').trim(); // col36: 都市
+    var sdState   = String(row[36] || '').trim(); // col37: 州
+    var sdZip     = String(row[37] || '').trim(); // col38: ZIP
+    var sdCountry = String(row[38] || '').trim(); // col39: 国
+
+    // OM lookup
+    var baseInv = sdInvNo.replace(/-\d+$/, '');
+    var om = omMap[baseInv];
+    if (!om) {
+      stats.noOrder++;
+      detLines.push('row' + sdRow + ' [NoOrder] inv=' + sdInvNo + ' 受取人=' + sdRecip);
+      return;
+    }
+
+    var odId     = om.odId;
+    var ctId     = om.ctId;
+    var adId     = om.adId;
+    var custName = ctMap[ctId] || '(不明)';
+
+    // AD lookup
+    var ad = adMap[adId];
+    if (!ad) {
+      stats.noAd++;
+      detLines.push('row' + sdRow + ' [NoAD] inv=' + sdInvNo + ' ' + odId + '/' + adId + ' cust=' + custName);
+      return;
+    }
+
+    // Compare 8 fields
+    var fieldDefs = [
+      { label: '受取人', sd: sdRecip,   ad: String(ad[2]  || '') },
+      { label: '住所1',  sd: sdAddr1,   ad: String(ad[3]  || '') },
+      { label: '住所2',  sd: sdAddr2,   ad: String(ad[4]  || '') },
+      { label: '都市',   sd: sdCity,    ad: String(ad[6]  || '') },
+      { label: '州',     sd: sdState,   ad: String(ad[7]  || '') },
+      { label: 'ZIP',    sd: sdZip,     ad: String(ad[8]  || '') },
+      { label: '国',     sd: sdCountry, ad: String(ad[9]  || '') },
+      { label: '電話',   sd: sdPhone,   ad: String(ad[10] || '') }
+    ];
+
+    var hasMismatch = false, hasTypo = false, hasSdEmpty = false;
+    var anomalyParts = [];
+    fieldDefs.forEach(function(f) {
+      var r = cmp(f.sd, f.ad);
+      if (r === 'MISMATCH') {
+        hasMismatch = true;
+        anomalyParts.push(f.label + ':MISMATCH(SD="' + f.sd + '" AD="' + f.ad + '")');
+      } else if (r === 'TYPO') {
+        hasTypo = true;
+        anomalyParts.push(f.label + ':TYPO(SD="' + f.sd + '" AD="' + f.ad + '")');
+      } else if (r === 'SD_EMPTY') {
+        hasSdEmpty = true;
+        anomalyParts.push(f.label + ':SD_EMPTY(AD="' + f.ad + '")');
+      } else if (r === 'AD_EMPTY') {
+        anomalyParts.push(f.label + ':AD_EMPTY(SD="' + f.sd + '")');
+      }
+    });
+
+    var judgment;
+    if (hasMismatch) {
+      judgment = '不一致';
+      stats.mismatch++;
+      mismatchOdSet[odId] = true;
+      mismatchCtSet[ctId] = true;
+    } else if (hasTypo) {
+      judgment = '表記ゆれ';
+      stats.typo++;
+    } else if (hasSdEmpty) {
+      judgment = '一致(SD欠損あり)';
+      stats.sdPartial++;
+    } else {
+      judgment = '一致';
+      stats.exact++;
+    }
+
+    var suffix = anomalyParts.length > 0 ? ' | ' + anomalyParts.join(' / ') : '';
+    detLines.push('row' + sdRow + ' [' + judgment + '] inv=' + sdInvNo + ' ' + odId + '/' + adId + ' cust=' + custName + suffix);
+  });
+
+  // ── 出力 ──
+  lines.push('--- 詳細 ---');
+  detLines.forEach(function(l) { lines.push(l); });
+  lines.push('');
+  lines.push('--- 集計 ---');
+  lines.push('対象合計:                 ' + stats.total);
+  lines.push('一致:                     ' + stats.exact);
+  lines.push('一致(SD欠損あり):         ' + stats.sdPartial);
+  lines.push('表記ゆれ:                 ' + stats.typo);
+  lines.push('不一致:                   ' + stats.mismatch);
+  lines.push('  うち不一致オーダー数:   ' + Object.keys(mismatchOdSet).length);
+  lines.push('  うち不一致顧客数:       ' + Object.keys(mismatchCtSet).length);
+  lines.push('NoOrder（OM未登録）:       ' + stats.noOrder);
+  lines.push('NoAD（配送先マスタ未登録）: ' + stats.noAd);
+  lines.push('');
+  lines.push('=== 調査完了 ===');
+
+  var result = lines.join('\n');
+  Logger.log(result);
+  return result;
+}
