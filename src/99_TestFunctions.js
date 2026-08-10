@@ -404,32 +404,42 @@ function cleanupFormTestData(mode) {
   var lines = ['=== cleanupFormTestData [' + (isConfirm ? 'CONFIRM' : 'DRY RUN') + '] ===', ''];
 
   // ---------- 削除対象定義 ----------
-  // idCol: 検索対象の列名  ids: 一致させる値  keyCol: ログ用補助列  matchAll: true=idColで全一致行を収集
+  // matchCol: 検索列  matchVals: 一致値  idCol: ログ用ID列（matchColと異なる場合）
+  // keyCol: ログ用補助列  extraCols: ログに追記する補助列リスト
   var targets = [
     {
       sheet: CONFIG.SHEETS.CRM_CUSTOMERS,
-      idCol: '顧客ID',   ids: ['CT-00053'],  keyCol: '顧客名',
-      label: '顧客マスタ',   expectedDataRows: 51
+      matchCol: '顧客ID',  matchVals: ['CT-00053'],
+      idCol:    '顧客ID',  keyCol: '顧客名',
+      label: '顧客マスタ', expectedDataRows: 51
     },
     {
+      // 配送先: 顧客ID = CT-00053 に紐づく全行を動的収集
       sheet: CONFIG.SHEETS.CRM_SHIPPING,
-      idCol: '配送先ID', ids: ['AD-00052'],  keyCol: '宛名',
+      matchCol: '顧客ID',  matchVals: ['CT-00053'],
+      idCol:    '配送先ID', keyCol: '宛名',
+      extraCols: ['国', 'City'],
       label: '配送先マスタ', expectedDataRows: 51
     },
     {
+      // 支払先: 顧客ID = CT-00053 に紐づく全行を動的収集
       sheet: CONFIG.SHEETS.CRM_PAYMENT,
-      idCol: '支払先ID', ids: ['PY-00052'],  keyCol: '請求名義',
+      matchCol: '顧客ID',  matchVals: ['CT-00053'],
+      idCol:    '支払先ID', keyCol: '請求名義',
+      extraCols: ['国', 'City'],
       label: '支払先マスタ', expectedDataRows: 51
     },
     {
       sheet: FORM_TOKEN_SHEET,
-      idCol: 'リードID',  ids: ['LDI-00235'], keyCol: 'トークン',
+      matchCol: 'リードID', matchVals: ['LDI-00235'],
+      idCol:    'リードID', keyCol: 'トークン',
       label: 'フォームトークン', expectedDataRows: 0
     },
     {
       sheet: CONFIG.SHEETS.LEADS,
-      idCol: 'リードID',  ids: ['LDI-00235'], keyCol: '顧客名',
-      label: 'リード管理',  expectedDataRows: null  // 行数検証なし
+      matchCol: 'リードID', matchVals: ['LDI-00235'],
+      idCol:    'リードID', keyCol: '顧客名',
+      label: 'リード管理', expectedDataRows: null  // 行数検証なし
     }
   ];
 
@@ -439,25 +449,31 @@ function cleanupFormTestData(mode) {
     var sh = ss.getSheetByName(t.sheet);
     if (!sh) { lines.push('[' + t.label + '] シートなし'); return; }
 
-    var data  = sh.getDataRange().getValues();
-    var h     = data[0];
-    var idIdx  = h.indexOf(t.idCol);
-    var keyIdx = h.indexOf(t.keyCol);
-    if (idIdx < 0) { lines.push('[' + t.label + '] ' + t.idCol + ' 列なし'); return; }
+    var data     = sh.getDataRange().getValues();
+    var h        = data[0];
+    var matchIdx = h.indexOf(t.matchCol);
+    var idIdx    = h.indexOf(t.idCol);
+    var keyIdx   = h.indexOf(t.keyCol);
+    if (matchIdx < 0) { lines.push('[' + t.label + '] ' + t.matchCol + ' 列なし'); return; }
 
     // 対象行を収集
     var toDelete = [];
     for (var i = 1; i < data.length; i++) {
-      var rowId = String(data[i][idIdx] || '').trim();
-      if (t.ids.indexOf(rowId) >= 0) {
-        var keyVal = keyIdx >= 0 ? String(data[i][keyIdx] || '') : '?';
-        toDelete.push({ rowNum: i + 1, id: rowId, key: keyVal });
-      }
+      var matchVal = String(data[i][matchIdx] || '').trim();
+      if (t.matchVals.indexOf(matchVal) < 0) continue;
+      var rowId  = idIdx  >= 0 ? String(data[i][idIdx]  || '') : '?';
+      var keyVal = keyIdx >= 0 ? String(data[i][keyIdx] || '') : '?';
+      var extras = (t.extraCols || []).map(function(col) {
+        var ci = h.indexOf(col);
+        return col + '=' + (ci >= 0 ? String(data[i][ci] || '') : '?');
+      });
+      toDelete.push({ rowNum: i + 1, id: rowId, key: keyVal, extras: extras });
     }
 
     lines.push('[' + t.label + '] ' + toDelete.length + '行対象');
     toDelete.forEach(function(r) {
-      lines.push('  行' + r.rowNum + ': ' + r.id + ' / ' + t.keyCol + '="' + r.key + '"');
+      var extra = r.extras.length ? ' [' + r.extras.join(', ') + ']' : '';
+      lines.push('  行' + r.rowNum + ': ' + r.id + ' / ' + t.keyCol + '="' + r.key + '"' + extra);
     });
     totalFound += toDelete.length;
 
