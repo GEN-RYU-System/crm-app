@@ -1974,3 +1974,159 @@ function addArselShippingDryRun() {
   Logger.log(result);
   return result;
 }
+
+// ============================================================
+// ARSEL SLU 別発送先 CONFIRM（書き込み）
+//   住所A 国番号修正: "" → "376"（367830はアンドラ番号376-367830と一致）
+// ============================================================
+function addArselShippingConfirm() {
+  var ss = getSpreadsheet();
+  var lines = ['=== ARSEL SLU 別発送先 CONFIRM ===', ''];
+
+  // ─── 配送先マスタへ2行追加 ───
+  var adSheet = ss.getSheetByName(CONFIG.SHEETS.CRM_SHIPPING);
+  var adLast  = adSheet.getLastRow();
+  lines.push('追加前 配送先マスタ データ行数: ' + (adLast - 1));
+
+  // 住所A: AD-00052（#0909/#0911用）国番号=376
+  var newRowA = [
+    'AD-00052', 'CT-00051', 'Endika Perez Alonso',
+    'Carrer de la Germandat', 'de Sant Sebastia, 34', '',
+    "La Seu d'Urgell", 'Lleida', '25700', 'Spain',
+    '367830', '376',
+    '', '', false, false
+  ];
+  // 住所B: AD-00053（#0914/#0915用）国番号=376
+  var newRowB = [
+    'AD-00053', 'CT-00051', 'ARSEL SLU',
+    'N-145, Km. 9', '', '',
+    'La Farga de Moles', 'Lleida', '25799', 'Spain',
+    '367830', '376',
+    '', '', false, false
+  ];
+
+  var rowA = adLast + 1;
+  var rowB = adLast + 2;
+
+  // '@' テキスト書式を先に設定（電話=col11, 国番号=col12）
+  adSheet.getRange(rowA, 11, 2, 2).setNumberFormat('@');
+
+  adSheet.getRange(rowA, 1, 1, 16).setValues([newRowA]);
+  adSheet.getRange(rowB, 1, 1, 16).setValues([newRowB]);
+
+  lines.push('[WRITE] 配送先マスタ row' + rowA + ': ' + newRowA[0]);
+  lines.push('[WRITE] 配送先マスタ row' + rowB + ': ' + newRowB[0]);
+  lines.push('');
+
+  // ─── OM 配送先ID付け替え ───
+  var omSheet = ss.getSheetByName(CONFIG.SHEETS.ORDER_MASTER);
+  var omLast  = omSheet.getLastRow();
+  var omData  = omLast >= 2 ? omSheet.getRange(2, 1, omLast - 1, 4).getValues() : [];
+
+  var targetOdMap = {
+    'OD-00161': 'AD-00052',
+    'OD-00163': 'AD-00052',
+    'OD-00164': 'AD-00053',
+    'OD-00165': 'AD-00053'
+  };
+
+  var writeLog = [];
+  omData.forEach(function(r, idx) {
+    var odId    = String(r[0] || '').trim();
+    var newAdId = targetOdMap[odId];
+    if (newAdId) {
+      var before = String(r[3] || '').trim();
+      omSheet.getRange(idx + 2, 4).setValue(newAdId);
+      writeLog.push('  ' + odId + ' (OMrow' + (idx + 2) + '): ' + before + ' → ' + newAdId);
+    }
+  });
+
+  lines.push('[WRITE] OM 配送先ID付け替え: ' + writeLog.length + '件');
+  writeLog.forEach(function(l) { lines.push(l); });
+  lines.push('');
+
+  // ─── 検証（生値で報告）───
+  lines.push('--- 検証 ---');
+  SpreadsheetApp.flush(); // 書き込みをフラッシュしてから読み直す
+
+  // V1: 行数
+  var adLastAfter = adSheet.getLastRow();
+  var dataCount   = adLastAfter - 1;
+  lines.push('V1 配送先マスタ データ行数: ' + dataCount + (dataCount === 53 ? ' [OK]' : ' [FAIL: expected 53]'));
+
+  // V2: 新2行の全値・型
+  var newRows = adSheet.getRange(rowA, 1, 2, 16).getValues();
+  lines.push('V2 新2行 実値:');
+  ['AD-00052', 'AD-00053'].forEach(function(expId, i) {
+    var r = newRows[i];
+    var phoneVal  = r[10];
+    var ccVal     = r[11];
+    var defVal    = r[14];
+    var activeVal = r[15];
+    lines.push('  ' + expId + ':');
+    lines.push('    既定=' + defVal + '(' + typeof defVal + ')'
+      + ' 有効=' + activeVal + '(' + typeof activeVal + ')'
+      + ' [' + (defVal === false && activeVal === false ? 'OK' : 'FAIL') + ']');
+    lines.push('    電話="' + phoneVal + '" type=' + typeof phoneVal
+      + ' [' + (typeof phoneVal === 'string' ? 'OK' : 'FAIL') + ']');
+    lines.push('    国番号="' + ccVal + '" type=' + typeof ccVal
+      + ' [' + (typeof ccVal === 'string' ? 'OK' : 'FAIL') + ']');
+  });
+
+  // V3: 4オーダーの配送先ID
+  var omDataAfter = omSheet.getRange(2, 1, omLast - 1, 4).getValues();
+  lines.push('V3 OM 配送先ID付け替え確認:');
+  var v3pass = 0;
+  omDataAfter.forEach(function(r) {
+    var odId     = String(r[0] || '').trim();
+    var adId     = String(r[3] || '').trim();
+    var expected = targetOdMap[odId];
+    if (expected) {
+      var ok = adId === expected;
+      if (ok) v3pass++;
+      lines.push('  ' + odId + ': ' + adId + (ok ? ' [OK]' : ' [FAIL: expected ' + expected + ']'));
+    }
+  });
+  lines.push('  → ' + v3pass + '/4 [' + (v3pass === 4 ? 'OK' : 'FAIL') + ']');
+
+  // V4: AD-00052/00053 の ctId
+  var adIdCtData = adSheet.getRange(2, 1, adLastAfter - 1, 2).getValues();
+  var adIdCtMap  = {};
+  adIdCtData.forEach(function(r) { adIdCtMap[String(r[0] || '').trim()] = String(r[1] || '').trim(); });
+  lines.push('V4 AD-00052/00053 顧客ID:');
+  ['AD-00052', 'AD-00053'].forEach(function(id) {
+    var ctId = adIdCtMap[id] || '(not found)';
+    lines.push('  ' + id + ': ctId=' + ctId + ' [' + (ctId === 'CT-00051' ? 'OK' : 'FAIL') + ']');
+  });
+
+  // V5: CT-00051 の 既定=TRUE が AD-00050 のみ
+  var adFullData = adSheet.getRange(2, 1, adLastAfter - 1, 16).getValues();
+  var ct51defs = adFullData
+    .filter(function(r) { return String(r[1] || '').trim() === 'CT-00051' && r[14] === true; })
+    .map(function(r) { return String(r[0] || '').trim(); });
+  var v5ok = ct51defs.length === 1 && ct51defs[0] === 'AD-00050';
+  lines.push('V5 CT-00051 既定=TRUE: count=' + ct51defs.length + ' ids=' + ct51defs.join(',')
+    + ' [' + (v5ok ? 'OK' : 'FAIL: expected 1 entry AD-00050') + ']');
+
+  // V6: 孤児オーダー0件
+  var adIdSet = {};
+  adFullData.forEach(function(r) {
+    var id = String(r[0] || '').trim();
+    if (id) adIdSet[id] = true;
+  });
+  var orphans = [];
+  omDataAfter.forEach(function(r) {
+    var odId = String(r[0] || '').trim();
+    var adId = String(r[3] || '').trim();
+    if (adId && !adIdSet[adId]) orphans.push(odId + '→' + adId);
+  });
+  lines.push('V6 孤児オーダー: ' + orphans.length + '件'
+    + (orphans.length === 0 ? ' [OK]' : ' [FAIL] ' + orphans.join(' ')));
+
+  lines.push('');
+  lines.push('=== CONFIRM完了 ===');
+
+  var result = lines.join('\n');
+  Logger.log(result);
+  return result;
+}
