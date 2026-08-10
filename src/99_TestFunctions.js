@@ -1357,3 +1357,93 @@ function dumpSalesDataDetails() {
 
   return lines.join('\n');
 }
+
+/**
+ * 売上データ 61行目以降で 請求書番号(col12)が空の行一覧（読み取り専用）
+ */
+function dumpEmptyInvoiceRows() {
+  var lines = ['=== dumpEmptyInvoiceRows ===', ''];
+
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName(CONFIG.SHEETS.SALES_DATA);
+  if (!sh) { return 'エラー: 売上データ タブなし'; }
+
+  var allData = sh.getDataRange().getValues();
+  var DATA_START = 60; // 0-indexed（row61〜）
+
+  var C_STATUS = 0;   // col1  ステータス
+  var C_CUST   = 5;   // col6  取引先名
+  var C_ITEM8  = 7;   // col8  商品名
+  var C_ITEM10 = 9;   // col10 請求書内容
+  var C_QTY    = 10;  // col11 数量
+  var C_INVNO  = 11;  // col12 請求書番号
+  var C_PRICE  = 14;  // col15 単価
+  var C_SHIP   = 17;  // col18 送料
+  var C_CURR   = 19;  // col20 通貨
+  var C_ISSDT  = 22;  // col23 請求書発行日
+  var C_PAYDT  = 24;  // col25 支払確認日
+  var C_SENDT  = 78;  // col79 発送日
+  var C_TRACK  = 79;  // col80 運送状番号
+
+  function fmtDate(v) {
+    if (!v || v === '') return '';
+    if (v instanceof Date) return v.toISOString().slice(0, 10);
+    return String(v).slice(0, 10);
+  }
+
+  var emptyRows = [];
+  for (var i = DATA_START; i < allData.length; i++) {
+    var row = allData[i];
+    if (String(row[C_INVNO] || '').trim() !== '') continue;
+    emptyRows.push({ idx: i, row: row });
+  }
+
+  lines.push('請求書番号が空の行: ' + emptyRows.length + '件（61行目以降）');
+  lines.push('');
+
+  lines.push('--- 全件一覧 ---');
+  emptyRows.forEach(function(e) {
+    var r = e.row;
+    var trackStr = String(r[C_TRACK] || '');
+    lines.push(
+      'row' + (e.idx + 1) +
+      ' | ステータス=' + JSON.stringify(String(r[C_STATUS] || '')) +
+      ' | 取引先=' + JSON.stringify(String(r[C_CUST] || '').slice(0, 25)) +
+      ' | 商品名(8)=' + JSON.stringify(String(r[C_ITEM8] || '').slice(0, 30)) +
+      ' | 内容(10)=' + JSON.stringify(String(r[C_ITEM10] || '').slice(0, 30)) +
+      ' | 数量=' + JSON.stringify(r[C_QTY]) +
+      ' | 単価=' + JSON.stringify(r[C_PRICE]) +
+      ' | 送料=' + JSON.stringify(r[C_SHIP]) +
+      ' | 通貨=' + JSON.stringify(String(r[C_CURR] || '')) +
+      ' | 請求書発行日=' + fmtDate(r[C_ISSDT]) +
+      ' | 支払確認日=' + fmtDate(r[C_PAYDT]) +
+      ' | 発送日=' + fmtDate(r[C_SENDT]) +
+      ' | 運送状番号=' + JSON.stringify(trackStr)
+    );
+  });
+  lines.push('');
+
+  var custBlankCount = emptyRows.filter(function(e) {
+    return String(e.row[C_CUST] || '').trim() === '';
+  }).length;
+  var dataBlankCount = emptyRows.filter(function(e) {
+    return String(e.row[C_QTY] || '').trim() === '' && String(e.row[C_PRICE] || '').trim() === '';
+  }).length;
+
+  var statusMap = {};
+  emptyRows.forEach(function(e) {
+    var st = String(e.row[C_STATUS] || '(空)').trim() || '(空)';
+    statusMap[st] = (statusMap[st] || 0) + 1;
+  });
+
+  lines.push('--- 集計 ---');
+  lines.push('  取引先名も空: ' + custBlankCount + '件');
+  lines.push('  数量・単価とも空（実質空行候補）: ' + dataBlankCount + '件');
+  lines.push('  ステータス内訳:');
+  Object.keys(statusMap).sort().forEach(function(k) {
+    lines.push('    ' + k + ': ' + statusMap[k] + '件');
+  });
+  lines.push('');
+
+  return lines.join('\n');
+}
