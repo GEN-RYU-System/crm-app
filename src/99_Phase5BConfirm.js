@@ -502,3 +502,129 @@ function verifyPhase5B() {
   Logger.log(result);
   return result;
 }
+
+// ============================================================
+// 修正4 突合妥当性確認（読み取りのみ）
+// ============================================================
+function auditOrphanDep() {
+  var ss        = getSpreadsheet();
+  var lines     = ['=== 修正4 突合妥当性確認 ===', ''];
+  var DATA_START = 61;
+  var sdSheet   = ss.getSheetByName(CONFIG.SHEETS.SALES_DATA);
+
+  // ── ヘッダー行確認（col1-12）──
+  var headerRow = sdSheet.getRange(DATA_START - 1, 1, 1, 12).getValues()[0];
+  lines.push('--- 売上データ col1-12 ヘッダー ---');
+  headerRow.forEach(function(h, i) {
+    if (h) lines.push('  col' + (i + 1) + ': ' + h);
+  });
+  lines.push('');
+
+  // ── 売上データ読み込み ──
+  var rA = sdSheet.getRange(DATA_START, 1,  651, 12).getValues(); // col1-12
+  var rC = sdSheet.getRange(DATA_START, 78, 651, 30).getValues(); // col78-107
+
+  function fmtD(v) {
+    if (v instanceof Date) return Utilities.formatDate(v, 'Asia/Tokyo', 'yyyy/MM/dd');
+    return (v === '' || v === null || v === undefined) ? '（空）' : String(v);
+  }
+
+  // ── 5件の比較 ──
+  var CASES = [
+    { ri: 21,  sdRow: 82,  odId: 'OD-00014', baseInv: '#0806', adjRi: 20,  adjRow: 81  },
+    { ri: 55,  sdRow: 116, odId: 'OD-00030', baseInv: '#0789', adjRi: 54,  adjRow: 115 },
+    { ri: 130, sdRow: 191, odId: 'OD-00053', baseInv: '#0808', adjRi: 129, adjRow: 190 },
+    { ri: 240, sdRow: 301, odId: 'OD-00094', baseInv: '#0847', adjRi: 239, adjRow: 300 },
+    { ri: 299, sdRow: 360, odId: 'OD-00108', baseInv: '#0862', adjRi: 298, adjRow: 359 }
+  ];
+
+  CASES.forEach(function(c) {
+    var oCust  = String(rA[c.ri][5]    || '').trim(); // col6 取引先名
+    var aCust  = String(rA[c.adjRi][5] || '').trim();
+    var oInv   = String(rA[c.ri][11]   || '').trim(); // col12 invNo
+    var aInv   = String(rA[c.adjRi][11]|| '').trim();
+
+    var oVal101   = String(rC[c.ri][23]    || '').trim(); // col101
+    var oAmount   = String(rC[c.ri][14]    || '').trim(); // col92
+    var aAmount   = String(rC[c.adjRi][14] || '').trim();
+    var oOrdDate  = fmtD(rC[c.ri][10]);                   // col88 注文日
+    var aOrdDate  = fmtD(rC[c.adjRi][10]);
+    var oCol105   = fmtD(rC[c.ri][27]);                   // col105
+    var oRelease  = fmtD(rC[c.ri][28]);                   // col106 発売予定日
+    var aRelease  = fmtD(rC[c.adjRi][28]);
+    var oDepRate  = String(rC[c.ri][29]    || '').trim(); // col107
+
+    var custMatch = (oCust !== '' && oCust === aCust);
+    var judgment  = custMatch
+      ? '✔ 取引先名一致 → 紐付け維持'
+      : (oCust === '' ? '△ orphan側col6が空（確認不可）' : '✘ 不一致 → 予約列を空に戻すべき');
+
+    lines.push('═══ row' + c.sdRow + ' → ' + c.odId + '(' + c.baseInv + ') ═══');
+    lines.push('取引先名:      orphan(row' + c.sdRow + ')="' + oCust + '"  adjacent(row' + c.adjRow + ')="' + aCust + '"');
+    lines.push('               → ' + judgment);
+    lines.push('invNo:         orphan="' + oInv + '"  adjacent="' + aInv + '"');
+    lines.push('col101:        "' + oVal101 + '"');
+    lines.push('金額(col92):   orphan=' + oAmount + '  adjacent=' + aAmount);
+    lines.push('注文日(col88): orphan=' + oOrdDate + '  adjacent=' + aOrdDate);
+    lines.push('col105:        orphan=' + oCol105);
+    lines.push('発売予定(106): orphan=' + oRelease + '  adjacent=' + aRelease);
+    lines.push('デポジット率:  orphan=' + oDepRate);
+    lines.push('');
+  });
+
+  // ── OM側データ（突合先オーダー）──
+  var omSheet    = ss.getSheetByName(CONFIG.SHEETS.ORDER_MASTER);
+  var omLast     = omSheet.getLastRow();
+  var omData     = omLast >= 2 ? omSheet.getRange(2, 1, omLast - 1, 26).getValues() : [];
+  var TARGET_ODS = ['OD-00014','OD-00030','OD-00053','OD-00094','OD-00108'];
+  var omByOdId   = {};
+  omData.forEach(function(row) {
+    var id = String(row[0] || '').trim();
+    if (TARGET_ODS.indexOf(id) >= 0) omByOdId[id] = row;
+  });
+
+  lines.push('--- OM側データ（突合先オーダー）---');
+  TARGET_ODS.forEach(function(id) {
+    var r = omByOdId[id];
+    if (!r) { lines.push(id + ': OMデータなし'); return; }
+    lines.push(id
+      + ' invNo='       + String(r[1] || '')
+      + ' 顧客ID='      + String(r[2] || '')
+      + ' ステータス='  + String(r[6] || '')
+      + ' 受注日='      + fmtD(r[7])
+      + ' 請求書発行日=' + fmtD(r[16])
+      + ' 支払確認日='  + fmtD(r[18]));
+  });
+  lines.push('');
+
+  // ── #DEP 0001 重複: row301 vs row360 ──
+  lines.push('--- #DEP 0001 重複確認: row301 vs row360 ---');
+  var ri301 = 240, ri360 = 299;
+
+  var FIELDS = [
+    { label: '取引先名(col6)',    v301: String(rA[ri301][5]  ||'').trim(), v360: String(rA[ri360][5]  ||'').trim() },
+    { label: 'invNo(col12)',      v301: String(rA[ri301][11] ||'').trim(), v360: String(rA[ri360][11] ||'').trim() },
+    { label: '金額(col92)',       v301: String(rC[ri301][14] ||'').trim(), v360: String(rC[ri360][14] ||'').trim() },
+    { label: '注文日(col88)',     v301: fmtD(rC[ri301][10]),               v360: fmtD(rC[ri360][10])               },
+    { label: 'col105',            v301: fmtD(rC[ri301][27]),               v360: fmtD(rC[ri360][27])               },
+    { label: '発売予定(col106)',  v301: fmtD(rC[ri301][28]),               v360: fmtD(rC[ri360][28])               },
+    { label: 'デポジット率(107)', v301: String(rC[ri301][29] ||'').trim(), v360: String(rC[ri360][29] ||'').trim() },
+    { label: '仕入元(col91)',     v301: String(rC[ri301][13] ||'').trim(), v360: String(rC[ri360][13] ||'').trim() }
+  ];
+
+  FIELDS.forEach(function(f) {
+    var same = (f.v301 === f.v360);
+    lines.push(f.label + ':');
+    lines.push('  row301: "' + f.v301 + '"');
+    lines.push('  row360: "' + f.v360 + '"');
+    lines.push('  → ' + (same ? '同一' : (f.v301 === '' || f.v360 === '' ? '片方空' : '異なる')));
+  });
+  lines.push('');
+  lines.push('隣接行:');
+  lines.push('  row300(ri=239) invNo="' + String(rA[239][11]||'') + '" 取引先="' + String(rA[239][5]||'') + '"');
+  lines.push('  row359(ri=298) invNo="' + String(rA[298][11]||'') + '" 取引先="' + String(rA[298][5]||'') + '"');
+
+  var result = lines.join('\n');
+  Logger.log(result);
+  return result;
+}
