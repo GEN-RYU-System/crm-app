@@ -946,3 +946,144 @@ function investigateInvBookRecon4() {
   L('=== investigateInvBookRecon4 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// investigateInvBookReconV4: 名寄せ再試算
+//   - PM0174 Symphonia 修正反映
+//   - レアリティ略号含む商品名は fuzzy 除外
+// ============================================================
+function investigateInvBookReconV4() {
+  var out = [];
+  function L(s) { out.push(String(s)); Logger.log(String(s)); }
+
+  var INV_BOOK_ID = '1or39_glwYtF9OfOxXizN8ZjcUKL0hNIeW3qP3nCx3AI';
+  var invSS, crmSS;
+  try {
+    invSS = SpreadsheetApp.openById(INV_BOOK_ID);
+    crmSS = getSpreadsheet();
+  } catch (e) {
+    L('[ERROR] ' + e.message); return out.join('\n');
+  }
+
+  // ── PM228 読み込み ─────────────────────────────────────────
+  var pmSh   = invSS.getSheetByName('商品マスタ');
+  var pmRaw  = pmSh.getRange(2, 1, pmSh.getLastRow() - 1, 20).getValues();
+  var pmList = pmRaw.map(function(r) {
+    return {
+      id:        String(r[0]  || '').trim(),
+      engTitle:  String(r[4]  || '').trim(),
+      jpnTitle:  String(r[3]  || '').trim(),
+      keywords:  String(r[11] || '').trim(),
+      reqOutput: String(r[15] || '').trim(),
+      relSeries: String(r[13] || '').trim()
+    };
+  }).filter(function(p) { return p.id; });
+
+  var pmEntries = pmList.map(function(pm) {
+    var kws = pm.keywords.split(',');
+    var directNorms = [
+      { v: _v3n(pm.engTitle),  label: 'EnglishTitle'   },
+      { v: _v3n(pm.jpnTitle),  label: 'JapaneseTitle'  },
+      { v: _v3n(pm.reqOutput), label: 'RequiredOutput' },
+      { v: _v3n(pm.relSeries), label: 'RelatedSeries'  }
+    ].filter(function(x) { return x.v.length >= 4; });
+    var kwNorms = kws.map(function(k) {
+      return { v: _v3n(k.trim()), raw: k.trim() };
+    }).filter(function(x) { return x.v.length >= 5; });
+    var rawFields = [pm.engTitle, pm.jpnTitle, pm.reqOutput, pm.relSeries].concat(kws);
+    var seenB = {};
+    var bases = rawFields.map(_v3b).filter(function(b) {
+      if (!b || b.length < 3 || seenB[b]) return false;
+      seenB[b] = true; return true;
+    });
+    return { id: pm.id, directNorms: directNorms, kwNorms: kwNorms, bases: bases };
+  });
+
+  // ── レアリティ略号チェック ──────────────────────────────────
+  // スペース・スラッシュ・ドット区切りでトークン化し、略号と完全一致するか判定
+  var RARITY_TOKENS = ['ar', 'sr', 'sar', 'rr', 'rrr', 'ur', 'chr', 'hr', 'ssr', 'tr', 'csr', 'acr'];
+  function _hasRarityToken(name) {
+    var tokens = _v3n(name).split(/[\s\/.,、＆&]+/);
+    return tokens.some(function(t) { return RARITY_TOKENS.indexOf(t) !== -1; });
+  }
+
+  // ── CRM オーダー明細 照合 ──────────────────────────────────
+  var olSh      = crmSS.getSheetByName('オーダー明細');
+  var olLastRow = olSh.getLastRow();
+  var olData    = olLastRow > 1 ? olSh.getRange(2, 1, olLastRow - 1, 10).getValues() : [];
+  L('CRMオーダー明細 データ行数: ' + olData.length);
+
+  var confirmed = 0, confirmedIds = {};
+  var fuzzyMap = {}, rarityExcMap = {}, unmatchedMap = {};
+
+  olData.forEach(function(row) {
+    var crmName = String(row[4] || '').trim();
+    if (!crmName) return;
+
+    var res = _v3match(crmName, pmEntries);
+
+    if (res.matched && !res.fuzzy) {
+      // 確定一致
+      confirmed++;
+      confirmedIds[res.pmId] = true;
+    } else {
+      unmatchedMap[crmName] = (unmatchedMap[crmName] || 0) + 1;
+      if (res.matched && res.fuzzy) {
+        if (_hasRarityToken(crmName)) {
+          // 新ルール: レアリティ略号含む → fuzzy 除外
+          var ek = crmName + '\x00' + res.pmId;
+          if (!rarityExcMap[ek]) rarityExcMap[ek] = res;
+        } else {
+          var fk = crmName + '\x00' + res.pmId;
+          if (!fuzzyMap[fk]) fuzzyMap[fk] = res;
+        }
+      }
+    }
+  });
+
+  // ── [1] 集計結果 ──────────────────────────────────────────
+  L('');
+  L('════════════════════════════════════');
+  L('[1] 名寄せ試算 v4 集計');
+  L('════════════════════════════════════');
+  L('確定一致件数: ' + confirmed + ' 件 （v3比較: 389件）');
+  L('確定一致商品ID種類: ' + Object.keys(confirmedIds).length + ' 種 （v3比較: 59種）');
+  L('');
+
+  // レアリティ除外されたfuzzy候補
+  var rkeys = Object.keys(rarityExcMap).sort();
+  L('★ レアリティ除外により fuzzy → 未一致に変更された候補: ' + rkeys.length + '種');
+  rkeys.forEach(function(ek) {
+    var f = rarityExcMap[ek];
+    L('  除外: "' + f.crmName + '" → ' + f.pmId + ' [base:"' + f.matchedVal + '" dist=' + f.dist + ']');
+  });
+  L('');
+
+  // 残存fuzzy（レアリティなし）
+  var fkeys = Object.keys(fuzzyMap).sort();
+  L('残存 fuzzy 候補（rarity除外後・確定外）: ' + fkeys.length + '件');
+  fkeys.forEach(function(fk) {
+    var f = fuzzyMap[fk];
+    L('  "' + f.crmName + '" → ' + f.pmId + ' [base:"' + f.matchedVal + '" dist=' + f.dist + ']');
+  });
+
+  // ── [2] 未一致 全件（件数降順） ──────────────────────────
+  L('');
+  L('════════════════════════════════════');
+  L('[2] 未一致の商品名 全件（件数降順）');
+  L('════════════════════════════════════');
+  var unmatchedKeys = Object.keys(unmatchedMap).sort(function(a, b) {
+    return unmatchedMap[b] - unmatchedMap[a];
+  });
+  L('未一致総種類数: ' + unmatchedKeys.length + '種');
+  unmatchedKeys.forEach(function(k) {
+    var base    = _v3b(k);
+    var rTag    = _hasRarityToken(k) ? ' [rarity]' : '';
+    var baseTag = (base && base.length >= 3) ? ' [base:"' + base + '"]' : '';
+    L('  ' + unmatchedMap[k] + '件  "' + k + '"' + rTag + baseTag);
+  });
+
+  L('');
+  L('=== investigateInvBookReconV4 完了 ===');
+  return out.join('\n');
+}
