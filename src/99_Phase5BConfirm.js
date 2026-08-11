@@ -750,6 +750,104 @@ function fixOrphanDepMatchings() {
 }
 
 // ============================================================
+// 修正4 最終整理: OD-00053リセット + Japhunter再確認 + 未割当一覧
+// ============================================================
+function finalizeOrphanDep() {
+  var ss      = getSpreadsheet();
+  var lines   = ['=== 修正4 最終整理 ===', ''];
+
+  var omSheet  = ss.getSheetByName(CONFIG.SHEETS.ORDER_MASTER);
+  var custSheet = ss.getSheetByName(CONFIG.SHEETS.CRM_CUSTOMERS);
+  var omLast   = omSheet.getLastRow();
+
+  // ── OM全読み込み（col1-33）──
+  var omData = omLast >= 2 ? omSheet.getRange(2, 1, omLast - 1, 33).getValues() : [];
+  var omRowByOdId = {};
+  omData.forEach(function(row, idx) {
+    var id = String(row[0] || '').trim();
+    if (id) omRowByOdId[id] = idx + 2;
+  });
+
+  function fmtD(v) {
+    if (v instanceof Date) return Utilities.formatDate(v, 'Asia/Tokyo', 'yyyy/MM/dd');
+    return (v === '' || v === null || v === undefined) ? '（空）' : String(v);
+  }
+
+  // ── [1] OD-00053 col31 リセット ──
+  lines.push('--- [1] OD-00053 col31 リセット ---');
+  var row53 = omRowByOdId['OD-00053'];
+  if (row53) {
+    var before53 = String(omSheet.getRange(row53, 31).getValue() || '').trim();
+    omSheet.getRange(row53, 31).setValue('');
+    SpreadsheetApp.flush();
+    lines.push('[RESET] OD-00053 (OM row' + row53 + ') col31: "' + before53 + '" → ""');
+  } else {
+    lines.push('[ERROR] OD-00053 が OM に見つかりません');
+  }
+  lines.push('');
+
+  // ── [2] Japhunter = CT-00026 かどうか + OMでの該当オーダー ──
+  lines.push('--- [2] Japhunter / CT-00026 確認 ---');
+
+  // 顧客マスタから CT-00026 を検索
+  var custData = custSheet && custSheet.getLastRow() >= 2
+    ? custSheet.getRange(2, 1, custSheet.getLastRow() - 1, 5).getValues()
+    : [];
+  var ct26Row = custData.find ? custData.find(function(r) { return String(r[0]||'').trim() === 'CT-00026'; }) : null;
+  if (!ct26Row) {
+    // fallback: linear search (GAS Rhino may lack Array.find)
+    for (var ci = 0; ci < custData.length; ci++) {
+      if (String(custData[ci][0]||'').trim() === 'CT-00026') { ct26Row = custData[ci]; break; }
+    }
+  }
+  if (ct26Row) {
+    lines.push('CT-00026 顧客マスタ: ' + JSON.stringify(ct26Row.slice(0, 5)));
+  } else {
+    lines.push('CT-00026: 顧客マスタに見つかりません');
+  }
+
+  // OMで col3(顧客ID)=CT-00026 の行を検索
+  var ct26Orders = omData.filter(function(r) { return String(r[2]||'').trim() === 'CT-00026'; });
+  lines.push('CT-00026 のOMオーダー: ' + ct26Orders.length + '件');
+  ct26Orders.forEach(function(r) {
+    lines.push('  ' + r[0] + ' 請求書番号=' + r[1] + ' ステータス=' + r[6]
+      + ' 受注日=' + fmtD(r[7])
+      + ' 請求書発行日=' + fmtD(r[16]));
+  });
+  lines.push('');
+
+  // ── [3] 未割当DEP 最終一覧（記録のみ・書き込みなし）──
+  lines.push('--- [3] 未割当DEP 最終一覧（記録のみ）---');
+  var unmatched = [
+    { sdRow: 82,  custName: 'LaffxyTCG',    depNo: '#DEP 0005',
+      note: '候補3件（OD-00002/#0059, OD-00030/#0789, OD-00043/#0793）発売予定/DEP率で絞り込み不可' },
+    { sdRow: 116, custName: 'Japhunter',     depNo: '#DEP 0006',
+      note: '→ [2]の結果次第' },
+    { sdRow: 360, custName: 'Cesar Avelino', depNo: '#DEP 0001',
+      note: 'col87-100が全空・仕入れタブ未取り込み・移行対象外' }
+  ];
+  unmatched.forEach(function(u) {
+    lines.push('row' + u.sdRow + ' ' + u.custName + ' ' + u.depNo);
+    lines.push('  ' + u.note);
+  });
+  lines.push('');
+
+  // ── [4] 予約販売 最終件数 ──
+  lines.push('--- [4] 予約販売 最終一覧 ---');
+  // OM col31 を再読込（リセット後）
+  var omFinal = omLast >= 2 ? omSheet.getRange(2, 1, omLast - 1, 33).getValues() : [];
+  var yoyaku = omFinal.filter(function(r) { return String(r[30]||'').trim() !== ''; });
+  lines.push('予約販売件数: ' + yoyaku.length + '件');
+  yoyaku.forEach(function(r) {
+    lines.push('  ' + r[0] + ' 予約InvNo="' + r[30] + '" 発売予定=' + fmtD(r[31]) + ' DEP率=' + r[32]);
+  });
+
+  var result = lines.join('\n');
+  Logger.log(result);
+  return result;
+}
+
+// ============================================================
 // 修正4 突合妥当性確認（読み取りのみ）
 // ============================================================
 function auditOrphanDep() {
