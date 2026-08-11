@@ -203,6 +203,281 @@ function investigateInventoryBook() {
   return result;
 }
 
+// ============================================================
+// 在庫ブック詳細調査 v2（読み取り専用）
+// ============================================================
+
+/**
+ * investigateInvBookRecon2
+ * [1] 状態マスタ・単位マスタ 全行全列
+ * [2] 名寄せ試算: CRMオーダー明細 × 在庫ブック商品マスタ
+ * [3] 仕入元マスタ全行 + CRM仕入れタブ 仕入元 突合
+ */
+function investigateInvBookRecon2() {
+  var INV_BOOK_ID = '1or39_glwYtF9OfOxXizN8ZjcUKL0hNIeW3qP3nCx3AI';
+  var lines = ['=== 在庫ブック詳細調査 v2 ===', ''];
+
+  var invSS, crmSS;
+  try {
+    invSS = SpreadsheetApp.openById(INV_BOOK_ID);
+  } catch (e) {
+    lines.push('[ERROR] 在庫ブックを開けません: ' + e.message);
+    Logger.log(lines.join('\n')); return lines.join('\n');
+  }
+  try {
+    crmSS = getSpreadsheet();
+  } catch (e) {
+    lines.push('[ERROR] CRMスプレッドシートを開けません: ' + e.message);
+    Logger.log(lines.join('\n')); return lines.join('\n');
+  }
+
+  // ────────────────────────────────────
+  // [1] 状態マスタ・単位マスタ 全行全列
+  // ────────────────────────────────────
+  lines.push('────────────────────────────────────');
+  lines.push('[1] 状態マスタ 全行全列');
+  lines.push('────────────────────────────────────');
+  _ibDumpAllRows(invSS.getSheetByName('状態マスタ'), lines);
+
+  lines.push('');
+  lines.push('────────────────────────────────────');
+  lines.push('[1b] 単位マスタ 全行全列');
+  lines.push('────────────────────────────────────');
+  _ibDumpAllRows(invSS.getSheetByName('単位マスタ'), lines);
+
+  // ────────────────────────────────────
+  // [2] 名寄せ試算
+  // ────────────────────────────────────
+  lines.push('');
+  lines.push('────────────────────────────────────');
+  lines.push('[2] 名寄せ試算（CRMオーダー明細 vs 在庫ブック商品マスタ）');
+  lines.push('────────────────────────────────────');
+
+  // 商品マスタ読み込み
+  var pmSh = invSS.getSheetByName('商品マスタ');
+  var pmLastRow = pmSh.getLastRow();
+  var pmRaw = pmSh.getRange(2, 1, pmLastRow - 1, 20).getValues();
+  var pmList = pmRaw.map(function(r) {
+    return {
+      id:        String(r[0]  || '').trim(),
+      jpnTitle:  String(r[3]  || '').trim(),  // col4
+      engTitle:  String(r[4]  || '').trim(),  // col5
+      keywords:  String(r[11] || '').trim(),  // col12
+      reqOutput: String(r[15] || '').trim()   // col16
+    };
+  });
+
+  // オーダー明細読み込み（col5=商品名）
+  var olSh = crmSS.getSheetByName('オーダー明細');
+  if (!olSh) {
+    lines.push('[ERROR] オーダー明細シートが見つかりません');
+  } else {
+    var olLastRow = olSh.getLastRow();
+    var olData = olLastRow > 1 ? olSh.getRange(2, 1, olLastRow - 1, 10).getValues() : [];
+    lines.push('CRMオーダー明細 データ行数: ' + olData.length);
+
+    var matchedCount    = 0;
+    var matchedPmIds    = {};
+    var unmatchedNames  = {};
+    var fuzzyExamples   = [];
+
+    olData.forEach(function(row) {
+      var crmName = String(row[4] || '').trim(); // col5
+      if (!crmName) return;
+      var res = _ibMatchPm(crmName, pmList);
+      if (res.matched) {
+        matchedCount++;
+        matchedPmIds[res.pmId] = true;
+        if (res.fuzzy && fuzzyExamples.length < 5) {
+          fuzzyExamples.push(res);
+        }
+      } else {
+        unmatchedNames[crmName] = (unmatchedNames[crmName] || 0) + 1;
+      }
+    });
+
+    lines.push('一致件数: ' + matchedCount + ' / ' + olData.length + '行');
+    lines.push('一致商品ID種類数: ' + Object.keys(matchedPmIds).length + '種');
+    lines.push('');
+
+    var unmatchedKeys = Object.keys(unmatchedNames).sort(function(a, b) {
+      return unmatchedNames[b] - unmatchedNames[a];
+    });
+    lines.push('一致しなかったCRM側の商品名（' + unmatchedKeys.length + '種・件数降順）:');
+    unmatchedKeys.forEach(function(k) {
+      lines.push('  "' + k + '": ' + unmatchedNames[k] + '件');
+    });
+    lines.push('');
+
+    lines.push('表記ゆれで拾えた例（最大5件）:');
+    if (fuzzyExamples.length === 0) {
+      lines.push('  (なし — 全一致は完全一致またはサブストリング一致)');
+    } else {
+      fuzzyExamples.forEach(function(ex) {
+        lines.push('  "' + ex.crmName + '" → ' + ex.pmId
+          + ' [' + ex.field + '] "' + ex.matchedVal + '"');
+      });
+    }
+  }
+
+  // ────────────────────────────────────
+  // [3] 仕入元マスタ全行 + CRM仕入れタブ 仕入元 突合
+  // ────────────────────────────────────
+  lines.push('');
+  lines.push('────────────────────────────────────');
+  lines.push('[3] 仕入元マスタ 全行全列（SP0001〜）');
+  lines.push('────────────────────────────────────');
+  var spSh = invSS.getSheetByName('仕入元マスタ');
+  _ibDumpAllRows(spSh, lines);
+
+  lines.push('');
+  lines.push('────────────────────────────────────');
+  lines.push('[3b] CRM仕入れタブ 仕入元 突合');
+  lines.push('────────────────────────────────────');
+  var purSh = crmSS.getSheetByName('仕入れ');
+  if (!purSh) {
+    lines.push('[ERROR] 仕入れシートが見つかりません');
+  } else {
+    var purLastRow = purSh.getLastRow();
+    lines.push('CRM仕入れ データ行数: ' + (purLastRow > 1 ? purLastRow - 1 : 0));
+
+    // 仕入元マスタの LINE名/別名 → SP_ID マップ
+    var spLastRow = spSh.getLastRow();
+    var spData    = spLastRow > 1 ? spSh.getRange(2, 1, spLastRow - 1, 15).getValues() : [];
+    var spLookup  = {}; // normalized → SP_ID
+    spData.forEach(function(r) {
+      var lineName = String(r[0]  || '').trim();
+      var spId     = String(r[9]  || '').trim();
+      var alias    = String(r[10] || '').trim();
+      if (lineName) spLookup[_ibNorm(lineName)] = spId;
+      if (alias) {
+        alias.split(/[,、]/).forEach(function(a) {
+          var an = _ibNorm(a.trim());
+          if (an) spLookup[an] = spId;
+        });
+      }
+    });
+
+    // CRM 仕入れ col6 = 仕入元
+    var purSuppliers = {};
+    if (purLastRow > 1) {
+      var purCol6 = purSh.getRange(2, 6, purLastRow - 1, 1).getValues();
+      purCol6.forEach(function(r) {
+        var v = String(r[0] || '').trim();
+        if (!v) return;
+        purSuppliers[v] = (purSuppliers[v] || 0) + 1;
+      });
+    }
+
+    var matchedSp   = [];
+    var unmatchedSp = [];
+    Object.keys(purSuppliers).sort().forEach(function(name) {
+      var spId = spLookup[_ibNorm(name)];
+      if (spId) {
+        matchedSp.push({ name: name, count: purSuppliers[name], spId: spId });
+      } else {
+        unmatchedSp.push({ name: name, count: purSuppliers[name] });
+      }
+    });
+
+    lines.push('CRM 仕入元 ユニーク: ' + Object.keys(purSuppliers).length + '種');
+    lines.push('一致: ' + matchedSp.length + '種 / 不一致: ' + unmatchedSp.length + '種');
+    lines.push('');
+    lines.push('一致した仕入元:');
+    matchedSp.forEach(function(m) {
+      lines.push('  "' + m.name + '": ' + m.count + '件 → ' + m.spId);
+    });
+    lines.push('');
+    lines.push('一致しなかったCRM側の仕入元（全件）:');
+    if (unmatchedSp.length === 0) {
+      lines.push('  (なし)');
+    } else {
+      unmatchedSp.forEach(function(m) {
+        lines.push('  "' + m.name + '": ' + m.count + '件');
+      });
+    }
+  }
+
+  lines.push('');
+  lines.push('=== 調査完了 ===');
+  var result = lines.join('\n');
+  Logger.log(result);
+  return result;
+}
+
+// ── 内部ヘルパー: 全行全列ダンプ ──
+function _ibDumpAllRows(sh, lines) {
+  if (!sh) { lines.push('  (シートが見つかりません)'); return; }
+  var lastRow = sh.getLastRow();
+  var lastCol = sh.getLastColumn();
+  if (lastRow < 1 || lastCol < 1) { lines.push('  (データなし)'); return; }
+  var all = sh.getRange(1, 1, lastRow, lastCol).getValues();
+  var headers = all[0];
+  lines.push('  ヘッダー: '
+    + headers.map(function(h, i) { return 'col' + (i + 1) + '="' + h + '"'; }).join(' | '));
+  for (var r = 1; r < lastRow; r++) {
+    var rowStr = all[r].map(function(v, i) {
+      var s = (v instanceof Date)
+        ? Utilities.formatDate(v, 'Asia/Tokyo', 'yyyy/MM/dd')
+        : String(v === null || v === undefined ? '' : v);
+      return 'col' + (i + 1) + '="' + s.slice(0, 80) + '"';
+    }).join(' | ');
+    lines.push('  row' + (r + 1) + ': ' + rowStr);
+  }
+}
+
+// ── 内部ヘルパー: 文字列正規化（照合用） ──
+function _ibNorm(s) {
+  return String(s || '').toLowerCase()
+    .replace(/\u00e9/g, 'e').replace(/\u00c9/g, 'e')
+    .replace(/[\s\u3000]+/g, ' ').trim();
+}
+
+// ── 内部ヘルパー: 商品名照合 ──
+// pmList: Array of {id, jpnTitle, engTitle, keywords, reqOutput}
+function _ibMatchPm(crmName, pmList) {
+  var cn    = _ibNorm(crmName);
+  var cnRaw = crmName.toLowerCase().trim();
+
+  for (var i = 0; i < pmList.length; i++) {
+    var pm = pmList[i];
+
+    // English Title
+    var et = _ibNorm(pm.engTitle);
+    if (et.length >= 5 && (cn === et || cn.indexOf(et) >= 0)) {
+      var etRaw = pm.engTitle.toLowerCase().trim();
+      var fuzzy = !(cnRaw === etRaw || cnRaw.indexOf(etRaw) >= 0);
+      return { matched: true, pmId: pm.id, field: 'EnglishTitle',
+               matchedVal: pm.engTitle, crmName: crmName, fuzzy: fuzzy };
+    }
+
+    // Japanese Title
+    var jt = _ibNorm(pm.jpnTitle);
+    if (jt.length >= 4 && (cn === jt || cn.indexOf(jt) >= 0)) {
+      return { matched: true, pmId: pm.id, field: 'JapaneseTitle',
+               matchedVal: pm.jpnTitle, crmName: crmName, fuzzy: false };
+    }
+
+    // REQUIRED_OUTPUT_VALUE（EnglishTitle・JapaneseTitleと重複しない場合のみ）
+    var ro = _ibNorm(pm.reqOutput);
+    if (ro.length >= 5 && ro !== et && ro !== jt && (cn === ro || cn.indexOf(ro) >= 0)) {
+      return { matched: true, pmId: pm.id, field: 'RequiredOutputValue',
+               matchedVal: pm.reqOutput, crmName: crmName, fuzzy: false };
+    }
+
+    // Search Keywords（カンマ区切り・各キーワード5文字以上）
+    var kws = pm.keywords.split(',');
+    for (var k = 0; k < kws.length; k++) {
+      var kw = _ibNorm(kws[k]);
+      if (kw.length >= 5 && (cn === kw || cn.indexOf(kw) >= 0)) {
+        return { matched: true, pmId: pm.id, field: 'SearchKeyword',
+                 matchedVal: kws[k].trim(), crmName: crmName, fuzzy: false };
+      }
+    }
+  }
+  return { matched: false };
+}
+
 // ────────────────────────────────────
 // 内部ヘルパー: 指定列名のユニーク値を全タブから収集
 // ────────────────────────────────────
