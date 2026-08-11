@@ -513,3 +513,332 @@ function _collectColValues(ss, sheets, colNameVariants, lines, showCount) {
   if (!found) lines.push('  (該当列なし)');
   lines.push('');
 }
+
+// ============================================================
+// 在庫ブック詳細調査 v3（名寄せ強化・読み取り専用）
+// ============================================================
+
+/**
+ * investigateInvBookRecon3
+ * [1] 名寄せ試算 v3: 正規化強化 + 状態語除去 + 編集距離2以内候補
+ * [2] 商品マスタ追加候補（[B grade]・非商品行・fuzzy候補を除外）
+ * [3] 仕入元再突合（敬称除去）
+ */
+function investigateInvBookRecon3() {
+  var INV_BOOK_ID = '1or39_glwYtF9OfOxXizN8ZjcUKL0hNIeW3qP3nCx3AI';
+  var lines = ['=== 在庫ブック詳細調査 v3（名寄せ強化） ===', ''];
+
+  var invSS, crmSS;
+  try {
+    invSS = SpreadsheetApp.openById(INV_BOOK_ID);
+    crmSS = getSpreadsheet();
+  } catch (e) {
+    lines.push('[ERROR] ' + e.message);
+    Logger.log(lines.join('\n')); return lines.join('\n');
+  }
+
+  // ── 商品マスタ 読み込み + 事前正規化 ──
+  var pmSh = invSS.getSheetByName('商品マスタ');
+  var pmRaw = pmSh.getRange(2, 1, pmSh.getLastRow() - 1, 20).getValues();
+  var pmList = pmRaw.map(function(r) {
+    return {
+      id: String(r[0] || '').trim(),
+      engTitle:  String(r[4]  || '').trim(),  // col5
+      jpnTitle:  String(r[3]  || '').trim(),  // col4
+      keywords:  String(r[11] || '').trim(),  // col12
+      reqOutput: String(r[15] || '').trim(),  // col16
+      relSeries: String(r[13] || '').trim()   // col14
+    };
+  });
+
+  var pmEntries = pmList.map(function(pm) {
+    var kws = pm.keywords.split(',');
+    // 直接照合ノーム（4フィールド）
+    var directNorms = [
+      { v: _v3n(pm.engTitle),  label: 'EnglishTitle'   },
+      { v: _v3n(pm.jpnTitle),  label: 'JapaneseTitle'  },
+      { v: _v3n(pm.reqOutput), label: 'RequiredOutput' },
+      { v: _v3n(pm.relSeries), label: 'RelatedSeries'  }
+    ].filter(function(x) { return x.v.length >= 4; });
+    // キーワードノーム
+    var kwNorms = kws.map(function(k) {
+      return { v: _v3n(k.trim()), raw: k.trim() };
+    }).filter(function(x) { return x.v.length >= 5; });
+    // ベース名（状態語除去後）
+    var rawFields = [pm.engTitle, pm.jpnTitle, pm.reqOutput, pm.relSeries]
+      .concat(kws);
+    var seenB = {};
+    var bases = rawFields.map(_v3b).filter(function(b) {
+      if (!b || b.length < 3 || seenB[b]) return false;
+      seenB[b] = true; return true;
+    });
+    return { id: pm.id, directNorms: directNorms, kwNorms: kwNorms, bases: bases };
+  });
+
+  // ── オーダー明細 照合 ──
+  var olSh = crmSS.getSheetByName('オーダー明細');
+  var olLastRow = olSh.getLastRow();
+  var olData = olLastRow > 1
+    ? olSh.getRange(2, 1, olLastRow - 1, 10).getValues() : [];
+  lines.push('CRMオーダー明細 データ行数: ' + olData.length);
+
+  var confirmed = 0, confirmedIds = {}, fuzzyMap = {}, unmatchedMap = {};
+
+  olData.forEach(function(row) {
+    var crmName = String(row[4] || '').trim();
+    if (!crmName) return;
+    var res = _v3match(crmName, pmEntries);
+    if (res.matched && !res.fuzzy) {
+      confirmed++;
+      confirmedIds[res.pmId] = true;
+    } else {
+      unmatchedMap[crmName] = (unmatchedMap[crmName] || 0) + 1;
+      if (res.matched && res.fuzzy) {
+        var fk = crmName + '\x00' + res.pmId;
+        if (!fuzzyMap[fk]) fuzzyMap[fk] = res;
+      }
+    }
+  });
+
+  lines.push('');
+  lines.push('────────────────────────────────────');
+  lines.push('[1] 名寄せ試算 v3 結果');
+  lines.push('────────────────────────────────────');
+  lines.push('確定一致件数: ' + confirmed + ' / ' + olData.length + '行');
+  lines.push('確定一致商品ID種類数: ' + Object.keys(confirmedIds).length + '種');
+  lines.push('');
+
+  var fkeys = Object.keys(fuzzyMap);
+  lines.push('編集距離2以内の候補（確定なし・参考のみ）: ' + fkeys.length + '件');
+  fkeys.sort().forEach(function(fk) {
+    var f = fuzzyMap[fk];
+    lines.push('  "' + f.crmName + '"');
+    lines.push('    → ' + f.pmId + ' [' + f.field + '] base:"' + f.matchedVal + '" dist=' + f.dist);
+  });
+  lines.push('');
+
+  var unmatchedKeys = Object.keys(unmatchedMap).sort(function(a, b) {
+    return unmatchedMap[b] - unmatchedMap[a];
+  });
+  lines.push('未一致の商品名（' + unmatchedKeys.length + '種）:');
+  unmatchedKeys.forEach(function(k) {
+    var base = _v3b(k);
+    lines.push('  "' + k + '": ' + unmatchedMap[k] + '件'
+      + (base && base.length >= 3 ? ' [base:"' + base + '"]' : ''));
+  });
+
+  // ────────────────────────────────────
+  // [2] 商品マスタ追加候補
+  // ────────────────────────────────────
+  lines.push('');
+  lines.push('────────────────────────────────────');
+  lines.push('[2] 商品マスタに追加が必要なもの');
+  lines.push('　　（[B grade]・非商品行・fuzzy候補を除外）');
+  lines.push('────────────────────────────────────');
+
+  var EXCL = [
+    /\[b\s*grade\]/i,
+    /^shipping\b/i, /^discount\b/i, /^special\s+discount\b/i,
+    /^customs\s+duties\b/i, /^mpf\b/i, /^ddp\b/i,
+    /retro\s+card\s+bulk/i
+  ];
+  var fuzzyNames = {};
+  fkeys.forEach(function(fk) { fuzzyNames[fuzzyMap[fk].crmName] = true; });
+
+  var needsAdd = unmatchedKeys.filter(function(k) {
+    if (fuzzyNames[k]) return false;
+    return !EXCL.some(function(re) { return re.test(k); });
+  });
+
+  lines.push('追加候補: ' + needsAdd.length + '種');
+  needsAdd.forEach(function(k) {
+    var base = _v3b(k);
+    lines.push('  "' + k + '": ' + unmatchedMap[k] + '件'
+      + (base && base.length >= 3 ? ' [base:"' + base + '"]' : ''));
+  });
+
+  // ────────────────────────────────────
+  // [3] 仕入元 再突合
+  // ────────────────────────────────────
+  lines.push('');
+  lines.push('────────────────────────────────────');
+  lines.push('[3] 仕入元 再突合（敬称除去・正規化）');
+  lines.push('────────────────────────────────────');
+
+  var spSh = invSS.getSheetByName('仕入元マスタ');
+  var spData = spSh.getLastRow() > 1
+    ? spSh.getRange(2, 1, spSh.getLastRow() - 1, 15).getValues() : [];
+  var spLookup = {};
+  spData.forEach(function(r) {
+    var name  = String(r[0]  || '').trim();
+    var spId  = String(r[9]  || '').trim();
+    var alias = String(r[10] || '').trim();
+    if (name) spLookup[_v3ns(name)] = spId;
+    if (alias) alias.split(/[,、]/).forEach(function(a) {
+      var an = _v3ns(a.trim()); if (an) spLookup[an] = spId;
+    });
+  });
+
+  var purSh = crmSS.getSheetByName('仕入れ');
+  var purLastRow = purSh.getLastRow();
+  var purData = purLastRow > 1
+    ? purSh.getRange(2, 6, purLastRow - 1, 1).getValues() : [];
+  var purMap = {};
+  purData.forEach(function(r) {
+    var v = String(r[0] || '').trim(); if (v) purMap[v] = (purMap[v] || 0) + 1;
+  });
+
+  var matchedSp = [], unmatchedSp = [];
+  Object.keys(purMap).sort().forEach(function(name) {
+    var norm = _v3ns(name);
+    var spId = spLookup[norm];
+    if (spId) matchedSp.push({ name: name, norm: norm, count: purMap[name], spId: spId });
+    else       unmatchedSp.push({ name: name, norm: norm, count: purMap[name] });
+  });
+
+  lines.push('CRM 仕入元 ユニーク: ' + Object.keys(purMap).length + '種');
+  lines.push('一致: ' + matchedSp.length + '種 / 不一致: ' + unmatchedSp.length + '種');
+  lines.push('');
+  lines.push('一致した仕入元:');
+  matchedSp.sort(function(a, b) { return b.count - a.count; }).forEach(function(m) {
+    lines.push('  "' + m.name + '" → norm:"' + m.norm + '" → ' + m.spId + ' (' + m.count + '件)');
+  });
+  lines.push('');
+  lines.push('なお一致しない仕入元（全件・件数降順）:');
+  unmatchedSp.sort(function(a, b) { return b.count - a.count; }).forEach(function(m) {
+    lines.push('  "' + m.name + '" → norm:"' + m.norm + '" (' + m.count + '件)');
+  });
+
+  lines.push('');
+  lines.push('=== 調査完了 ===');
+  var result = lines.join('\n');
+  Logger.log(result);
+  return result;
+}
+
+// ─────────────────────────────────────────
+// v3 専用ヘルパー
+// ─────────────────────────────────────────
+
+// 全角ASCII → 半角
+function _v3fw(s) {
+  return String(s || '')
+    .replace(/[\uff01-\uff5e]/g, function(c) {
+      return String.fromCharCode(c.charCodeAt(0) - 0xfee0);
+    })
+    .replace(/\u3000/g, ' ');
+}
+
+// 基本正規化: アクセント+全角→半角+小文字+空白
+function _v3n(s) {
+  return _v3fw(String(s || ''))
+    .replace(/\u00e9/g, 'e').replace(/\u00c9/g, 'e')
+    .toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+// 状態語リスト（特定順・長い方を先に）
+var _V3C = [
+  'damaged sealed box', 'no shrink box', 'no-shrink box', 'no shrink',
+  'damaged case', 'damaged box', 'sealed box', 'opened box', 'unsealed box',
+  'unsealed', 'unsearched pack',
+  'promo card', 'promo pack', 'promo',
+  'case in \\d+ boxes',
+  'bulk', 'singles', 'single card',
+  'sealed', 'case', 'box', 'boxes', 'pack', 'deck'
+];
+
+// ベース名: 正規化 + 括弧除去 + "pokemon card" 除去 + 状態語除去
+function _v3b(s) {
+  var n = _v3n(s);
+  n = n.replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ');
+  n = n.replace(/(pokemon\s+card\s+)+/g, ' ');
+  _V3C.forEach(function(w) {
+    try { n = n.replace(new RegExp('(?:^|\\s)' + w + '(?=\\s|$)', 'gi'), ' '); }
+    catch(e) {}
+  });
+  return n.replace(/\s+/g, ' ').trim();
+}
+
+// Levenshtein 距離（長さ差 > 4 は 99 で即return）
+function _v3lev(a, b) {
+  var la = a.length, lb = b.length;
+  if (Math.abs(la - lb) > 4) return 99;
+  if (!la) return lb; if (!lb) return la;
+  var p = [], c = [], t;
+  for (var j = 0; j <= lb; j++) p[j] = j;
+  for (var i = 1; i <= la; i++) {
+    c[0] = i;
+    for (var j = 1; j <= lb; j++) {
+      c[j] = a[i-1] === b[j-1] ? p[j-1] : 1 + Math.min(p[j], c[j-1], p[j-1]);
+    }
+    t = p; p = c; c = t;
+  }
+  return p[lb];
+}
+
+// 商品名照合（v3強化版）
+function _v3match(crmName, pmEntries) {
+  var cn  = _v3n(crmName);
+  // 括弧除去後のノーム（[SV2a] 等を除去して照合）
+  var cnNb = cn.replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ')
+               .replace(/\s+/g, ' ').trim();
+  var cb  = _v3b(crmName);
+
+  for (var i = 0; i < pmEntries.length; i++) {
+    var pe = pmEntries[i];
+
+    // 直接フィールド照合（cn と括弧除去版 cnNb の両方で試行）
+    for (var f = 0; f < pe.directNorms.length; f++) {
+      var fv = pe.directNorms[f].v;
+      if (cn.indexOf(fv) >= 0 || cnNb.indexOf(fv) >= 0) {
+        return { matched: true, pmId: pe.id, field: pe.directNorms[f].label,
+                 matchedVal: fv, crmName: crmName, fuzzy: false };
+      }
+    }
+    // キーワード照合
+    for (var k = 0; k < pe.kwNorms.length; k++) {
+      var kv = pe.kwNorms[k].v;
+      if (cn.indexOf(kv) >= 0 || cnNb.indexOf(kv) >= 0) {
+        return { matched: true, pmId: pe.id, field: 'SearchKeyword',
+                 matchedVal: pe.kwNorms[k].raw, crmName: crmName, fuzzy: false };
+      }
+    }
+    // ベース名照合（双方向サブストリング）
+    if (cb.length >= 4) {
+      for (var b = 0; b < pe.bases.length; b++) {
+        var pb = pe.bases[b];
+        if (pb.length >= 3 && (cb === pb || cb.indexOf(pb) >= 0 || pb.indexOf(cb) >= 0)) {
+          return { matched: true, pmId: pe.id, field: 'BaseName',
+                   matchedVal: pb, crmName: crmName, fuzzy: false };
+        }
+      }
+    }
+  }
+
+  // 編集距離 fuzzy（cb が5文字以上の場合のみ）
+  if (cb.length >= 5) {
+    var bestD = 3, bestId = null, bestBase = null;
+    for (var ii = 0; ii < pmEntries.length; ii++) {
+      for (var bb = 0; bb < pmEntries[ii].bases.length; bb++) {
+        var pb2 = pmEntries[ii].bases[bb];
+        if (pb2.length < 4 || Math.abs(cb.length - pb2.length) > 4) continue;
+        var d = _v3lev(cb, pb2);
+        if (d > 0 && d < bestD) { bestD = d; bestId = pmEntries[ii].id; bestBase = pb2; }
+      }
+    }
+    if (bestId) {
+      return { matched: true, pmId: bestId, field: 'FuzzyBase',
+               matchedVal: bestBase, crmName: crmName, fuzzy: true, dist: bestD };
+    }
+  }
+  return { matched: false };
+}
+
+// 仕入元正規化: 末尾の様/さん除去 + 空白除去 + lowercase
+function _v3ns(s) {
+  return String(s || '').trim()
+    .replace(/\s*(様|さん)\s*$/, '')
+    .replace(/\s+/g, '')
+    .toLowerCase();
+}
+}
