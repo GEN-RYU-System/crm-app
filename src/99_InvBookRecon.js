@@ -841,4 +841,3 @@ function _v3ns(s) {
     .replace(/\s+/g, '')
     .toLowerCase();
 }
-}
