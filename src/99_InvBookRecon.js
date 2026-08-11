@@ -846,29 +846,28 @@ function _v3ns(s) {
 // investigateInvBookRecon4: 商品マスタ228件全リスト + 特定商品検索 + ギャップ分析
 // ============================================================
 function investigateInvBookRecon4() {
+  var out = [];
+  function L(s) { out.push(s); Logger.log(s); }
+
   var IB_ID = '1or39_glwYtF9OfOxXizN8ZjcUKL0hNIeW3qP3nCx3AI';
   var ss = SpreadsheetApp.openById(IB_ID);
   var pmSheet = ss.getSheetByName('商品マスタ');
   var data = pmSheet.getDataRange().getValues();
-  // row0 = header, rows 1..228 = data
-  var header = data[0];
-  Logger.log('=== [HEADER] ' + JSON.stringify(header));
 
-  // Column indices (0-based): col1=0,col2=1,col4=3,col5=4,col12=11,col14=13,col16=15
-  var COL_ID   = 0;  // product_id
-  var COL_CAT  = 1;  // Category
-  var COL_JA   = 3;  // Japanese Title
-  var COL_EN   = 4;  // English Title
-  var COL_KW   = 11; // Search Keywords
-  var COL_ROV  = 15; // REQUIRED_OUTPUT_VALUE
-  var COL_SER  = 13; // Related Series
+  // Column indices (0-based)
+  var COL_ID  = 0;  // product_id
+  var COL_CAT = 1;  // Category
+  var COL_JA  = 3;  // Japanese Title
+  var COL_EN  = 4;  // English Title
+  var COL_KW  = 11; // Search Keywords
+  var COL_ROV = 15; // REQUIRED_OUTPUT_VALUE
+  var COL_SER = 13; // Related Series
 
-  // ── [1] 全228行出力 ──────────────────────────────────────────
-  Logger.log('=== [1] 商品マスタ全228行 (product_id / Category / Japanese Title / English Title / Search Keywords / REQUIRED_OUTPUT_VALUE / Related Series) ===');
+  // ── [1] 全行読み込み ─────────────────────────────────────────
   var rows = [];
   for (var i = 1; i < data.length; i++) {
     var r = data[i];
-    if (!r[COL_ID]) continue; // 空行スキップ
+    if (!r[COL_ID]) continue;
     rows.push({
       id:  String(r[COL_ID]  || '').trim(),
       cat: String(r[COL_CAT] || '').trim(),
@@ -879,32 +878,26 @@ function investigateInvBookRecon4() {
       ser: String(r[COL_SER] || '').trim()
     });
   }
-  Logger.log('Total rows: ' + rows.length);
-  // 20行ずつ出力（Loggerの行長制限を避ける）
-  var CHUNK = 20;
-  for (var c = 0; c < rows.length; c += CHUNK) {
-    var chunk = rows.slice(c, c + CHUNK);
-    var lines = chunk.map(function(r) {
-      return [r.id, r.cat, r.ja, r.en, r.kw, r.rov, r.ser].join('\t');
-    });
-    Logger.log('ROWS ' + (c + 1) + '-' + Math.min(c + CHUNK, rows.length) + ':\n' + lines.join('\n'));
-  }
+
+  L('=== [1] 商品マスタ全行 (計' + rows.length + '件) ===');
+  L('product_id\tCategory\tJapanese Title\tEnglish Title\tSearch Keywords\tREQUIRED_OUTPUT_VALUE\tRelated Series');
+  rows.forEach(function(r) {
+    L(r.id + '\t' + r.cat + '\t' + r.ja + '\t' + r.en + '\t' + r.kw + '\t' + r.rov + '\t' + r.ser);
+  });
 
   // ── [2] 特定商品検索 ─────────────────────────────────────────
-  // 検索ターゲット（日本語・英語・カタカナ・表記ゆれ含む）
   var TARGETS = [
-    { label: 'Mega Symphonia / メガシンフォニア',   tokens: ['mega symphonia', 'megasymphonia', 'メガシンフォニア', 'mega sinfonìa'] },
-    { label: 'Retro card / レトロ',                 tokens: ['retro', 'レトロ'] },
-    { label: 'Mega Premium Trainer Box',             tokens: ['mega premium trainer', 'mega premium'] },
-    { label: 'Shiny V / シャイニーV',               tokens: ['shiny v', 'シャイニーv', 'シャイニーＶ', 'shiny vstar', 'シャイニーヴイ'] },
-    { label: 'Tohoku Specialty / 東北 / トウホク',  tokens: ['tohoku', '東北', 'トウホク', 'とうほく'] },
-    { label: 'Victini / ビクティニ',                tokens: ['victini', 'ビクティニ'] },
-    { label: 'Bandai Pokemon Kids / ポケモンキッズ', tokens: ['pokemon kids', 'ポケモンキッズ', 'bandai pokemon', 'pokemonkids'] },
-    { label: 'Takara Tomy Poke-nade / ポケネード',  tokens: ['poke-nade', 'pokenade', 'ポケネード', 'takara tomy poke'] },
-    { label: 'Weiss / ヴァイス',                    tokens: ['weiss', 'weiß', 'ヴァイス', 'ヴァイスシュヴァルツ', 'weiss schwarz'] }
+    { label: 'Mega Symphonia / メガシンフォニア',    tokens: ['mega symphonia', 'megasymphonia', 'メガシンフォニア'] },
+    { label: 'Retro card / レトロ',                  tokens: ['retro', 'レトロ'] },
+    { label: 'Mega Premium Trainer Box',              tokens: ['mega premium trainer', 'mega premium'] },
+    { label: 'Shiny V / シャイニーV',                tokens: ['shiny v', 'シャイニーv', 'シャイニーＶ', 'shiny vstar'] },
+    { label: 'Tohoku Specialty / 東北 / トウホク',   tokens: ['tohoku', '東北', 'トウホク', 'とうほく'] },
+    { label: 'Victini / ビクティニ',                 tokens: ['victini', 'ビクティニ'] },
+    { label: 'Bandai Pokemon Kids / ポケモンキッズ',  tokens: ['pokemon kids', 'ポケモンキッズ', 'bandai pokemon', 'pokemonkids'] },
+    { label: 'Takara Tomy Poke-nade / ポケネード',   tokens: ['poke-nade', 'pokenade', 'ポケネード', 'takara tomy poke'] },
+    { label: 'Weiss / ヴァイス',                     tokens: ['weiss', 'ヴァイス', 'ヴァイスシュヴァルツ', 'weiss schwarz'] }
   ];
 
-  // 検索対象フィールド結合（全小文字・全角→半角変換済み）
   function _r4norm(s) {
     return String(s || '')
       .replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0); })
@@ -912,53 +905,44 @@ function investigateInvBookRecon4() {
       .toLowerCase();
   }
 
-  Logger.log('=== [2] 特定商品検索 ===');
+  L('');
+  L('=== [2] 特定商品検索 ===');
   TARGETS.forEach(function(tgt) {
     var hits = [];
     rows.forEach(function(r) {
-      var haystack = _r4norm([r.id, r.cat, r.ja, r.en, r.kw, r.rov, r.ser].join(' '));
-      var matched = tgt.tokens.some(function(tok) {
-        return haystack.indexOf(_r4norm(tok)) !== -1;
-      });
-      if (matched) hits.push(r);
+      var hay = _r4norm([r.id, r.cat, r.ja, r.en, r.kw, r.rov, r.ser].join(' '));
+      if (tgt.tokens.some(function(tok) { return hay.indexOf(_r4norm(tok)) !== -1; })) {
+        hits.push(r);
+      }
     });
     if (hits.length === 0) {
-      Logger.log('[' + tgt.label + '] → NOT FOUND (0件)');
+      L('[' + tgt.label + '] → NOT FOUND');
     } else {
-      Logger.log('[' + tgt.label + '] → ' + hits.length + '件:');
+      L('[' + tgt.label + '] → ' + hits.length + '件:');
       hits.forEach(function(r) {
-        Logger.log('  ' + r.id + ' | ' + r.cat + ' | JA=' + r.ja + ' | EN=' + r.en + ' | KW=' + r.kw + ' | ROV=' + r.rov + ' | SER=' + r.ser);
+        L('  ' + r.id + ' | ' + r.cat + ' | JA=' + r.ja + ' | EN=' + r.en + ' | KW=' + r.kw + ' | ROV=' + r.rov + ' | SER=' + r.ser);
       });
     }
   });
 
   // ── [3] ギャップ分析 ─────────────────────────────────────────
-  Logger.log('=== [3] ギャップ分析 ===');
-  var emptyEn = 0, jaOnlyCount = 0, emptyKw = 0;
-  var emptyEnList = [], jaOnlyList = [], emptyKwList = [];
+  var emptyEn = [], jaOnly = [], emptyKw = [];
   rows.forEach(function(r) {
-    var hasJa = r.ja !== '';
-    var hasEn = r.en !== '';
-    var hasKw = r.kw !== '';
-    if (!hasEn) {
-      emptyEn++;
-      emptyEnList.push(r.id + '|' + r.ja);
-    }
-    if (hasJa && !hasEn) {
-      jaOnlyCount++;
-      jaOnlyList.push(r.id + '|' + r.ja);
-    }
-    if (!hasKw) {
-      emptyKw++;
-      emptyKwList.push(r.id + '|' + (r.en || r.ja));
-    }
+    if (!r.en) emptyEn.push(r.id + '|' + r.ja);
+    if (r.ja && !r.en) jaOnly.push(r.id + '|' + r.ja);
+    if (!r.kw) emptyKw.push(r.id + '|' + (r.en || r.ja));
   });
-  Logger.log('English Title 空欄: ' + emptyEn + '件');
-  Logger.log('  → ' + emptyEnList.join(', '));
-  Logger.log('Japanese Title のみ (EN空欄): ' + jaOnlyCount + '件');
-  Logger.log('  → ' + jaOnlyList.join(', '));
-  Logger.log('Search Keywords 空欄: ' + emptyKw + '件');
-  Logger.log('  → ' + emptyKwList.join(', '));
 
-  Logger.log('=== investigateInvBookRecon4 完了 ===');
+  L('');
+  L('=== [3] ギャップ分析 ===');
+  L('English Title 空欄: ' + emptyEn.length + '件');
+  L('  ' + emptyEn.join(' / '));
+  L('Japanese Title のみ (EN空欄): ' + jaOnly.length + '件');
+  L('  ' + jaOnly.join(' / '));
+  L('Search Keywords 空欄: ' + emptyKw.length + '件');
+  L('  ' + emptyKw.join(' / '));
+
+  L('');
+  L('=== investigateInvBookRecon4 完了 ===');
+  return out.join('\n');
 }
