@@ -1,4 +1,191 @@
 // ============================================================
+// Phase 7-A-2: "Box"164件の正体調査（読み取り専用）
+// ============================================================
+
+/**
+ * phase7aBoxInvestigation
+ * 状態分類 "Box" となった行を掘り下げる
+ * 1. 全件列挙（ユニーク商品名 + 件数）+ オーダーID / 請求書番号
+ * 2. Sealed/Damaged/No shrink が含まれないことの確認
+ *    同商品名で "Sealed box" 表記が別行に存在するか照合
+ * 3. 状態列（col6）の全ユニーク値と件数
+ */
+function phase7aBoxInvestigation() {
+  var ss    = getSpreadsheet();
+  var lines = ['=== Phase 7-A-2: "Box" 164件の正体調査 ===', ''];
+
+  var olSh = ss.getSheetByName(CONFIG.SHEETS.ORDER_LINES);
+  var omSh = ss.getSheetByName(CONFIG.SHEETS.ORDER_MASTER);
+  if (!olSh || !omSh) {
+    lines.push('[ERROR] シートが見つかりません');
+    Logger.log(lines.join('\n')); return lines.join('\n');
+  }
+
+  // ── OM: オーダーID → 請求書番号 ──
+  var omLast = omSh.getLastRow();
+  var omData = omLast >= 2 ? omSh.getRange(2, 1, omLast - 1, 2).getValues() : [];
+  var invByOdId = {};
+  omData.forEach(function(row) {
+    var odId  = String(row[0] || '').trim();
+    var invNo = String(row[1] || '').trim();
+    if (odId) invByOdId[odId] = invNo;
+  });
+
+  // ── OL 全件読み込み ──
+  var olLast = olSh.getLastRow();
+  var data   = olLast >= 2 ? olSh.getRange(2, 1, olLast - 1, 10).getValues() : [];
+
+  // ── 検出ロジック（phase7aDryRun と同じ） ──
+  function normStr(s) {
+    return String(s || '').toLowerCase()
+      .replace(/\u00e9/g, 'e').replace(/\u00c9/g, 'e');
+  }
+
+  var COND_DEFS = [
+    { key: 'Damaged sealed box', tests: ['damaged sealed box'] },
+    { key: 'Damaged box',        tests: ['damaged box', '(box damaged)', 'box damaged'] },
+    { key: 'No shrink box',      tests: ['no shrink box', 'no-shrink box', '(no shrink)', 'no shrink)'] },
+    { key: 'Sealed box',         tests: ['sealed box'] },
+    { key: 'Single&Promo',       tests: ['[b grade]', 'promo card', 'promo pack', 'loose pack'] },
+    { key: 'Bulk',               tests: ['bulk'] },
+    { key: 'Case',               tests: [' case', '/case', '(case)'] },
+    { key: 'Deck',               tests: [' deck', '(deck)'] },
+    { key: 'Singles',            tests: ['singles', 'single card'] },
+    { key: 'Box',                tests: [' box', ' boxes', '(box)'] }
+  ];
+
+  function extractCond(name) {
+    var n = normStr(name);
+    for (var i = 0; i < COND_DEFS.length; i++) {
+      for (var j = 0; j < COND_DEFS[i].tests.length; j++) {
+        if (n.indexOf(COND_DEFS[i].tests[j]) >= 0) return COND_DEFS[i].key;
+      }
+    }
+    return null;
+  }
+
+  // ── Box行を抽出、Sealed box行を別収集 ──
+  var boxRows    = [];  // 状態 = "Box" の行
+  var sealedNames = {}; // "Sealed box" 行の 正規化商品名 Set
+
+  data.forEach(function(row) {
+    var pname = String(row[4] || '').trim();
+    var cond  = extractCond(pname);
+    if (cond === 'Sealed box') {
+      // Sealed box 行の商品名を収集（照合用）
+      // 商品名から "sealed box" を除いたベース名で格納
+      var base = normStr(pname).replace(/\s*sealed\s*box\s*$/, '').trim();
+      sealedNames[base] = true;
+    }
+    if (cond === 'Box') {
+      var odId  = String(row[1] || '').trim();
+      var invNo = invByOdId[odId] || '';
+      boxRows.push({
+        odlId: String(row[0] || '').trim(),
+        odId:  odId,
+        invNo: invNo,
+        name:  pname,
+        col6:  String(row[5] || '').trim()
+      });
+    }
+  });
+
+  lines.push('Box 分類件数: ' + boxRows.length + '件');
+  lines.push('');
+
+  // ── [1] ユニーク商品名 × 件数 ──
+  // {name → {count, col6vals[], odIds[]}}
+  var nameMap = {};
+  boxRows.forEach(function(r) {
+    if (!nameMap[r.name]) nameMap[r.name] = { count: 0, col6vals: {}, odInvs: [] };
+    nameMap[r.name].count++;
+    nameMap[r.name].col6vals[r.col6 || '（空）'] =
+      (nameMap[r.name].col6vals[r.col6 || '（空）'] || 0) + 1;
+    nameMap[r.name].odInvs.push(r.odId + (r.invNo ? '[' + r.invNo + ']' : ''));
+  });
+
+  var nameEntries = Object.keys(nameMap).map(function(n) {
+    return { name: n, info: nameMap[n] };
+  }).sort(function(a, b) {
+    return b.info.count - a.info.count || a.name.localeCompare(b.name);
+  });
+
+  lines.push('────────────────────────────────────');
+  lines.push('[1] ユニーク商品名 × 件数（全件）');
+  lines.push('────────────────────────────────────');
+
+  nameEntries.forEach(function(e) {
+    var n    = e.name;
+    var info = e.info;
+    var nl   = normStr(n);
+
+    // Sealed/Damaged/No shrink が商品名に含まれるか確認
+    var hasSealed   = nl.indexOf('sealed')   >= 0;
+    var hasDamaged  = nl.indexOf('damaged')  >= 0;
+    var hasNoShrink = nl.indexOf('no shrink') >= 0 || nl.indexOf('no-shrink') >= 0;
+    var qualCheck   = (hasSealed || hasDamaged || hasNoShrink)
+      ? '[!] Sealed/Damaged/NoShrink含む → 検出漏れの可能性'
+      : '修飾語なし';
+
+    // 同商品の "Sealed box" 表記が存在するか
+    var baseNorm = nl.replace(/\s*(box|boxes)\s*$/, '').trim();
+    var hasSealedSibling = sealedNames[baseNorm] ? '✔ あり（省略表記の可能性）' : '✘ なし（単独）';
+
+    // col6 内訳
+    var col6Summary = Object.keys(info.col6vals).map(function(v) {
+      return v + '×' + info.col6vals[v];
+    }).join(', ');
+
+    lines.push('  [' + info.count + '件] "' + n + '"');
+    lines.push('    ' + qualCheck);
+    lines.push('    同名Sealed box行: ' + hasSealedSibling);
+    lines.push('    col6: ' + col6Summary);
+    lines.push('    オーダー: ' + info.odInvs.join(' / '));
+  });
+  lines.push('');
+
+  // ── [2] Sealed/Damaged/No shrink 含有確認サマリ ──
+  var qualIssues = nameEntries.filter(function(e) {
+    var nl = normStr(e.name);
+    return nl.indexOf('sealed') >= 0 || nl.indexOf('damaged') >= 0
+        || nl.indexOf('no shrink') >= 0 || nl.indexOf('no-shrink') >= 0;
+  });
+  lines.push('────────────────────────────────────');
+  lines.push('[2] 修飾語あり → 検出漏れ確認');
+  lines.push('────────────────────────────────────');
+  if (qualIssues.length === 0) {
+    lines.push('  全件: Sealed/Damaged/No shrink を含まない（正常）');
+  } else {
+    qualIssues.forEach(function(e) {
+      lines.push('  [!] "' + e.name + '" (' + e.info.count + '件)');
+    });
+  }
+  lines.push('');
+
+  // ── [3] 状態列（col6）全ユニーク値 × 件数（オーダー明細 全体） ──
+  var col6All = {};
+  data.forEach(function(row) {
+    var v = String(row[5] || '').trim() || '（空）';
+    col6All[v] = (col6All[v] || 0) + 1;
+  });
+  lines.push('────────────────────────────────────');
+  lines.push('[3] 状態列（col6）全ユニーク値 × 件数（全595行）');
+  lines.push('────────────────────────────────────');
+  Object.keys(col6All).sort(function(a, b) {
+    return col6All[b] - col6All[a];
+  }).forEach(function(v) {
+    lines.push('  "' + v + '": ' + col6All[v] + '件');
+  });
+
+  lines.push('');
+  lines.push('=== 調査完了 ===');
+
+  var result = lines.join('\n');
+  Logger.log(result);
+  return result;
+}
+
+// ============================================================
 // Phase 7-A: カテゴリ・状態の抽出 DRY RUN v2
 // 対象: オーダー明細シートの「商品名」列（col5）
 // 書き込みなし
