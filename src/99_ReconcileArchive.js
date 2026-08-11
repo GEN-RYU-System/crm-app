@@ -204,6 +204,161 @@ function checkExistingArchiveLeak() {
 }
 
 /**
+ * 基準値ALL全行突合（書き込みなし・一時検証用）
+ *
+ * キー: (検証_基準値ALL.列名, raw_name, Condition)
+ *      ≡ (出力.提供者, raw_name, Condition)
+ *
+ * 合格条件（いずれか）:
+ *   1. pid・数量・単価・Note_JA が完全一致
+ *   2. Note_JA のみ「(なし)→空欄」の差
+ *   3. pid=NONE 行の Note_JA に「(原文タイトルを採用・マスタ未確定)」が付いただけ
+ *
+ * @returns {{ 基準値行数, 出力行数, 合格, 違反, 基準値のみ, 違反詳細, シート行数 }}
+ */
+function verifyBaselineAllDiff() {
+  const realScmId = '1or39_glwYtF9OfOxXizN8ZjcUKL0hNIeW3qP3nCx3AI';
+  const ss = SpreadsheetApp.openById(realScmId);
+
+  // ── 1. 基準値ALL を読み込む ──
+  const baseSheet = ss.getSheetByName('検証_基準値ALL');
+  if (!baseSheet) throw new Error('シートが見つかりません: 検証_基準値ALL');
+  const baseRaw = baseSheet.getDataRange().getValues();
+  const bh = baseRaw[0];
+  const bi = {
+    ln:  bh.indexOf('列名'),
+    rn:  bh.indexOf('raw_name'),
+    cd:  bh.indexOf('Condition'),
+    pid: bh.indexOf('product_id'),
+    qty: bh.indexOf('数量'),
+    prc: bh.indexOf('単価'),
+    nt:  bh.indexOf('Note_JA')
+  };
+  ['ln','rn','cd','pid','qty','prc','nt'].forEach(k => {
+    if (bi[k] < 0) throw new Error('検証_基準値ALL に列がありません: ' + k);
+  });
+
+  // キー = '列名\traw_name\tCondition'
+  const baseRows = baseRaw.slice(1).filter(r => String(r[bi.rn]).trim() !== '');
+  const baseMap = {};
+  baseRows.forEach((r, i) => {
+    const key = [String(r[bi.ln]), String(r[bi.rn]), String(r[bi.cd])].join('\t');
+    baseMap[key] = {
+      pid:    String(r[bi.pid] || ''),
+      qty:    r[bi.qty],
+      price:  r[bi.prc],
+      note:   String(r[bi.nt] || ''),
+      sheetRow: i + 2
+    };
+  });
+
+  // ── 2. 出力シートを読み込む ──
+  const outSheet = ss.getSheetByName('出力');
+  if (!outSheet) throw new Error('シートが見つかりません: 出力');
+  const outRaw = outSheet.getDataRange().getValues();
+  const oh = outRaw[0];
+  const oi = {
+    ln:  oh.indexOf('提供者'),   // 列名に対応
+    rn:  oh.indexOf('raw_name'),
+    cd:  oh.indexOf('Condition'),
+    pid: oh.indexOf('product_id'),
+    qty: oh.indexOf('Quantity'),
+    prc: oh.indexOf('Unit Price'),
+    nt:  oh.indexOf('Note_JA')
+  };
+
+  // 出力を Map 化（同一キーが複数あれば配列で保持）
+  const outMap = {};
+  outRaw.slice(1).forEach((r, i) => {
+    const key = [String(r[oi.ln]), String(r[oi.rn]), String(r[oi.cd])].join('\t');
+    if (!outMap[key]) outMap[key] = [];
+    outMap[key].push({
+      pid:    String(r[oi.pid] || ''),
+      qty:    r[oi.qty],
+      price:  r[oi.prc],
+      note:   String(r[oi.nt] || ''),
+      sheetRow: i + 2
+    });
+  });
+
+  // ── 3. 突合: 基準値ALL の各行を 出力 で検索 ──
+  const violations = [];
+  let passCount = 0;
+  let baselineOnly = 0; // 出力に存在しない基準値行
+
+  Object.entries(baseMap).forEach(([key, base]) => {
+    const hits = outMap[key];
+    if (!hits || hits.length === 0) {
+      baselineOnly++;
+      return;
+    }
+
+    // 同一キーが複数ある場合は全 hit を確認し、1つでも合格なら合格
+    const matched = hits.some(hit => {
+      // 合格条件1: 完全一致
+      if (base.pid === hit.pid && base.qty === hit.qty &&
+          base.price === hit.price && base.note === hit.note) return true;
+
+      // 合格条件2: Note_JA のみ「(なし)→空欄」
+      if (base.pid === hit.pid && base.qty === hit.qty &&
+          base.price === hit.price &&
+          base.note === '(なし)' && hit.note === '') return true;
+
+      // 合格条件3: pid=NONE 行に注釈が付いただけ
+      if (base.pid === 'NONE' &&
+          base.qty === hit.qty && base.price === hit.price &&
+          hit.note.includes('(原文タイトルを採用・マスタ未確定)')) return true;
+
+      return false;
+    });
+
+    if (matched) {
+      passCount++;
+    } else {
+      // 最初の hit を代表として違反詳細に記録
+      const hit = hits[0];
+      const keyParts = key.split('\t');
+      violations.push({
+        基準値行: base.sheetRow,
+        出力行:   hit.sheetRow,
+        列名:     keyParts[0],
+        raw_name: keyParts[1],
+        Condition: keyParts[2],
+        基準値: { pid: base.pid, qty: base.qty, price: base.price, note: base.note },
+        新値:   { pid: hit.pid,  qty: hit.qty,  price: hit.price,  note: hit.note }
+      });
+    }
+  });
+
+  // ── 4. 出力/FLAG_Single/FLAG_Error の行数 ──
+  const sheetRows = {};
+  ['出力', 'FLAG_Single', 'FLAG_Error'].forEach(name => {
+    const sh = ss.getSheetByName(name);
+    sheetRows[name] = sh ? Math.max(0, sh.getLastRow() - 1) : 0;
+  });
+
+  // 違反詳細を文字列にフラット化（clasp run の [Object] 省略を避ける）
+  const violationText = violations.map(v =>
+    '行' + v.基準値行 + '→出力行' + v.出力行 +
+    ' [' + v.列名 + ' / ' + v.raw_name + ' / ' + v.Condition + ']\n' +
+    '  基準値: pid=' + v.基準値.pid + ' qty=' + v.基準値.qty +
+    ' price=' + v.基準値.price + ' note="' + v.基準値.note + '"\n' +
+    '  新 値: pid=' + v.新値.pid + ' qty=' + v.新値.qty +
+    ' price=' + v.新値.price + ' note="' + v.新値.note + '"'
+  );
+
+  return {
+    基準値行数:  baseRows.length,
+    出力行数:    outRaw.length - 1,
+    合格:        passCount,
+    違反:        violations.length,
+    基準値のみ:  baselineOnly,
+    違反詳細:    violationText,
+    シート行数:  sheetRows
+  };
+}
+
+/**
  * リード管理シートをバックアップ（一時検証用）
  */
 function backupLeadSheet() {
