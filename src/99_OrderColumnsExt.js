@@ -119,27 +119,4 @@ function addOrderExtColumns() {
   return result;
 }
 
-// ─────────────────────────────────────────────
-// compareOrderHeaders — HEADERS.ORDER_MASTER と実シートの比較
-// ─────────────────────────────────────────────
-function compareOrderHeaders() {
-  var ss = getSpreadsheet();
-  var lines = ['=== オーダー管理 (' + CONFIG.SHEETS.ORDER_MASTER + ') ==='];
-  var sheet = ss.getSheetByName(CONFIG.SHEETS.ORDER_MASTER);
-  if (!sheet) {
-    lines.push('  [ERROR] タブが見つかりません: ' + CONFIG.SHEETS.ORDER_MASTER);
-    return lines.join('\n');
-  }
-  var expected = HEADERS.ORDER_MASTER;
-  var actual   = sheet.getRange(1, 1, 1, expected.length).getValues()[0];
-  var mismatches = 0;
-  expected.forEach(function(h, i) {
-    var act = String(actual[i] || '');
-    var ok  = (act === h);
-    if (!ok) mismatches++;
-    lines.push('  col' + (i + 1) + ': [' + (ok ? 'OK' : 'MISMATCH') + '] "' + h + '"'
-      + (ok ? '' : ' / 実="' + act + '"'));
-  });
-  lines.push('  mismatches=' + mismatches);
-  return lines.join('\n');
-}
+// compareOrderHeaders は 99_TestFunctions.js に定義済み（二重定義防止）
