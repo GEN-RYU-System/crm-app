@@ -1,19 +1,19 @@
 // ============================================================
-// Phase 7-A: カテゴリ・状態の抽出 DRY RUN
+// Phase 7-A: カテゴリ・状態の抽出 DRY RUN v2
 // 対象: オーダー明細シートの「商品名」列（col5）
 // 書き込みなし
 // ============================================================
 
 /**
  * phase7aDryRun
- * 1. 状態の抽出（末尾パターン検出）
- * 2. カテゴリの抽出（先頭パターン検出）
+ * 1. 状態の抽出（商品名から検出・全パターン）
+ * 2. カテゴリの抽出（商品名から検出）
  * 3. 商品マスタ原型（カテゴリ + 本体）のユニーク一覧
  * 4. SKU → 商品名 対応件数
  */
 function phase7aDryRun() {
-  var ss     = getSpreadsheet();
-  var lines  = ['=== Phase 7-A: カテゴリ・状態 抽出 DRY RUN ===', ''];
+  var ss    = getSpreadsheet();
+  var lines = ['=== Phase 7-A: カテゴリ・状態 抽出 DRY RUN v2 ===', ''];
 
   var olSh = ss.getSheetByName(CONFIG.SHEETS.ORDER_LINES);
   if (!olSh) {
@@ -34,52 +34,59 @@ function phase7aDryRun() {
   lines.push('');
 
   // ────────────────────────────────────────────────────────
-  // 1. 状態の抽出（末尾パターン）
+  // 共通ヘルパー
   // ────────────────────────────────────────────────────────
-  // 検出パターン（大文字小文字無視、末尾 or 末尾寄り）
-  var COND_PATTERNS = [
-    'Damaged sealed box',
-    'No shrink box',
-    'Sealed box',
-    'Singles',
-    'Case',
-    'Deck'
+  // Pokémon/Pokemon 正規化（é → e）してから比較
+  function normStr(s) {
+    return String(s || '').toLowerCase()
+      .replace(/\u00e9/g, 'e')   // é → e
+      .replace(/\u00c9/g, 'e');  // É → e
+  }
+
+  // ────────────────────────────────────────────────────────
+  // 1. 状態の抽出
+  // ────────────────────────────────────────────────────────
+  // 優先順位順（長い/具体的なものを先に）
+  // key: 表示名, tests: 商品名（正規化済）に含まれるかチェックする文字列配列
+  var COND_DEFS = [
+    { key: 'Damaged sealed box', tests: ['damaged sealed box'] },
+    { key: 'Damaged box',        tests: ['damaged box', '(box damaged)', 'box damaged'] },
+    { key: 'No shrink box',      tests: ['no shrink box', 'no-shrink box', '(no shrink)', 'no shrink)'] },
+    { key: 'Sealed box',         tests: ['sealed box'] },
+    { key: 'Single&Promo',       tests: ['[b grade]', 'promo card', 'promo pack', 'loose pack'] },
+    { key: 'Bulk',               tests: ['bulk'] },
+    { key: 'Case',               tests: [' case', '/case', '(case)'] },
+    { key: 'Deck',               tests: [' deck', '(deck)'] },
+    { key: 'Singles',            tests: ['singles', 'single card'] },
+    { key: 'Box',                tests: [' box', ' boxes', '(box)'] }
   ];
 
-  // 各商品名に対して状態を抽出
-  // 優先順位: Damaged sealed box > No shrink box > Sealed box > その他順
   function extractCond(name) {
-    var n = name.toLowerCase();
-    for (var i = 0; i < COND_PATTERNS.length; i++) {
-      if (n.indexOf(COND_PATTERNS[i].toLowerCase()) >= 0) {
-        return COND_PATTERNS[i];
+    var n = normStr(name);
+    for (var i = 0; i < COND_DEFS.length; i++) {
+      var tests = COND_DEFS[i].tests;
+      for (var j = 0; j < tests.length; j++) {
+        if (n.indexOf(tests[j]) >= 0) {
+          return COND_DEFS[i].key;
+        }
       }
     }
     return null; // 未検出
   }
 
-  // col6(状態) にある実際の値も全収集（マスタ外パターン発見用）
-  var existingCondSet = {};
-  data.forEach(function(row) {
-    var c = String(row[5] || '').trim();
-    if (c) existingCondSet[c] = (existingCondSet[c] || 0) + 1;
-  });
-
-  var condCountFromName = {};  // パターン別件数（商品名から）
-  var condNoMatch       = [];  // 未検出行（商品名・col6状態・odlId）
+  var condCount   = {};  // パターン別件数（商品名から）
+  var condNoMatch = [];  // 未検出行
 
   data.forEach(function(row) {
-    var odlId  = String(row[0] || '').trim();
-    var odId   = String(row[1] || '').trim();
-    var pname  = String(row[4] || '').trim();
-    var col6c  = String(row[5] || '').trim(); // 既存状態
+    var odlId = String(row[0] || '').trim();
+    var odId  = String(row[1] || '').trim();
+    var pname = String(row[4] || '').trim();
+    var col6c = String(row[5] || '').trim();
 
     var detected = extractCond(pname);
-
     if (detected) {
-      condCountFromName[detected] = (condCountFromName[detected] || 0) + 1;
+      condCount[detected] = (condCount[detected] || 0) + 1;
     } else {
-      // 商品名からは未検出 — col6の既存値も記録
       condNoMatch.push({ odlId: odlId, odId: odId, name: pname, col6: col6c });
     }
   });
@@ -88,78 +95,79 @@ function phase7aDryRun() {
   lines.push('[1] 状態の抽出（商品名から検出）');
   lines.push('────────────────────────────────────');
   var condDetected = 0;
-  COND_PATTERNS.forEach(function(p) {
-    var cnt = condCountFromName[p] || 0;
-    condDetected += cnt;
-    lines.push('  ' + p + ': ' + cnt + '件');
+  // 件数の多い順に出力
+  var condKeys = Object.keys(condCount).sort(function(a, b) {
+    return condCount[b] - condCount[a];
   });
-  // COND_PATTERNS以外でcol6に値があるものをチェック
-  Object.keys(existingCondSet).forEach(function(k) {
-    var alreadyListed = COND_PATTERNS.some(function(p) { return p.toLowerCase() === k.toLowerCase(); });
-    if (!alreadyListed && k) {
-      lines.push('  【col6実値・未リスト】' + k + ': ' + existingCondSet[k] + '件');
-    }
+  condKeys.forEach(function(k) {
+    condDetected += condCount[k];
+    lines.push('  ' + k + ': ' + condCount[k] + '件');
   });
   lines.push('  ─────');
   lines.push('  商品名から検出 計: ' + condDetected + '件');
   lines.push('  未検出: ' + condNoMatch.length + '件');
   lines.push('');
-
   lines.push('--- 状態 未検出の商品名（全件）---');
   if (condNoMatch.length === 0) {
     lines.push('  （全件検出済み）');
   } else {
     condNoMatch.forEach(function(r) {
-      lines.push('  ' + r.odlId + ' [' + r.odId + '] 商品名="' + r.name + '" col6="' + r.col6 + '"');
+      lines.push('  ' + r.odlId + ' [' + r.odId + '] 商品名="' + r.name + '"'
+        + (r.col6 ? ' col6="' + r.col6 + '"' : ''));
     });
   }
   lines.push('');
 
   // ────────────────────────────────────────────────────────
-  // 2. カテゴリの抽出（先頭パターン）
+  // 2. カテゴリの抽出
   // ────────────────────────────────────────────────────────
-  var CAT_PATTERNS = [
-    'Pokemon',
-    'One Piece',
-    'Dragon Ball'
+  // Pokemon/Pokémon → "Pokemon"に統一
+  // 先頭一致を優先、次に部分一致
+  var CAT_DEFS = [
+    { key: 'Pokemon',     tests: ['pokemon'] },   // Pokémon も normStr で pokemon に変換済み
+    { key: 'One Piece',   tests: ['one piece'] },
+    { key: 'Dragon Ball', tests: ['dragon ball'] }
   ];
 
   function extractCat(name) {
-    var n = name.toLowerCase();
-    // col4の既存値も参照せず、純粋に商品名の先頭から判定
-    for (var i = 0; i < CAT_PATTERNS.length; i++) {
-      if (n.indexOf(CAT_PATTERNS[i].toLowerCase()) === 0) {
-        return CAT_PATTERNS[i];
+    var n = normStr(name);
+    // 先頭一致
+    for (var i = 0; i < CAT_DEFS.length; i++) {
+      for (var j = 0; j < CAT_DEFS[i].tests.length; j++) {
+        if (n.indexOf(CAT_DEFS[i].tests[j]) === 0) {
+          return CAT_DEFS[i].key;
+        }
       }
     }
-    // 先頭一致しない場合は含まれるかチェック
-    for (var j = 0; j < CAT_PATTERNS.length; j++) {
-      if (n.indexOf(CAT_PATTERNS[j].toLowerCase()) >= 0) {
-        return CAT_PATTERNS[j] + '（先頭外）';
+    // 部分一致（先頭外）
+    for (var i = 0; i < CAT_DEFS.length; i++) {
+      for (var j = 0; j < CAT_DEFS[i].tests.length; j++) {
+        if (n.indexOf(CAT_DEFS[i].tests[j]) >= 0) {
+          return CAT_DEFS[i].key + '（先頭外）';
+        }
       }
     }
     return null;
   }
 
-  var catCountFromName = {};
-  var catNoMatch       = [];
+  var catCount   = {};
+  var catNoMatch = [];
 
   data.forEach(function(row) {
-    var odlId  = String(row[0] || '').trim();
-    var odId   = String(row[1] || '').trim();
-    var pname  = String(row[4] || '').trim();
-    var col4c  = String(row[3] || '').trim(); // 既存カテゴリ
+    var odlId = String(row[0] || '').trim();
+    var odId  = String(row[1] || '').trim();
+    var pname = String(row[4] || '').trim();
+    var col4c = String(row[3] || '').trim();
 
     var detected = extractCat(pname);
-
     if (detected) {
-      catCountFromName[detected] = (catCountFromName[detected] || 0) + 1;
+      catCount[detected] = (catCount[detected] || 0) + 1;
     } else {
       catNoMatch.push({ odlId: odlId, odId: odId, name: pname, col4: col4c });
     }
   });
 
-  // col4の実際の値も収集
+  // col4 実値の収集
   var existingCatSet = {};
   data.forEach(function(row) {
     var c = String(row[3] || '').trim();
@@ -170,11 +178,12 @@ function phase7aDryRun() {
   lines.push('[2] カテゴリの抽出（商品名から検出）');
   lines.push('────────────────────────────────────');
   var catDetected = 0;
-  // リスト済みパターンの件数
-  var allKeys = Object.keys(catCountFromName).sort();
-  allKeys.forEach(function(k) {
-    catDetected += catCountFromName[k];
-    lines.push('  ' + k + ': ' + catCountFromName[k] + '件');
+  var catKeys = Object.keys(catCount).sort(function(a, b) {
+    return catCount[b] - catCount[a];
+  });
+  catKeys.forEach(function(k) {
+    catDetected += catCount[k];
+    lines.push('  ' + k + ': ' + catCount[k] + '件');
   });
   lines.push('  ─────');
   lines.push('  商品名から検出 計: ' + catDetected + '件');
@@ -185,13 +194,13 @@ function phase7aDryRun() {
     lines.push('    "' + k + '": ' + existingCatSet[k] + '件');
   });
   lines.push('');
-
   lines.push('--- カテゴリ 判定できなかった商品名（全件）---');
   if (catNoMatch.length === 0) {
     lines.push('  （全件検出済み）');
   } else {
     catNoMatch.forEach(function(r) {
-      lines.push('  ' + r.odlId + ' [' + r.odId + '] 商品名="' + r.name + '" col4="' + r.col4 + '"');
+      lines.push('  ' + r.odlId + ' [' + r.odId + '] 商品名="' + r.name + '"'
+        + (r.col4 ? ' col4="' + r.col4 + '"' : ''));
     });
   }
   lines.push('');
@@ -199,53 +208,73 @@ function phase7aDryRun() {
   // ────────────────────────────────────────────────────────
   // 3. 商品マスタ原型（カテゴリ + 本体）ユニーク一覧
   // ────────────────────────────────────────────────────────
-  // 本体 = 商品名から、先頭のカテゴリと末尾の状態を除いた部分
-  function stripCatCond(name) {
-    var result = name.trim();
+  // カテゴリを商品名先頭から除去、状態を末尾から除去 → 本体
 
-    // カテゴリを先頭から除去（大文字小文字無視）
-    for (var i = 0; i < CAT_PATTERNS.length; i++) {
-      var cp = CAT_PATTERNS[i];
-      if (result.toLowerCase().indexOf(cp.toLowerCase()) === 0) {
-        result = result.slice(cp.length).replace(/^[\s\/\-]+/, '');
+  function normCatStr(name) {
+    // カテゴリ正規化（先頭一致）: return {cat, rest}
+    var n = normStr(name);
+    var CAT_PREFIXES = [
+      { norm: 'pokemon card ',     key: 'Pokemon', len: 13 },
+      { norm: 'pokemon card',      key: 'Pokemon', len: 12 },
+      { norm: 'pokemon ',          key: 'Pokemon', len: 8  },
+      { norm: 'one piece card ',   key: 'One Piece', len: 15 },
+      { norm: 'one piece ',        key: 'One Piece', len: 10 },
+      { norm: 'dragon ball ',      key: 'Dragon Ball', len: 12 }
+    ];
+    for (var i = 0; i < CAT_PREFIXES.length; i++) {
+      if (n.indexOf(CAT_PREFIXES[i].norm) === 0) {
+        return {
+          cat:  CAT_PREFIXES[i].key,
+          rest: name.slice(CAT_PREFIXES[i].len).replace(/^[\s\/]+/, '').trim()
+        };
+      }
+    }
+    // Pokemon/Pokémon 部分一致（先頭外）
+    if (n.indexOf('pokemon') >= 0 || n.indexOf('one piece') >= 0 || n.indexOf('dragon ball') >= 0) {
+      var cat = extractCat(name);
+      if (cat) {
+        return { cat: cat.replace('（先頭外）', ''), rest: name.trim() };
+      }
+    }
+    return { cat: 'その他', rest: name.trim() };
+  }
+
+  function stripCondFromBody(body) {
+    var n = normStr(body);
+    // 末尾側から状態パターンを除去（最長一致優先）
+    var STRIP_SUFFIXES = [
+      'damaged sealed box', 'no shrink box', 'no-shrink box', 'sealed box',
+      'damaged box', '(box damaged)', 'box damaged',
+      ' case', ' deck', ' singles', ' bulk', ' box', ' boxes', ' pack'
+    ];
+    for (var i = 0; i < STRIP_SUFFIXES.length; i++) {
+      var s = STRIP_SUFFIXES[i];
+      var idx = n.lastIndexOf(s);
+      if (idx >= 0) {
+        // 実際のbodyから同じ位置の文字列を除去
+        var origIdx = body.toLowerCase().replace(/\u00e9/g, 'e').replace(/\u00c9/g, 'e').lastIndexOf(s);
+        if (origIdx >= 0) {
+          body = body.slice(0, origIdx).replace(/[\s\/\-\(\)]+$/, '').trim();
+          n    = normStr(body);
+        }
         break;
       }
     }
-
-    // 状態を末尾から除去
-    for (var j = 0; j < COND_PATTERNS.length; j++) {
-      var cd = COND_PATTERNS[j];
-      var idx = result.toLowerCase().lastIndexOf(cd.toLowerCase());
-      if (idx >= 0 && idx === result.length - cd.length) {
-        result = result.slice(0, idx).replace(/[\s\/\-]+$/, '');
-        break;
-      }
-    }
-
-    return result.trim();
+    return body;
   }
 
-  // カテゴリ正規化（先頭一致のみ、先頭外は col4 を使用）
-  function normCat(name, col4) {
-    for (var i = 0; i < CAT_PATTERNS.length; i++) {
-      if (name.toLowerCase().indexOf(CAT_PATTERNS[i].toLowerCase()) === 0) {
-        return CAT_PATTERNS[i];
-      }
-    }
-    return col4 || 'その他';
-  }
-
-  var masterMap = {}; // "カテゴリ|本体" → {count, skus[]}
+  var masterMap = {}; // "カテゴリ|本体" → {cat, body, count, skus[]}
 
   data.forEach(function(row) {
-    var pname  = String(row[4] || '').trim();
-    var col4c  = String(row[3] || '').trim();
-    var col6c  = String(row[5] || '').trim();
-    var sku    = String(row[6] || '').trim();
+    var pname = String(row[4] || '').trim();
+    var col4c = String(row[3] || '').trim();
+    var sku   = String(row[6] || '').trim();
 
-    var cat    = normCat(pname, col4c);
-    var body   = stripCatCond(pname);
-    var key    = cat + ' | ' + body;
+    var cr   = normCatStr(pname);
+    var cat  = cr.cat;
+    var body = stripCondFromBody(cr.rest);
+    if (!body) body = cr.rest; // フォールバック: 本体が空になった場合は除去なし
+    var key  = cat + ' | ' + body;
 
     if (!masterMap[key]) masterMap[key] = { cat: cat, body: body, count: 0, skus: [] };
     masterMap[key].count++;
@@ -258,8 +287,8 @@ function phase7aDryRun() {
   masterEntries.sort(function(a, b) {
     if (a.cat < b.cat) return -1;
     if (a.cat > b.cat) return 1;
-    if (a.body < b.body) return -1;
-    if (a.body > b.body) return 1;
+    if (normStr(a.body) < normStr(b.body)) return -1;
+    if (normStr(a.body) > normStr(b.body)) return 1;
     return 0;
   });
 
@@ -273,11 +302,11 @@ function phase7aDryRun() {
   lines.push('');
 
   // ────────────────────────────────────────────────────────
-  // 4. SKU → 商品名 対応（同商品名に複数SKUが付いている実態確認）
+  // 4. SKU → 商品名 対応
   // ────────────────────────────────────────────────────────
-  var skuToNames  = {};  // sku → Set of 商品名
-  var nameToSkus  = {};  // 商品名 → Set of sku
-  var noSkuCount  = 0;
+  var skuToNames = {};  // sku → [商品名]
+  var nameToSkus = {};  // 商品名 → [sku]
+  var noSkuCount = 0;
 
   data.forEach(function(row) {
     var pname = String(row[4] || '').trim();
@@ -313,11 +342,11 @@ function phase7aDryRun() {
   lines.push('');
   lines.push('  同一SKUが複数商品名に使われているケース: ' + multiNameSkus.length + '件');
   multiNameSkus.sort().forEach(function(s) {
-    lines.push('    SKU="' + s + '" → 商品名=[' + skuToNames[s].join(' / ') + ']');
+    lines.push('    SKU="' + s + '" → [' + skuToNames[s].join(' / ') + ']');
   });
   lines.push('');
 
-  lines.push('=== DRY RUN 完了 ===');
+  lines.push('=== DRY RUN v2 完了 ===');
 
   var result = lines.join('\n');
   Logger.log(result);
