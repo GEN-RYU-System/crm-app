@@ -1976,6 +1976,187 @@ function addArselShippingDryRun() {
 }
 
 // ============================================================
+// Phase5-A: 担当者・仕入れ列・進捗フラグ・個口分析（読み取り専用）
+// ============================================================
+function auditSalesStaffAndProgress() {
+  var ss = getSpreadsheet();
+  var lines = ['=== Phase5-A: 担当者・仕入れ・進捗・個口 調査 ===', ''];
+
+  var sdSheet = ss.getSheetByName(CONFIG.SHEETS.SALES_DATA);
+  if (!sdSheet) {
+    lines.push('[ERROR] ' + CONFIG.SHEETS.SALES_DATA + ' が見つかりません');
+    Logger.log(lines.join('\n'));
+    return lines.join('\n');
+  }
+
+  var DATA_START = 61;
+  var N_ROWS     = 651;
+
+  // ── データ読み込み ──
+  // RangeA: col1-12  → invNo(col12=idx11), 受注担当(col4=idx3), 営業担当(col5=idx4)
+  var rA = sdSheet.getRange(DATA_START, 1,  N_ROWS, 12).getValues();
+  // RangeB: col40-56 → 発送担当(col40=idx0), 検品(col41=idx1), 箱数(col48=idx8),
+  //                     梱包(col49=idx9), ラベル発行(col56=idx16)
+  var rB = sdSheet.getRange(DATA_START, 40, N_ROWS, 17).getValues();
+  // RangeC: col80-87 → 運送状番号(col80=idx0), 格納(col82=idx2), 集荷依頼(col83=idx3),
+  //                     通知(col85=idx5), 仕入れ担当(col87=idx7)
+  var rC = sdSheet.getRange(DATA_START, 80, N_ROWS, 8).getValues();
+  // RangeD: col92-94 → 金額(col92=idx0), 数量(col93=idx1), 総額(col94=idx2)
+  var rD  = sdSheet.getRange(DATA_START, 92, N_ROWS, 3).getValues();
+  var rDF = sdSheet.getRange(DATA_START, 92, N_ROWS, 3).getFormulas();
+
+  // ── Section1: 担当者名 ──
+  var staffTally = {}; // name → {count, cols[]}
+  function tally(name, col) {
+    var n = String(name || '').trim();
+    if (!n) return;
+    if (!staffTally[n]) staffTally[n] = { count: 0, cols: [] };
+    staffTally[n].count++;
+    if (staffTally[n].cols.indexOf(col) < 0) staffTally[n].cols.push(col);
+  }
+  for (var r = 0; r < N_ROWS; r++) {
+    tally(rA[r][3],  'col4');   // 受注担当
+    tally(rA[r][4],  'col5');   // 営業担当
+    tally(rB[r][0],  'col40');  // 発送担当
+    tally(rC[r][7],  'col87');  // 仕入れ担当
+  }
+
+  // 担当者マスタ読み込み
+  var staffSheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
+  var empList = [];
+  var empMap  = {}; // 各種フル名 → empId
+
+  if (staffSheet && staffSheet.getLastRow() >= 2) {
+    var staffData = staffSheet.getRange(2, 1, staffSheet.getLastRow() - 1, 5).getValues();
+    // col1=EMP-ID, col2=苗字JP, col3=名JP, col4=苗字EN, col5=名EN
+    staffData.forEach(function(sr) {
+      var empId   = String(sr[0] || '').trim();
+      var lastJp  = String(sr[1] || '').trim();
+      var firstJp = String(sr[2] || '').trim();
+      var lastEn  = String(sr[3] || '').trim();
+      var firstEn = String(sr[4] || '').trim();
+      var fJp    = lastJp + firstJp;
+      var fJpSp  = (lastJp + ' ' + firstJp).trim();
+      var fEn    = (firstEn + ' ' + lastEn).trim();
+      var fEnR   = (lastEn + ' ' + firstEn).trim();
+      empList.push({ empId: empId, jp: fJp, en: fEn });
+      [fJp, fJpSp, fEn, fEnR, firstJp, firstEn].forEach(function(n) {
+        if (n && !empMap[n]) empMap[n] = empId;
+      });
+    });
+  }
+
+  lines.push('--- Section1: 担当者名 → EMP-ID 突合 ---');
+  lines.push('担当者マスタ件数: ' + empList.length);
+  lines.push('【担当者マスタ一覧】');
+  empList.forEach(function(e) {
+    lines.push('  ' + e.empId + ': JP=' + e.jp + ' / EN=' + e.en);
+  });
+  lines.push('');
+  lines.push('【売上データ ユニーク担当者名（出現数つき）】');
+  var unmatched = [];
+  Object.keys(staffTally).sort().forEach(function(name) {
+    var st    = staffTally[name];
+    var empId = empMap[name] || '';
+    var tag   = empId ? '[OK] ' + empId : '[MISMATCH]';
+    lines.push('  ' + tag + ' "' + name + '" 計' + st.count + '件 cols=' + st.cols.join('/'));
+    if (!empId) unmatched.push('"' + name + '"');
+  });
+  lines.push('');
+  lines.push('不一致: ' + unmatched.length + '件'
+    + (unmatched.length > 0 ? ' → ' + unmatched.join(', ') : ''));
+  lines.push('');
+
+  // ── Section2: 仕入れ情報 col92/93/94 数式 vs 入力 ──
+  lines.push('--- Section2: 仕入れ情報 数式 vs 入力 ---');
+  var colLabels = ['col92(金額)', 'col93(数量)', 'col94(総額)'];
+  for (var c = 0; c < 3; c++) {
+    var fmtCnt = 0, inpCnt = 0, emptyCnt = 0;
+    var fmtEx  = [];
+    for (var ri = 0; ri < N_ROWS; ri++) {
+      var fm  = String(rDF[ri][c] || '');
+      var val = rD[ri][c];
+      if (fm) {
+        fmtCnt++;
+        if (fmtEx.length < 3) fmtEx.push('row' + (DATA_START + ri) + ': ' + fm);
+      } else if (val !== '' && val !== null && val !== undefined) {
+        inpCnt++;
+      } else {
+        emptyCnt++;
+      }
+    }
+    lines.push(colLabels[c] + ': 数式=' + fmtCnt + ' / 入力=' + inpCnt + ' / 空=' + emptyCnt);
+    if (fmtEx.length > 0) lines.push('  数式例: ' + fmtEx.join(' | '));
+  }
+  lines.push('');
+
+  // ── Section3: 進捗フラグ値分布 ──
+  lines.push('--- Section3: 進捗フラグ値分布 ---');
+  var flagDefs = [
+    { label: 'col41 検品',       get: function(r) { return rB[r][1];  } },
+    { label: 'col49 梱包',       get: function(r) { return rB[r][9];  } },
+    { label: 'col82 格納',       get: function(r) { return rC[r][2];  } },
+    { label: 'col83 集荷依頼',   get: function(r) { return rC[r][3];  } },
+    { label: 'col85 通知',       get: function(r) { return rC[r][5];  } },
+    { label: 'col56 ラベル発行', get: function(r) { return rB[r][16]; } }
+  ];
+  flagDefs.forEach(function(def) {
+    var dist = {};
+    for (var ri = 0; ri < N_ROWS; ri++) {
+      var v = def.get(ri);
+      var key = (v === '' || v === null || v === undefined) ? '(空)' : '"' + String(v) + '"';
+      dist[key] = (dist[key] || 0) + 1;
+    }
+    lines.push(def.label + ':');
+    Object.keys(dist).sort().forEach(function(k) {
+      lines.push('  ' + k + ': ' + dist[k] + '件');
+    });
+  });
+  lines.push('');
+
+  // ── Section4: 発送個口分析 ──
+  lines.push('--- Section4: 発送個口分析 ---');
+  // col48(箱数)=rB[r][8], col80(運送状番号)=rC[r][0], col12(invNo)=rA[r][11]
+  var boxGe2 = 0;
+  var orderTrk = {}; // baseInv → {trackingSet}
+  for (var ri = 0; ri < N_ROWS; ri++) {
+    var boxNum  = parseFloat(String(rB[ri][8] || '0')) || 0;
+    if (boxNum >= 2) boxGe2++;
+
+    var invNo   = String(rA[ri][11] || '').trim();
+    var trk     = String(rC[ri][0]  || '').trim();
+    var baseInv = invNo.replace(/-\d+$/, '');
+    if (!baseInv) continue;
+
+    if (!orderTrk[baseInv]) orderTrk[baseInv] = {};
+    if (trk) orderTrk[baseInv][trk] = true;
+  }
+
+  var multiTrk = [];
+  Object.keys(orderTrk).forEach(function(inv) {
+    var cnt = Object.keys(orderTrk[inv]).length;
+    if (cnt > 1) multiTrk.push({ inv: inv, cnt: cnt, trks: Object.keys(orderTrk[inv]) });
+  });
+  multiTrk.sort(function(a, b) { return b.cnt - a.cnt; });
+
+  lines.push('col48(箱数)が2以上の行数: ' + boxGe2 + '行');
+  lines.push('同一オーダー内に複数運送状番号が存在するオーダー数: ' + multiTrk.length);
+  lines.push('最大個口数: ' + (multiTrk.length > 0 ? multiTrk[0].cnt : 0));
+  if (multiTrk.length > 0) {
+    lines.push('【複数個口オーダー】');
+    multiTrk.forEach(function(o) {
+      lines.push('  baseInv=' + o.inv + ' 個口=' + o.cnt + ' 運送状: ' + o.trks.join(' / '));
+    });
+  }
+  lines.push('');
+  lines.push('=== 調査完了 ===');
+
+  var result = lines.join('\n');
+  Logger.log(result);
+  return result;
+}
+
+// ============================================================
 // ARSEL SLU 別発送先 CONFIRM（書き込み）
 //   住所A 国番号修正: "" → "376"（367830はアンドラ番号376-367830と一致）
 // ============================================================
