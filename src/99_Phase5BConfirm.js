@@ -504,6 +504,252 @@ function verifyPhase5B() {
 }
 
 // ============================================================
+// 修正4 予約列リセット + 正しい再突合 [WRITE]
+// ============================================================
+function fixOrphanDepMatchings() {
+  var ss        = getSpreadsheet();
+  var lines     = ['=== 修正4: 予約列リセット + 正しい再突合 ===', ''];
+  var DATA_START = 61, N_ROWS = 651;
+
+  var sdSheet = ss.getSheetByName(CONFIG.SHEETS.SALES_DATA);
+  var omSheet = ss.getSheetByName(CONFIG.SHEETS.ORDER_MASTER);
+  var shpSheet = ss.getSheetByName(CONFIG.SHEETS.SHIPMENT);
+  var purSheet = ss.getSheetByName(CONFIG.SHEETS.PURCHASE);
+
+  // ── 売上データ読み込み ──
+  var rA = sdSheet.getRange(DATA_START, 1,  N_ROWS, 12).getValues();
+  var rC = sdSheet.getRange(DATA_START, 78, N_ROWS, 30).getValues();
+
+  // ── OM読み込み（全33列）──
+  var omLast = omSheet.getLastRow();
+  var omData = omLast >= 2 ? omSheet.getRange(2, 1, omLast - 1, 33).getValues() : [];
+  var omRowByOdId = {};  // odId → 1-indexed sheet row
+  var omByInv     = {};  // baseInv → {odId, row, sheetRow}
+  omData.forEach(function(row, idx) {
+    var odId = String(row[0] || '').trim();
+    var inv  = String(row[1] || '').trim();
+    var sheetRow = idx + 2;
+    if (odId) omRowByOdId[odId] = sheetRow;
+    if (inv) omByInv[inv] = { odId: odId, row: row, sheetRow: sheetRow };
+  });
+
+  // ── 取引先名 → [baseInvNo] マップ（非空invNo行のみ）──
+  var custToBase = {};
+  for (var ri = 0; ri < N_ROWS; ri++) {
+    var inv = String(rA[ri][11] || '').trim();
+    if (!inv) continue;
+    var base = inv.replace(/-\d+$/, '');
+    var cust = String(rA[ri][5] || '').trim();
+    if (!cust || !base) continue;
+    if (!custToBase[cust]) custToBase[cust] = {};
+    custToBase[cust][base] = true;
+  }
+
+  function fmtD(v) {
+    if (v instanceof Date) return Utilities.formatDate(v, 'Asia/Tokyo', 'yyyy/MM/dd');
+    return (v === '' || v === null || v === undefined) ? '（空）' : String(v);
+  }
+
+  // ════════════════════════════════════════════
+  // STEP 1: col31 リセット（誤突合4件）
+  // ════════════════════════════════════════════
+  lines.push('--- STEP 1: col31 リセット ---');
+  var RESET_ODIDS = ['OD-00014', 'OD-00030', 'OD-00094', 'OD-00108'];
+  RESET_ODIDS.forEach(function(odId) {
+    var sheetRow = omRowByOdId[odId];
+    if (!sheetRow) { lines.push('[ERROR] ' + odId + ' OM行が見つかりません'); return; }
+    var before = String(omSheet.getRange(sheetRow, 31).getValue() || '').trim();
+    omSheet.getRange(sheetRow, 31).setValue('');
+    lines.push('[RESET] ' + odId + ' (OM row' + sheetRow + ') col31: "' + before + '" → ""');
+  });
+  SpreadsheetApp.flush();
+  lines.push('');
+
+  // ════════════════════════════════════════════
+  // STEP 2: 顧客名ベース再突合（row82/116/191）
+  // ════════════════════════════════════════════
+  lines.push('--- STEP 2: 顧客名ベース再突合 ---');
+  lines.push('※ OMにsrc行番号の記録なし → 取引先名+発売予定日+DEP率で照合');
+  lines.push('');
+
+  // row82/116/191 のみ再突合試行（row301/360はユーザー判定で純粋DEP）
+  var REMATCH_CASES = [
+    { ri: 21,  sdRow: 82,  label: '#DEP 0005' },
+    { ri: 55,  sdRow: 116, label: '#DEP 0006' },
+    { ri: 130, sdRow: 191, label: '#DEP 0010' }
+  ];
+  var newYoyaku = []; // 確定した新規更新
+
+  REMATCH_CASES.forEach(function(o) {
+    var custName  = String(rA[o.ri][5] || '').trim();
+    var oRelease  = rC[o.ri][28]; // col106
+    var oDepRate  = String(rC[o.ri][29] || '').trim();
+    var oVal101   = String(rC[o.ri][23] || '').trim();
+
+    lines.push('row' + o.sdRow + ' (' + o.label + ')');
+    lines.push('  取引先名: "' + custName + '"');
+    lines.push('  発売予定(col106): ' + fmtD(oRelease) + ' / DEP率(col107): ' + oDepRate);
+
+    var candidateBases = custToBase[custName] ? Object.keys(custToBase[custName]) : [];
+    if (candidateBases.length === 0) {
+      lines.push('  → OMに同名取引先なし → 紐付け不可（未割当DEP）');
+      lines.push('');
+      return;
+    }
+
+    // スコアリング（発売予定日+2 / DEP率+2 / 名前のみ+1）
+    var scored = [];
+    candidateBases.forEach(function(base) {
+      var entry   = omByInv[base];
+      if (!entry) return;
+      var omRelStr  = fmtD(entry.row[31]); // col32 (idx31)
+      var oRelStr   = fmtD(oRelease);
+      var omDep     = String(entry.row[32] || '').trim(); // col33 (idx32)
+      var score     = 1; // 名前一致ベース
+      if (omRelStr !== '（空）' && omRelStr === oRelStr) score += 2;
+      if (omDep !== '' && omDep === oDepRate) score += 2;
+      scored.push({ base: base, odId: entry.odId, score: score,
+                    omRelDate: omRelStr, omDep: omDep, sheetRow: entry.sheetRow });
+    });
+    scored.sort(function(a, b) { return b.score - a.score; });
+
+    lines.push('  候補 ' + scored.length + '件:');
+    scored.forEach(function(s) {
+      var conf = s.score >= 5 ? '★★ 高確度' : s.score >= 3 ? '★ 中確度' : '△ 名前のみ';
+      lines.push('    ' + s.odId + '(' + s.base + ')'
+        + ' 発売予定=' + s.omRelDate + ' DEP率=' + s.omDep + ' [' + conf + ']');
+    });
+
+    var best = scored[0];
+    if (best && best.score >= 3) {
+      var current31 = String(omSheet.getRange(best.sheetRow, 31).getValue() || '').trim();
+      if (!current31) {
+        omSheet.getRange(best.sheetRow, 31).setValue(oVal101);
+        lines.push('  [WRITE] ' + best.odId + ' col31 → "' + oVal101 + '"');
+        newYoyaku.push({ odId: best.odId, val101: oVal101, conf: best.score });
+      } else {
+        lines.push('  [SKIP] ' + best.odId + ' col31 既に "' + current31 + '" あり');
+      }
+    } else {
+      lines.push('  → 高確度マッチなし → col31 未更新（未割当DEPとして記録）');
+    }
+    lines.push('');
+  });
+  SpreadsheetApp.flush();
+
+  // ════════════════════════════════════════════
+  // STEP 3: row191 / OD-00053 の自己帰属確認
+  // ════════════════════════════════════════════
+  lines.push('--- STEP 3: row191 の帰属確認 ---');
+  var ri191     = 130;
+  var cust191   = String(rA[ri191][5] || '').trim();
+  var release191 = fmtD(rC[ri191][28]);
+  lines.push('row191 取引先: "' + cust191 + '" / 発売予定: ' + release191);
+
+  var daveyBases = custToBase[cust191] ? Object.keys(custToBase[cust191]) : [];
+  lines.push(cust191 + ' の全OMオーダー（' + daveyBases.length + '件）:');
+  daveyBases.forEach(function(base) {
+    var entry = omByInv[base];
+    if (!entry) return;
+    var relStr = fmtD(entry.row[31]);
+    var match  = (relStr === release191 && release191 !== '（空）') ? ' ← 発売予定一致' : '';
+    lines.push('  ' + entry.odId + '(' + base + ') 発売予定=' + relStr + ' ステータス=' + String(entry.row[6]||'') + match);
+  });
+
+  // OD-00053 自体の invNo 範囲を確認（#0808-* の行が row191 を含むか）
+  var om53 = omByInv['#0808'];
+  if (om53) {
+    // 売上データで #0808-* の行を特定
+    var rows808 = [];
+    for (var ri2 = 0; ri2 < N_ROWS; ri2++) {
+      var inv808 = String(rA[ri2][11] || '').trim();
+      if (inv808.replace(/-\d+$/, '') === '#0808') {
+        rows808.push({ sdRow: DATA_START + ri2, inv: inv808, cust: String(rA[ri2][5]||'').trim() });
+      }
+    }
+    lines.push('OD-00053(#0808) に属する売上データ行:');
+    rows808.forEach(function(r) {
+      lines.push('  ' + r.sdRow + ' invNo="' + r.inv + '" 取引先="' + r.cust + '"');
+    });
+    lines.push('row191(空invNo)は上記に含まれず → 隣接行(row190=#0808-7)との取引先一致で紐付け');
+    var selfContained = rows808.some(function(r) { return r.sdRow === 191; });
+    lines.push('判定: ' + (selfContained ? 'row191 は #0808 に含まれる（自己帰属）' : 'row191 は #0808 の隣接行。同一顧客(Daveyjones)なので紐付け維持'));
+  }
+  lines.push('');
+
+  // ════════════════════════════════════════════
+  // STEP 4: row301 → 仕入れタブ備考にDEP転記
+  // ════════════════════════════════════════════
+  lines.push('--- STEP 4: row301 の仕入れタブ確認 + 備考転記 ---');
+  var ri301   = 240;
+  var dep301  = String(rC[ri301][23] || '').trim(); // col101
+  var amt301  = rC[ri301][14]; // col92 金額
+  var ord301  = rC[ri301][10]; // col88 注文日
+  lines.push('row301: DEP="' + dep301 + '" 金額=' + amt301 + ' 注文日=' + fmtD(ord301));
+
+  var purCount = purSheet.getLastRow() - 1;
+  var purData301 = purCount > 0 ? purSheet.getRange(2, 1, purCount, 17).getValues() : [];
+  var matchedPur301 = -1; // 0-indexed in purData301
+  purData301.forEach(function(row, idx) {
+    var purAmt  = String(row[9] || '').trim();  // col10 金額
+    var purDate = fmtD(row[3]);                 // col4 注文日
+    var purOdId = String(row[1] || '').trim();  // col2 odId
+    var purMemo = String(row[14] || '').trim(); // col15 備考
+    // Match by amount AND (empty odId)
+    if (purOdId === '' && String(amt301 || '') === purAmt && purMemo.indexOf('DEP:') < 0) {
+      matchedPur301 = idx;
+    }
+  });
+
+  if (matchedPur301 >= 0) {
+    var purRowNum = matchedPur301 + 2; // 1-indexed (header=1)
+    var purId301  = String(purData301[matchedPur301][0] || '');
+    var oldMemo   = String(purData301[matchedPur301][14] || '').trim();
+    var newMemo   = (oldMemo ? oldMemo + ' / ' : '') + 'DEP: ' + dep301;
+    purSheet.getRange(purRowNum, 15).setValue(newMemo); // col15=備考
+    SpreadsheetApp.flush();
+    lines.push('[WRITE] 仕入れタブ row' + purRowNum + '(' + purId301 + ') 備考: "' + oldMemo + '" → "' + newMemo + '"');
+  } else {
+    lines.push('[INFO] 仕入れタブに row301 に対応する行が特定できませんでした（金額・odId="" で検索）');
+    lines.push('       金額=' + amt301 + ' の odId空行を確認: ');
+    var emptyOdAmt = purData301.filter(function(r) { return String(r[1]||'').trim() === '' && String(r[9]||'').trim() !== ''; });
+    emptyOdAmt.forEach(function(r) {
+      lines.push('       ' + r[0] + ' 金額=' + r[9] + ' 注文日=' + fmtD(r[3]));
+    });
+  }
+  lines.push('');
+
+  // row360 の確認（col87-100 が空なので仕入れタブにない見込み）
+  lines.push('--- STEP 5: row360 の確認 ---');
+  var ri360 = 299;
+  var hasVal360 = false;
+  for (var ci = 9; ci <= 22; ci++) {
+    if (rC[ri360][ci] !== '' && rC[ri360][ci] !== null && rC[ri360][ci] !== undefined) {
+      hasVal360 = true; break;
+    }
+  }
+  lines.push('row360 col87-100有値: ' + hasVal360);
+  lines.push(hasVal360 ? '→ 仕入れタブに存在する可能性あり（上記と同様に確認）' : '→ 仕入れタブに未取り込み（col87-100が全空）。DEP情報は移行対象外として記録のみ。');
+  lines.push('  DEP情報: col101="' + String(rC[ri360][23]||'').trim() + '" DEP率=' + String(rC[ri360][29]||'').trim() + ' col105=' + fmtD(rC[ri360][27]));
+  lines.push('');
+
+  // ════════════════════════════════════════════
+  // 最終状態: OM col31 有値行
+  // ════════════════════════════════════════════
+  lines.push('--- 最終: 予約販売一覧 ---');
+  var omFinal = omLast >= 2 ? omSheet.getRange(2, 1, omLast - 1, 33).getValues() : [];
+  var finalYoyaku = omFinal.filter(function(r) { return String(r[30] || '').trim() !== ''; }); // col31=idx30
+  lines.push('予約販売件数: ' + finalYoyaku.length + '件');
+  finalYoyaku.forEach(function(r) {
+    lines.push('  ' + r[0] + ' 予約InvNo="' + r[30] + '" 発売予定=' + fmtD(r[31]) + ' DEP率=' + r[32]);
+  });
+
+  var result = lines.join('\n');
+  Logger.log(result);
+  return result;
+}
+
+// ============================================================
 // 修正4 突合妥当性確認（読み取りのみ）
 // ============================================================
 function auditOrphanDep() {
