@@ -848,6 +848,214 @@ function finalizeOrphanDep() {
 }
 
 // ============================================================
+// src rows 自己帰属判定 + 予約列確定書き込み
+// ============================================================
+function srcRowsAnalysis() {
+  var ss       = getSpreadsheet();
+  var lines    = ['=== src rows 自己帰属判定 ===', ''];
+  var DATA_START = 61, N_ROWS = 651;
+
+  var omSheet   = ss.getSheetByName(CONFIG.SHEETS.ORDER_MASTER);
+  var custSheet = ss.getSheetByName(CONFIG.SHEETS.CRM_CUSTOMERS);
+  var sdSheet   = ss.getSheetByName(CONFIG.SHEETS.SALES_DATA);
+
+  // ── 売上データ読み込み ──
+  var rA = sdSheet.getRange(DATA_START, 1,  N_ROWS, 12).getValues();
+  var rC = sdSheet.getRange(DATA_START, 78, N_ROWS, 30).getValues();
+
+  function fmtD(v) {
+    if (v instanceof Date) return Utilities.formatDate(v, 'Asia/Tokyo', 'yyyy/MM/dd');
+    return (v === '' || v === null || v === undefined) ? '（空）' : String(v);
+  }
+
+  // ── 顧客マスタ: 名前 → CT-ID ──
+  var custLast = custSheet ? custSheet.getLastRow() : 1;
+  var custData = custLast >= 2 ? custSheet.getRange(2, 1, custLast - 1, 5).getValues() : [];
+  var nameToCtId = {};
+  custData.forEach(function(row) {
+    var ctId = String(row[0] || '').trim();
+    var name = String(row[2] || '').trim();
+    if (ctId && name) nameToCtId[name] = ctId;
+  });
+
+  // ── OM全読み込み ──
+  var omLast = omSheet.getLastRow();
+  var omData = omLast >= 2 ? omSheet.getRange(2, 1, omLast - 1, 33).getValues() : [];
+  var omRowByOdId = {};
+  omData.forEach(function(row, idx) {
+    var id = String(row[0] || '').trim();
+    if (id) omRowByOdId[id] = idx + 2;
+  });
+
+  // ────────────────────────────────────────
+  // 移行グループ化ロジックの再適用:
+  //   非空invNo行 → baseInvNo でグループ化 → 該当OMオーダー
+  //   空invNo行   → 顧客ID でグループ化 → 請求書番号空のOMオーダー
+  // ────────────────────────────────────────
+
+  // ── 空invNo行の src rows 再計算 ──
+  // 顧客ID → 空invNoの売上データ行リスト
+  var ctIdToEmptyInvRows = {};
+  for (var ri = 0; ri < N_ROWS; ri++) {
+    if (String(rA[ri][11] || '').trim()) continue; // 非空invNoはスキップ
+    var custName = String(rA[ri][5] || '').trim();
+    if (!custName) continue;
+    var ctId = nameToCtId[custName] || '';
+    if (!ctId) continue;
+    if (!ctIdToEmptyInvRows[ctId]) ctIdToEmptyInvRows[ctId] = [];
+    ctIdToEmptyInvRows[ctId].push({
+      sdRow:   DATA_START + ri,
+      ri:      ri,
+      custName: custName,
+      val101:  String(rC[ri][23] || '').trim(),
+      amount:  String(rC[ri][14] || '').trim(),
+      ordDate: fmtD(rC[ri][10]),
+      release: fmtD(rC[ri][28]),
+      depRate: String(rC[ri][29] || '').trim()
+    });
+  }
+
+  // ── 非空invNo行の src rows ──
+  // baseInv → 売上データ行リスト
+  var baseInvToRows = {};
+  for (var ri = 0; ri < N_ROWS; ri++) {
+    var inv = String(rA[ri][11] || '').trim();
+    if (!inv) continue;
+    var base = inv.replace(/-\d+$/, '');
+    if (!baseInvToRows[base]) baseInvToRows[base] = [];
+    baseInvToRows[base].push(DATA_START + ri);
+  }
+
+  // ── [1] OD-00031 の src rows ──
+  lines.push('--- [1] OD-00031 の src rows ---');
+  var od31 = omData.filter(function(r) { return String(r[0]||'').trim() === 'OD-00031'; })[0];
+  if (od31) {
+    var ct31 = String(od31[2] || '').trim(); // CT-00026
+    lines.push('OD-00031 顧客ID=' + ct31 + ' 請求書番号=' + (String(od31[1]||'').trim()||'（空）'));
+    lines.push('グループ化キー: 顧客ID=' + ct31 + ' かつ invNo=空');
+    var rows31 = ctIdToEmptyInvRows[ct31] || [];
+    lines.push('src rows（空invNo + CT=' + ct31 + '）: ' + rows31.length + '行');
+    rows31.forEach(function(r) {
+      lines.push('  row' + r.sdRow + ' 取引先="' + r.custName + '"'
+        + ' col101="' + r.val101 + '"'
+        + ' 金額=' + r.amount
+        + ' DEP率=' + r.depRate);
+    });
+    var has116 = rows31.some(function(r) { return r.sdRow === 116; });
+    lines.push('row116 含まれるか: ' + (has116 ? '✔ YES → row116 は OD-00031 の自己帰属' : '✘ NO'));
+  } else {
+    lines.push('OD-00031: OMに見つかりません');
+  }
+  lines.push('');
+
+  // ── [2] OD-00002 / OD-00030 / OD-00043 の src rows ──
+  lines.push('--- [2] OD-00002 / OD-00030 / OD-00043 の src rows ---');
+  var CHECK_ORDERS = [
+    { odId: 'OD-00002', baseInv: '#0059' },
+    { odId: 'OD-00030', baseInv: '#0789' },
+    { odId: 'OD-00043', baseInv: '#0793' }
+  ];
+  CHECK_ORDERS.forEach(function(o) {
+    var srcRows = baseInvToRows[o.baseInv] || [];
+    var has82   = srcRows.indexOf(82) >= 0;
+    lines.push(o.odId + '(' + o.baseInv + ') src rows: [' + srcRows.join(', ') + ']');
+    lines.push('  row82 含まれるか: ' + (has82 ? '✔ YES' : '✘ NO → row82 はここに属さない'));
+  });
+  lines.push('');
+
+  // ── [3] 自己帰属確定 + 書き込み ──
+  lines.push('--- [3] 自己帰属確定 + 予約列書き込み ---');
+
+  // LaffxyTCG の CT-ID を確認
+  var laffxyCtId = nameToCtId['LaffxyTCG'] || '';
+  lines.push('LaffxyTCG の CT-ID: ' + (laffxyCtId || '（顧客マスタにない）'));
+
+  var WRITE_TARGETS = []; // {odId, sheetRow, val101, label}
+
+  if (laffxyCtId) {
+    // LaffxyTCGの空invNo行がどのOMオーダーに属するか
+    var laffxyEmptyOrders = omData.filter(function(r) {
+      return String(r[2]||'').trim() === laffxyCtId && !String(r[1]||'').trim();
+    });
+    lines.push('LaffxyTCG(' + laffxyCtId + ') + 請求書番号空のOMオーダー: ' + laffxyEmptyOrders.length + '件');
+    laffxyEmptyOrders.forEach(function(r) {
+      lines.push('  ' + r[0] + ' ステータス=' + r[6]);
+    });
+
+    var rows82Candidate = ctIdToEmptyInvRows[laffxyCtId] || [];
+    var row82InSrc = rows82Candidate.some(function(r) { return r.sdRow === 82; });
+    lines.push('row82 が LaffxyTCG 空invNoグループに含まれるか: ' + (row82InSrc ? '✔ YES' : '✘ NO'));
+
+    if (row82InSrc && laffxyEmptyOrders.length === 1) {
+      var tgt = laffxyEmptyOrders[0];
+      WRITE_TARGETS.push({ odId: tgt[0], val101: '#DEP 0005', label: 'row82→' + tgt[0] });
+    } else if (row82InSrc && laffxyEmptyOrders.length > 1) {
+      lines.push('  → 複数オーダー一致・絞り込み不可（未割当のまま）');
+    } else {
+      lines.push('  → row82 は LaffxyTCG グループに含まれない（未割当）');
+    }
+  }
+  lines.push('');
+
+  // row116 / OD-00031 の書き込み判定
+  var rows116Src = (od31 && ct31) ? (ctIdToEmptyInvRows[ct31] || []) : [];
+  var has116confirmed = rows116Src.some(function(r) { return r.sdRow === 116; });
+  if (has116confirmed) {
+    WRITE_TARGETS.push({ odId: 'OD-00031', val101: '#DEP 0006', label: 'row116→OD-00031' });
+  }
+
+  lines.push('書き込み対象: ' + WRITE_TARGETS.length + '件');
+  WRITE_TARGETS.forEach(function(t) {
+    var sheetRow = omRowByOdId[t.odId];
+    if (!sheetRow) { lines.push('[ERROR] ' + t.odId + ' OM行なし'); return; }
+    var before = String(omSheet.getRange(sheetRow, 31).getValue() || '').trim();
+    if (before) {
+      lines.push('[SKIP] ' + t.label + ' col31="' + before + '" 既存値あり');
+    } else {
+      omSheet.getRange(sheetRow, 31).setValue(t.val101);
+      lines.push('[WRITE] ' + t.label + ' col31 → "' + t.val101 + '"');
+    }
+  });
+  SpreadsheetApp.flush();
+  lines.push('');
+
+  // ── [4] 最終: 予約販売件数 ──
+  lines.push('--- [4] 予約販売 最終一覧 ---');
+  var omFinal = omLast >= 2 ? omSheet.getRange(2, 1, omLast - 1, 33).getValues() : [];
+  var yoyaku  = omFinal.filter(function(r) { return String(r[30] || '').trim() !== ''; });
+  lines.push('予約販売件数: ' + yoyaku.length + '件');
+  yoyaku.forEach(function(r) {
+    lines.push('  ' + r[0] + ' 予約InvNo="' + r[30] + '" 発売予定=' + fmtD(r[31]) + ' DEP率=' + r[32]);
+  });
+  lines.push('');
+
+  // ── 未割当DEP 最終確定 ──
+  lines.push('--- 未割当DEP 最終確定 ---');
+  var unmatched = [
+    { sdRow: 82,  custName: 'LaffxyTCG',    depNo: '#DEP 0005' },
+    { sdRow: 360, custName: 'Cesar Avelino', depNo: '#DEP 0001' }
+  ];
+  // row116 は書き込み成功したら除外
+  var wrote116 = WRITE_TARGETS.some(function(t) { return t.label.indexOf('row116') >= 0; });
+  if (!wrote116) {
+    unmatched.push({ sdRow: 116, custName: 'Japhunter', depNo: '#DEP 0006' });
+  }
+  // row82 が書き込まれていれば除外
+  var wrote82 = WRITE_TARGETS.some(function(t) { return t.label.indexOf('row82') >= 0; });
+  if (wrote82) {
+    unmatched = unmatched.filter(function(u) { return u.sdRow !== 82; });
+  }
+  lines.push('未割当: ' + unmatched.length + '件');
+  unmatched.forEach(function(u) {
+    lines.push('  row' + u.sdRow + ' ' + u.custName + ' ' + u.depNo + ' → OM紐付け不可・記録のみ');
+  });
+
+  var result = lines.join('\n');
+  Logger.log(result);
+  return result;
+}
+
+// ============================================================
 // 修正4 突合妥当性確認（読み取りのみ）
 // ============================================================
 function auditOrphanDep() {
