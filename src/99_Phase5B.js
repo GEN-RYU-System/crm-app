@@ -22,8 +22,16 @@ function toFlag(v) {
   return (s === '✔︎' || s === '完了');
 }
 
+function cleanTracking(trk) {
+  // ゼロ幅文字（U+200B-U+200F, U+FEFF, U+202A-U+202E）除去 + 前後空白
+  return String(trk || '').replace(/[\u200B-\u200F\uFEFF\u202A-\u202E]/g, '').trim();
+}
+
 function isValidTracking(trk) {
-  return /^\d{5,}$/.test(String(trk || '').trim());
+  var s = cleanTracking(trk);
+  if (s.length < 5) return false;
+  if (/^-+$/.test(s)) return false; // "-" のみは無効
+  return /^[0-9A-Za-z\-]{5,}$/.test(s);
 }
 
 // ============================================================
@@ -195,19 +203,20 @@ function dryRunPhase5B() {
     var odId = omMap[baseInv];
     if (!odId) continue; // 移行済みオーダー以外はスキップ
 
-    var trk = String(rC[ri][2] || '').trim(); // col80
+    var rawTrk  = String(rC[ri][2] || ''); // col80 生値
+    var trk     = cleanTracking(rawTrk);   // ゼロ幅除去・trim済み
 
     if (!shipGroups[baseInv]) shipGroups[baseInv] = {};
 
     if (!trk) {
       // tracking空: 未発送候補として記録するだけ
       if (!shipGroups[baseInv]['__EMPTY__']) {
-        shipGroups[baseInv]['__EMPTY__'] = { rowIdx: ri, isInvalid: false, origTrk: '' };
+        shipGroups[baseInv]['__EMPTY__'] = { rowIdx: ri, isInvalid: false, cleanTrk: '', origTrk: '' };
       }
       continue;
     }
 
-    var valid  = isValidTracking(trk);
+    var valid  = isValidTracking(trk); // cleanTracking済みの値で判定
     var mapKey = valid ? trk : '__INVALID_' + ri + '__';
 
     if (valid && shipGroups[baseInv][trk]) {
@@ -218,11 +227,12 @@ function dryRunPhase5B() {
     shipGroups[baseInv][mapKey] = {
       rowIdx:    ri,
       isInvalid: !valid,
-      origTrk:   trk
+      cleanTrk:  trk,    // クリーン済み（保存値として使う）
+      origTrk:   rawTrk  // 生値（備考転記・デバッグ用）
     };
 
     if (!valid) {
-      anomalies.push('発送: baseInv=' + baseInv + ' odId=' + odId + ' 非数値運送状="' + trk + '" → 運送状空欄・備考に転記');
+      anomalies.push('発送: baseInv=' + baseInv + ' odId=' + odId + ' 無効運送状="' + trk + '"（生="' + rawTrk.replace(/[\u200B-\u200F\uFEFF\u202A-\u202E]/g, '[ZW]') + '"）→ 運送状空欄・備考に転記');
     }
   }
 
@@ -246,10 +256,12 @@ function dryRunPhase5B() {
     keys.forEach(function(k) {
       var entry  = group[k];
       var ri     = entry.rowIdx;
-      var trk    = entry.isInvalid ? '' : entry.origTrk;
+      var trk    = entry.isInvalid ? '' : entry.cleanTrk; // クリーン済みを保存
       var memo   = String(rC[ri][8] || '').trim(); // col86
-      if (entry.isInvalid && entry.origTrk) {
-        memo = (memo ? memo + ' / ' : '') + '運送状原文: ' + entry.origTrk;
+      if (entry.isInvalid && entry.cleanTrk) {
+        // 無効運送状は備考に原文（生値）を転記
+        var rawDisp = entry.origTrk.replace(/[\u200B-\u200F\uFEFF\u202A-\u202E]/g, '');
+        memo = (memo ? memo + ' / ' : '') + '運送状原文: ' + rawDisp;
       }
 
       var staffName = String(rB[ri][0] || '').trim(); // col40
@@ -286,9 +298,22 @@ function dryRunPhase5B() {
   });
 
   // ── 仕入れタブ 生成 ──
+  // 救済された運送状（数字以外だが有効判定）カウンタ
+  var rescuedTracking = [];
+  Object.keys(shipGroups).forEach(function(baseInv) {
+    var group = shipGroups[baseInv];
+    Object.keys(group).forEach(function(k) {
+      var e = group[k];
+      if (!e.isInvalid && e.cleanTrk && !/^\d+$/.test(e.cleanTrk)) {
+        rescuedTracking.push({ baseInv: baseInv, trk: e.cleanTrk, orig: e.origTrk });
+      }
+    });
+  });
+
   var purRows    = [];
   var nextPurNum = 1;
   var purFormulas = [];
+  var purSumSkipped = [];
 
   for (var ri = 0; ri < N_ROWS; ri++) {
     // col87-100 のいずれかに値があるか
@@ -312,10 +337,12 @@ function dryRunPhase5B() {
     var kinFm = String(rCF[ri][0] || ''); // col92の数式
     var kinVal = rC[ri][14];              // col92の値
     if (kinFm) {
-      purFormulas.push('row' + sdRow + ' col92数式: ' + kinFm + ' → 表示値=' + kinVal);
       if (kinFm.indexOf('SUM') >= 0) {
-        anomalies.push('仕入れ: row' + sdRow + ' col92が=SUM集計式（' + kinFm + '）→ 集計行のため仕入れ行として除外を推奨');
+        // 修正2: SUM集計行は仕入れ行から除外（個別行との二重計上防止）
+        purSumSkipped.push('row' + sdRow + ' 除外: ' + kinFm + ' → 表示値=' + kinVal);
+        continue;
       }
+      purFormulas.push('row' + sdRow + ' col92数式: ' + kinFm + ' → 表示値=' + kinVal);
     }
 
     var staffName = String(rC[ri][9] || '').trim(); // col87
@@ -338,6 +365,22 @@ function dryRunPhase5B() {
       memo:     String(rC[ri][21] || '').trim(),       // col99
       isFormula: !!kinFm,
       sdRow:    sdRow
+    });
+  }
+
+  // ── 修正3: col101(予約請求書番号) 全行収集 ──
+  var col101Rows = []; // { sdRow, invNo, baseInv, odId, val }
+  for (var ri = 0; ri < N_ROWS; ri++) {
+    var val101 = String(rC[ri][23] || '').trim(); // col101 = rC idx23
+    if (!val101) continue;
+    var inv101  = String(rA[ri][11] || '').trim();
+    var base101 = inv101.replace(/-\d+$/, '');
+    col101Rows.push({
+      sdRow:   DATA_START + ri,
+      invNo:   inv101,
+      baseInv: base101,
+      odId:    base101 ? (omMap[base101] || '（OM未登録）') : '（invNo空）',
+      val:     val101
     });
   }
 
@@ -376,10 +419,51 @@ function dryRunPhase5B() {
   // 1. 生成行数
   lines.push('--- 1. 生成行数 ---');
   lines.push('発送行数:               ' + shipRows.length);
+  lines.push('  うち救済（非数字）:   ' + rescuedTracking.length);
+  lines.push('発送0件オーダー:        ' + (function() {
+    var cnt = 0;
+    Object.keys(shipGroups).forEach(function(bi) {
+      var g = shipGroups[bi];
+      var hasValid = Object.keys(g).some(function(k) { return k !== '__EMPTY__' && !g[k].isInvalid; });
+      if (!hasValid) cnt++;
+    });
+    return cnt;
+  })() + '件（本当に未発送）');
   lines.push('仕入れ行数:             ' + purRows.length);
   lines.push('  うち数式混入行:       ' + purFormulas.length);
+  lines.push('  SUM除外行:            ' + purSumSkipped.length);
   lines.push('更新するオーダー数:     ' + omUpdates.length);
   lines.push('  うち予約販売:         ' + yoyakuList.length);
+  lines.push('');
+
+  // 1-A. 救済された運送状
+  lines.push('--- 1-A. 救済された非数字運送状（修正1）---');
+  lines.push('件数: ' + rescuedTracking.length);
+  rescuedTracking.forEach(function(r) {
+    lines.push('  baseInv=' + r.baseInv + ' cleanTrk="' + r.trk + '"' + (r.orig !== r.trk ? ' ← 生値に隠れ文字あり' : ''));
+  });
+  lines.push('');
+
+  // 1-B. SUM除外行
+  lines.push('--- 1-B. SUM除外した仕入れ行（修正2）---');
+  purSumSkipped.forEach(function(s) { lines.push('  ' + s); });
+  if (purSumSkipped.length === 0) lines.push('  なし');
+  // row325〜338 の個別金額有無を確認
+  // DATA_START=61, row325=ri264, row338=ri277
+  lines.push('  [確認] row325〜338 (ri=264〜277) の col92個別値:');
+  var row325to338 = [];
+  for (var ci2 = 264; ci2 <= 277; ci2++) {
+    var v = rC[ci2] ? rC[ci2][14] : null; // col92=idx14
+    if (v !== '' && v !== null && v !== undefined) {
+      row325to338.push('    row' + (DATA_START + ci2) + '(ri=' + ci2 + '): col92=' + v);
+    }
+  }
+  if (row325to338.length > 0) {
+    lines.push('  → 個別値あり（' + row325to338.length + '行）。SUM除外は正当。');
+    row325to338.forEach(function(l) { lines.push(l); });
+  } else {
+    lines.push('  → 個別値なし。SUM行が唯一の金額源。要確認 [!]');
+  }
   lines.push('');
 
   // 2. 発送個口分割実例5件（P0019必須含む）
@@ -428,14 +512,30 @@ function dryRunPhase5B() {
   }
   lines.push('');
 
-  // 5. 予約販売一覧
-  lines.push('--- 5. 予約販売一覧（' + yoyakuList.length + '件）---');
+  // 5. 予約販売一覧（修正3: col101全行 + 収束確認）
+  lines.push('--- 5-A. col101(予約請求書番号) 全行一覧（修正3）---');
+  lines.push('col101に値がある行: ' + col101Rows.length + '行');
+  // 重複baseInvをカウント（何オーダーに収束するか）
+  var col101BaseSet = {};
+  col101Rows.forEach(function(r) {
+    if (r.baseInv) col101BaseSet[r.baseInv] = true;
+  });
+  lines.push('収束オーダー数: ' + Object.keys(col101BaseSet).length + '件');
+  col101Rows.forEach(function(r) {
+    var flag = (r.val === '全額前払い') ? ' ★全額前払い' : '';
+    lines.push('  row' + r.sdRow + ' invNo=' + r.invNo
+      + ' → ' + r.odId
+      + ' col101="' + r.val + '"' + flag);
+  });
+  lines.push('');
+  lines.push('--- 5-B. 予約販売一覧（omUpdatesから・' + yoyakuList.length + '件）---');
   yoyakuList.forEach(function(u) {
     var rel = u.releaseDate instanceof Date
       ? Utilities.formatDate(u.releaseDate, 'Asia/Tokyo', 'yyyy/MM/dd')
       : String(u.releaseDate || '');
+    var flag = (u.yoyakuInv === '全額前払い') ? ' ★全額前払い（番号でなくテキスト）' : '';
     lines.push('  ' + u.odId + ' baseInv=' + u.baseInv
-      + ' 予約InvNo=' + u.yoyakuInv
+      + ' 予約InvNo="' + u.yoyakuInv + '"' + flag
       + ' 発売予定=' + rel
       + ' デポジット率=' + u.depositRate);
   });
