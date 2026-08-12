@@ -12,6 +12,12 @@ CRM APP_DEV — Google Apps Script プロジェクト
 ## Git フック設定（クローン後に必ず実行）
 
 ```bash
+bash scripts/setup-hooks.sh
+```
+
+または手動:
+
+```bash
 git config core.hooksPath .githooks
 ```
 
