@@ -3454,3 +3454,180 @@ function dryRunNewPM5() {
   L('=== dryRunNewPM5 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// CONFIRM EXEC: PM0230〜PM0234 新規5件追加
+// ============================================================
+function execNewPM5() {
+  var out = [];
+  function L(s) { out.push(s); }
+  L('=== execNewPM5 ===');
+
+  // 23列(idx0〜22) の新規行定義
+  var newRows = [
+    // PM0230: 修正版（JA正式表記・Mark=OSK・Vol.1をKWに収容）
+    ['PM0230','Weiss Shwarz','OSK',
+     'トライアルデッキ 【推しの子】','Oshi no Ko Trial Deck',
+     '','','','','','',
+     '推しの子, oshi no ko, OSK, trial deck, vol.1',
+     '','','Single','トライアルデッキ 【推しの子】',
+     '','','','',
+     'DIV01','IP007','MK004'],
+    // PM0231
+    ['PM0231','Pokemon','PROMO',
+     'ビクティニ レッドプロモ','Victini red promo',
+     '','','','','','',
+     'victini, ビクティニ, red promo, victini promo',
+     '','','Single','ビクティニ レッドプロモ',
+     '','','','',
+     'DIV01','IP001','MK001'],
+    // PM0232
+    ['PM0232','Pokemon','',
+     'バンダイ ポケモンキッズ メガミュウツーX・Y','Bandai Pokemon Kids Mega Mewtwo X & Y',
+     '','','','','','',
+     'mewtwo, mega mewtwo, bandai kids, pokemon kids, ミュウツー, mega mewtwo x, mega mewtwo y',
+     '','','','Bandai Pokemon Kids Mega Mewtwo X & Y',
+     '','','','',
+     'DIV02','IP001','MK002'],
+    // PM0233
+    ['PM0233','Pokemon','',
+     'バンダイ ポケモンキッズ メガリザードンX・Y','Bandai Pokemon Kids Mega Charizard X & Y',
+     '','','','','','',
+     'charizard, mega charizard, bandai kids, pokemon kids, リザードン, mega charizard x, mega charizard y',
+     '','','','Bandai Pokemon Kids Mega Charizard X & Y',
+     '','','','',
+     'DIV02','IP001','MK002'],
+    // PM0234
+    ['PM0234','Pokemon','',
+     'タカラトミー ポケナデ','Takara Tomy Poke-nade',
+     '','','','','','',
+     'poke-nade, takara tomy, ポケナデ, poke nade, pokenade',
+     '','','','Takara Tomy Poke-nade',
+     '','','','',
+     'DIV03','IP001','MK003']
+  ];
+
+  var ss = SpreadsheetApp.openById(INV_BOOK_ID);
+  var pmSh = ss.getSheetByName('商品マスタ');
+  var beforeLastRow = pmSh.getLastRow();
+  var beforeDataRows = beforeLastRow - 1;
+  L('書込前: データ行=' + beforeDataRows + ' / 最終行=' + beforeLastRow);
+
+  // 重複チェック: 追加予定ID が既に存在しないか
+  var existingIds = pmSh.getRange(2, 1, beforeDataRows, 1).getValues()
+    .map(function(r){ return String(r[0]).trim(); });
+  var dupCheck = newRows.map(function(r){ return r[0]; }).filter(function(id){
+    return existingIds.indexOf(id) >= 0;
+  });
+  if (dupCheck.length > 0) {
+    L('[ERROR] 既存と重複するID: ' + dupCheck.join(', ') + ' → 処理中止');
+    return out.join('\n');
+  }
+  L('重複IDチェック: なし OK');
+
+  // 5行をまとめて書き込み
+  var startRow = beforeLastRow + 1;
+  pmSh.getRange(startRow, 1, newRows.length, 23).setValues(newRows);
+  SpreadsheetApp.flush();
+  L('書込: 行' + startRow + '〜' + (startRow + newRows.length - 1) + ' に5行');
+  L('');
+
+  // ─── 検証 ───
+  L('════════════════════════════════════');
+  L('[検証]');
+  L('════════════════════════════════════');
+  var afterData = pmSh.getDataRange().getValues();
+  var afterDataRows = afterData.length - 1;
+  L('データ行数: ' + afterDataRows + '件（期待: 234）' + (afterDataRows === 234 ? ' OK' : ' NG'));
+
+  // 既存229行の col1〜col20 が不変か（先頭5行 + 末尾の元229行目をサンプル）
+  var sampleOK = true;
+  var beforeSnap = pmSh.getRange(2, 1, beforeDataRows, 20).getValues();
+  // beforeSnapは書込前のデータ—すでに書込後なので「既存部分だけ」を再読
+  // 既存行(行2〜230)のIDが連番で同一かを確認
+  for (var ri = 0; ri < beforeDataRows; ri++) {
+    var pid = String(afterData[ri+1][0]).trim();
+    var expectedPid = 'PM' + String(ri+1).padStart(4,'0');
+    if (pid !== expectedPid) {
+      sampleOK = false;
+      L('  行ズレ検出: row=' + (ri+2) + ' pid="' + pid + '" 期待="' + expectedPid + '"');
+    }
+  }
+  L('既存229行 product_id 連番確認: ' + (sampleOK ? 'OK' : 'NG'));
+
+  // 追加5行の内容確認
+  L('');
+  L('追加5行 確認:');
+  for (var ni = 0; ni < 5; ni++) {
+    var rowData = afterData[230 + ni];  // idx230〜234
+    L('  ' + rowData[0] + ' | cat=' + rowData[1] + ' | mark=' + rowData[2] +
+      ' | kc=' + rowData[14] + ' | div=' + rowData[20] + ' | ip=' + rowData[21] + ' | mk=' + rowData[22]);
+  }
+
+  // product_id 重複
+  var allIds = afterData.slice(1).map(function(r){ return String(r[0]).trim(); });
+  var seen = {}, dupFound = false;
+  allIds.forEach(function(id){ if(seen[id]){ dupFound=true; L('  重複ID: '+id); } seen[id]=true; });
+  L('product_id 重複: ' + (dupFound ? 'NG' : 'なし OK'));
+
+  // 3軸ID 空欄チェック（全234行）
+  var blankDiv=0, blankIp=0, blankMk=0;
+  afterData.slice(1).forEach(function(r){
+    if(!String(r[20]).trim()) blankDiv++;
+    if(!String(r[21]).trim()) blankIp++;
+    if(!String(r[22]).trim()) blankMk++;
+  });
+  L('大分類ID 空欄: ' + blankDiv + (blankDiv===0?' OK':' NG'));
+  L('作品ID   空欄: ' + blankIp  + (blankIp ===0?' OK':' NG'));
+  L('メーカーID空欄: ' + blankMk + (blankMk ===0?' OK':' NG'));
+
+  L('');
+  L('=== execNewPM5 完了 ===');
+  return out.join('\n');
+}
+
+// ============================================================
+// DRY RUN: PM0055/0117/0182/0183 KW末尾追記
+// ============================================================
+function dryRunKWAdditions() {
+  var out = [];
+  function L(s) { out.push(s); }
+  L('=== dryRunKWAdditions ===');
+  L('※ DRY RUN - 書き込み一切なし');
+  L('');
+
+  var additions = {
+    'PM0055': 'shiny v box',
+    'PM0117': 'shiny treasures',
+    'PM0182': 'specialty box tohoku',
+    'PM0183': 'interspecies reviews'
+  };
+
+  var ss = SpreadsheetApp.openById(INV_BOOK_ID);
+  var pmSh = ss.getSheetByName('商品マスタ');
+  var data = pmSh.getDataRange().getValues();
+  var headers = data[0];
+
+  // product_id → row index
+  var pidIdx = {};
+  data.slice(1).forEach(function(r, i){ pidIdx[String(r[0]).trim()] = i + 1; });
+
+  Object.keys(additions).sort().forEach(function(pid) {
+    var ri = pidIdx[pid];
+    if (ri === undefined) { L('[ERROR] ' + pid + ' が見つかりません'); return; }
+    var r = data[ri];
+    var currentKW = String(r[11] || '').trim();
+    var addKW = additions[pid];
+    var newKW = currentKW ? currentKW + ', ' + addKW : addKW;
+
+    L('────────────────────────────────────');
+    L(pid + ' | JA="' + r[3] + '"');
+    L('  現在KW : "' + currentKW + '"');
+    L('  追記KW : "' + addKW + '"');
+    L('  変更後KW: "' + newKW + '"');
+  });
+
+  L('');
+  L('=== dryRunKWAdditions 完了 ===');
+  return out.join('\n');
+}
