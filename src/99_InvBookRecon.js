@@ -3331,3 +3331,126 @@ function execMasterSetup() {
   L('=== execMasterSetup 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// DRY RUN: PM0230〜PM0234 新規5件追加
+// ============================================================
+function dryRunNewPM5() {
+  var out = [];
+  function L(s) { out.push(s); }
+
+  L('=== dryRunNewPM5 ===');
+  L('※ DRY RUN - 書き込み一切なし');
+  L('');
+
+  // 提案する5行（idx0〜idx19 = 既存20列 + idx20〜22 = 新3列）
+  // col15(idx14)=カテゴリ分類, col12(idx11)=SearchKeywords, col16(idx15)=RO Value
+  // 他の空欄列: Mark(2), Boxes/Case(5), Packs/Box(6), VW(7), Box重量(8), Case重量(9),
+  //             Release(10), ExcludeKW(12), RelatedSeries(13), MOQ(16), 品目(17), HSコード(18), 素材(19)
+
+  var proposals = [
+    {
+      pid:   'PM0230',
+      cat:   'Weiss Shwarz',     // 既存Weiss非Roseに合わせる
+      mark:  '',
+      ja:    '推しの子 Vol.1 トライアルデッキ',
+      en:    'Oshi no Ko Vol.1 Trial Deck',
+      kw:    '推しの子, oshi no ko, oshi no ko vol.1 trial deck, vol.1 trial deck',
+      kc:    'Single',           // Trial Deck = 単体デッキ
+      ro:    '推しの子 Vol.1 トライアルデッキ',
+      div:   'DIV01', ip: 'IP007', mk: 'MK004',
+      note:  'Weiss Schwarz 推しの子。Roseライン非該当のため cat=Weiss Shwarz'
+    },
+    {
+      pid:   'PM0231',
+      cat:   'Pokemon',
+      mark:  'PROMO',
+      ja:    'ビクティニ レッドプロモ',
+      en:    'Victini red promo',
+      kw:    'victini, ビクティニ, red promo, victini promo',
+      kc:    'Single',           // プロモカード単体
+      ro:    'ビクティニ レッドプロモ',
+      div:   'DIV01', ip: 'IP001', mk: 'MK001',
+      note:  'Pokemon プロモカード単体'
+    },
+    {
+      pid:   'PM0232',
+      cat:   'Pokemon',          // IPベースで既存Categoryを流用
+      mark:  '',
+      ja:    'バンダイ ポケモンキッズ メガミュウツーX・Y',
+      en:    'Bandai Pokemon Kids Mega Mewtwo X & Y',
+      kw:    'mewtwo, mega mewtwo, bandai kids, pokemon kids, ミュウツー, mega mewtwo x, mega mewtwo y',
+      kc:    '',                 // フィギュア = 空欄可
+      ro:    'Bandai Pokemon Kids Mega Mewtwo X & Y',
+      div:   'DIV02', ip: 'IP001', mk: 'MK002',
+      note:  'Bandai フィギュア。Category="Pokemon"はIP基準の流用（要確認）'
+    },
+    {
+      pid:   'PM0233',
+      cat:   'Pokemon',
+      mark:  '',
+      ja:    'バンダイ ポケモンキッズ メガリザードンX・Y',
+      en:    'Bandai Pokemon Kids Mega Charizard X & Y',
+      kw:    'charizard, mega charizard, bandai kids, pokemon kids, リザードン, mega charizard x, mega charizard y',
+      kc:    '',                 // フィギュア = 空欄可
+      ro:    'Bandai Pokemon Kids Mega Charizard X & Y',
+      div:   'DIV02', ip: 'IP001', mk: 'MK002',
+      note:  'Bandai フィギュア。Category="Pokemon"はIP基準の流用（要確認）'
+    },
+    {
+      pid:   'PM0234',
+      cat:   'Pokemon',
+      mark:  '',
+      ja:    'タカラトミー ポケナデ',
+      en:    'Takara Tomy Poke-nade',
+      kw:    'poke-nade, takara tomy, ポケナデ, poke nade, pokenade',
+      kc:    '',                 // グッズ = 空欄可
+      ro:    'Takara Tomy Poke-nade',
+      div:   'DIV03', ip: 'IP001', mk: 'MK003',
+      note:  'Takara Tomy グッズ。Category="Pokemon"はIP基準の流用（要確認）'
+    }
+  ];
+
+  // 既存末尾 product_id 確認
+  var ss = SpreadsheetApp.openById(INV_BOOK_ID);
+  var pmSh = ss.getSheetByName('商品マスタ');
+  var lastRow = pmSh.getLastRow();
+  var lastId  = pmSh.getRange(lastRow, 1).getValue();
+  L('現在の商品マスタ末尾: 行=' + lastRow + ' / product_id="' + lastId + '"');
+  L('追加予定行: ' + (lastRow+1) + '〜' + (lastRow+5));
+  L('');
+
+  // 各提案行を表示
+  proposals.forEach(function(p, i) {
+    L('════════════════════════════════════');
+    L('【' + (i+1) + '】 ' + p.pid);
+    L('  col01 product_id  : ' + p.pid);
+    L('  col02 Category    : ' + p.cat);
+    L('  col03 Mark        : ' + (p.mark || '(空欄)'));
+    L('  col04 JA Title    : ' + p.ja);
+    L('  col05 EN Title    : ' + p.en);
+    L('  col06〜10         : (空欄)');
+    L('  col12 Keywords    : ' + p.kw);
+    L('  col13〜14         : (空欄)');
+    L('  col15 カテゴリ分類: ' + (p.kc || '(空欄)'));
+    L('  col16 RO Value    : ' + p.ro);
+    L('  col17〜20         : (空欄)');
+    L('  col21 大分類ID    : ' + p.div);
+    L('  col22 作品ID      : ' + p.ip);
+    L('  col23 メーカーID  : ' + p.mk);
+    L('  備考              : ' + p.note);
+  });
+
+  L('');
+  L('════════════════════════════════════');
+  L('[要確認事項]');
+  L('════════════════════════════════════');
+  L('Q1. PM0232/0233/0234 の Category列 "Pokemon" でよいか');
+  L('    （フィギュア・グッズにはTCG用Categoryを流用しているが、');
+  L('      集計・表示上は DIV02/DIV03 で区別可能なため実用上は問題ない想定）');
+  L('Q2. PM0230 の JA Title "推しの子 Vol.1 トライアルデッキ" の正式表記確認');
+  L('Q3. PM0231 の Mark "PROMO" は既存PROMO商品と一貫しているが要確認');
+  L('');
+  L('=== dryRunNewPM5 完了 ===');
+  return out.join('\n');
+}
