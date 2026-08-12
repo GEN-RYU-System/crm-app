@@ -5309,3 +5309,129 @@ function hardFixOrderTotals3() {
   L('=== hardFixOrderTotals3 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// investigateOrderMgmtStatus — オーダー管理 4点調査（読み取り専用）
+// ============================================================
+function investigateOrderMgmtStatus() {
+  var out = [];
+  function L(s){ out.push(s); }
+  L('=== investigateOrderMgmtStatus ===');
+
+  var crmSS = getSpreadsheet();
+  var omSh  = crmSS.getSheetByName('オーダー管理');
+  var omCols = omSh.getLastColumn();
+  var hdrs  = omSh.getRange(1,1,1,omCols).getValues()[0].map(function(h){ return String(h||'').trim(); });
+  var data  = omSh.getRange(2,1,omSh.getLastRow()-1,omCols).getValues();
+
+  function ci(names) {
+    for (var i=0;i<names.length;i++) {
+      var idx = hdrs.indexOf(names[i]);
+      if (idx>=0) return idx;
+    }
+    return -1;
+  }
+
+  var C_STATUS = ci(['ステータス']);
+  var C_RECD   = ci(['受注日']);
+  var C_CUR    = ci(['通貨']);
+  var C_FX     = ci(['為替レート']);
+  var C_INV    = ci(['請求書番号']);
+  var C_INVD   = ci(['請求書発行日']);
+  var C_PAYD   = ci(['支払期日']);
+  var C_RECV   = ci(['受注担当ID']);
+  var C_SALES  = ci(['営業担当ID']);
+  var C_備考   = ci(['取引備考欄']);
+  var C_OD     = 0;
+
+  L('列マッピング: ステータス=col'+(C_STATUS+1)+' 受注日=col'+(C_RECD+1)+' 通貨=col'+(C_CUR+1)+
+    ' 為替=col'+(C_FX+1)+' 請求書発行日=col'+(C_INVD+1)+' 支払期日=col'+(C_PAYD+1)+
+    ' 受注担当=col'+(C_RECV+1)+' 営業担当=col'+(C_SALES+1)+' 取引備考=col'+(C_備考+1));
+  L('総行数: ' + data.length);
+  L('');
+
+  // ─── [1] キャンセル件数 + 取引備考欄 ───
+  L('════════════════════════════════════');
+  L('[1] ステータス=「キャンセル」の件数・取引備考欄');
+  L('════════════════════════════════════');
+  var cancelRows = [];
+  data.forEach(function(r) {
+    if (String(r[C_STATUS]||'').trim() === 'キャンセル') cancelRows.push(r);
+  });
+  L('件数: ' + cancelRows.length + '件');
+  L('');
+  cancelRows.forEach(function(r) {
+    var odId  = String(r[C_OD]||'').trim();
+    var inv   = C_INV>=0 ? String(r[C_INV]||'').trim() : '';
+    var biko  = C_備考>=0 ? String(r[C_備考]||'').trim() : '';
+    L('  ' + odId + ' (' + inv + '): 取引備考欄="' + biko + '"');
+  });
+
+  L('');
+  // ─── [2] 受注日・請求書発行日 空欄 ───
+  L('════════════════════════════════════');
+  L('[2] 受注日・請求書発行日 空欄件数');
+  L('════════════════════════════════════');
+  var emptyRecd=[], emptyInvd=[], bothEmpty=[];
+  data.forEach(function(r) {
+    var odId = String(r[C_OD]||'').trim();
+    var rd   = C_RECD>=0 ? r[C_RECD] : '';
+    var id   = C_INVD>=0 ? r[C_INVD] : '';
+    var rdEmpty = !rd || String(rd).trim()==='' || (rd instanceof Date && isNaN(rd));
+    var idEmpty = !id || String(id).trim()==='' || (id instanceof Date && isNaN(id));
+    if (rdEmpty) emptyRecd.push(odId);
+    if (idEmpty) emptyInvd.push(odId);
+    if (rdEmpty && idEmpty) bothEmpty.push(odId);
+  });
+  L('受注日 空欄: ' + emptyRecd.length + '件');
+  if (emptyRecd.length > 0) L('  ' + emptyRecd.join(', '));
+  L('請求書発行日 空欄: ' + emptyInvd.length + '件');
+  if (emptyInvd.length > 0) L('  ' + emptyInvd.join(', '));
+  L('両方空欄（補完不可）: ' + bothEmpty.length + '件');
+  if (bothEmpty.length > 0) L('  ' + bothEmpty.join(', '));
+
+  L('');
+  // ─── [3] 為替レート 空欄 + 通貨内訳 ───
+  L('════════════════════════════════════');
+  L('[3] 為替レート 空欄件数 + 通貨内訳');
+  L('════════════════════════════════════');
+  var emptyFx = [], fxCurMap = {};
+  data.forEach(function(r) {
+    var odId = String(r[C_OD]||'').trim();
+    var fx   = C_FX>=0  ? String(r[C_FX] ||'').trim() : '';
+    var cur  = C_CUR>=0 ? String(r[C_CUR]||'').trim() : '';
+    if (!fx || fx==='0' || fx==='') {
+      emptyFx.push({ odId: odId, cur: cur });
+      fxCurMap[cur] = (fxCurMap[cur]||0) + 1;
+    }
+  });
+  L('為替レート 空欄: ' + emptyFx.length + '件');
+  L('通貨別内訳:');
+  Object.keys(fxCurMap).sort().forEach(function(c){ L('  ' + (c||'(空)') + ': ' + fxCurMap[c] + '件'); });
+  if (emptyFx.length > 0) {
+    L('対象オーダー:');
+    emptyFx.forEach(function(x){ L('  ' + x.odId + ' 通貨=' + (x.cur||'(空)')); });
+  }
+
+  L('');
+  // ─── [4] 営業担当ID 空欄 ───
+  L('════════════════════════════════════');
+  L('[4] 営業担当ID 空欄件数');
+  L('════════════════════════════════════');
+  var emptySales = [];
+  data.forEach(function(r) {
+    var odId  = String(r[C_OD]||'').trim();
+    var sales = C_SALES>=0 ? String(r[C_SALES]||'').trim() : '';
+    var recv  = C_RECV>=0  ? String(r[C_RECV] ||'').trim() : '';
+    if (!sales) emptySales.push({ odId: odId, recv: recv });
+  });
+  L('営業担当ID 空欄: ' + emptySales.length + '件');
+  if (emptySales.length > 0) {
+    L('（空欄行の受注担当ID = D実行時のコピー元）:');
+    emptySales.forEach(function(x){ L('  ' + x.odId + ' 受注担当=' + (x.recv||'(空)')); });
+  }
+
+  L('');
+  L('=== investigateOrderMgmtStatus 完了 ===');
+  return out.join('\n');
+}
