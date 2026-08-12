@@ -3126,3 +3126,208 @@ function investigateGundumProducts() {
   L('=== investigateGundumProducts 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// CONFIRM EXEC: マスタ3新設 + 商品マスタ3列追加 + 全件割当
+// ============================================================
+function execMasterSetup() {
+  var out = [];
+  function L(s) { out.push(s); }
+
+  L('=== execMasterSetup ===');
+
+  var CAT_IP = {
+    'Pokemon':          'IP001',
+    'One Piece':        'IP002',
+    'Dragon Ball':      'IP003',
+    'Yu-Gi-Oh':         'IP004',
+    'Union Arena':      'IP005',
+    'GUNDUM':           'IP006',
+    'Weiss Shwarz':     'IP007',
+    'Weiss Shwarz Rose':'IP007'
+  };
+  var CAT_MK = {
+    'Pokemon':          'MK001',
+    'One Piece':        'MK002',
+    'Dragon Ball':      'MK002',
+    'GUNDUM':           'MK002',
+    'Weiss Shwarz':     'MK004',
+    'Weiss Shwarz Rose':'MK004',
+    'Yu-Gi-Oh':         'MK005',
+    'Union Arena':      'MK004'
+  };
+
+  var ss = SpreadsheetApp.openById(INV_BOOK_ID);
+
+  // ─── [1] 大分類マスタ ───
+  L('[1] 大分類マスタ 作成...');
+  var divSh = ss.getSheetByName('大分類マスタ');
+  if (!divSh) { divSh = ss.insertSheet('大分類マスタ'); }
+  else { divSh.clearContents(); }
+  var divData = [
+    ['div_id','大分類名','説明','有効'],
+    ['DIV01','TCG','トレーディングカード','TRUE'],
+    ['DIV02','Figure','フィギュア','TRUE'],
+    ['DIV03','Goods','グッズ・雑貨','TRUE']
+  ];
+  divSh.getRange(1, 1, divData.length, 4).setValues(divData);
+  SpreadsheetApp.flush();
+  var divCheck = divSh.getDataRange().getValues();
+  L('  → 書込後行数: ' + divCheck.length + '行（期待: 4）' + (divCheck.length === 4 ? ' OK' : ' NG'));
+  L('');
+
+  // ─── [2] 作品マスタ ───
+  L('[2] 作品マスタ 作成...');
+  var ipSh = ss.getSheetByName('作品マスタ');
+  if (!ipSh) { ipSh = ss.insertSheet('作品マスタ'); }
+  else { ipSh.clearContents(); }
+  var ipData = [
+    ['ip_id','作品名','別名','有効'],
+    ['IP001','Pokemon','ポケモン, ポケットモンスター','TRUE'],
+    ['IP002','One Piece','ワンピース','TRUE'],
+    ['IP003','Dragon Ball','ドラゴンボール','TRUE'],
+    ['IP004','Yu-Gi-Oh','遊戯王','TRUE'],
+    ['IP005','Union Arena','ユニオンアリーナ','TRUE'],
+    ['IP006','GUNDAM','GUNDUM, ガンダム','TRUE'],
+    ['IP007','Weiss Schwarz','Weiss Shwarz, ヴァイスシュヴァルツ','TRUE'],
+    ['IP008','Digimon','','TRUE'],
+    ['IP009','hololive','','TRUE'],
+    ['IP010','LORCANA','','TRUE'],
+    ['IP011','Xross Stars','','TRUE']
+  ];
+  ipSh.getRange(1, 1, ipData.length, 4).setValues(ipData);
+  SpreadsheetApp.flush();
+  var ipCheck = ipSh.getDataRange().getValues();
+  L('  → 書込後行数: ' + ipCheck.length + '行（期待: 12）' + (ipCheck.length === 12 ? ' OK' : ' NG'));
+  L('');
+
+  // ─── [3] メーカーマスタ ───
+  L('[3] メーカーマスタ 作成...');
+  var mkSh = ss.getSheetByName('メーカーマスタ');
+  if (!mkSh) { mkSh = ss.insertSheet('メーカーマスタ'); }
+  else { mkSh.clearContents(); }
+  var mkData = [
+    ['mk_id','メーカー名','別名','有効'],
+    ['MK001','The Pokemon Company','ポケモン','TRUE'],
+    ['MK002','Bandai','バンダイ','TRUE'],
+    ['MK003','Takara Tomy','タカラトミー','TRUE'],
+    ['MK004','Bushiroad','ブシロード','TRUE'],
+    ['MK005','Konami','コナミ','TRUE']
+  ];
+  mkSh.getRange(1, 1, mkData.length, 4).setValues(mkData);
+  SpreadsheetApp.flush();
+  var mkCheck = mkSh.getDataRange().getValues();
+  L('  → 書込後行数: ' + mkCheck.length + '行（期待: 6）' + (mkCheck.length === 6 ? ' OK' : ' NG'));
+  L('');
+
+  // ─── [4] 商品マスタ 既存20列をスナップショット ───
+  L('[4] 商品マスタ 3列追加 + 全件割当...');
+  var pmSh = ss.getSheetByName('商品マスタ');
+  var beforeData = pmSh.getDataRange().getValues();
+  var beforeRows = beforeData.length - 1;  // ヘッダー除く
+  var beforeCols = beforeData[0].length;
+  L('  書込前: ' + beforeRows + '行 ' + beforeCols + '列');
+
+  // ── ヘッダー行に3列追加 ──
+  pmSh.getRange(1, 21).setValue('大分類ID');
+  pmSh.getRange(1, 22).setValue('作品ID');
+  pmSh.getRange(1, 23).setValue('メーカーID');
+  SpreadsheetApp.flush();
+
+  // ── 全データ行に値を書く ──
+  var rows = beforeData.slice(1);
+  var unresolved = [];
+  var kcPatchCount = 0;
+  var divCount = {}, ipCount = {}, mkCount = {};
+
+  rows.forEach(function(r, i) {
+    var rowNum = i + 2;  // 1-based, 1はヘッダー
+    var pid  = String(r[0] || '').trim();
+    var cat  = String(r[1] || '').trim();
+    var kc   = String(r[14] || '').trim();
+    var div  = 'DIV01';
+    var ip   = CAT_IP[cat] || '';
+    var mk   = CAT_MK[cat] || '';
+
+    pmSh.getRange(rowNum, 21).setValue(div);
+    pmSh.getRange(rowNum, 22).setValue(ip);
+    pmSh.getRange(rowNum, 23).setValue(mk);
+
+    // PM0229 カテゴリ分類空欄補完（col15 = idx14, spreadsheet col 15）
+    if (!kc && pid) {
+      pmSh.getRange(rowNum, 15).setValue('Single');
+      kcPatchCount++;
+      L('  カテゴリ分類補完: ' + pid + ' → "Single"');
+    }
+
+    divCount[div] = (divCount[div] || 0) + 1;
+    if (ip) ipCount[ip] = (ipCount[ip] || 0) + 1;
+    if (mk) mkCount[mk] = (mkCount[mk] || 0) + 1;
+    if (!ip || !mk) unresolved.push(pid + ' cat="' + cat + '"');
+  });
+  SpreadsheetApp.flush();
+  L('');
+
+  // ─── [5] 検証 ───
+  L('════════════════════════════════════');
+  L('[5] 検証');
+  L('════════════════════════════════════');
+  var afterData = pmSh.getDataRange().getValues();
+  var afterRows = afterData.length - 1;
+  var afterCols = afterData[0].length;
+
+  // 行数
+  L('  行数: ' + afterRows + '行（期待: 229）' + (afterRows === 229 ? ' OK' : ' NG'));
+
+  // 列数
+  L('  列数: ' + afterCols + '列（期待: 23）' + (afterCols === 23 ? ' OK' : ' NG'));
+
+  // 既存20列不変（ヘッダー + 先頭5データ行で代表チェック）
+  var col20OK = true;
+  for (var ri = 0; ri < Math.min(afterData.length, 6); ri++) {
+    for (var ci = 0; ci < 20; ci++) {
+      if (String(afterData[ri][ci]) !== String(beforeData[ri][ci])) {
+        col20OK = false;
+        L('  既存列変化検出 row=' + ri + ' col=' + (ci+1) + ': before="' + beforeData[ri][ci] + '" after="' + afterData[ri][ci] + '"');
+      }
+    }
+  }
+  L('  既存20列（先頭6行サンプル）不変: ' + (col20OK ? 'OK' : 'NG'));
+
+  // product_id 重複チェック
+  var ids = afterData.slice(1).map(function(r){ return String(r[0]).trim(); });
+  var seen = {}, dupFound = false;
+  ids.forEach(function(id){ if (seen[id]) { dupFound = true; L('  重複ID: ' + id); } seen[id] = true; });
+  L('  product_id 重複: ' + (dupFound ? 'NG' : 'なし OK'));
+
+  // 新3列 空欄件数
+  var blankDiv = 0, blankIp = 0, blankMk = 0;
+  afterData.slice(1).forEach(function(r){
+    if (!String(r[20]).trim()) blankDiv++;
+    if (!String(r[21]).trim()) blankIp++;
+    if (!String(r[22]).trim()) blankMk++;
+  });
+  L('  大分類ID 空欄: ' + blankDiv + '件' + (blankDiv === 0 ? ' OK' : ' NG'));
+  L('  作品ID   空欄: ' + blankIp + '件' + (blankIp === 0 ? ' OK' : ' NG'));
+  L('  メーカーID空欄: ' + blankMk + '件' + (blankMk === 0 ? ' OK' : ' NG'));
+
+  // メーカー別件数合計
+  var mkTotal = Object.keys(mkCount).reduce(function(s,k){ return s + mkCount[k]; }, 0);
+  L('  メーカーID合計: ' + mkTotal + '件（期待: 229）' + (mkTotal === 229 ? ' OK' : ' NG'));
+
+  L('');
+  L('  作品ID 内訳:');
+  Object.keys(ipCount).sort().forEach(function(k){ L('    ' + k + ': ' + ipCount[k] + '件'); });
+  L('  メーカーID 内訳:');
+  Object.keys(mkCount).sort().forEach(function(k){ L('    ' + k + ': ' + mkCount[k] + '件'); });
+
+  if (unresolved.length > 0) {
+    L('');
+    L('  未解決 ' + unresolved.length + '件:');
+    unresolved.forEach(function(u){ L('    ' + u); });
+  }
+
+  L('');
+  L('=== execMasterSetup 完了 ===');
+  return out.join('\n');
+}
