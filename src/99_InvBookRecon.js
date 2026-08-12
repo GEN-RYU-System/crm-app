@@ -6358,3 +6358,39 @@ function verifyCancelReason() {
   L('=== verifyCancelReason 完了 ===');
   return out.join('\n');
 }
+
+// ─── TEST出品DB 共有設定確認・修正 ───────────────────────────────────────────
+function checkAndRestrictTestDb() {
+  var out = [];
+  function L(s){ out.push(s); }
+  var SHEET_ID = '1gGoJSu-ckMllYWuFCoERGVIPBDGvpVVRHDStx58MEgQ';
+  L('=== TEST出品DB 共有設定チェック ===');
+  var file;
+  try {
+    file = DriveApp.getFileById(SHEET_ID);
+  } catch(e) {
+    L('ERROR: ファイル取得失敗 → ' + e.message);
+    return out.join('\n');
+  }
+  var name   = file.getName();
+  var access = file.getSharingAccess();
+  var perm   = file.getSharingPermission();
+  L('ファイル名: ' + name);
+  L('SharingAccess: ' + access);
+  L('SharingPermission: ' + perm);
+  L('');
+  if (access === 'PRIVATE') {
+    L('→ 既に制限付き（PRIVATE）。変更不要。');
+  } else {
+    L('→ 公開状態を検出。制限付き（PRIVATE）に変更します...');
+    file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+    var newAccess = file.getSharingAccess();
+    var newPerm   = file.getSharingPermission();
+    L('変更後 SharingAccess: ' + newAccess);
+    L('変更後 SharingPermission: ' + newPerm);
+    L(newAccess === 'PRIVATE' ? '→ 制限付きに変更完了 OK' : '★ 変更失敗 NG!');
+  }
+  L('');
+  L('=== checkAndRestrictTestDb 完了 ===');
+  return out.join('\n');
+}
