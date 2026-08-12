@@ -4890,3 +4890,144 @@ function investigateSalesData() {
   L('=== investigateSalesData 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// investigateSalesAudit8 — 売上データ col14 × オーダー管理 請求総額 照合
+// ============================================================
+function investigateSalesAudit8() {
+  var out = [];
+  function L(s){ out.push(s); }
+  L('=== investigateSalesAudit8 ===');
+
+  var crmSS = getSpreadsheet();
+
+  // ─── オーダー管理 読み込み ───
+  var omSh   = crmSS.getSheetByName('オーダー管理');
+  var omCols = omSh.getLastColumn();
+  var omData = omSh.getRange(2, 1, omSh.getLastRow()-1, omCols).getValues();
+  // col1=オーダーID(idx0), col2=請求書番号(idx1), col14=請求総額(idx13)
+  // ただし今回 A実行後は col14=請求総額=idx13 は変わらず
+  var omByInv = {};   // 請求書番号 → { odId, 請求総額 }
+  var omById  = {};   // オーダーID → { 請求書番号, 請求総額 }
+  omData.forEach(function(r) {
+    var odId  = String(r[0]||'').trim();
+    var inv   = String(r[1]||'').trim();
+    var total = parseFloat(r[13]) || 0;
+    if (odId)  omById[odId]   = { inv: inv, total: total };
+    if (inv)   omByInv[inv]   = { odId: odId, total: total };
+    // also index without suffix (-01, -02 etc.)
+    if (inv) {
+      var base = inv.replace(/-\d+$/, '');
+      if (base !== inv && !omByInv[base]) omByInv[base] = { odId: odId, total: total };
+    }
+  });
+
+  // ─── 売上データ 読み込み（行6以降がデータ行）───
+  var sdSh   = crmSS.getSheetByName('📊売上データ');
+  var sdCols = sdSh.getLastColumn();
+  var sdData = sdSh.getLastRow() >= 6
+    ? sdSh.getRange(6, 1, sdSh.getLastRow()-5, sdCols).getValues()
+    : [];
+
+  // col12=請求書番号(idx11), col14=合計(idx13)
+  L('');
+  L('--- 売上データ col14(合計) が入っている行との照合 ---');
+  var matchOK = 0, matchNG = 0, noMatch = 0;
+  var auditRows = [];
+
+  sdData.forEach(function(r, i) {
+    var shRow  = i + 6;
+    var inv    = String(r[11]||'').trim();   // col12
+    var sdTot  = String(r[13]||'').trim();   // col14 合計
+    if (!sdTot || !inv) return;
+
+    var sdVal  = parseFloat(sdTot.replace(/[^0-9.-]/g, '')) || 0;
+    var status = String(r[0]||'').trim();    // col1
+    var name   = String(r[7]||'').trim();    // col8 商品名
+
+    // オーダー管理と照合
+    var om = omByInv[inv];
+    var result, diff;
+    if (om) {
+      diff = om.total - sdVal;
+      result = Math.abs(diff) < 1 ? 'OK' : 'NG(差=' + diff + ')';
+      if (Math.abs(diff) < 1) matchOK++; else matchNG++;
+    } else {
+      result = 'NOT_IN_CRM';
+      noMatch++;
+    }
+    auditRows.push({ shRow: shRow, inv: inv, status: status, name: name, sdTot: sdVal, om: om, result: result });
+  });
+
+  auditRows.forEach(function(a) {
+    L('row' + a.shRow + ' ' + a.inv + ' [' + a.status + '] 商品="' + a.name + '"');
+    L('  売上データ 合計: ' + a.sdTot);
+    if (a.om) {
+      L('  オーダー管理 請求総額: ' + a.om.total + '  オーダーID=' + a.om.odId + '  → ' + a.result);
+    } else {
+      L('  → ' + a.result);
+    }
+  });
+
+  L('');
+  L('════════════════════════════════════');
+  L('照合結果サマリー:');
+  L('  一致(OK): ' + matchOK + '件');
+  L('  不一致(NG): ' + matchNG + '件');
+  L('  CRM未登録: ' + noMatch + '件');
+  L('  合計: ' + auditRows.length + '件');
+  L('=== investigateSalesAudit8 完了 ===');
+  return out.join('\n');
+}
+
+// ============================================================
+// postConfirmAudit — execOrderMgmtChanges 後の総合検証
+// ============================================================
+function postConfirmAudit() {
+  var out = [];
+  function L(s){ out.push(s); }
+  L('=== postConfirmAudit ===');
+
+  var crmSS = getSpreadsheet();
+  var olSh  = crmSS.getSheetByName('オーダー明細');
+  var omSh  = crmSS.getSheetByName('オーダー管理');
+
+  // [1] 明細 検証
+  L('[1] 明細 検証');
+  var olData = olSh.getRange(2, 1, olSh.getLastRow()-1, olSh.getLastColumn()).getValues();
+  var totalRows = olData.length;
+  var pmFilled=0, pmBlank=0;
+  var odl232Found = false, odl232PmId = '';
+  olData.forEach(function(r) {
+    var odlId = String(r[0]||'').trim();
+    var pmId  = String(r[10]||'').trim();
+    if (pmId) pmFilled++; else pmBlank++;
+    if (odlId === 'ODL-00232') { odl232Found = true; odl232PmId = pmId; }
+  });
+  L('  明細行数: '  + totalRows + '（期待: 575）' + (totalRows===575?' OK':' NG'));
+  L('  商品ID記入: ' + pmFilled  + '件（期待: 575）' + (pmFilled===575?' OK':' NG'));
+  L('  商品ID空欄: ' + pmBlank   + '件（期待: 0）'   + (pmBlank===0?' OK':' NG'));
+  L('  ODL-00232 商品ID: "' + odl232PmId + '"（期待: PM0178）' + (odl232PmId==='PM0178'?' OK':' NG'));
+
+  // [2] オーダー管理 列数
+  L('');
+  L('[2] オーダー管理 列数');
+  var omCols = omSh.getLastColumn();
+  L('  列数: ' + omCols + '（期待: 35）' + (omCols===35?' OK':' NG'));
+
+  // [3] 影響オーダー 請求総額
+  L('');
+  L('[3] 影響オーダー 請求総額');
+  var omData = omSh.getRange(2, 1, omSh.getLastRow()-1, 35).getValues();
+  var expected = { 'OD-00046': 5500, 'OD-00107': 81400, 'OD-00123': 56380, 'OD-00132': 693000 };
+  omData.forEach(function(r) {
+    var odId = String(r[0]||'').trim();
+    if (!expected.hasOwnProperty(odId)) return;
+    var total = parseFloat(r[13]) || 0;
+    var exp   = expected[odId];
+    L('  ' + odId + ': ' + total + '（期待: ' + exp + '）' + (Math.abs(total-exp)<1?' OK':' NG'));
+  });
+
+  L('=== postConfirmAudit 完了 ===');
+  return out.join('\n');
+}
