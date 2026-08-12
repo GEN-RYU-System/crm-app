@@ -2556,3 +2556,238 @@ function investigateStep23DryRun() {
   L('=== investigateStep23DryRun 完了 ===');
   return out.join('\n');
 }
+
+// ──────────────────────────────────────────────────────────
+// STEP 2 実行: PM0229「Retro card bulk」を商品マスタに追加
+// ──────────────────────────────────────────────────────────
+function executeStep2PM0229() {
+  var out = [];
+  function L(s) { out.push(String(s)); Logger.log(String(s)); }
+  L('=== executeStep2PM0229 ===');
+
+  var invSS;
+  try { invSS = SpreadsheetApp.openById(INV_BOOK_ID); }
+  catch(e) { L('[ERROR] ' + e.message); return out.join('\n'); }
+
+  var pmSh = invSS.getSheetByName('商品マスタ');
+
+  // 書き込み前スナップショット
+  var beforeLastRow = pmSh.getLastRow();
+  var beforeData    = pmSh.getRange(2, 1, beforeLastRow - 1, 20).getValues();
+  var beforeIds     = beforeData.map(function(r){ return String(r[0]||'').trim(); }).filter(Boolean);
+  L('書き込み前: データ行数=' + beforeData.length + '  PM件数=' + beforeIds.length);
+  L('末尾PM-ID: ' + beforeIds[beforeIds.length - 1]);
+  if (beforeIds.indexOf('PM0229') >= 0) {
+    L('[ERROR] PM0229 が既に存在します。中断します。');
+    return out.join('\n');
+  }
+
+  // 追加行
+  var newRow = [
+    'PM0229', 'Pokemon', '', 'レトロカード バルク', 'Retro card bulk',
+    '', '', '', '', '',
+    '',
+    'retro card, retro, B grade, Bグレード, レトロ, bulk',
+    '', '', '', 'Retro card bulk',
+    '', '', '', ''
+  ];
+
+  // 書き込み
+  var targetRow = beforeLastRow + 1;
+  pmSh.getRange(targetRow, 1, 1, 20).setValues([newRow]);
+  SpreadsheetApp.flush();
+
+  // 書き込み後検証
+  var afterLastRow = pmSh.getLastRow();
+  var afterData    = pmSh.getRange(2, 1, afterLastRow - 1, 20).getValues();
+  var afterIds     = afterData.map(function(r){ return String(r[0]||'').trim(); }).filter(Boolean);
+
+  L('');
+  L('════════════════════════════════════');
+  L('[検証結果]');
+  L('════════════════════════════════════');
+  L('データ行数: ' + afterData.length + '行  (229であること: ' + (afterData.length === 229 ? 'OK' : 'FAIL') + ')');
+  L('PM件数: ' + afterIds.length + '件  (229であること: ' + (afterIds.length === 229 ? 'OK' : 'FAIL') + ')');
+
+  // 既存228行が不変か確認（product_id の並び比較）
+  var unchanged = true;
+  for (var i = 0; i < beforeIds.length; i++) {
+    if (beforeIds[i] !== afterIds[i]) { unchanged = false; break; }
+  }
+  L('既存228行 product_id 不変: ' + (unchanged ? 'OK' : 'FAIL [' + i + '行目が変化]'));
+
+  // PM0229 の確認
+  var found229 = afterData[afterData.length - 1];
+  L('追加行(PM0229) 確認:');
+  L('  product_id: "' + String(found229[0]||'') + '"  (PM0229であること: ' + (String(found229[0]||'').trim() === 'PM0229' ? 'OK' : 'FAIL') + ')');
+  L('  Category: "' + String(found229[1]||'') + '"');
+  L('  JA Title: "' + String(found229[3]||'') + '"');
+  L('  EN Title: "' + String(found229[4]||'') + '"');
+  L('  Keywords: "' + String(found229[11]||'') + '"');
+  L('  RO Value: "' + String(found229[15]||'') + '"');
+
+  // PM番号重複チェック
+  var idFreq = {};
+  afterIds.forEach(function(id){ idFreq[id] = (idFreq[id]||0) + 1; });
+  var dups = Object.keys(idFreq).filter(function(id){ return idFreq[id] > 1; });
+  L('PM番号重複: ' + (dups.length === 0 ? 'なし OK' : '【重複あり】' + dups.join(',')));
+
+  L('');
+  L('=== executeStep2PM0229 完了 ===');
+  return out.join('\n');
+}
+
+// ──────────────────────────────────────────────────────────
+// 群3の9件: 商品マスタ全フィールド再検索 + マッチ失敗原因特定
+// ──────────────────────────────────────────────────────────
+function investigateGroup3Unmatched() {
+  var out = [];
+  function L(s) { out.push(String(s)); Logger.log(String(s)); }
+  L('=== investigateGroup3Unmatched ===');
+
+  var invSS;
+  try { invSS = SpreadsheetApp.openById(INV_BOOK_ID); }
+  catch(e) { L('[ERROR] ' + e.message); return out.join('\n'); }
+
+  var pmSh  = invSS.getSheetByName('商品マスタ');
+  var pmRaw = pmSh.getRange(2, 1, pmSh.getLastRow() - 1, 20).getValues();
+  var hdRow = pmSh.getRange(1, 1, 1, 20).getValues()[0].map(function(h){ return String(h).trim(); });
+  var pmEntries = _npnBuildPmEntries(invSS);
+
+  // 全PMの全フィールドを1つのテキストに結合して検索するヘルパー
+  function searchPm(tokens) {
+    // tokens: 小文字の検索語配列、AND条件
+    var hits = [];
+    pmRaw.forEach(function(r) {
+      var id = String(r[0]||'').trim();
+      if (!id) return;
+      var hay = r.map(function(v){ return String(v||'').toLowerCase(); }).join(' ');
+      if (tokens.every(function(t){ return hay.indexOf(t) >= 0; })) {
+        hits.push({
+          id:  id,
+          cat: String(r[1]||'').trim(),
+          ja:  String(r[3]||'').trim(),
+          en:  String(r[4]||'').trim(),
+          kw:  String(r[11]||'').trim(),
+          ro:  String(r[15]||'').trim(),
+          rs:  String(r[13]||'').trim()
+        });
+      }
+    });
+    return hits;
+  }
+
+  // _v3match の結果を診断するヘルパー
+  function diagnose(crmName) {
+    var res = _v3match(crmName, pmEntries);
+    var cn  = _v3n(crmName);
+    var cb  = _v3b(crmName);
+    return {
+      matched: res.matched, pmId: res.pmId || null,
+      fuzzy: res.fuzzy || false,
+      cn: cn, cb: cb
+    };
+  }
+
+  // 9件の定義（CRM名 / 検索トークン（AND） / 期待PM候補）
+  var targets = [
+    { crmName: 'Pokemon Card Tohoku Specialty Box',
+      tokens: [['tohoku'], ['東北']],
+      note: 'PM0182で存在確認済み' },
+    { crmName: 'Weiss Schwarz Oshi no Ko Vol. 1 Trial Deck',
+      tokens: [['weiss'], ['oshi'], ['推し']],
+      note: 'PM0210/0228等で存在確認済み' },
+    { crmName: 'Weiss Schwarz Rose Interspecies Reviews Booster',
+      tokens: [['weiss'], ['rose'], ['interspecies'], ['ローゼン']],
+      note: 'PM0210/0228等で存在確認済み' },
+    { crmName: 'Pokemon card Shiny Treasures Box',
+      tokens: [['shiny treasure'], ['シャイニー'], ['宝'], ['shiny']],
+      note: '' },
+    { crmName: 'Pokemon Card Shiny V Box',
+      tokens: [['shiny v'], ['シャイニースター'], ['shiny']],
+      note: '' },
+    { crmName: 'Pokemon Card Victini red promo',
+      tokens: [['victini'], ['ビクティニ']],
+      note: '' },
+    { crmName: 'Bandai Pokemon Kids Mega Mewtwo X & Mega Mewtwo Y',
+      tokens: [['mewtwo'], ['ミュウツー'], ['bandai'], ['kids']],
+      note: '' },
+    { crmName: 'Bandai Pokemon Kids Mega Charizard X & Mega Charizard Y',
+      tokens: [['charizard'], ['リザードン'], ['bandai'], ['kids']],
+      note: '' },
+    { crmName: 'Takara Tomy Poke-nade',
+      tokens: [['takara'], ['poke'], ['ポケ'], ['ナデ']],
+      note: '' }
+  ];
+
+  targets.forEach(function(t) {
+    L('');
+    L('════════════════════════════════════');
+    L('CRM: "' + t.crmName + '"');
+    if (t.note) L('  (' + t.note + ')');
+    L('════════════════════════════════════');
+
+    // _v3match 結果
+    var d = diagnose(t.crmName);
+    L('  _v3match: matched=' + d.matched + (d.pmId ? '  pmId=' + d.pmId : '') + (d.fuzzy ? '  [fuzzy]' : ''));
+    L('  _v3n: "' + d.cn + '"');
+    L('  _v3b: "' + d.cb + '"');
+
+    // 各トークンセットで検索
+    var allHits = {};
+    t.tokens.forEach(function(toks) {
+      var hits = searchPm(toks);
+      hits.forEach(function(h) { allHits[h.id] = h; });
+    });
+    var hitIds = Object.keys(allHits).sort();
+
+    if (hitIds.length === 0) {
+      L('  → 商品マスタ全フィールド検索: ヒットなし（未登録）');
+    } else {
+      L('  → 商品マスタ ヒット ' + hitIds.length + '件:');
+      hitIds.forEach(function(id) {
+        var h = allHits[id];
+        L('    ' + id + ' | cat=' + h.cat);
+        L('      JA: "' + h.ja + '"');
+        L('      EN: "' + h.en + '"');
+        if (h.kw) L('      KW: "' + h.kw + '"');
+        if (h.ro) L('      RO: "' + h.ro + '"');
+        if (h.rs) L('      RS: "' + h.rs + '"');
+
+        // マッチ失敗原因の分析
+        if (!d.matched || d.pmId !== id) {
+          var pmEn = _v3n(h.en), pmJa = _v3n(h.ja);
+          var pmKws = h.kw.split(',').map(function(k){ return _v3n(k.trim()); }).filter(Boolean);
+          var pmBase = _v3b(h.en);
+
+          var reasons = [];
+          // Phase 0: directNorm check
+          if (d.cn.indexOf(pmEn) < 0 && d.cn.indexOf(pmJa) < 0) {
+            reasons.push('Phase0 directNorm miss: cn に "' + pmEn + '" も "' + pmJa + '" も含まれない');
+          }
+          // KW check
+          var kwMiss = pmKws.filter(function(k){ return k.length >= 3 && d.cn.indexOf(k) < 0; });
+          if (kwMiss.length === pmKws.length && pmKws.length > 0) {
+            reasons.push('Phase0 KW 全て miss: KW="' + h.kw + '"');
+          }
+          // Phase 1: base check
+          if (d.cb !== pmBase && d.cb.indexOf(pmBase) < 0 && pmBase.indexOf(d.cb) < 0) {
+            reasons.push('Phase1 base miss: cb="' + d.cb + '" vs pb="' + pmBase + '"');
+          }
+          if (reasons.length > 0) {
+            L('      マッチ失敗原因:');
+            reasons.forEach(function(r){ L('        - ' + r); });
+          }
+        }
+      });
+    }
+  });
+
+  L('');
+  L('════════════════════════════════════');
+  L('[まとめ]');
+  L('════════════════════════════════════');
+
+  L('=== investigateGroup3Unmatched 完了 ===');
+  return out.join('\n');
+}
