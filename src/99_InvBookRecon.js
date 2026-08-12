@@ -5633,3 +5633,351 @@ function dryRunOrderMgmtFix() {
   L('=== dryRunOrderMgmtFix 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// investigateCancelledOrders — キャンセル44件 全文調査
+// ============================================================
+function investigateCancelledOrders() {
+  var out = [];
+  function L(s){ out.push(s); }
+  L('=== investigateCancelledOrders ===');
+
+  var crmSS = getSpreadsheet();
+  var omSh  = crmSS.getSheetByName('オーダー管理');
+  var omCols = omSh.getLastColumn();
+  var hdrs   = omSh.getRange(1,1,1,omCols).getValues()[0].map(function(h){ return String(h||'').trim(); });
+  var data   = omSh.getRange(2,1,omSh.getLastRow()-1,omCols).getValues();
+
+  function ci(names) {
+    for (var i=0;i<names.length;i++) { var idx=hdrs.indexOf(names[i]); if(idx>=0) return idx; }
+    return -1;
+  }
+
+  var C_OD   = 0;
+  var C_ST   = ci(['ステータス']);
+  var C_INV  = ci(['請求書番号']);
+  var C_CUST = ci(['顧客ID']);
+  var C_NOTE = ci(['取引備考欄']);
+
+  L('列マッピング: ステータス=col'+(C_ST+1)+' 請求書番号=col'+(C_INV+1)+
+    ' 顧客ID=col'+(C_CUST+1)+' 取引備考欄=col'+(C_NOTE+1));
+  L('');
+
+  // ─── オーダー管理 キャンセル一覧 ───
+  var cancelRows = [];
+  data.forEach(function(r) {
+    if (String(r[C_ST]||'').trim() === 'キャンセル') cancelRows.push(r);
+  });
+  L('キャンセル件数: ' + cancelRows.length + '件');
+  L('');
+  L('════════════════════════════════════');
+  L('[オーダー管理] オーダーID / 顧客ID / 請求書番号 / 取引備考欄');
+  L('════════════════════════════════════');
+
+  // 請求書番号→行 マップ（売上データ結合用）
+  var invMap = {};
+  cancelRows.forEach(function(r) {
+    var inv = C_INV>=0 ? String(r[C_INV]||'').trim() : '';
+    if (inv) invMap[inv] = r;
+    var base = inv.replace(/-\d+$/, '');
+    if (base && base!==inv) invMap[base] = r;
+  });
+
+  cancelRows.forEach(function(r, idx) {
+    var odId = String(r[C_OD  ]||'').trim();
+    var cust = C_CUST>=0 ? String(r[C_CUST]||'').trim() : '';
+    var inv  = C_INV >=0 ? String(r[C_INV ]||'').trim() : '';
+    var note = C_NOTE>=0 ? String(r[C_NOTE]||'').trim() : '';
+    L((idx+1) + '. ' + odId +
+      '  顧客ID=' + (cust||'(空)') +
+      '  請求書番号=' + (inv||'(空)'));
+    L('   取引備考欄: ' + (note || '(空)'));
+  });
+
+  // ─── 売上データ ヘッダー確認 ───
+  L('');
+  L('════════════════════════════════════');
+  L('[売上データ] ヘッダー全列 + キャンセル行トラブル列確認');
+  L('════════════════════════════════════');
+  var sdSh = crmSS.getSheetByName('📊売上データ');
+  if (!sdSh) {
+    L('ERROR: 📊売上データ シートが見つかりません');
+    return out.join('\n');
+  }
+  var sdLastRow = sdSh.getLastRow();
+  var sdLastCol = sdSh.getLastColumn();
+
+  // 行1 と 行5 のヘッダーを両方確認
+  var hdrsRow1 = sdSh.getRange(1,1,1,sdLastCol).getValues()[0].map(function(h){ return String(h||'').trim(); });
+  var hdrsRow5 = sdLastRow>=5
+    ? sdSh.getRange(5,1,1,sdLastCol).getValues()[0].map(function(h){ return String(h||'').trim(); })
+    : [];
+
+  L('row1 ヘッダー:');
+  hdrsRow1.forEach(function(h,i){ if(h) L('  col'+(i+1)+': "'+h+'"'); });
+  L('');
+  L('row5 ヘッダー:');
+  hdrsRow5.forEach(function(h,i){ if(h) L('  col'+(i+1)+': "'+h+'"'); });
+
+  // データ行 (row6以降) を読み込み
+  if (sdLastRow < 6) {
+    L('売上データにデータ行なし (lastRow=' + sdLastRow + ')');
+    return out.join('\n');
+  }
+  var sdData = sdSh.getRange(6,1,sdLastRow-5,sdLastCol).getValues();
+
+  // 表示用ヘッダー: row1 が空なら row5 を使う
+  var dispHdrs = hdrsRow1.map(function(h,i){ return h || hdrsRow5[i] || ''; });
+
+  // トラブル系列インデックスを探す（col名に「トラブル」「備考」「メモ」「キャンセル」「理由」を含む列）
+  var targetCols = [];
+  dispHdrs.forEach(function(h,i){
+    if (/トラブル|備考|メモ|キャンセル|理由|取消|注記/.test(h)) {
+      targetCols.push({ idx: i, name: h });
+    }
+  });
+  // 常に col2(idx1) も含める（ユーザー言及）
+  if (!targetCols.some(function(x){ return x.idx===1; })) {
+    targetCols.unshift({ idx: 1, name: dispHdrs[1]||'col2' });
+  }
+  L('');
+  L('調査対象列: ' + targetCols.map(function(x){ return 'col'+(x.idx+1)+'='+x.name; }).join(' / '));
+
+  // 売上データの 請求書番号 列インデックス (col12=idx11)
+  var SD_INV = 11;  // col12
+  // col1(idx0) = ステータス的な列, col8(idx7) = 商品名
+
+  // キャンセル請求書番号 セット作成
+  var cancelInvSet = {};
+  cancelRows.forEach(function(r) {
+    var inv = C_INV>=0 ? String(r[C_INV]||'').trim() : '';
+    if (inv) cancelInvSet[inv] = true;
+    var base = inv.replace(/-\d+$/, '');
+    if (base) cancelInvSet[base] = true;
+  });
+
+  L('');
+  L('キャンセルオーダーに対応する売上データ行（トラブル列含む）:');
+  var hitCount = 0;
+  sdData.forEach(function(r, i) {
+    var inv = String(r[SD_INV]||'').trim();
+    var base = inv.replace(/-\d+$/, '');
+    if (!cancelInvSet[inv] && !cancelInvSet[base]) return;
+    hitCount++;
+    var sdRow = i + 6;
+    var vals = targetCols.map(function(x){
+      var v = String(r[x.idx]||'').trim();
+      return 'col'+(x.idx+1)+'['+x.name+']="'+(v||'(空)')+'"';
+    });
+    L('  row'+sdRow+' 請求書番号='+inv+': ' + vals.join(' / '));
+  });
+  if (hitCount===0) L('  → 売上データにキャンセル請求書番号の一致行なし');
+
+  L('');
+  L('=== investigateCancelledOrders 完了 ===');
+  return out.join('\n');
+}
+
+// ============================================================
+// execOrderMgmtFix — A〜D + E列追加 CONFIRM
+// ============================================================
+function execOrderMgmtFix() {
+  var out = [];
+  function L(s){ out.push(s); }
+  L('=== execOrderMgmtFix (CONFIRM) ===');
+
+  var crmSS = getSpreadsheet();
+  var omSh  = crmSS.getSheetByName('オーダー管理');
+  var stSh  = crmSS.getSheetByName('選択肢マスタ');
+
+  var omCols  = omSh.getLastColumn();
+  var hdrs    = omSh.getRange(1,1,1,omCols).getValues()[0].map(function(h){ return String(h||'').trim(); });
+  var numRows = omSh.getLastRow() - 1;
+  var data    = omSh.getRange(2,1,numRows,omCols).getValues();
+
+  function ci(names) {
+    for (var i=0;i<names.length;i++) { var idx=hdrs.indexOf(names[i]); if(idx>=0) return idx; }
+    return -1;
+  }
+
+  var C_OD    = 0;
+  var C_ST    = ci(['ステータス']);
+  var C_RECD  = ci(['受注日']);
+  var C_CUR   = ci(['通貨']);
+  var C_FX    = ci(['為替レート']);
+  var C_SUB   = ci(['明細合計']);
+  var C_SHIP  = ci(['送料']);
+  var C_TAX   = ci(['関税']);
+  var C_TOT   = ci(['請求総額']);
+  var C_OTHER = 33;  // col34 その他手数料
+  var C_DISC  = 34;  // col35 値引き
+  var C_INVD  = ci(['請求書発行日']);
+  var C_PAYD  = ci(['支払期日']);
+  var C_RECV  = ci(['受注担当ID']);
+  var C_SALES = ci(['営業担当ID']);
+
+  L('処理前: 列数=' + omCols + ' 行数=' + numRows);
+
+  // ── スナップショット前（金額）──
+  var snap = { sub:0, ship:0, tax:0, other:0, disc:0, tot:0 };
+  data.forEach(function(r) {
+    snap.sub   += parseFloat(r[C_SUB  ])||0;
+    snap.ship  += parseFloat(r[C_SHIP ])||0;
+    snap.tax   += parseFloat(r[C_TAX  ])||0;
+    snap.other += parseFloat(r[C_OTHER])||0;
+    snap.disc  += parseFloat(r[C_DISC ])||0;
+    snap.tot   += parseFloat(r[C_TOT  ])||0;
+  });
+
+  // ── 既存 営業担当ID 9件 記録 ──
+  var existingSales = {};  // rowIdx(0-based) → value
+  data.forEach(function(r, i) {
+    var v = String(r[C_SALES]||'').trim();
+    if (v) existingSales[i] = v;
+  });
+  L('事前: 既存営業担当ID ' + Object.keys(existingSales).length + '件 記録');
+  L('');
+
+  // ════════ [A] 受注日 ← 請求書発行日補完 ════════
+  var aFill = 0;
+  for (var i=0; i<numRows; i++) {
+    var rd = data[i][C_RECD];
+    var id = data[i][C_INVD];
+    var rdEmpty = !rd || (rd instanceof Date && isNaN(rd)) || String(rd).trim()==='';
+    var idEmpty = !id || (id instanceof Date && isNaN(id)) || String(id).trim()==='';
+    if (rdEmpty && !idEmpty) {
+      omSh.getRange(i+2, C_RECD+1).setValue(id);
+      aFill++;
+    }
+  }
+  SpreadsheetApp.flush();
+  L('[A] 受注日補完: ' + aFill + '件');
+
+  // ════════ [B] 為替レート ← JPY → 1 ════════
+  var bFill = 0;
+  for (var i=0; i<numRows; i++) {
+    var cur = String(data[i][C_CUR]||'').trim();
+    var fx  = String(data[i][C_FX ]||'').trim();
+    if ((!fx || fx==='0') && cur==='JPY') {
+      omSh.getRange(i+2, C_FX+1).setValue(1);
+      bFill++;
+    }
+  }
+  SpreadsheetApp.flush();
+  L('[B] 為替レート設定: ' + bFill + '件 (JPY→1)');
+
+  // ════════ [C] 選択肢マスタ「支払サイト」+ col36 + 支払期日 ════════
+  // 選択肢マスタ
+  var siteOpts = ['即日','2日後','7日後','14日後','30日後'];
+  var stLastCol = stSh.getLastColumn();
+  var stHdrs = stLastCol > 0
+    ? stSh.getRange(1,1,1,stLastCol).getValues()[0].map(function(h){ return String(h||'').trim(); })
+    : [];
+  var siteColInSt = stHdrs.indexOf('支払サイト');
+  if (siteColInSt < 0) {
+    var newStCol = stLastCol + 1;
+    stSh.getRange(1, newStCol).setValue('支払サイト');
+    stSh.getRange(1, newStCol).setFontWeight('bold').setBackground('#4a86e8').setFontColor('#ffffff');
+    stSh.getRange(2, newStCol, siteOpts.length, 1).setValues(siteOpts.map(function(o){ return [o]; }));
+    SpreadsheetApp.flush();
+    L('[C] 選択肢マスタ 「支払サイト」列追加 col' + newStCol);
+  } else {
+    L('[C] 選択肢マスタ 「支払サイト」列は既存 col' + (siteColInSt+1));
+  }
+
+  // オーダー管理 col36 追加
+  var newColSite = omCols + 1;
+  omSh.getRange(1, newColSite).setValue('支払サイト');
+  omSh.getRange(1, newColSite).setFontWeight('bold');
+  omSh.getRange(2, newColSite, numRows, 1).setNumberFormat('@');
+  omSh.getRange(2, newColSite, numRows, 1).setValues(
+    Array.apply(null, Array(numRows)).map(function(){ return ['2日後']; })
+  );
+  SpreadsheetApp.flush();
+  L('[C] オーダー管理 「支払サイト」col' + newColSite + ' 全' + numRows + '行="2日後"');
+
+  // 支払期日 新規計算（発行日あり・支払期日空の行のみ）
+  var siteDays = 2;
+  var cCalc = 0;
+  for (var i=0; i<numRows; i++) {
+    var invD = data[i][C_INVD];
+    var payD = data[i][C_PAYD];
+    var invEmpty = !invD || (invD instanceof Date && isNaN(invD)) || String(invD).trim()==='';
+    var payEmpty = !payD || (payD instanceof Date && isNaN(payD)) || String(payD).trim()==='';
+    if (!invEmpty && payEmpty) {
+      var base = (invD instanceof Date) ? invD : new Date(invD);
+      var exp  = new Date(base.getTime());
+      exp.setDate(exp.getDate() + siteDays);
+      omSh.getRange(i+2, C_PAYD+1).setValue(exp);
+      cCalc++;
+    }
+  }
+  SpreadsheetApp.flush();
+  L('[C] 支払期日 新規計算: ' + cCalc + '件');
+
+  // ════════ [D] 営業担当ID ← 受注担当IDコピー ════════
+  var dCopy = 0, dSkipHas = 0, dSkipBoth = 0;
+  for (var i=0; i<numRows; i++) {
+    var sales = String(data[i][C_SALES]||'').trim();
+    var recv  = String(data[i][C_RECV ]||'').trim();
+    if (sales) { dSkipHas++; continue; }
+    if (!recv)  { dSkipBoth++; continue; }
+    omSh.getRange(i+2, C_SALES+1).setValue(recv);
+    dCopy++;
+  }
+  SpreadsheetApp.flush();
+  L('[D] 営業担当ID コピー: ' + dCopy + '件 / スキップ(既存): ' + dSkipHas + '件 / スキップ(両空): ' + dSkipBoth + '件');
+
+  // ════════ [E] キャンセル理由・キャンセルメモ 列追加 ════════
+  var newColCancel = omCols + 2;  // col37
+  var newColMemo   = omCols + 3;  // col38
+  omSh.getRange(1, newColCancel).setValue('キャンセル理由');
+  omSh.getRange(1, newColMemo  ).setValue('キャンセルメモ');
+  omSh.getRange(2, newColCancel, numRows, 1).setNumberFormat('@');
+  omSh.getRange(2, newColMemo,   numRows, 1).setNumberFormat('@');
+  SpreadsheetApp.flush();
+  L('[E] 「キャンセル理由」col' + newColCancel + ' 「キャンセルメモ」col' + newColMemo + ' 追加（空欄・選択肢登録は別途）');
+
+  // ════════ 検証 ════════
+  var newCols    = omSh.getLastColumn();
+  var newNumRows = omSh.getLastRow() - 1;
+  // 金額は元の35列内なので omCols 列分だけ再読み
+  var newData = omSh.getRange(2,1,newNumRows,omCols).getValues();
+
+  var snapAfter = { sub:0, ship:0, tax:0, other:0, disc:0, tot:0 };
+  newData.forEach(function(r) {
+    snapAfter.sub   += parseFloat(r[C_SUB  ])||0;
+    snapAfter.ship  += parseFloat(r[C_SHIP ])||0;
+    snapAfter.tax   += parseFloat(r[C_TAX  ])||0;
+    snapAfter.other += parseFloat(r[C_OTHER])||0;
+    snapAfter.disc  += parseFloat(r[C_DISC ])||0;
+    snapAfter.tot   += parseFloat(r[C_TOT  ])||0;
+  });
+
+  // 既存営業担当ID 不変確認
+  var salesOK = 0, salesNG = 0;
+  Object.keys(existingSales).forEach(function(k) {
+    var before = existingSales[k];
+    var after  = String(newData[parseInt(k)][C_SALES]||'').trim();
+    if (before === after) salesOK++;
+    else { salesNG++; L('  NG: row'+(parseInt(k)+2)+' before='+before+' after='+after); }
+  });
+
+  L('');
+  L('════════ 検証 ════════');
+  L('行数: ' + newNumRows + '件 ' + (newNumRows===172 ? 'OK' : 'NG! 期待172'));
+  L('列数: ' + newCols    + '件 ' + (newCols   ===38  ? 'OK' : 'NG! 期待38'));
+  L('');
+  L('金額列 (前→後):');
+  L('  明細合計 ' + snap.sub   + ' → ' + snapAfter.sub   + (snap.sub  ===snapAfter.sub   ? ' OK' : ' ★NG!'));
+  L('  送料     ' + snap.ship  + ' → ' + snapAfter.ship  + (snap.ship ===snapAfter.ship  ? ' OK' : ' ★NG!'));
+  L('  関税     ' + snap.tax   + ' → ' + snapAfter.tax   + (snap.tax  ===snapAfter.tax   ? ' OK' : ' ★NG!'));
+  L('  その他   ' + snap.other + ' → ' + snapAfter.other + (snap.other===snapAfter.other ? ' OK' : ' ★NG!'));
+  L('  値引き   ' + snap.disc  + ' → ' + snapAfter.disc  + (snap.disc ===snapAfter.disc  ? ' OK' : ' ★NG!'));
+  L('  請求総額 ' + snap.tot   + ' → ' + snapAfter.tot   + (snap.tot  ===snapAfter.tot   ? ' OK' : ' ★NG!'));
+  L('');
+  L('既存営業担当ID ' + Object.keys(existingSales).length + '件: OK=' + salesOK + ' NG=' + salesNG);
+  L('');
+  L('=== execOrderMgmtFix 完了 ===');
+  return out.join('\n');
+}
