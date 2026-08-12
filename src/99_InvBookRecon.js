@@ -1495,3 +1495,105 @@ function investigatePostNormalize() {
   L('=== investigatePostNormalize 完了 ===');
   return out.join('\n');
 }
+
+// ──────────────────────────────────────────────────────────
+// 確定調査: OD-00095 受注日 + PM Release Date 比較 + Black Bolt ID確定
+// ──────────────────────────────────────────────────────────
+function investigateProductDates() {
+  var out = [];
+  function L(s) { out.push(String(s)); Logger.log(String(s)); }
+  L('=== investigateProductDates ===');
+
+  var crmSS, invSS;
+  try { crmSS = getSpreadsheet(); invSS = SpreadsheetApp.openById(INV_BOOK_ID); }
+  catch(e) { L('[ERROR] ' + e.message); return out.join('\n'); }
+
+  // ── [A] 商品マスタから対象PMの詳細（Release Date 含む）──
+  // col1=product_id, col4=JA Title, col5=EN Title, col11=Release Date
+  var COL_RD = 10; // Release Date (0-based index)
+  var TARGET_IDS = ['PM0093', 'PM0175', 'PM0165', 'PM0166', 'PM0167', 'PM0168'];
+
+  var pmSh  = invSS.getSheetByName('商品マスタ');
+  var pmRaw = pmSh.getRange(2, 1, pmSh.getLastRow() - 1, 20).getValues();
+
+  L('');
+  L('════════════════════════════════════');
+  L('[A] 商品マスタ 対象PM の Release Date');
+  L('════════════════════════════════════');
+  var pmInfo = {};
+  pmRaw.forEach(function(r) {
+    var id = String(r[0] || '').trim();
+    if (TARGET_IDS.indexOf(id) < 0) return;
+    var rd = r[COL_RD];
+    var rdStr = (rd instanceof Date) ? rd.toISOString().slice(0, 10)
+              : String(rd || '').trim();
+    pmInfo[id] = { ja: String(r[3]||'').trim(), en: String(r[4]||'').trim(), releaseDate: rdStr };
+    L('  ' + id + ' | JA=' + pmInfo[id].ja + ' | EN=' + pmInfo[id].en + ' | ReleaseDate=' + rdStr);
+  });
+
+  // ── [B] オーダー管理から OD-00095 の受注日・請求書発行日 ──
+  L('');
+  L('════════════════════════════════════');
+  L('[B] オーダー管理シート: OD-00095 全フィールド');
+  L('════════════════════════════════════');
+  var omSh = crmSS.getSheetByName('オーダー管理');
+  if (!omSh) {
+    L('[ERROR] "オーダー管理" シートが見つかりません');
+  } else {
+    var omLastRow = omSh.getLastRow();
+    var omNumCols = omSh.getLastColumn();
+    var omHeaders = omSh.getRange(1, 1, 1, omNumCols).getValues()[0].map(function(h){ return String(h).trim(); });
+    L('ヘッダー: ' + omHeaders.join(' | '));
+
+    var OCI_ID = _npnFindCol(omHeaders, ['オーダーID','orderid','order_id','注文ID','受注ID','ID']);
+    L('オーダーID列: col' + (OCI_ID + 1));
+
+    var omData = omLastRow > 1 ? omSh.getRange(2, 1, omLastRow - 1, omNumCols).getValues() : [];
+    var found = false;
+    omData.forEach(function(row) {
+      var oid = OCI_ID >= 0 ? String(row[OCI_ID] || '').trim() : '';
+      if (oid !== 'OD-00095') return;
+      found = true;
+      L('OD-00095 発見 — 全フィールド:');
+      omHeaders.forEach(function(h, i) {
+        var v = row[i];
+        var vs = (v instanceof Date) ? v.toISOString().slice(0, 10) : String(v === null || v === undefined ? '' : v).trim();
+        L('  [' + h + ']: ' + vs);
+      });
+    });
+    if (!found) {
+      L('OD-00095 は オーダー管理 に見つかりませんでした');
+      // OD番号の探し方が違う場合のため、先頭5行を出力
+      L('先頭5行のオーダーID列:');
+      for (var i = 0; i < Math.min(5, omData.length); i++) {
+        L('  row' + (i+2) + ': "' + (OCI_ID >= 0 ? String(omData[i][OCI_ID] || '') : '(col不明)') + '"');
+      }
+    }
+  }
+
+  // ── [C] Black Bolt / ブラックボルト 全マッチを商品マスタから検索 ──
+  L('');
+  L('════════════════════════════════════');
+  L('[C] 商品マスタ "Black Bolt" / "ブラックボルト" 全件');
+  L('════════════════════════════════════');
+  var bbTokens = ['black bolt', 'ブラックボルト'];
+  pmRaw.forEach(function(r) {
+    var id = String(r[0] || '').trim();
+    if (!id) return;
+    var ja = String(r[3] || '').trim();
+    var en = String(r[4] || '').trim();
+    var kw = String(r[11] || '').trim();
+    var hay = (id + ' ' + ja + ' ' + en + ' ' + kw).toLowerCase()
+      .replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
+    var hit = bbTokens.some(function(t){ return hay.indexOf(t) >= 0; });
+    if (!hit) return;
+    var rd = r[COL_RD];
+    var rdStr = (rd instanceof Date) ? rd.toISOString().slice(0, 10) : String(rd || '').trim();
+    L('  ' + id + ' | JA=' + ja + ' | EN=' + en + ' | ReleaseDate=' + rdStr);
+    L('    KW=' + kw);
+  });
+
+  L('');
+  L('=== investigateProductDates 完了 ===');
+  return out.join('\n');
+}
