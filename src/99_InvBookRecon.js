@@ -776,46 +776,71 @@ function _v3lev(a, b) {
   return p[lb];
 }
 
-// 商品名照合（v3強化版）
+// 商品名照合（v5: base優先度修正 + qualifier-aware）
+// 修正点:
+//   Phase 0: cnQ（括弧内容をインライン展開）を追加 → "(DX)"/"(Standard)" 等が直接フィールドで解決
+//   Phase 1: base照合を全PM収集→ランク付け → ① exact > ② input⊇PM > ③ PM⊇input, 同順位は長いPM優先
 function _v3match(crmName, pmEntries) {
-  var cn  = _v3n(crmName);
-  // 括弧除去後のノーム（[SV2a] 等を除去して照合）
+  var cn   = _v3n(crmName);
+  // cnNb: 括弧除去（[SV2a] 等を外す）
   var cnNb = cn.replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ')
                .replace(/\s+/g, ' ').trim();
-  var cb  = _v3b(crmName);
+  // cnQ: 括弧を外してその中身をインライン展開 → "(DX)" → "DX" として照合できるようにする
+  var cnQ  = cn.replace(/\(([^)]*)\)/g, ' $1 ').replace(/\[[^\]]*\]/g, ' ')
+               .replace(/\s+/g, ' ').trim();
+  var cb   = _v3b(crmName);
 
+  // ── Phase 0: 直接フィールド + キーワード照合 ──
+  // cn / cnNb / cnQ の3種で試行。全PM走査、最初のヒットで返す
   for (var i = 0; i < pmEntries.length; i++) {
     var pe = pmEntries[i];
-
-    // 直接フィールド照合（cn と括弧除去版 cnNb の両方で試行）
     for (var f = 0; f < pe.directNorms.length; f++) {
       var fv = pe.directNorms[f].v;
-      if (cn.indexOf(fv) >= 0 || cnNb.indexOf(fv) >= 0) {
+      if (cn.indexOf(fv) >= 0 || cnNb.indexOf(fv) >= 0 || cnQ.indexOf(fv) >= 0) {
         return { matched: true, pmId: pe.id, field: pe.directNorms[f].label,
                  matchedVal: fv, crmName: crmName, fuzzy: false };
       }
     }
-    // キーワード照合
     for (var k = 0; k < pe.kwNorms.length; k++) {
       var kv = pe.kwNorms[k].v;
-      if (cn.indexOf(kv) >= 0 || cnNb.indexOf(kv) >= 0) {
+      if (cn.indexOf(kv) >= 0 || cnNb.indexOf(kv) >= 0 || cnQ.indexOf(kv) >= 0) {
         return { matched: true, pmId: pe.id, field: 'SearchKeyword',
                  matchedVal: pe.kwNorms[k].raw, crmName: crmName, fuzzy: false };
       }
     }
-    // ベース名照合（双方向サブストリング）
-    if (cb.length >= 4) {
-      for (var b = 0; b < pe.bases.length; b++) {
-        var pb = pe.bases[b];
-        if (pb.length >= 3 && (cb === pb || cb.indexOf(pb) >= 0 || pb.indexOf(cb) >= 0)) {
-          return { matched: true, pmId: pe.id, field: 'BaseName',
-                   matchedVal: pb, crmName: crmName, fuzzy: false };
+  }
+
+  // ── Phase 1: Base照合（優先度付き・全PM収集して最良選択）──
+  // ① cb===pb (exact)  ② cb⊃pb (input contains PM base)  ③ pb⊃cb (PM contains input base)
+  // 同順位: pb が長い方（より具体的）を優先
+  if (cb.length >= 4) {
+    var baseCands = [];
+    for (var j = 0; j < pmEntries.length; j++) {
+      var pe2 = pmEntries[j];
+      for (var b2 = 0; b2 < pe2.bases.length; b2++) {
+        var pb = pe2.bases[b2];
+        if (pb.length < 3) continue;
+        if (cb === pb) {
+          baseCands.push({ rank: 0, pe: pe2, pb: pb });
+        } else if (cb.indexOf(pb) >= 0) {
+          baseCands.push({ rank: 1, pe: pe2, pb: pb });
+        } else if (pb.indexOf(cb) >= 0) {
+          baseCands.push({ rank: 2, pe: pe2, pb: pb });
         }
       }
     }
+    if (baseCands.length > 0) {
+      baseCands.sort(function(a, b) {
+        if (a.rank !== b.rank) return a.rank - b.rank;
+        return b.pb.length - a.pb.length;
+      });
+      var best = baseCands[0];
+      return { matched: true, pmId: best.pe.id, field: 'BaseName',
+               matchedVal: best.pb, crmName: crmName, fuzzy: false };
+    }
   }
 
-  // 編集距離 fuzzy（cb が5文字以上の場合のみ）
+  // ── Phase 2: Fuzzy（cb 5文字以上のみ）──
   if (cb.length >= 5) {
     var bestD = 3, bestId = null, bestBase = null;
     for (var ii = 0; ii < pmEntries.length; ii++) {
@@ -1595,5 +1620,126 @@ function investigateProductDates() {
 
   L('');
   L('=== investigateProductDates 完了 ===');
+  return out.join('\n');
+}
+
+// ──────────────────────────────────────────────────────────
+// マッチング修正後の再試算 + PM間base包含ペア調査
+// ──────────────────────────────────────────────────────────
+function investigateMatchingFix() {
+  var out = [];
+  function L(s) { out.push(String(s)); Logger.log(String(s)); }
+  L('=== investigateMatchingFix ===');
+
+  var crmSS, invSS;
+  try { crmSS = getSpreadsheet(); invSS = SpreadsheetApp.openById(INV_BOOK_ID); }
+  catch(e) { L('[ERROR] ' + e.message); return out.join('\n'); }
+
+  var pmEntries = _npnBuildPmEntries(invSS);
+
+  // ── [A] PM間 base包含ペア（「同じ罠」が起きうる組み合わせの全列挙）──
+  L('');
+  L('════════════════════════════════════');
+  L('[A] PM間 base包含ペア（混同リスクあり・書き込みなし）');
+  L('════════════════════════════════════');
+
+  // baseのPM出現頻度カウント（汎用すぎる base を除外するため）
+  var baseFreq = {};
+  pmEntries.forEach(function(pe) {
+    pe.bases.forEach(function(b) { baseFreq[b] = (baseFreq[b] || 0) + 1; });
+  });
+
+  var confPairs = [];
+  for (var i = 0; i < pmEntries.length; i++) {
+    for (var j = i + 1; j < pmEntries.length; j++) {
+      var basesA = pmEntries[i].bases;
+      var basesB = pmEntries[j].bases;
+      var pairAdded = false;
+      basesA.forEach(function(ba) {
+        if (pairAdded || ba.length < 5) return;
+        if (baseFreq[ba] > 3) return; // 3超は汎用すぎる
+        basesB.forEach(function(bb) {
+          if (pairAdded || bb.length < 5) return;
+          if (baseFreq[bb] > 3) return;
+          if (ba !== bb && (ba.indexOf(bb) >= 0 || bb.indexOf(ba) >= 0)) {
+            confPairs.push({ idA: pmEntries[i].id, idB: pmEntries[j].id, ba: ba, bb: bb });
+            pairAdded = true;
+          }
+        });
+      });
+    }
+  }
+  L('包含ペア数: ' + confPairs.length);
+  confPairs.forEach(function(p) {
+    var shorter = p.ba.length <= p.bb.length ? p.ba : p.bb;
+    var longer  = p.ba.length <= p.bb.length ? p.bb : p.ba;
+    var shortId = p.ba.length <= p.bb.length ? p.idA : p.idB;
+    var longId  = p.ba.length <= p.bb.length ? p.idB : p.idA;
+    L('  ' + shortId + ' base="' + shorter + '"  ⊂  ' + longId + ' base="' + longer + '"');
+  });
+
+  // ── [B] 全件再照合（修正済み _v3match 使用）──
+  L('');
+  L('════════════════════════════════════');
+  L('[B] 全件再照合（新 _v3match・書き込みなし）');
+  L('════════════════════════════════════');
+
+  var olSh = crmSS.getSheetByName('オーダー明細');
+  var numCols = olSh.getLastColumn();
+  var headers = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var CI_NAME = _npnFindCol(headers, ['商品名','productname','product_name','商品名称','itemname']);
+  if (CI_NAME < 0) CI_NAME = 4;
+
+  var olData = olSh.getRange(2, 1, olSh.getLastRow() - 1, numCols).getValues();
+
+  var confirmed = 0, unmatchedCount = 0;
+  var idBreakdown = {};
+  var bbPM165 = [], bbPM167 = [];
+  var unmatchedList = [];
+
+  olData.forEach(function(row) {
+    var name = String(row[CI_NAME] || '').trim();
+    if (!name) return;
+    var res = _v3match(name, pmEntries);
+    if (res.matched && !res.fuzzy) {
+      confirmed++;
+      idBreakdown[res.pmId] = (idBreakdown[res.pmId] || 0) + 1;
+      if (res.pmId === 'PM0165') bbPM165.push(name);
+      if (res.pmId === 'PM0167') bbPM167.push(name);
+    } else if (!res.matched) {
+      unmatchedCount++;
+      unmatchedList.push(name);
+    }
+  });
+
+  L('確定一致: ' + confirmed + '件  旧=443  差=' + (confirmed - 443));
+  L('未一致:   ' + unmatchedCount + '件');
+
+  // ── [C] Black Bolt 内訳 ──
+  L('');
+  L('════════════════════════════════════');
+  L('[C] Black Bolt 系 内訳');
+  L('════════════════════════════════════');
+  L('PM0165 (ブラックボルトDX): ' + bbPM165.length + '件');
+  bbPM165.forEach(function(n) { L('  ' + n); });
+  L('PM0167 (ブラックボルト標準): ' + bbPM167.length + '件');
+  bbPM167.slice(0, 20).forEach(function(n) { L('  ' + n); });
+  if (bbPM167.length > 20) L('  ... (' + (bbPM167.length - 20) + '件省略)');
+
+  // ── [D] 未一致の上位（件数降順）──
+  L('');
+  L('════════════════════════════════════');
+  L('[D] 未一致リスト（最大40件）');
+  L('════════════════════════════════════');
+  var unmatchedFreq = {};
+  unmatchedList.forEach(function(n) { unmatchedFreq[n] = (unmatchedFreq[n] || 0) + 1; });
+  var unmatchedSorted = Object.keys(unmatchedFreq).sort(function(a, b) { return unmatchedFreq[b] - unmatchedFreq[a]; });
+  unmatchedSorted.slice(0, 40).forEach(function(n) {
+    L('  ' + unmatchedFreq[n] + '件  "' + n + '"');
+  });
+  if (unmatchedSorted.length > 40) L('  ... (' + (unmatchedSorted.length - 40) + '種省略)');
+
+  L('');
+  L('=== investigateMatchingFix 完了 ===');
   return out.join('\n');
 }
