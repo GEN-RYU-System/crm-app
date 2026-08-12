@@ -2791,3 +2791,113 @@ function investigateGroup3Unmatched() {
   L('=== investigateGroup3Unmatched 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// 商品マスタ カテゴリ分類・Mark・Category 調査（読み取り専用）
+// ============================================================
+function investigatePMColumns() {
+  var out = [];
+  function L(s) { out.push(s); }
+
+  L('=== investigatePMColumns ===');
+
+  var ss = SpreadsheetApp.openById(INV_BOOK_ID);
+  var pmSh = ss.getSheetByName('商品マスタ');
+  var data = pmSh.getDataRange().getValues();
+  var headers = data[0];
+  var rows = data.slice(1);
+
+  // 0-based: idx1=Category, idx2=Mark, idx14=カテゴリ分類
+  var iCat  = 1;   // Category
+  var iMark = 2;   // Mark
+  var iKC   = 14;  // カテゴリ分類
+
+  L('総データ行数: ' + rows.length + '件');
+  L('');
+
+  // ─── 1. カテゴリ分類（col15, idx14）ユニーク値 ───
+  L('════════════════════════════════════');
+  L('[1] col15「カテゴリ分類」ユニーク値と件数');
+  L('════════════════════════════════════');
+  var kcCount = {};
+  rows.forEach(function(r) {
+    var v = String(r[iKC] || '').trim();
+    if (!v) v = '(空欄)';
+    kcCount[v] = (kcCount[v] || 0) + 1;
+  });
+  var kcKeys = Object.keys(kcCount).sort(function(a,b){ return kcCount[b]-kcCount[a]; });
+  kcKeys.forEach(function(k) { L('  ' + k + ': ' + kcCount[k] + '件'); });
+  L('');
+
+  // ─── 2. Mark（col3, idx2）ユニーク値 ───
+  L('════════════════════════════════════');
+  L('[2] col3「Mark」ユニーク値と件数');
+  L('════════════════════════════════════');
+  var markCount = {};
+  rows.forEach(function(r) {
+    var v = String(r[iMark] || '').trim();
+    if (!v) v = '(空欄)';
+    markCount[v] = (markCount[v] || 0) + 1;
+  });
+  var markKeys = Object.keys(markCount).sort(function(a,b){ return markCount[b]-markCount[a]; });
+  markKeys.forEach(function(k) { L('  ' + k + ': ' + markCount[k] + '件'); });
+  L('');
+
+  // ─── 3. Category × カテゴリ分類 対応 ───
+  L('════════════════════════════════════');
+  L('[3] Category × カテゴリ分類 クロス集計');
+  L('════════════════════════════════════');
+  var cross = {};
+  rows.forEach(function(r) {
+    var cat = String(r[iCat] || '').trim() || '(空欄)';
+    var kc  = String(r[iKC]  || '').trim() || '(空欄)';
+    if (!cross[cat]) cross[cat] = {};
+    cross[cat][kc] = (cross[cat][kc] || 0) + 1;
+  });
+  var catKeys = Object.keys(cross).sort();
+  catKeys.forEach(function(cat) {
+    L('  Category="' + cat + '":');
+    var kcs = cross[cat];
+    Object.keys(kcs).sort().forEach(function(kc) {
+      L('    カテゴリ分類="' + kc + '": ' + kcs[kc] + '件');
+    });
+  });
+  L('');
+
+  // ─── 4. フィギュア・グッズ系の商品が既に登録されているか ───
+  L('════════════════════════════════════');
+  L('[4] フィギュア・グッズ系の既存登録（Category・商品名から推定）');
+  L('════════════════════════════════════');
+  var figureKws = ['figure','figur','フィギュア','toy','玩具','kids','bandai',
+                   'takara','tomy','グッズ','goods','ガジェット','ぬいぐるみ',
+                   'plush','ポケモンカード以外','tcg以外','poke-nade','nade',
+                   'spray','スプレー'];
+  var hits = [];
+  rows.forEach(function(r) {
+    var pid = String(r[0] || '').trim();
+    var cat = String(r[iCat] || '').trim();
+    var ja  = String(r[3]  || '').trim();
+    var en  = String(r[4]  || '').trim();
+    var kc  = String(r[iKC] || '').trim();
+    var combined = (cat + ' ' + ja + ' ' + en + ' ' + kc).toLowerCase();
+    var matched = figureKws.filter(function(kw){ return combined.indexOf(kw.toLowerCase()) >= 0; });
+    if (matched.length > 0) {
+      hits.push({ pid: pid, cat: cat, ja: ja, en: en, kc: kc, matched: matched.join(',') });
+    }
+  });
+  if (hits.length === 0) {
+    L('  フィギュア・グッズ系の既存登録: なし（0件）');
+  } else {
+    L('  該当 ' + hits.length + '件:');
+    hits.forEach(function(h) {
+      L('  ' + h.pid + ' | cat=' + h.cat + ' | KC=' + h.kc);
+      L('    JA: "' + h.ja + '"');
+      L('    EN: "' + h.en + '"');
+      L('    KW hit: ' + h.matched);
+    });
+  }
+
+  L('');
+  L('=== investigatePMColumns 完了 ===');
+  return out.join('\n');
+}
