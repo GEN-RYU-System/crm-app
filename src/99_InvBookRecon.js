@@ -730,9 +730,14 @@ function _v3fw(s) {
 }
 
 // 基本正規化: アクセント+全角→半角+小文字+空白
+// v5.1: アポストロフィ類・ハイフン/ダッシュ類を ASCII に統一
 function _v3n(s) {
   return _v3fw(String(s || ''))
     .replace(/\u00e9/g, 'e').replace(/\u00c9/g, 'e')
+    // アポストロフィ類 → U+0027 (例: McDonald\u2019s → McDonald's)
+    .replace(/[\u2018\u2019\u201A\u201B\u02BC\u00B4\uFF07]/g, "'")
+    // ハイフン/ダッシュ類 → U+002D (例: Singles \u2013 Bulk → Singles - Bulk)
+    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFF0D]/g, '-')
     .toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
@@ -2336,5 +2341,218 @@ function investigatePM0178Match() {
   });
 
   L('=== investigatePM0178Match 完了 ===');
+  return out.join('\n');
+}
+
+// ──────────────────────────────────────────────────────────
+// STEP 2 DRY RUN + STEP 3 再照合シミュレーション
+// ──────────────────────────────────────────────────────────
+function investigateStep23DryRun() {
+  var out = [];
+  function L(s) { out.push(String(s)); Logger.log(String(s)); }
+  L('=== investigateStep23DryRun ===');
+
+  var crmSS, invSS;
+  try { crmSS = getSpreadsheet(); invSS = SpreadsheetApp.openById(INV_BOOK_ID); }
+  catch(e) { L('[ERROR] ' + e.message); return out.join('\n'); }
+
+  var pmEntries = _npnBuildPmEntries(invSS);
+
+  // ── [A] CRM 全商品名のbase走査: ASCII外文字を含むbaseを全件報告 ──
+  L('');
+  L('════════════════════════════════════');
+  L('[A] 正規化後の base に ASCII外文字を含む行（全件）');
+  L('════════════════════════════════════');
+
+  var olSh    = crmSS.getSheetByName('オーダー明細');
+  var numCols = olSh.getLastColumn();
+  var headers = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var CI_NAME  = _npnFindCol(headers, ['商品名','productname','product_name']);
+  var CI_ORDER = _npnFindCol(headers, ['オーダーID','orderid','order_id','受注ID']);
+  if (CI_NAME < 0) CI_NAME = 4;
+  var olData  = olSh.getRange(2, 1, olSh.getLastRow() - 1, numCols).getValues();
+
+  function hasNonAscii(s) {
+    for (var i = 0; i < s.length; i++) { if (s.charCodeAt(i) > 127) return true; }
+    return false;
+  }
+  function dumpNonAscii(s) {
+    var r = [];
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charCodeAt(i);
+      if (c > 127) r.push('"' + s[i] + '"(U+' + ('0000'+c.toString(16).toUpperCase()).slice(-4) + ')');
+    }
+    return r.join(', ');
+  }
+
+  var nonAsciiSeen = {};
+  var nonAsciiCount = 0;
+  olData.forEach(function(row) {
+    var name = String(row[CI_NAME] || '').trim();
+    if (!name) return;
+    var b = _v3b(name);
+    if (!hasNonAscii(b) || nonAsciiSeen[name]) return;
+    nonAsciiSeen[name] = true;
+    nonAsciiCount++;
+    var oid = CI_ORDER >= 0 ? String(row[CI_ORDER]||'').trim() : '?';
+    L('  base="' + b + '"');
+    L('    chars: ' + dumpNonAscii(b));
+    L('    CRM: "' + name + '"  [' + oid + ']');
+  });
+  L('');
+  L('ASCII外文字を含む base 種類数: ' + nonAsciiCount);
+
+  // ── [B] STEP 2 DRY RUN: PM0229 追加行の全20列表示 ──
+  L('');
+  L('════════════════════════════════════');
+  L('[B] STEP 2 DRY RUN: PM0229 追加行（書き込みなし）');
+  L('════════════════════════════════════');
+
+  // 既存PM番号の確認
+  var pmSh  = invSS.getSheetByName('商品マスタ');
+  var pmRaw = pmSh.getRange(2, 1, pmSh.getLastRow() - 1, 20).getValues();
+  var hdRow = pmSh.getRange(1, 1, 1, 20).getValues()[0].map(function(h){ return String(h).trim(); });
+  var existIds = pmRaw.map(function(r){ return String(r[0]||'').trim(); }).filter(Boolean);
+
+  L('既存PM件数: ' + existIds.length + '件  (228であること)');
+  L('PM0229 既存有無: ' + (existIds.indexOf('PM0229') >= 0 ? '【重複あり】' : 'なし（OK）'));
+  L('末尾PM-ID: ' + existIds[existIds.length - 1]);
+  L('');
+
+  // 追加予定行の20列
+  var newRow = [
+    'PM0229',      // idx0: product_id
+    'Pokemon',     // idx1: Category
+    '',            // idx2: Mark
+    'レトロカード バルク', // idx3: Japanese Title
+    'Retro card bulk',   // idx4: English Title
+    '',            // idx5: Boxes per Case
+    '',            // idx6: Packs per Box
+    '',            // idx7: VOLUME WEIGHT
+    '',            // idx8: Box重量
+    '',            // idx9: Case重量
+    '',            // idx10: Release Date
+    'retro card, retro, B grade, Bグレード, レトロ, bulk', // idx11: Search Keywords
+    '',            // idx12: Exclude Keywords
+    '',            // idx13: Related Series
+    '',            // idx14: カテゴリ分類
+    'Retro card bulk',   // idx15: REQUIRED_OUTPUT_VALUE
+    '',            // idx16: MOQ
+    '',            // idx17: 品目
+    '',            // idx18: HSコード
+    ''             // idx19: 素材
+  ];
+  L('追加行（20列）:');
+  hdRow.forEach(function(h, i) {
+    L('  idx' + i + ' [' + h + ']: "' + (newRow[i] || '') + '"');
+  });
+
+  // ── [C] STEP 3 再照合シミュレーション ──
+  L('');
+  L('════════════════════════════════════');
+  L('[C] STEP 3 再照合シミュレーション（書き込みなし）');
+  L('════════════════════════════════════');
+  L('使用ルール:');
+  L('  A) SR (no SAR/AR) → PM0005');
+  L('  B) SAR → PM0006');
+  L('  C) AR + no-duplicate → PM0010');
+  L('  D) AR + (duplicate/random mix/bulk/single) → PM0011');
+  L('  E) McDonald\'s promo → PM0178  (apo修正で自動マッチ)');
+  L('  F) retro / [B grade] → PM0229');
+  L('  G) 上記以外 → _v3match (PM0229含む新pmEntries)');
+
+  // PM0229 を pmEntries に追加（シミュレーション用）
+  var kw229 = newRow[11].split(',').map(function(k){ return k.trim(); });
+  var pm229entry = {
+    id: 'PM0229',
+    directNorms: [
+      { v: _v3n(newRow[4]), label: 'EnglishTitle' },
+      { v: _v3n(newRow[3]), label: 'JapaneseTitle' },
+      { v: _v3n(newRow[15]), label: 'RequiredOutput' }
+    ].filter(function(x){ return x.v.length >= 4; }),
+    kwNorms: kw229.map(function(k){ return { v: _v3n(k), raw: k }; }).filter(function(x){ return x.v.length >= 3; }),
+    bases: (function(){
+      var fields = [newRow[4], newRow[3], newRow[15]].concat(kw229);
+      var seen = {};
+      return fields.map(_v3b).filter(function(b){
+        if (!b || b.length < 3 || seen[b]) return false;
+        seen[b] = true; return true;
+      });
+    })()
+  };
+  var simEntries = pmEntries.concat([pm229entry]);
+
+  // 分類ルール（pre-pass）
+  function classifyByRule(name) {
+    var n = _v3n(name);
+    // F: retro / B grade
+    if (/retro/i.test(name) || /\[b grade\]/i.test(n)) return 'PM0229';
+    // B: SAR
+    if (/\bsar\b/.test(n)) return 'PM0006';
+    // A: SR (SARでなくARでもない)
+    if (/\bsr\b/.test(n) && !/\bsar\b/.test(n) && !/\bar\b/.test(n)) return 'PM0005';
+    // C: AR no-duplicate
+    if (/\bar\b/.test(n) && !/\bsar\b/.test(n) && /no.?dup/i.test(n)) return 'PM0010';
+    // D: AR duplicate/random mix/bulk/single (no-dup明記なし)
+    if (/\bar\b/.test(n) && !/\bsar\b/.test(n) &&
+        (/duplicate|random.?mix|bulk|singles?/i.test(n))) return 'PM0011';
+    return null;
+  }
+
+  var confirmed = 0, ruleHit = {}, autoHit = {}, stillUnmatched = [];
+  var pmBreakdown = {};
+
+  olData.forEach(function(row) {
+    var name = String(row[CI_NAME] || '').trim();
+    if (!name) return;
+
+    // まず _v3match で確認
+    var res = _v3match(name, simEntries);
+    if (res.matched && !res.fuzzy) {
+      confirmed++;
+      pmBreakdown[res.pmId] = (pmBreakdown[res.pmId] || 0) + 1;
+      return;
+    }
+
+    // pre-pass classification
+    var ruleId = classifyByRule(name);
+    if (ruleId) {
+      confirmed++;
+      ruleHit[ruleId] = (ruleHit[ruleId] || 0) + 1;
+      pmBreakdown[ruleId] = (pmBreakdown[ruleId] || 0) + 1;
+      return;
+    }
+
+    stillUnmatched.push(name);
+  });
+
+  L('');
+  L('確定一致: ' + confirmed + '件  旧=443  差=' + (confirmed - 443));
+
+  L('');
+  L('[分類ルール適用内訳]');
+  Object.keys(ruleHit).sort().forEach(function(id) {
+    L('  ' + id + ' (rule): ' + ruleHit[id] + '件');
+  });
+
+  L('');
+  L('[PM別合計 上位]');
+  var pmKeys = Object.keys(pmBreakdown).sort(function(a,b){
+    return pmBreakdown[b] - pmBreakdown[a];
+  });
+  pmKeys.slice(0, 20).forEach(function(id) {
+    L('  ' + id + ': ' + pmBreakdown[id] + '件');
+  });
+
+  L('');
+  L('[なお未一致: ' + stillUnmatched.length + '件]');
+  var uf = {};
+  stillUnmatched.forEach(function(n){ uf[n] = (uf[n]||0)+1; });
+  Object.keys(uf).sort(function(a,b){ return uf[b]-uf[a]; }).forEach(function(n) {
+    L('  ' + uf[n] + '件  "' + n + '"');
+  });
+
+  L('');
+  L('=== investigateStep23DryRun 完了 ===');
   return out.join('\n');
 }
