@@ -6359,6 +6359,53 @@ function verifyCancelReason() {
   return out.join('\n');
 }
 
+// ─── TEST出品DB 共有設定確認のみ（変更しない） ─────────────────────────────────
+function checkTestDbSharingOnly() {
+  var out = [];
+  function L(s){ out.push(s); }
+  var SHEET_ID = '1gGoJSu-ckMllYWuFCoERGVIPBDGvpVVRHDStx58MEgQ';
+  L('=== TEST出品DB 共有設定 確認のみ（変更なし） ===');
+  var file;
+  try {
+    file = DriveApp.getFileById(SHEET_ID);
+  } catch(e) {
+    L('ERROR: ファイル取得失敗 → ' + e.message);
+    return out.join('\n');
+  }
+  L('ファイルID: ' + SHEET_ID);
+  L('ファイル名: ' + file.getName());
+  L('');
+  // 全体共有設定
+  var access = file.getSharingAccess();
+  var perm   = file.getSharingPermission();
+  L('【全体共有設定】');
+  L('  SharingAccess:      ' + access);
+  // PRIVATE=制限付き / ANYONE_WITH_LINK=リンクを知っている全員 / ANYONE=全公開 / DOMAIN=ドメイン内
+  L('  SharingPermission:  ' + perm);
+  L('');
+  // 個別ユーザーの権限
+  L('【個別ユーザー権限】');
+  try {
+    var editors  = file.getEditors();
+    var viewers  = file.getViewers();
+    if (editors.length === 0 && viewers.length === 0) {
+      L('  個別ユーザー: なし');
+    } else {
+      editors.forEach(function(u){
+        L('  EDITOR: ' + u.getEmail() + ' (' + u.getName() + ')');
+      });
+      viewers.forEach(function(u){
+        L('  VIEWER: ' + u.getEmail() + ' (' + u.getName() + ')');
+      });
+    }
+  } catch(e) {
+    L('  ユーザー一覧取得エラー: ' + e.message);
+  }
+  L('');
+  L('=== checkTestDbSharingOnly 完了（変更なし） ===');
+  return out.join('\n');
+}
+
 // ─── TEST出品DB 共有設定確認・修正 ───────────────────────────────────────────
 function checkAndRestrictTestDb() {
   var out = [];
