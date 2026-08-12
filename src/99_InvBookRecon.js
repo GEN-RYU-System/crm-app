@@ -4839,3 +4839,54 @@ function investigateSheetList() {
   L('=== investigateSheetList 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// investigateSalesData — 📊売上データ構造確認
+// ============================================================
+function investigateSalesData() {
+  var out = [];
+  function L(s){ out.push(s); }
+  L('=== investigateSalesData ===');
+
+  var crmSS = getSpreadsheet();
+  var sh = crmSS.getSheetByName('📊売上データ');
+  if (!sh) { L('ERROR: シートが見つかりません'); return out.join('\n'); }
+
+  var lastRow = sh.getLastRow();
+  var lastCol = sh.getLastColumn();
+  L('rows=' + lastRow + '  cols=' + lastCol);
+
+  // 1行目 (ヘッダー行) 全列
+  var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  L('');
+  L('--- ヘッダー行 (全' + lastCol + '列) ---');
+  headers.forEach(function(h, i) {
+    var v = String(h||'').trim();
+    if (v) L('  col' + (i+1) + ': "' + v + '"');
+  });
+
+  L('');
+  // col14 の内容を確認
+  var col14Header = String(headers[13]||'').trim();
+  L('col14 ヘッダー: "' + col14Header + '"');
+
+  // 2行目以降で col14 に値がある行を収集
+  var data = sh.getRange(2, 1, lastRow-1, Math.min(lastCol, 20)).getValues();
+  L('');
+  L('--- col14 に値がある行（先頭20列表示）---');
+  var cnt = 0;
+  data.forEach(function(r, i) {
+    var v14 = String(r[13]||'').trim();
+    if (!v14) return;
+    cnt++;
+    var preview = r.slice(0, 20).map(function(v, ci) {
+      var s = (v instanceof Date) ? v.toISOString().slice(0,10) : String(v===null||v===undefined?'':v).trim();
+      return s ? ('col'+(ci+1)+'='+s) : '';
+    }).filter(function(s){return s;}).join(' | ');
+    L('  row' + (i+2) + ': ' + preview);
+  });
+  L('col14 に値がある行数: ' + cnt);
+
+  L('=== investigateSalesData 完了 ===');
+  return out.join('\n');
+}
