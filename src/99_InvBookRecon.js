@@ -4245,3 +4245,107 @@ function investigateBlankAndNonProduct() {
   L('=== investigateBlankAndNonProduct 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// 調査: ODL-00232 全列 / Invoice#0796 / OD-00046（読み取り専用）
+// ============================================================
+function investigateOrderContext() {
+  var out = [];
+  function L(s) { out.push(s); }
+  L('=== investigateOrderContext ===');
+
+  var crmSS = getSpreadsheet();
+
+  // ─── オーダー明細 ───
+  var olSh  = crmSS.getSheetByName('オーダー明細');
+  var olCols = olSh.getLastColumn();
+  var olHeaders = olSh.getRange(1, 1, 1, olCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var olData = olSh.getRange(2, 1, olSh.getLastRow()-1, olCols).getValues();
+
+  // ODL-00232 の行を全列出力
+  L('');
+  L('════════════════════════════════════');
+  L('[1] ODL-00232 全列（オーダー明細）');
+  L('════════════════════════════════════');
+  var found232 = false;
+  olData.forEach(function(r) {
+    if (String(r[0]||'').trim() !== 'ODL-00232') return;
+    found232 = true;
+    olHeaders.forEach(function(h, i) {
+      L('  col' + (i+1) + ' [' + h + ']: "' + String(r[i]||'') + '"');
+    });
+  });
+  if (!found232) L('  [NOT FOUND] ODL-00232');
+  L('');
+
+  // ─── オーダー管理 ───
+  var omSh  = crmSS.getSheetByName('オーダー管理');
+  var omCols = omSh.getLastColumn();
+  var omHeaders = omSh.getRange(1, 1, 1, omCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var omData = omSh.getRange(2, 1, omSh.getLastRow()-1, omCols).getValues();
+
+  L('オーダー管理 列数: ' + omCols + '列');
+  L('オーダー管理 データ行: ' + omData.length + '件');
+  L('');
+  L('ヘッダー一覧:');
+  omHeaders.forEach(function(h, i){ L('  col' + (i+1) + ': ' + h); });
+  L('');
+
+  // 請求書番号列を特定
+  var CI_INV  = _npnFindCol(omHeaders, ['請求書番号','invoicenumber','invoice_no','invoice']);
+  var CI_OD   = _npnFindCol(omHeaders, ['オーダーID','orderid','order_id']);
+  var CI_CUST = _npnFindCol(omHeaders, ['顧客ID','顧客','customerid','customer_id']);
+  var CI_SHIP = _npnFindCol(omHeaders, ['送料','shipping']);
+  var CI_TAX  = _npnFindCol(omHeaders, ['関税','customs','tax']);
+  var CI_TOTAL= _npnFindCol(omHeaders, ['請求総額','合計','total','invoice_total']);
+  L('列検出: 請求書番号=col' + (CI_INV+1) + ' / 顧客=col' + (CI_CUST+1) +
+    ' / 送料=col' + (CI_SHIP+1) + ' / 関税=col' + (CI_TAX+1) + ' / 請求総額=col' + (CI_TOTAL+1));
+  L('');
+
+  // [2] Invoice#0796 を含む行を検索
+  L('════════════════════════════════════');
+  L('[2] 請求書番号「#0796」を含む行（オーダー管理）');
+  L('════════════════════════════════════');
+  var hits0796 = [];
+  omData.forEach(function(r) {
+    var inv = String(r[CI_INV >= 0 ? CI_INV : 1] || '').trim();
+    if (inv.indexOf('0796') >= 0) hits0796.push(r);
+  });
+  if (hits0796.length === 0) {
+    L('  ヒットなし — #0796 は未登録のオーダー番号の可能性');
+  } else {
+    hits0796.forEach(function(r) {
+      omHeaders.forEach(function(h, i) {
+        if (String(r[i]||'').trim()) L('  col' + (i+1) + ' [' + h + ']: "' + String(r[i]||'') + '"');
+      });
+      L('');
+    });
+  }
+
+  // [3] OD-00046 の詳細
+  L('════════════════════════════════════');
+  L('[3] OD-00046 全列（オーダー管理）');
+  L('════════════════════════════════════');
+  var found46 = false;
+  omData.forEach(function(r) {
+    var odId = String(r[CI_OD >= 0 ? CI_OD : 0] || '').trim();
+    if (odId !== 'OD-00046') return;
+    found46 = true;
+    omHeaders.forEach(function(h, i) {
+      L('  col' + (i+1) + ' [' + h + ']: "' + String(r[i]||'') + '"');
+    });
+  });
+  if (!found46) L('  [NOT FOUND] OD-00046');
+  L('');
+
+  // OD-00046 の明細件数も確認
+  var lines46 = olData.filter(function(r){ return String(r[1]||'').trim() === 'OD-00046'; });
+  L('  OD-00046 の明細行数: ' + lines46.length + '件');
+  lines46.forEach(function(r){
+    L('  ' + String(r[0]||'') + ' | 商品名="' + String(r[4]||'') + '" | 小計=' + String(r[9]||''));
+  });
+
+  L('');
+  L('=== investigateOrderContext 完了 ===');
+  return out.join('\n');
+}
