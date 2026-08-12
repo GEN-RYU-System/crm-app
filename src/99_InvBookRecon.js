@@ -4509,7 +4509,7 @@ function dryRunOrderMgmtChanges() {
   L('════════════════════════════════════');
   L('[E] 検証予定');
   L('  明細行数: ' + (olData.length - 20) + '件（期待: 575）');
-  L('  商品ID記入: 574件 / 空欄: 1件（ODL-00232のみ）');
+  L('  商品ID記入: 575件 / 空欄: 0件（ODL-00232はPM0178記入済み）');
   L('  影響オーダー col14 変化なし:');
   ['OD-00046','OD-00107','OD-00123','OD-00132'].forEach(function(odId) {
     var r = omMap[odId];
@@ -4644,8 +4644,8 @@ function execOrderMgmtChanges() {
   var olFinal = olSh.getRange(2, 1, finalOlRows, olSh.getLastColumn()).getValues();
   var pmFilled=0, pmBlank=0;
   olFinal.forEach(function(r){ if(String(r[10]||'').trim()) pmFilled++; else pmBlank++; });
-  L('商品ID記入: ' + pmFilled + '件（期待: 574）' + (pmFilled===574?' OK':' NG'));
-  L('商品ID空欄: ' + pmBlank + '件（期待: 1）'  + (pmBlank===1?' OK':' NG'));
+  L('商品ID記入: ' + pmFilled + '件（期待: 575）' + (pmFilled===575?' OK':' NG'));
+  L('商品ID空欄: ' + pmBlank + '件（期待: 0）'  + (pmBlank===0?' OK':' NG'));
 
   // オーダー管理 列数
   var finalOmCols = omSh.getLastColumn();
@@ -4653,5 +4653,156 @@ function execOrderMgmtChanges() {
 
   L('');
   L('=== execOrderMgmtChanges 完了 ===');
+  return out.join('\n');
+}
+
+// ============================================================
+// execFixODL00232 — ODL-00232 に PM0178 + 商品名を書き込む
+// ============================================================
+function execFixODL00232() {
+  var out = [];
+  function L(s){ out.push(s); }
+  L('=== execFixODL00232 ===');
+
+  var ss   = SpreadsheetApp.openById(INV_BOOK_ID);
+  var olSh = ss.getSheetByName('オーダー明細');
+
+  var olData = olSh.getRange(2, 1, olSh.getLastRow()-1, olSh.getLastColumn()).getValues();
+  var targetRow = -1;
+  for (var i=0; i<olData.length; i++) {
+    if (String(olData[i][0]||'').trim() === 'ODL-00232') { targetRow = i + 2; break; }
+  }
+  if (targetRow < 0) { L('ERROR: ODL-00232 が見つからない'); return out.join('\n'); }
+
+  var rowData = olData[targetRow - 2];
+  var beforeName  = String(rowData[4]  || '').trim();  // col5  商品名
+  var beforePmId  = String(rowData[10] || '').trim();  // col11 商品ID
+
+  L('対象行: row=' + targetRow);
+  L('BEFORE:');
+  L('  col5  商品名: "' + beforeName  + '"');
+  L('  col11 商品ID: "' + beforePmId  + '"');
+
+  var newName = 'Pokemon card Pikachu McDonald\'s promo card';
+  var newPmId = 'PM0178';
+
+  olSh.getRange(targetRow, 5).setValue(newName);
+  olSh.getRange(targetRow, 11).setValue(newPmId);
+  SpreadsheetApp.flush();
+
+  var afterName  = String(olSh.getRange(targetRow, 5).getValue()).trim();
+  var afterPmId  = String(olSh.getRange(targetRow, 11).getValue()).trim();
+
+  L('AFTER:');
+  L('  col5  商品名: "' + afterName  + '"' + (afterName  === newName  ? ' OK' : ' NG'));
+  L('  col11 商品ID: "' + afterPmId  + '"' + (afterPmId  === newPmId  ? ' OK' : ' NG'));
+
+  // 商品ID 総数検証
+  var olAll = olSh.getRange(2, 1, olSh.getLastRow()-1, olSh.getLastColumn()).getValues();
+  var filled=0, blank=0;
+  olAll.forEach(function(r){ if(String(r[10]||'').trim()) filled++; else blank++; });
+  L('');
+  L('商品ID 記入: ' + filled + '件（期待: 575）' + (filled===575?' OK':' NG'));
+  L('商品ID 空欄: ' + blank  + '件（期待: 0）'  + (blank ===0 ?' OK':' NG'));
+
+  L('=== execFixODL00232 完了 ===');
+  return out.join('\n');
+}
+
+// ============================================================
+// investigateGundamActual — PM0171/0192/0205 の現在値読み出し
+// ============================================================
+function investigateGundamActual() {
+  var out = [];
+  function L(s){ out.push(s); }
+  L('=== investigateGundamActual ===');
+
+  var ss   = SpreadsheetApp.openById(INV_BOOK_ID);
+  var pmSh = ss.getSheetByName('商品マスタ');
+
+  var pmData = pmSh.getRange(2, 1, pmSh.getLastRow()-1, pmSh.getLastColumn()).getValues();
+  var targets = ['PM0171','PM0192','PM0205'];
+  var mismatch = [];
+
+  targets.forEach(function(pid) {
+    var row = null;
+    for (var i=0; i<pmData.length; i++) {
+      if (String(pmData[i][0]||'').trim() === pid) { row = pmData[i]; break; }
+    }
+    if (!row) { L(pid + ': NOT FOUND'); return; }
+
+    var pmId   = String(row[0] ||'').trim();
+    var mark   = String(row[2] ||'').trim();
+    var jaTitle= String(row[3] ||'').trim();
+    var enTitle= String(row[4] ||'').trim();
+    var ipId   = String(row[21]||'').trim();  // idx21=col22 作品ID
+    var mkId   = String(row[22]||'').trim();  // idx22=col23 メーカーID
+
+    L('');
+    L(pmId + ':');
+    L('  Mark      : ' + mark);
+    L('  JA Title  : ' + jaTitle);
+    L('  EN Title  : ' + enTitle);
+    L('  col22 作品ID  : ' + ipId);
+    L('  col23 メーカーID: ' + mkId + (mkId==='MK004' ? ' ← MK002要修正' : (mkId==='MK002' ? ' OK' : ' [?]')));
+
+    if (mkId === 'MK004') mismatch.push(pmId);
+  });
+
+  L('');
+  if (mismatch.length > 0) {
+    L('【DRY RUN】MK004→MK002 修正対象: ' + mismatch.join(', '));
+    mismatch.forEach(function(pid) {
+      L('  ' + pid + ': col23 "MK004" → "MK002"');
+    });
+    L('→ execGundamMKFix() で適用予定');
+  } else {
+    L('全件 col23=MK002 または確認不要 → 修正不要');
+  }
+
+  L('=== investigateGundamActual 完了 ===');
+  return out.join('\n');
+}
+
+// ============================================================
+// execGundamMKFix — MK004→MK002 修正（investigateGundamActual でMK004が確認されたとき）
+// ============================================================
+function execGundamMKFix() {
+  var out = [];
+  function L(s){ out.push(s); }
+  L('=== execGundamMKFix ===');
+
+  var ss   = SpreadsheetApp.openById(INV_BOOK_ID);
+  var pmSh = ss.getSheetByName('商品マスタ');
+
+  var pmData = pmSh.getRange(2, 1, pmSh.getLastRow()-1, pmSh.getLastColumn()).getValues();
+  var targets = ['PM0171','PM0192','PM0205'];
+  var fixed = 0, skipped = 0;
+
+  targets.forEach(function(pid) {
+    var rowIdx = -1;
+    for (var i=0; i<pmData.length; i++) {
+      if (String(pmData[i][0]||'').trim() === pid) { rowIdx = i; break; }
+    }
+    if (rowIdx < 0) { L(pid + ': NOT FOUND'); return; }
+
+    var mkId = String(pmData[rowIdx][22]||'').trim();
+    if (mkId !== 'MK004') {
+      L(pid + ': col23=' + mkId + ' → スキップ（MK004でない）');
+      skipped++;
+      return;
+    }
+
+    var sheetRow = rowIdx + 2;  // 1-based, +1 for header
+    pmSh.getRange(sheetRow, 23).setValue('MK002');
+    SpreadsheetApp.flush();
+    var after = String(pmSh.getRange(sheetRow, 23).getValue()).trim();
+    L(pid + ': col23 MK004 → ' + after + (after==='MK002'?' OK':' NG'));
+    fixed++;
+  });
+
+  L('');
+  L('修正: ' + fixed + '件 / スキップ: ' + skipped + '件');
+  L('=== execGundamMKFix 完了 ===');
   return out.join('\n');
 }
