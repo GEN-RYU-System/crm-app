@@ -5435,3 +5435,201 @@ function investigateOrderMgmtStatus() {
   L('=== investigateOrderMgmtStatus 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// dryRunOrderMgmtFix — A〜E DRY RUN
+// ============================================================
+function dryRunOrderMgmtFix() {
+  var out = [];
+  function L(s){ out.push(s); }
+  L('=== dryRunOrderMgmtFix (DRY RUN) ===');
+  L('※ 書き込み一切なし');
+
+  var crmSS = getSpreadsheet();
+  var omSh  = crmSS.getSheetByName('オーダー管理');
+  var omCols = omSh.getLastColumn();
+  var hdrs  = omSh.getRange(1,1,1,omCols).getValues()[0].map(function(h){ return String(h||'').trim(); });
+  var data  = omSh.getRange(2,1,omSh.getLastRow()-1,omCols).getValues();
+  var numRows = data.length;
+
+  function ci(names) {
+    for (var i=0;i<names.length;i++) { var idx=hdrs.indexOf(names[i]); if(idx>=0) return idx; }
+    return -1;
+  }
+  var C_OD    = 0;
+  var C_INV   = ci(['請求書番号']);
+  var C_ST    = ci(['ステータス']);
+  var C_RECD  = ci(['受注日']);
+  var C_CUR   = ci(['通貨']);
+  var C_FX    = ci(['為替レート']);
+  var C_SUB   = ci(['明細合計']);
+  var C_SHIP  = ci(['送料']);
+  var C_TAX   = ci(['関税']);
+  var C_TOT   = ci(['請求総額']);
+  var C_OTHER = 33;  // col34 その他手数料 (0-based)
+  var C_DISC  = 34;  // col35 値引き
+  var C_INVD  = ci(['請求書発行日']);
+  var C_PAYD  = ci(['支払期日']);
+  var C_RECV  = ci(['受注担当ID']);
+  var C_SALES = ci(['営業担当ID']);
+
+  L('現在の列数: ' + omCols + ' / 行数: ' + numRows);
+  L('');
+
+  // ─── [A] 受注日 補完 ───
+  L('════════════════════════════════════');
+  L('[A] 受注日 ← 請求書発行日で補完');
+  L('════════════════════════════════════');
+  var aFill=0, aSkipNoInvD=0;
+  data.forEach(function(r) {
+    var odId = String(r[C_OD]||'').trim();
+    var rd   = r[C_RECD];
+    var id   = r[C_INVD];
+    var rdEmpty = !rd || (rd instanceof Date && isNaN(rd)) || String(rd).trim()==='';
+    var idEmpty = !id || (id instanceof Date && isNaN(id)) || String(id).trim()==='';
+    if (rdEmpty && !idEmpty) { aFill++; }
+    if (rdEmpty && idEmpty)  { aSkipNoInvD++; }
+  });
+  L('補完予定: ' + aFill + '件（請求書発行日→受注日）');
+  L('スキップ（発行日も空）: ' + aSkipNoInvD + '件 → 空のまま');
+
+  L('');
+  // ─── [B] 為替レート ───
+  L('════════════════════════════════════');
+  L('[B] 為替レート ← 通貨=JPYに "1" 設定');
+  L('════════════════════════════════════');
+  var bJpy=0, bOther=[];
+  data.forEach(function(r) {
+    var cur = String(r[C_CUR]||'').trim();
+    var fx  = String(r[C_FX] ||'').trim();
+    if (!fx || fx==='0') {
+      if (cur==='JPY') bJpy++;
+      else bOther.push(String(r[C_OD]||'').trim() + '(通貨=' + cur + ')');
+    }
+  });
+  L('JPY → "1" 設定: ' + bJpy + '件');
+  if (bOther.length>0) { L('他通貨 空欄（要確認）: ' + bOther.join(', ')); }
+  else { L('他通貨 空欄: 0件'); }
+
+  L('');
+  // ─── [C] 支払サイト + 支払期日チェック ───
+  L('════════════════════════════════════');
+  L('[C] 支払サイト追加 + 支払期日 整合確認');
+  L('════════════════════════════════════');
+  L('選択肢マスタへ「支払サイト」列追加: 即日/2日後/7日後/14日後/30日後');
+  L('オーダー管理 col' + (omCols+1) + ': 「支払サイト」追加・全' + numRows + '行="2日後"');
+  L('');
+
+  // 支払期日 vs 請求書発行日+2日 チェック
+  var cMismatch=[], cBothEmpty=0, cInvdOnly=0;
+  var siteDays = 2;
+  data.forEach(function(r) {
+    var odId = String(r[C_OD]||'').trim();
+    var invD = r[C_INVD];
+    var payD = r[C_PAYD];
+    var invEmpty = !invD || (invD instanceof Date && isNaN(invD)) || String(invD).trim()==='';
+    var payEmpty = !payD || (payD instanceof Date && isNaN(payD)) || String(payD).trim()==='';
+
+    if (invEmpty && payEmpty) { cBothEmpty++; return; }
+    if (!invEmpty && payEmpty) { cInvdOnly++; return; }  // will calculate new pay date
+
+    if (!invEmpty && !payEmpty) {
+      var invMs = (invD instanceof Date) ? invD.getTime() : new Date(invD).getTime();
+      var payMs = (payD instanceof Date) ? payD.getTime() : new Date(payD).getTime();
+      // expected = invD + siteDays
+      var expD = new Date(invMs);
+      expD.setDate(expD.getDate() + siteDays);
+      // compare date-only (strip time)
+      var expStr = expD.toISOString().slice(0,10);
+      var actStr = new Date(payMs).toISOString().slice(0,10);
+      if (expStr !== actStr) {
+        cMismatch.push({ odId: odId, invD: new Date(invMs).toISOString().slice(0,10),
+          payD: actStr, expD: expStr,
+          diff: Math.round((payMs - (invMs + siteDays*86400000)) / 86400000) });
+      }
+    }
+  });
+
+  L('既存 支払期日 と (請求書発行日+2日) の照合:');
+  L('  両方空欄: ' + cBothEmpty + '件（スキップ）');
+  L('  発行日あり・支払期日空: ' + cInvdOnly + '件（新規計算）');
+  if (cMismatch.length === 0) {
+    L('  食い違いなし → 上書き OK');
+  } else {
+    L('  ★ 食い違い ' + cMismatch.length + '件 → STOP・上書きしない');
+    cMismatch.forEach(function(m) {
+      L('    ' + m.odId + ': 発行日=' + m.invD + ' 既存支払期日=' + m.payD +
+        ' 期待(' + siteDays + '日後)=' + m.expD + ' 差=' + m.diff + '日');
+    });
+  }
+
+  L('');
+  // ─── [D] 営業担当ID 補完 ───
+  L('════════════════════════════════════');
+  L('[D] 営業担当ID ← 空欄行に受注担当IDをコピー');
+  L('════════════════════════════════════');
+  var dCopy=0, dSkipBothEmpty=0, dSkipHasSales=0;
+  data.forEach(function(r) {
+    var sales = String(r[C_SALES]||'').trim();
+    var recv  = String(r[C_RECV] ||'').trim();
+    if (sales)  { dSkipHasSales++; return; }
+    if (!recv)  { dSkipBothEmpty++; return; }
+    dCopy++;
+  });
+  L('営業担当ID がすでにある行: ' + dSkipHasSales + '件 → 絶対スキップ');
+  L('両方空欄: ' + dSkipBothEmpty + '件 → スキップ');
+  L('コピー予定（受注担当→営業担当）: ' + dCopy + '件');
+
+  L('');
+  // ─── [E] キャンセル列追加 + 候補一覧 ───
+  L('════════════════════════════════════');
+  L('[E] 新列 キャンセル理由(col' + (omCols+2) + ')・キャンセルメモ(col' + (omCols+3) + ')');
+  L('════════════════════════════════════');
+  var cancelCount=0;
+  data.forEach(function(r){ if(String(r[C_ST]||'').trim()==='キャンセル') cancelCount++; });
+  L('キャンセル行数: ' + cancelCount + '件（初期値: 空欄）');
+  L('');
+  L('選択肢マスタへ登録するキャンセル理由候補（確定はしんごさん判断）:');
+  L('  ① 支払期日超過');
+  L('  ② 顧客都合（予算不足）');
+  L('  ③ 顧客都合（発注ミス）');
+  L('  ④ 商品変更→再作成');
+  L('  ⑤ 数量変更→再作成');
+  L('  ⑥ 請求書修正→再作成（顧客要望）');
+  L('  ⑦ 決済停止（外部要因）');
+  L('  ⑧ 価格再調整→再発行');
+  L('  ⑨ 社内ミス（請求書誤記）');
+  L('  ⑩ 不明');
+
+  L('');
+  // ─── [検証] 金額列 不変確認 ───
+  L('════════════════════════════════════');
+  L('[検証] 金額列スナップショット（変化しないことを確認する基準値）');
+  L('════════════════════════════════════');
+  var totalSub=0, totalShip=0, totalTax=0, totalOther=0, totalDisc=0, totalTot=0;
+  data.forEach(function(r) {
+    totalSub   += parseFloat(r[C_SUB  ])||0;
+    totalShip  += parseFloat(r[C_SHIP ])||0;
+    totalTax   += parseFloat(r[C_TAX  ])||0;
+    totalOther += parseFloat(r[C_OTHER])||0;
+    totalDisc  += parseFloat(r[C_DISC ])||0;
+    totalTot   += parseFloat(r[C_TOT  ])||0;
+  });
+  L('明細合計 合計: '     + totalSub);
+  L('送料 合計: '         + totalShip);
+  L('関税 合計: '         + totalTax);
+  L('その他手数料 合計: ' + totalOther);
+  L('値引き 合計: '       + totalDisc);
+  L('請求総額 合計: '     + totalTot);
+  L('オーダー行数: ' + numRows);
+
+  L('');
+  L('★ 食い違い件数: ' + cMismatch.length + '件');
+  if (cMismatch.length > 0) {
+    L('→ C実行を停止。食い違い行を確認後に指示を待つ');
+  } else {
+    L('→ 全チェック通過。CONFIRM 実行可');
+  }
+  L('=== dryRunOrderMgmtFix 完了 ===');
+  return out.join('\n');
+}
