@@ -1890,3 +1890,152 @@ function investigateUnmatched() {
   L('=== investigateUnmatched 完了 ===');
   return out.join('\n');
 }
+
+// ──────────────────────────────────────────────────────────
+// 判定調査: MegaPTB日付 + Bgrade販売形態
+// ──────────────────────────────────────────────────────────
+function investigateOrderDetails() {
+  var out = [];
+  function L(s) { out.push(String(s)); Logger.log(String(s)); }
+  L('=== investigateOrderDetails ===');
+
+  var crmSS;
+  try { crmSS = getSpreadsheet(); }
+  catch(e) { L('[ERROR] ' + e.message); return out.join('\n'); }
+
+  // ── 共通: オーダー管理シート読み込み ──
+  var omSh = crmSS.getSheetByName('オーダー管理');
+  var omNumCols = omSh.getLastColumn();
+  var omHeaders = omSh.getRange(1, 1, 1, omNumCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var omData    = omSh.getLastRow() > 1 ? omSh.getRange(2, 1, omSh.getLastRow() - 1, omNumCols).getValues() : [];
+  var OCI_ID    = _npnFindCol(omHeaders, ['オーダーID','orderid','order_id','受注ID']);
+  var OCI_CUST  = _npnFindCol(omHeaders, ['顧客ID','customerid','customer_id']);
+
+  // ── 共通: オーダー明細シート読み込み ──
+  var olSh    = crmSS.getSheetByName('オーダー明細');
+  var olNumCols = olSh.getLastColumn();
+  var olHeaders = olSh.getRange(1, 1, 1, olNumCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var olData    = olSh.getLastRow() > 1 ? olSh.getRange(2, 1, olSh.getLastRow() - 1, olNumCols).getValues() : [];
+  var CI_ORDER  = _npnFindCol(olHeaders, ['オーダーID','orderid','order_id','受注ID']);
+  var CI_NAME   = _npnFindCol(olHeaders, ['商品名','productname','product_name']);
+  var CI_QTY    = _npnFindCol(olHeaders, ['数量','qty','quantity']);
+  var CI_PRICE  = _npnFindCol(olHeaders, ['単価','unitprice','unit_price','price']);
+  var CI_SUB    = _npnFindCol(olHeaders, ['小計','subtotal','sub_total']);
+  if (CI_NAME  < 0) CI_NAME  = 4;
+  if (CI_ORDER < 0) CI_ORDER = 1;
+
+  // ─────────────────────────────────────────
+  // [A] OD-00064 / OD-00067 の全フィールド
+  // ─────────────────────────────────────────
+  L('');
+  L('════════════════════════════════════');
+  L('[A] オーダー管理: OD-00064 / OD-00067');
+  L('════════════════════════════════════');
+  var targetOrders = ['OD-00064', 'OD-00067'];
+  targetOrders.forEach(function(tid) {
+    var found = false;
+    omData.forEach(function(row) {
+      var oid = OCI_ID >= 0 ? String(row[OCI_ID] || '').trim() : '';
+      if (oid !== tid) return;
+      found = true;
+      L(tid + ' 全フィールド:');
+      omHeaders.forEach(function(h, i) {
+        var v = row[i];
+        var vs = (v instanceof Date) ? v.toISOString().slice(0, 10) : String(v === null || v === undefined ? '' : v).trim();
+        if (vs) L('  [' + h + ']: ' + vs);
+      });
+    });
+    if (!found) L(tid + ': オーダー管理に見つかりません');
+  });
+
+  // ─────────────────────────────────────────
+  // [B] B grade 84件の数量分布 + オーダー別集計
+  // ─────────────────────────────────────────
+  L('');
+  L('════════════════════════════════════');
+  L('[B] [B grade] 84件 詳細分析');
+  L('════════════════════════════════════');
+
+  var PAT_BGRADE = /\[B grade\]/i;
+  var bgRows = [];
+  olData.forEach(function(row) {
+    var name = String(row[CI_NAME] || '').trim();
+    if (!PAT_BGRADE.test(name)) return;
+    var orderId = CI_ORDER >= 0 ? String(row[CI_ORDER] || '').trim() : '?';
+    var qty     = CI_QTY   >= 0 ? (Number(row[CI_QTY])  || 0) : 0;
+    var price   = CI_PRICE >= 0 ? (Number(row[CI_PRICE]) || 0) : 0;
+    var sub     = CI_SUB   >= 0 ? (Number(row[CI_SUB])   || 0) : 0;
+    bgRows.push({ name: name, orderId: orderId, qty: qty, price: price, sub: sub });
+  });
+
+  // 数量分布
+  var qtyFreq = {};
+  bgRows.forEach(function(r) {
+    qtyFreq[r.qty] = (qtyFreq[r.qty] || 0) + 1;
+  });
+  L('[B-1] 数量分布 (数量値: 件数)');
+  Object.keys(qtyFreq).sort(function(a,b){ return Number(a)-Number(b); }).forEach(function(q) {
+    L('  数量=' + q + ': ' + qtyFreq[q] + '件');
+  });
+
+  // オーダー別集計
+  L('');
+  L('[B-2] オーダー別集計 (OD-00154〜00158)');
+  var bgOrders = ['OD-00154','OD-00155','OD-00156','OD-00157','OD-00158'];
+  bgOrders.forEach(function(oid) {
+    var rows = bgRows.filter(function(r){ return r.orderId === oid; });
+    var totalSub = rows.reduce(function(s,r){ return s + r.sub; }, 0);
+    var totalQty = rows.reduce(function(s,r){ return s + r.qty; }, 0);
+    // 顧客ID取得
+    var custId = '?';
+    omData.forEach(function(row) {
+      var id = OCI_ID >= 0 ? String(row[OCI_ID]||'').trim() : '';
+      if (id === oid && OCI_CUST >= 0) custId = String(row[OCI_CUST]||'').trim();
+    });
+    // オーダー管理の日付も取得
+    var orderDate = '', invoiceDate = '';
+    omData.forEach(function(row) {
+      var id = OCI_ID >= 0 ? String(row[OCI_ID]||'').trim() : '';
+      if (id !== oid) return;
+      var OCI_ODATE = _npnFindCol(omHeaders, ['受注日','orderdate','order_date']);
+      var OCI_IDATE = _npnFindCol(omHeaders, ['請求書発行日','invoicedate','invoice_date']);
+      if (OCI_ODATE >= 0) {
+        var v = row[OCI_ODATE];
+        orderDate = (v instanceof Date) ? v.toISOString().slice(0,10) : String(v||'');
+      }
+      if (OCI_IDATE >= 0) {
+        var v2 = row[OCI_IDATE];
+        invoiceDate = (v2 instanceof Date) ? v2.toISOString().slice(0,10) : String(v2||'');
+      }
+    });
+    L('  ' + oid + ' 顧客=' + custId + ' 受注日=' + orderDate + ' 請求書=' + invoiceDate);
+    L('    明細件数=' + rows.length + '  総数量=' + totalQty + '  小計合計=' + totalSub.toLocaleString());
+
+    // 単価別件数（同一単価のグループ）
+    var priceFreq = {};
+    rows.forEach(function(r){ priceFreq[r.price] = (priceFreq[r.price]||0) + 1; });
+    var priceKeys = Object.keys(priceFreq).sort(function(a,b){ return Number(b)-Number(a); });
+    L('    単価分布: ' + priceKeys.map(function(p){ return p+'円×'+priceFreq[p]+'件'; }).join(', '));
+
+    // 単価範囲
+    var prices = rows.map(function(r){ return r.price; });
+    L('    単価範囲: ' + Math.min.apply(null,prices) + '〜' + Math.max.apply(null,prices) + '円');
+  });
+
+  // ─────────────────────────────────────────
+  // [C] B grade: 全84件の商品名・単価・数量リスト（判断材料として全件出力）
+  // ─────────────────────────────────────────
+  L('');
+  L('[B-3] 全84件リスト（オーダー順）');
+  bgOrders.forEach(function(oid) {
+    var rows = bgRows.filter(function(r){ return r.orderId === oid; });
+    L('  --- ' + oid + ' (' + rows.length + '件) ---');
+    rows.forEach(function(r) {
+      L('    qty=' + r.qty + ' 単価=' + r.price + '  ' + r.name);
+    });
+  });
+
+  L('');
+  L('=== investigateOrderDetails 完了 ===');
+  return out.join('\n');
+}
