@@ -1743,3 +1743,150 @@ function investigateMatchingFix() {
   L('=== investigateMatchingFix 完了 ===');
   return out.join('\n');
 }
+
+// ──────────────────────────────────────────────────────────
+// 未一致行の4群分類調査。読み取り専用
+// ──────────────────────────────────────────────────────────
+function investigateUnmatched() {
+  var out = [];
+  function L(s) { out.push(String(s)); Logger.log(String(s)); }
+  L('=== investigateUnmatched ===');
+
+  var crmSS, invSS;
+  try { crmSS = getSpreadsheet(); invSS = SpreadsheetApp.openById(INV_BOOK_ID); }
+  catch(e) { L('[ERROR] ' + e.message); return out.join('\n'); }
+
+  var pmEntries = _npnBuildPmEntries(invSS);
+
+  var olSh    = crmSS.getSheetByName('オーダー明細');
+  var numCols = olSh.getLastColumn();
+  var headers = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var CI_NAME     = _npnFindCol(headers, ['商品名','productname','product_name','商品名称','itemname']);
+  var CI_ORDER    = _npnFindCol(headers, ['オーダーID','orderid','order_id','注文ID','受注ID']);
+  var CI_QTY      = _npnFindCol(headers, ['数量','qty','quantity']);
+  var CI_PRICE    = _npnFindCol(headers, ['単価','unitprice','unit_price','price']);
+  var CI_SUBTOTAL = _npnFindCol(headers, ['小計','subtotal','sub_total']);
+  if (CI_NAME < 0) CI_NAME = 4;
+
+  var olData = olSh.getRange(2, 1, olSh.getLastRow() - 1, numCols).getValues();
+
+  // 分類パターン
+  var PAT_BGRADE   = /\[B grade\]/i;
+  var PAT_SHIPPING = /^(shipping|customs duties|mpf|ddp handling fee|merchandise processing fee|discount|special discount)\b/i;
+  var PAT_SINGLE   = /\b(single card|singles?|bulk|ar card|sr card|sar card|bulk ar|bulk sar|bulk sr|ar bulk|sar bulk|ar.*bulk|bulk.*ar|singles.*bulk|ar duplicate|rr duplicate)\b/i;
+
+  // 未一致行を収集・分類
+  var g1 = [], g2 = [], g3 = [], g4 = [];
+
+  olData.forEach(function(row) {
+    var name = String(row[CI_NAME] || '').trim();
+    if (!name) return;
+    var res = _v3match(name, pmEntries);
+    if (res.matched && !res.fuzzy) return; // 一致済みはスキップ
+
+    var orderId  = CI_ORDER    >= 0 ? String(row[CI_ORDER]    || '').trim() : '?';
+    var qty      = CI_QTY      >= 0 ? (Number(row[CI_QTY])    || 0)         : 0;
+    var price    = CI_PRICE    >= 0 ? (Number(row[CI_PRICE])   || 0)         : 0;
+    var subtotal = CI_SUBTOTAL >= 0 ? (Number(row[CI_SUBTOTAL])|| 0)         : 0;
+
+    var rec = { name: name, orderId: orderId, qty: qty, price: price, subtotal: subtotal };
+
+    if (PAT_BGRADE.test(name)) {
+      g1.push(rec);
+    } else if (PAT_SHIPPING.test(name)) {
+      g4.push(rec);
+    } else if (PAT_SINGLE.test(name)) {
+      g2.push(rec);
+    } else {
+      g3.push(rec);
+    }
+  });
+
+  // ヘルパー: レコード配列をユニーク名でまとめる
+  function groupByName(recs) {
+    var map = {};
+    recs.forEach(function(r) {
+      if (!map[r.name]) map[r.name] = { name: r.name, count: 0, qtys: [], prices: [], orderIds: [] };
+      map[r.name].count++;
+      if (r.qty   ) map[r.name].qtys.push(r.qty);
+      if (r.price ) map[r.name].prices.push(r.price);
+      if (r.orderId && map[r.name].orderIds.indexOf(r.orderId) < 0) map[r.name].orderIds.push(r.orderId);
+    });
+    return Object.keys(map).sort().map(function(k){ return map[k]; });
+  }
+  function rangeStr(arr) {
+    if (!arr.length) return '-';
+    var mn = Math.min.apply(null, arr), mx = Math.max.apply(null, arr);
+    return mn === mx ? String(mn) : mn + '〜' + mx;
+  }
+
+  var total = g1.length + g2.length + g3.length + g4.length;
+
+  // ── 群1: [B grade] 単票カード ──
+  L('');
+  L('════════════════════════════════════');
+  L('■ 群1: [B grade] 単票カード  (' + g1.length + '件)');
+  L('════════════════════════════════════');
+  var g1u = groupByName(g1);
+  g1u.forEach(function(u) {
+    L('  [' + u.count + '件] 単価=' + rangeStr(u.prices) + '  orders=' + u.orderIds.join(','));
+    L('    ' + u.name);
+  });
+
+  // ── 群2: シングル・バルク系 ──
+  L('');
+  L('════════════════════════════════════');
+  L('■ 群2: シングル・バルク系  (' + g2.length + '件)');
+  L('════════════════════════════════════');
+  var g2u = groupByName(g2);
+  g2u.forEach(function(u) {
+    L('  [' + u.count + '件] 数量=' + rangeStr(u.qtys) + '  単価=' + rangeStr(u.prices));
+    L('    ' + u.name);
+  });
+
+  // ── 群3: 未登録の箱物・その他商品 ──
+  L('');
+  L('════════════════════════════════════');
+  L('■ 群3: 未登録の箱物・その他商品  (' + g3.length + '件)');
+  L('════════════════════════════════════');
+  var g3u = groupByName(g3);
+  g3u.forEach(function(u) {
+    // カテゴリ推定
+    var cat = 'pokemon';
+    if (/weiss|schwarz/i.test(u.name)) cat = 'weiss';
+    else if (/bandai|pokemon kids/i.test(u.name)) cat = 'bandai/figure';
+    else if (/takara|poke.?nade/i.test(u.name)) cat = 'bandai/toy';
+    else if (/dragon ball/i.test(u.name)) cat = 'dragonball';
+    else if (/mega premium/i.test(u.name)) cat = 'pokemon/PTB';
+    else if (/promo/i.test(u.name)) cat = 'pokemon/promo';
+    else if (/retro/i.test(u.name)) cat = 'pokemon/retro';
+    L('  [' + u.count + '件] 単価=' + rangeStr(u.prices) + '  cat=' + cat + '  orders=' + u.orderIds.join(','));
+    L('    ' + u.name);
+  });
+
+  // ── 群4: 商品でない行 ──
+  L('');
+  L('════════════════════════════════════');
+  L('■ 群4: 商品でない行（手数料・送料・割引）  (' + g4.length + '件)');
+  L('════════════════════════════════════');
+  var g4u = groupByName(g4);
+  g4u.forEach(function(u) {
+    L('  [' + u.count + '件] 金額=' + rangeStr(u.prices.concat(u.qtys))
+      + '  orders=' + u.orderIds.join(','));
+    L('    ' + u.name);
+  });
+
+  // ── 合計確認 ──
+  L('');
+  L('════════════════════════════════════');
+  L('[合計確認]');
+  L('  群1(B grade):   ' + g1.length + '件');
+  L('  群2(singles):   ' + g2.length + '件');
+  L('  群3(未登録商品): ' + g3.length + '件');
+  L('  群4(非商品行):   ' + g4.length + '件');
+  L('  合計:           ' + total + '件  (未一致全件数と一致すること)');
+
+  L('');
+  L('=== investigateUnmatched 完了 ===');
+  return out.join('\n');
+}
