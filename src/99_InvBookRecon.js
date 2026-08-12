@@ -4349,3 +4349,309 @@ function investigateOrderContext() {
   L('=== investigateOrderContext 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// 調査: OD-00102 詳細（読み取り専用）
+// ============================================================
+function investigateOD00102() {
+  var out = [];
+  function L(s) { out.push(s); }
+  L('=== investigateOD00102 ===');
+
+  var crmSS = getSpreadsheet();
+  var omSh  = crmSS.getSheetByName('オーダー管理');
+  var omCols = omSh.getLastColumn();
+  var omHeaders = omSh.getRange(1, 1, 1, omCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var omData = omSh.getRange(2, 1, omSh.getLastRow()-1, omCols).getValues();
+  var CI_OD = 0;
+
+  omData.forEach(function(r) {
+    if (String(r[CI_OD]||'').trim() !== 'OD-00102') return;
+    L('OD-00102 全列:');
+    omHeaders.forEach(function(h, i) {
+      L('  col' + (i+1) + ' [' + h + ']: "' + String(r[i]||'') + '"');
+    });
+  });
+
+  L('');
+  L('=== investigateOD00102 完了 ===');
+  return out.join('\n');
+}
+
+// ============================================================
+// DRY RUN: オーダー管理2列追加 + 非商品移設 + 行削除
+// ============================================================
+function dryRunOrderMgmtChanges() {
+  var out = [];
+  function L(s) { out.push(s); }
+  L('=== dryRunOrderMgmtChanges ===');
+  L('※ DRY RUN - 書き込み一切なし');
+  L('');
+
+  var crmSS = getSpreadsheet();
+  var omSh  = crmSS.getSheetByName('オーダー管理');
+  var olSh  = crmSS.getSheetByName('オーダー明細');
+
+  var omCols = omSh.getLastColumn();
+  var omHeaders = omSh.getRange(1, 1, 1, omCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var omData = omSh.getRange(2, 1, omSh.getLastRow()-1, omCols).getValues();
+  L('オーダー管理: 現在 ' + omCols + '列 / ' + omData.length + '行');
+
+  var olCols = olSh.getLastColumn();
+  var olHeaders = olSh.getRange(1, 1, 1, olCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var olData = olSh.getRange(2, 1, olSh.getLastRow()-1, olCols).getValues();
+  L('オーダー明細: 現在 ' + olData.length + '行');
+  L('');
+
+  // 列インデックス（0-based）
+  var CI_OD    = _npnFindCol(omHeaders, ['オーダーID','orderid','order_id']); if (CI_OD  < 0) CI_OD  = 0;
+  var CI_SUB11 = _npnFindCol(omHeaders, ['明細合計']);                        if (CI_SUB11< 0) CI_SUB11=10;
+  var CI_SHIP  = _npnFindCol(omHeaders, ['送料','shipping']);                 if (CI_SHIP < 0) CI_SHIP=11;
+  var CI_TAX   = _npnFindCol(omHeaders, ['関税','customs','tax']);            if (CI_TAX  < 0) CI_TAX =12;
+  var CI_TOTAL = _npnFindCol(omHeaders, ['請求総額','合計','total']);          if (CI_TOTAL< 0) CI_TOTAL=13;
+
+  // オーダーマップ
+  var omMap = {};
+  omData.forEach(function(r){ omMap[String(r[CI_OD]||'').trim()] = r; });
+
+  function omVal(orderId, ci) { return omMap[orderId] ? (Number(omMap[orderId][ci]) || 0) : 0; }
+
+  // 明細合計（削除後）の予測
+  var deleteOdlIds = {
+    'ODL-00078':1,'ODL-00250':1,'ODL-00319':1,'ODL-00320':1,'ODL-00321':1,'ODL-00353':1,
+    'ODL-00217':1,'ODL-00218':1,'ODL-00219':1,'ODL-00220':1,'ODL-00221':1,'ODL-00222':1,
+    'ODL-00223':1,'ODL-00224':1,'ODL-00225':1,'ODL-00226':1,'ODL-00227':1,'ODL-00228':1,
+    'ODL-00229':1,'ODL-00230':1
+  };
+  var subtotalMap = {};
+  olData.forEach(function(r) {
+    var odlId = String(r[0]||'').trim();
+    var odId  = String(r[1]||'').trim();
+    if (deleteOdlIds[odlId]) return;  // 削除予定行は除外
+    var sub = parseFloat(r[9]) || 0;
+    subtotalMap[odId] = (subtotalMap[odId] || 0) + sub;
+  });
+
+  // ─── A. 新列 ───
+  L('════════════════════════════════════');
+  L('[A] 追加列（既存33列不変）');
+  L('  col34: その他手数料');
+  L('  col35: 値引き');
+  L('');
+
+  // ─── B. 移設計画 ───
+  L('════════════════════════════════════');
+  L('[B] 非商品6件 移設計画');
+  L('════════════════════════════════════');
+
+  var transfers = [
+    { odlId:'ODL-00078', odId:'OD-00046', field:'col12(送料)',       newVal:5500,  addTo:false },
+    { odlId:'ODL-00250', odId:'OD-00107', field:'col35(値引き)',      newVal:29000, addTo:false },
+    { odlId:'ODL-00319', odId:'OD-00123', field:'col13(関税)',        newVal:4400,  addTo:true  },
+    { odlId:'ODL-00320+00321', odId:'OD-00123', field:'col34(その他手数料)', newVal:7730, addTo:false },
+    { odlId:'ODL-00353', odId:'OD-00132', field:'col35(値引き)',      newVal:1200,  addTo:false }
+  ];
+
+  var newShip = {}, newTax = {}, newOther = {}, newDisc = {};
+  // 初期値
+  omData.forEach(function(r) {
+    var id = String(r[CI_OD]||'').trim();
+    newShip[id]  = Number(r[CI_SHIP] ) || 0;
+    newTax[id]   = Number(r[CI_TAX]  ) || 0;
+    newOther[id] = 0;
+    newDisc[id]  = 0;
+  });
+
+  transfers.forEach(function(t) {
+    var r = omMap[t.odId];
+    if (!r) { L('  [ERROR] ' + t.odId + ' 見つからず'); return; }
+    var curTotal = omVal(t.odId, CI_TOTAL);
+    var curShip  = Number(r[CI_SHIP]) || 0;
+    var curTax   = Number(r[CI_TAX])  || 0;
+
+    if (t.field.indexOf('送料') >= 0) {
+      newShip[t.odId] = t.addTo ? curShip + t.newVal : t.newVal;
+    } else if (t.field.indexOf('関税') >= 0) {
+      newTax[t.odId] = t.addTo ? curTax + t.newVal : t.newVal;
+    } else if (t.field.indexOf('その他手数料') >= 0) {
+      newOther[t.odId] += t.newVal;
+    } else if (t.field.indexOf('値引き') >= 0) {
+      newDisc[t.odId] += t.newVal;
+    }
+
+    var newSubtotal = subtotalMap[t.odId] || 0;
+    var newTotal = newSubtotal + newShip[t.odId] + newTax[t.odId] + newOther[t.odId] - newDisc[t.odId];
+
+    L('  ' + t.odId + ' ← ' + t.odlId + ': ' + t.field + ' = ' + t.newVal + (t.addTo ? '(既存に加算)' : ''));
+    L('    現在: 明細合計=' + omVal(t.odId, CI_SUB11) + ' / ' + (t.field.indexOf('送料')>=0?'送料='+curShip:t.field.indexOf('関税')>=0?'関税='+curTax:'') + ' / 請求総額=' + curTotal);
+    L('    変更後: 明細合計=' + newSubtotal + ' / ' + t.field + '=' + (t.addTo?curTax+t.newVal:t.newVal) + ' / 請求総額=' + newTotal +
+      (Math.abs(newTotal - curTotal) < 0.01 ? ' ← 変化なし ✓' : ' ← 差=' + (newTotal-curTotal)));
+    L('');
+  });
+
+  // ─── C. 削除対象 ───
+  L('════════════════════════════════════');
+  L('[C] 明細 削除対象 20行');
+  L('════════════════════════════════════');
+  L('  非商品6件: ODL-00078 / ODL-00250 / ODL-00319 / ODL-00320 / ODL-00321 / ODL-00353');
+  L('  OD-00100空行14件: ODL-00217〜ODL-00230');
+  L('  削除後行数: ' + olData.length + ' - 20 = ' + (olData.length - 20) + '件（期待: 575）');
+  L('');
+
+  // ─── D. 請求総額計算式 ───
+  L('════════════════════════════════════');
+  L('[D] 請求総額 計算式（再計算対象: 影響オーダーのみ）');
+  L('  col14 = col11 + col12 + col13 + col34 - col35');
+  L('  (明細合計 + 送料 + 関税 + その他手数料 − 値引き)');
+  L('');
+
+  // ─── E. 検証予定 ───
+  L('════════════════════════════════════');
+  L('[E] 検証予定');
+  L('  明細行数: ' + (olData.length - 20) + '件（期待: 575）');
+  L('  商品ID記入: 574件 / 空欄: 1件（ODL-00232のみ）');
+  L('  影響オーダー col14 変化なし:');
+  ['OD-00046','OD-00107','OD-00123','OD-00132'].forEach(function(odId) {
+    var r = omMap[odId];
+    if (!r) return;
+    L('    ' + odId + ': 現 col14=' + (Number(r[CI_TOTAL])||0));
+  });
+  L('');
+  L('=== dryRunOrderMgmtChanges 完了 ===');
+  return out.join('\n');
+}
+
+// ============================================================
+// CONFIRM EXEC: A〜E 全実行
+// ============================================================
+function execOrderMgmtChanges() {
+  var out = [];
+  function L(s) { out.push(s); }
+  L('=== execOrderMgmtChanges ===');
+
+  var crmSS = getSpreadsheet();
+  var omSh  = crmSS.getSheetByName('オーダー管理');
+  var olSh  = crmSS.getSheetByName('オーダー明細');
+
+  var omCols = omSh.getLastColumn();
+  var omHeaders = omSh.getRange(1, 1, 1, omCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var omData = omSh.getRange(2, 1, omSh.getLastRow()-1, omCols).getValues();
+
+  var CI_OD    = _npnFindCol(omHeaders, ['オーダーID','orderid','order_id']); if (CI_OD  < 0) CI_OD  = 0;
+  var CI_SUB11 = _npnFindCol(omHeaders, ['明細合計']);                        if (CI_SUB11< 0) CI_SUB11=10;
+  var CI_SHIP  = _npnFindCol(omHeaders, ['送料','shipping']);                 if (CI_SHIP < 0) CI_SHIP=11;
+  var CI_TAX   = _npnFindCol(omHeaders, ['関税','customs','tax']);            if (CI_TAX  < 0) CI_TAX =12;
+  var CI_TOTAL = _npnFindCol(omHeaders, ['請求総額','合計','total']);          if (CI_TOTAL< 0) CI_TOTAL=13;
+
+  // オーダーID → シート行番号（1-based）マップ
+  var omRowMap = {};
+  omData.forEach(function(r, i){ omRowMap[String(r[CI_OD]||'').trim()] = i + 2; });
+
+  // 既存 col14 を記録（不変確認用）
+  var beforeTotal = {};
+  omData.forEach(function(r){ beforeTotal[String(r[CI_OD]||'').trim()] = Number(r[CI_TOTAL])||0; });
+
+  // ─── A. 2列追加 ───
+  L('[A] 2列追加...');
+  omSh.getRange(1, 34).setValue('その他手数料');
+  omSh.getRange(1, 35).setValue('値引き');
+  var numOmRows = omData.length;
+  var initArr = []; for (var z=0; z<numOmRows; z++) initArr.push([0, 0]);
+  omSh.getRange(2, 34, numOmRows, 2).setValues(initArr);
+  SpreadsheetApp.flush();
+  L('  → col34「その他手数料」/ col35「値引き」追加・全' + numOmRows + '行を0で初期化');
+
+  // ─── B. 移設 ───
+  L('[B] 移設...');
+  var r46  = omRowMap['OD-00046'];
+  var r107 = omRowMap['OD-00107'];
+  var r123 = omRowMap['OD-00123'];
+  var r132 = omRowMap['OD-00132'];
+
+  // OD-00046: 送料=5500
+  if (r46)  { omSh.getRange(r46,  CI_SHIP+1).setValue(5500);  L('  OD-00046: 送料=5500'); }
+  // OD-00107: 値引き=29000
+  if (r107) { omSh.getRange(r107, 35).setValue(29000); L('  OD-00107: 値引き=29000'); }
+  // OD-00123: 関税+=4400, その他手数料=7730
+  if (r123) {
+    var curTax = Number(omSh.getRange(r123, CI_TAX+1).getValue()) || 0;
+    omSh.getRange(r123, CI_TAX+1).setValue(curTax + 4400);
+    omSh.getRange(r123, 34).setValue(7730);
+    L('  OD-00123: 関税=' + (curTax+4400) + ' / その他手数料=7730');
+  }
+  // OD-00132: 値引き=1200
+  if (r132) { omSh.getRange(r132, 35).setValue(1200); L('  OD-00132: 値引き=1200'); }
+  SpreadsheetApp.flush();
+
+  // ─── C. 明細 行削除 ───
+  L('[C] 明細 20行削除...');
+  var deleteOdlIds = {
+    'ODL-00078':1,'ODL-00250':1,'ODL-00319':1,'ODL-00320':1,'ODL-00321':1,'ODL-00353':1,
+    'ODL-00217':1,'ODL-00218':1,'ODL-00219':1,'ODL-00220':1,'ODL-00221':1,'ODL-00222':1,
+    'ODL-00223':1,'ODL-00224':1,'ODL-00225':1,'ODL-00226':1,'ODL-00227':1,'ODL-00228':1,
+    'ODL-00229':1,'ODL-00230':1
+  };
+  var olData2 = olSh.getRange(2, 1, olSh.getLastRow()-1, 1).getValues();
+  var deleteRows = [];
+  olData2.forEach(function(r, i) {
+    if (deleteOdlIds[String(r[0]||'').trim()]) deleteRows.push(i + 2);
+  });
+  deleteRows.sort(function(a,b){ return b-a; });
+  deleteRows.forEach(function(rn){ olSh.deleteRow(rn); });
+  SpreadsheetApp.flush();
+  var afterOlRows = olSh.getLastRow() - 1;
+  L('  削除: ' + deleteRows.length + '行 / 残: ' + afterOlRows + '行（期待: 575）' + (afterOlRows===575?' OK':' NG'));
+
+  // ─── D. 明細合計・請求総額 再計算 ───
+  L('[D] 明細合計・請求総額 再計算...');
+  var affectedOrders = ['OD-00046','OD-00100','OD-00107','OD-00123','OD-00132'];
+  var olAfterData = olSh.getRange(2, 1, afterOlRows, olSh.getLastColumn()).getValues();
+  var newSubMap = {};
+  olAfterData.forEach(function(r) {
+    var odId = String(r[1]||'').trim();
+    var sub = parseFloat(r[9]) || 0;
+    newSubMap[odId] = (newSubMap[odId]||0) + sub;
+  });
+
+  affectedOrders.forEach(function(odId) {
+    var rn = omRowMap[odId]; if (!rn) return;
+    var newSub = newSubMap[odId] || 0;
+    omSh.getRange(rn, CI_SUB11+1).setValue(newSub);
+    SpreadsheetApp.flush();
+    var row35 = omSh.getRange(rn, 1, 1, 35).getValues()[0];
+    var sub   = parseFloat(row35[CI_SUB11]) || 0;
+    var ship  = parseFloat(row35[CI_SHIP])  || 0;
+    var tax   = parseFloat(row35[CI_TAX])   || 0;
+    var other = parseFloat(row35[33])       || 0;
+    var disc  = parseFloat(row35[34])       || 0;
+    var newTotal = sub + ship + tax + other - disc;
+    omSh.getRange(rn, CI_TOTAL+1).setValue(newTotal);
+    SpreadsheetApp.flush();
+    var oldTotal = beforeTotal[odId] || 0;
+    L('  ' + odId + ': 請求総額 ' + oldTotal + ' → ' + newTotal + (Math.abs(newTotal-oldTotal)<0.01?' OK':' NG 差='+(newTotal-oldTotal)));
+  });
+
+  // ─── E. 検証 ───
+  L('');
+  L('════════════════════════════════════');
+  L('[E] 最終検証');
+  L('════════════════════════════════════');
+  // 明細行数
+  var finalOlRows = olSh.getLastRow() - 1;
+  L('明細行数: ' + finalOlRows + '（期待: 575）' + (finalOlRows===575?' OK':' NG'));
+
+  // 商品ID件数
+  var olFinal = olSh.getRange(2, 1, finalOlRows, olSh.getLastColumn()).getValues();
+  var pmFilled=0, pmBlank=0;
+  olFinal.forEach(function(r){ if(String(r[10]||'').trim()) pmFilled++; else pmBlank++; });
+  L('商品ID記入: ' + pmFilled + '件（期待: 574）' + (pmFilled===574?' OK':' NG'));
+  L('商品ID空欄: ' + pmBlank + '件（期待: 1）'  + (pmBlank===1?' OK':' NG'));
+
+  // オーダー管理 列数
+  var finalOmCols = omSh.getLastColumn();
+  L('オーダー管理 列数: ' + finalOmCols + '列（期待: 35）' + (finalOmCols===35?' OK':' NG'));
+
+  L('');
+  L('=== execOrderMgmtChanges 完了 ===');
+  return out.join('\n');
+}
