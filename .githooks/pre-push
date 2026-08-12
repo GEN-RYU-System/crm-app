@@ -1,0 +1,35 @@
+#!/bin/sh
+# pre-push hook: main への直接 push を禁止する
+#
+# 【有効化】
+#   git config core.hooksPath .githooks
+#
+# 【重要】--no-verify は使用禁止。
+#   このフックをバイパスするとサーバー側の検知 (GitHub Actions) のみが残る。
+#   意図的なバイパスは CLAUDE.md の「不可逆操作」扱いとし、PO 確認必須。
+
+PROTECTED_BRANCH="main"
+
+while read local_ref local_sha remote_ref remote_sha; do
+  if echo "$remote_ref" | grep -q "refs/heads/${PROTECTED_BRANCH}$"; then
+    # マージコミット（親が2つ以上）は許可
+    PARENT_COUNT=$(git log --pretty=%P -n 1 "$local_sha" 2>/dev/null | wc -w | tr -d ' ')
+    if [ "$PARENT_COUNT" -lt 2 ]; then
+      echo ""
+      echo "======================================================"
+      echo "  ERROR: Direct push to '${PROTECTED_BRANCH}' is FORBIDDEN"
+      echo "------------------------------------------------------"
+      echo "  Use a Pull Request instead:"
+      echo "    git checkout -b release/<topic>"
+      echo "    git push origin release/<topic>"
+      echo "    gh pr create --base main"
+      echo ""
+      echo "  --no-verify の使用は禁止されています（CLAUDE.md 参照）"
+      echo "======================================================"
+      echo ""
+      exit 1
+    fi
+  fi
+done
+
+exit 0
