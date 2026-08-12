@@ -1087,3 +1087,288 @@ function investigateInvBookReconV4() {
   L('=== investigateInvBookReconV4 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// 商品名正規化: DRY_RUN / EXEC
+// ============================================================
+
+var _NPN_RULES = [
+  { label: 'Black Volt->Black Bolt',                pat: 'Black Volt',           to: 'Black Bolt'        },
+  { label: 'Mega Sinfonia->Mega Symphonia',          pat: 'Mega Sinfonia',        to: 'Mega Symphonia'    },
+  { label: 'Stella Miracle->Stellar Miracle',        pat: 'Stella Miracle',       to: 'Stellar Miracle'   },
+  { label: 'Crimzon Haze->Crimson Haze',             pat: 'Crimzon Haze',         to: 'Crimson Haze'      },
+  { label: 'Infernno X->Inferno X',                 pat: 'Infernno X',           to: 'Inferno X'         },
+  { label: 'Elaectric Breaker->Electric Breaker',    pat: 'Elaectric Breaker',    to: 'Electric Breaker'  },
+  { label: 'Electric Braker->Electric Breaker',      pat: 'Electric Braker',      to: 'Electric Breaker'  },
+  { label: 'Preimum Treaner->Premium Trainer',       pat: 'Preimum Treaner',      to: 'Premium Trainer'   },
+  { label: 'Shiny Treasures EX->Shiny Treasure ex',  pat: 'Shiny Treasures EX',   to: 'Shiny Treasure ex' },
+  { label: 'Weiss Shawarz->Weiss Schwarz',           pat: 'Weiss Shawarz',        to: 'Weiss Schwarz'     },
+  { label: 'Pokemon(e-accent)->Pokemon',             pat: 'Pok\u00e9mon',         to: 'Pokemon'           }
+];
+
+// 全ルールを順番に適用して置換後文字列を返す
+function _npnApply(s) {
+  _NPN_RULES.forEach(function(r) {
+    s = s.replace(new RegExp(r.pat.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), r.to);
+  });
+  return s;
+}
+
+// PM228 を pmEntries 形式で構築（再照合用）
+function _npnBuildPmEntries(invSS) {
+  var pmSh  = invSS.getSheetByName('商品マスタ');
+  var pmRaw = pmSh.getRange(2, 1, pmSh.getLastRow() - 1, 20).getValues();
+  return pmRaw.map(function(r) {
+    var pm = {
+      id:        String(r[0]  || '').trim(),
+      engTitle:  String(r[4]  || '').trim(),
+      jpnTitle:  String(r[3]  || '').trim(),
+      keywords:  String(r[11] || '').trim(),
+      reqOutput: String(r[15] || '').trim(),
+      relSeries: String(r[13] || '').trim()
+    };
+    if (!pm.id) return null;
+    var kws = pm.keywords.split(',');
+    var directNorms = [
+      { v: _v3n(pm.engTitle),  label: 'EnglishTitle'   },
+      { v: _v3n(pm.jpnTitle),  label: 'JapaneseTitle'  },
+      { v: _v3n(pm.reqOutput), label: 'RequiredOutput' },
+      { v: _v3n(pm.relSeries), label: 'RelatedSeries'  }
+    ].filter(function(x) { return x.v.length >= 4; });
+    var kwNorms = kws.map(function(k) {
+      return { v: _v3n(k.trim()), raw: k.trim() };
+    }).filter(function(x) { return x.v.length >= 5; });
+    var rawFields = [pm.engTitle, pm.jpnTitle, pm.reqOutput, pm.relSeries].concat(kws);
+    var seenB = {};
+    var bases = rawFields.map(_v3b).filter(function(b) {
+      if (!b || b.length < 3 || seenB[b]) return false;
+      seenB[b] = true; return true;
+    });
+    return { id: pm.id, directNorms: directNorms, kwNorms: kwNorms, bases: bases };
+  }).filter(Boolean);
+}
+
+// ヘッダー配列からバリアント名で列インデックスを返す
+function _npnFindCol(headers, variants) {
+  var r = -1;
+  headers.forEach(function(h, i) {
+    if (r >= 0) return;
+    var hn = String(h).toLowerCase().replace(/[\s_]/g, '');
+    if (variants.some(function(v) { return hn === v.toLowerCase().replace(/[\s_]/g, ''); })) r = i;
+  });
+  return r;
+}
+
+// ──────────────────────────────────────────────────────────
+// DRY RUN: 置換対象の全件とルール別件数を報告。書き込みなし
+// ──────────────────────────────────────────────────────────
+function normalizeProductNamesDryRun() {
+  var out = [];
+  function L(s) { out.push(String(s)); Logger.log(String(s)); }
+  L('=== normalizeProductNamesDryRun (読み取り専用) ===');
+
+  var crmSS, invSS;
+  try { crmSS = getSpreadsheet(); invSS = SpreadsheetApp.openById(INV_BOOK_ID); }
+  catch(e) { L('[ERROR] ' + e.message); return out.join('\n'); }
+
+  var pmEntries = _npnBuildPmEntries(invSS);
+
+  var olSh      = crmSS.getSheetByName('オーダー明細');
+  var olLastRow = olSh.getLastRow();
+  var numCols   = olSh.getLastColumn();
+  var headers   = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
+
+  L('ヘッダー: ' + headers.join(' | '));
+
+  var CI_DETAIL   = _npnFindCol(headers, ['明細ID','detailid','detail_id','明細行ID','行ID']);
+  var CI_ORDER    = _npnFindCol(headers, ['オーダーID','orderid','order_id','注文ID','受注ID']);
+  var CI_NAME     = _npnFindCol(headers, ['商品名','productname','product_name','商品名称','itemname']);
+  var CI_QTY      = _npnFindCol(headers, ['数量','qty','quantity']);
+  var CI_SUBTOTAL = _npnFindCol(headers, ['小計','subtotal','sub_total']);
+
+  if (CI_NAME < 0) { CI_NAME = 4; L('[WARN] 商品名列ヘッダー未発見 -> col5(idx4) を使用'); }
+  L('列: 明細ID=' + (CI_DETAIL+1) + ' オーダーID=' + (CI_ORDER+1)
+    + ' 商品名=' + (CI_NAME+1) + ' 数量=' + (CI_QTY+1) + ' 小計=' + (CI_SUBTOTAL+1));
+
+  var olData = olLastRow > 1 ? olSh.getRange(2, 1, olLastRow - 1, numCols).getValues() : [];
+  L('データ行数: ' + olData.length);
+
+  // ── 置換収集 ──
+  var changes = [];
+  var ruleCounts = {};
+  _NPN_RULES.forEach(function(r) { ruleCounts[r.label] = 0; });
+
+  olData.forEach(function(row, ri) {
+    var before  = String(row[CI_NAME] || '').trim();
+    if (!before) return;
+    var current = before;
+    var applied = [];
+    _NPN_RULES.forEach(function(r) {
+      var re   = new RegExp(r.pat.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      var next = current.replace(re, r.to);
+      if (next !== current) { ruleCounts[r.label]++; applied.push(r.label); }
+      current = next;
+    });
+    if (current !== before) {
+      changes.push({
+        sheetRow: ri + 2,
+        detailId: CI_DETAIL >= 0 ? String(row[CI_DETAIL] || '') : '?',
+        orderId:  CI_ORDER  >= 0 ? String(row[CI_ORDER]  || '') : '?',
+        before:   before,
+        after:    current,
+        rules:    applied
+      });
+    }
+  });
+
+  // ── [1] ルール別件数 ──
+  L('');
+  L('════════════════════════════════════');
+  L('[1] ルール別 置換件数（計' + changes.length + '行対象）');
+  L('════════════════════════════════════');
+  _NPN_RULES.forEach(function(r) {
+    L('  ' + ruleCounts[r.label] + '件  ' + r.label);
+  });
+
+  // ── [2] 全件明細 ──
+  L('');
+  L('════════════════════════════════════');
+  L('[2] 置換対象 全件');
+  L('════════════════════════════════════');
+  changes.forEach(function(c) {
+    L('  [row' + c.sheetRow + '] 明細=' + c.detailId + ' order=' + c.orderId);
+    L('    before: ' + c.before);
+    L('    after:  ' + c.after);
+    L('    rules:  ' + c.rules.join(' ; '));
+  });
+
+  // ── [3] 再照合試算 ──
+  var afterMap = {};
+  changes.forEach(function(c) { afterMap[c.sheetRow] = c.after; });
+
+  var confBefore = 0, confAfter = 0, idsAfter = {};
+  var newlyMatched = [];
+  olData.forEach(function(row, ri) {
+    var before = String(row[CI_NAME] || '').trim();
+    if (!before) return;
+    var after  = afterMap[ri + 2] || before;
+    var rB = _v3match(before, pmEntries);
+    if (rB.matched && !rB.fuzzy) confBefore++;
+    var rA = _v3match(after, pmEntries);
+    if (rA.matched && !rA.fuzzy) {
+      confAfter++;
+      idsAfter[rA.pmId] = true;
+      if (!(rB.matched && !rB.fuzzy)) {
+        newlyMatched.push({ before: before, after: after, pmId: rA.pmId });
+      }
+    }
+  });
+
+  L('');
+  L('════════════════════════════════════');
+  L('[3] 置換後 再照合試算');
+  L('════════════════════════════════════');
+  L('現在の確定一致（本関数内再計算）: ' + confBefore + '件');
+  L('置換後の確定一致: '               + confAfter  + '件');
+  L('増分: +'                         + (confAfter - confBefore) + '件');
+  L('確定一致ID種類: '                 + Object.keys(idsAfter).length + '種');
+  L('');
+  L('新規マッチとなる行（' + newlyMatched.length + '件）:');
+  newlyMatched.forEach(function(m) {
+    L('  before="' + m.before + '"');
+    L('  after= "' + m.after  + '"  -> ' + m.pmId);
+  });
+
+  L('');
+  L('=== DRY RUN 完了。書き込みなし。GO後に normalizeProductNamesExec を実行 ===');
+  return out.join('\n');
+}
+
+// ──────────────────────────────────────────────────────────
+// EXEC: GO確認後に実行。置換 + 検証レポート
+// ──────────────────────────────────────────────────────────
+function normalizeProductNamesExec() {
+  var out = [];
+  function L(s) { out.push(String(s)); Logger.log(String(s)); }
+  L('=== normalizeProductNamesExec (書き込みあり) ===');
+
+  var crmSS, invSS;
+  try { crmSS = getSpreadsheet(); invSS = SpreadsheetApp.openById(INV_BOOK_ID); }
+  catch(e) { L('[ERROR] ' + e.message); return out.join('\n'); }
+
+  var pmEntries = _npnBuildPmEntries(invSS);
+
+  var olSh      = crmSS.getSheetByName('オーダー明細');
+  var olLastRow = olSh.getLastRow();
+  var numCols   = olSh.getLastColumn();
+  var headers   = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
+
+  var CI_NAME     = _npnFindCol(headers, ['商品名','productname','product_name','商品名称','itemname']);
+  var CI_QTY      = _npnFindCol(headers, ['数量','qty','quantity']);
+  var CI_SUBTOTAL = _npnFindCol(headers, ['小計','subtotal','sub_total']);
+  if (CI_NAME < 0) CI_NAME = 4;
+
+  var olData = olLastRow > 1 ? olSh.getRange(2, 1, olLastRow - 1, numCols).getValues() : [];
+
+  // 置換前スナップショット（金額変化なし証明用）
+  var totalQtyBefore = 0, totalSubBefore = 0;
+  if (CI_QTY      >= 0) olData.forEach(function(r){ totalQtyBefore += Number(r[CI_QTY])      || 0; });
+  if (CI_SUBTOTAL >= 0) olData.forEach(function(r){ totalSubBefore += Number(r[CI_SUBTOTAL]) || 0; });
+
+  // 置換対象特定
+  var updates = [];
+  olData.forEach(function(row, ri) {
+    var before = String(row[CI_NAME] || '').trim();
+    if (!before) return;
+    var after = _npnApply(before);
+    if (after !== before) updates.push({ sheetRow: ri + 2, colIdx: CI_NAME + 1, before: before, after: after });
+  });
+
+  L('置換対象: ' + updates.length + '行');
+
+  // 書き込み
+  updates.forEach(function(u) {
+    olSh.getRange(u.sheetRow, u.colIdx).setValue(u.after);
+  });
+  L('書き込み完了');
+  updates.forEach(function(u) {
+    L('  row' + u.sheetRow + ': "' + u.before + '" -> "' + u.after + '"');
+  });
+
+  // 書き込み後再取得して検証
+  var olDataAfter = olSh.getRange(2, 1, olSh.getLastRow() - 1, numCols).getValues();
+
+  var emptyNames = 0, totalQtyAfter = 0, totalSubAfter = 0;
+  olDataAfter.forEach(function(r) {
+    if (!String(r[CI_NAME] || '').trim()) emptyNames++;
+    if (CI_QTY      >= 0) totalQtyAfter += Number(r[CI_QTY])      || 0;
+    if (CI_SUBTOTAL >= 0) totalSubAfter += Number(r[CI_SUBTOTAL]) || 0;
+  });
+
+  // 再照合
+  var confAfter = 0, idsAfter = {};
+  olDataAfter.forEach(function(row) {
+    var name = String(row[CI_NAME] || '').trim();
+    if (!name) return;
+    var res = _v3match(name, pmEntries);
+    if (res.matched && !res.fuzzy) { confAfter++; idsAfter[res.pmId] = true; }
+  });
+
+  L('');
+  L('════════════════════════════════════');
+  L('[CONFIRM] 検証結果');
+  L('════════════════════════════════════');
+  L('置換件数: '      + updates.length                             + '行');
+  L('確定一致件数: '  + confAfter + '件  (v4の407からの増分: +'   + (confAfter - 407) + ')');
+  L('一致ID種類: '    + Object.keys(idsAfter).length              + '種');
+  L('空商品名行: '    + emptyNames                                 + '行  (0であること)');
+  L('行数: '         + olDataAfter.length                         + '行  (595であること)');
+  L('数量合計 before=' + totalQtyBefore + ' after=' + totalQtyAfter
+    + '  一致=' + (totalQtyBefore === totalQtyAfter));
+  L('小計合計 before=' + totalSubBefore.toFixed(2) + ' after=' + totalSubAfter.toFixed(2)
+    + '  一致=' + (Math.abs(totalSubBefore - totalSubAfter) < 0.01));
+
+  L('');
+  L('=== normalizeProductNamesExec 完了 ===');
+  return out.join('\n');
+}
