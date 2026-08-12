@@ -2039,3 +2039,159 @@ function investigateOrderDetails() {
   L('=== investigateOrderDetails 完了 ===');
   return out.join('\n');
 }
+
+// ──────────────────────────────────────────────────────────
+// バルク・シングル系既存登録確認。読み取り専用
+// ──────────────────────────────────────────────────────────
+function investigateBulkSinglePm() {
+  var out = [];
+  function L(s) { out.push(String(s)); Logger.log(String(s)); }
+  L('=== investigateBulkSinglePm ===');
+
+  var invSS;
+  try { invSS = SpreadsheetApp.openById(INV_BOOK_ID); }
+  catch(e) { L('[ERROR] ' + e.message); return out.join('\n'); }
+
+  var pmSh  = invSS.getSheetByName('商品マスタ');
+  var pmRaw = pmSh.getRange(2, 1, pmSh.getLastRow() - 1, 20).getValues();
+  // ヘッダー行取得
+  var hdRow = pmSh.getRange(1, 1, 1, 20).getValues()[0].map(function(h){ return String(h).trim(); });
+
+  // 列インデックス（0-based）
+  var CI_ID  = 0;   // product_id
+  var CI_CAT = 1;   // Category（idx1と仮定: ヘッダー確認）
+  var CI_JA  = 3;   // Japanese Title
+  var CI_EN  = 4;   // English Title
+  var CI_KW  = 11;  // Search Keywords
+  var CI_RO  = 15;  // REQUIRED_OUTPUT_VALUE
+  var CI_RS  = 13;  // Related Series
+
+  // ── [0] ヘッダー確認 ──
+  L('');
+  L('[0] 商品マスタ ヘッダー行（idx0〜19）');
+  hdRow.forEach(function(h, i) { if (h) L('  idx' + i + ': ' + h); });
+
+  // ── [1] PM0001〜PM0030 全列出力 ──
+  L('');
+  L('════════════════════════════════════');
+  L('[1] PM0001〜PM0030 全件 (7列)');
+  L('════════════════════════════════════');
+  L('product_id | Category | JA Title | EN Title | Search Keywords | REQUIRED_OUTPUT_VALUE | Related Series');
+  pmRaw.forEach(function(r) {
+    var id = String(r[CI_ID] || '').trim();
+    if (!id) return;
+    var num = parseInt(id.replace(/[^0-9]/g, ''), 10);
+    if (num < 1 || num > 30) return;
+    L(id
+      + ' | ' + String(r[CI_CAT] || '').trim()
+      + ' | ' + String(r[CI_JA]  || '').trim()
+      + ' | ' + String(r[CI_EN]  || '').trim()
+      + ' | ' + String(r[CI_KW]  || '').trim()
+      + ' | ' + String(r[CI_RO]  || '').trim()
+      + ' | ' + String(r[CI_RS]  || '').trim()
+    );
+  });
+
+  // ── [2] キーワード検索（全228件） ──
+  L('');
+  L('════════════════════════════════════');
+  L('[2] キーワードマッチ全件 (bulk/duplicate/single/card/バルク/まとめ/ダブり/重複/AR/SR/SAR/RR/プロモ/promo/レトロ/retro)');
+  L('════════════════════════════════════');
+
+  var KW_PATS = [
+    /\bbulk\b/i, /\bduplicate\b/i, /\bsingle\b/i,
+    /\bcard\b/i, /\bpromo\b/i, /\bretro\b/i,
+    /\bAR\b/, /\bSR\b/, /\bSAR\b/, /\bRR\b/,
+    /バルク/, /まとめ/, /ダブり/, /重複/, /プロモ/, /レトロ/
+  ];
+
+  function kwHit(r) {
+    var hay = [r[CI_ID], r[CI_CAT], r[CI_JA], r[CI_EN], r[CI_KW], r[CI_RO], r[CI_RS]]
+      .map(function(v){ return String(v||''); }).join(' ');
+    return KW_PATS.some(function(p){ return p.test(hay); });
+  }
+
+  var hits = [];
+  pmRaw.forEach(function(r) {
+    var id = String(r[CI_ID] || '').trim();
+    if (!id || !kwHit(r)) return;
+    hits.push(r);
+  });
+
+  L('ヒット件数: ' + hits.length);
+  L('');
+  hits.forEach(function(r) {
+    var id  = String(r[CI_ID]  || '').trim();
+    var cat = String(r[CI_CAT] || '').trim();
+    var ja  = String(r[CI_JA]  || '').trim();
+    var en  = String(r[CI_EN]  || '').trim();
+    var kw  = String(r[CI_KW]  || '').trim();
+    var ro  = String(r[CI_RO]  || '').trim();
+    var rs  = String(r[CI_RS]  || '').trim();
+    L(id + ' | cat=' + cat + ' | JA=' + ja + ' | EN=' + en);
+    if (kw) L('       KW=' + kw);
+    if (ro) L('       RO=' + ro);
+    if (rs) L('       RS=' + rs);
+  });
+
+  // ── [3] 候補マッピング表 ──
+  L('');
+  L('════════════════════════════════════');
+  L('[3] 候補マッピング表（自動確定なし）');
+  L('════════════════════════════════════');
+
+  // 候補リスト（CRM商品名 → 候補PM-ID の手掛かり）
+  var candidates = [
+    // 群2: バルク系
+    { crmName: 'AR Duplicate Bulk Set (100 pieces',           count: 3,  hint: 'PM0010/PM0011 あたりのARバルク系に既存登録がある可能性' },
+    { crmName: 'Pokemon Card AR Bulk (Random Mix, 100 cards)', count: 1,  hint: '同上' },
+    { crmName: 'Pokemon Card AR Bulk (Random Mix, 50 cards)',  count: 1,  hint: '同上' },
+    { crmName: 'Pokemon Card AR Duplicate Bulk Set (50 pieces)',count: 1,  hint: 'PM0010/PM0011' },
+    { crmName: 'Pokemon Card Singles – Bulk AR (x100)',        count: 2,  hint: 'PM0010/PM0011' },
+    { crmName: 'Pokemon Card Singles – Bulk AR (x150)',        count: 1,  hint: 'PM0010/PM0011 (数量違い)' },
+    { crmName: 'Pokemon Card Singles – Bulk SAR (x100)',       count: 1,  hint: 'PM0006?' },
+    { crmName: 'Pokemon Card Single card AR',                  count: 3,  hint: 'PM0010/PM0011 (1枚単位)' },
+    { crmName: 'Pokemon Card SR card',                         count: 2,  hint: 'SR単票: PMに登録なければ新規' },
+    { crmName: 'Pokemon Card Single Card (SR Rare)',            count: 1,  hint: '同上' },
+    { crmName: 'Pokemon card [BULK] SAR duplicate bulk set',   count: 1,  hint: 'PM0006?  SARバルクセット' },
+    { crmName: 'Pokemon card Retro card bulk (451cards)',       count: 1,  hint: 'Retro系PM候補' },
+    // 群3: プロモ・特殊
+    { crmName: 'Pokemon Card Pokemon card Pikachu McDonald\'s promo card', count: 7, hint: 'プロモ系PM候補' },
+    { crmName: 'Pokemon card Pikachu McDonald\'s promo card',  count: 4,  hint: 'プロモ系PM候補（表記違い）' },
+    { crmName: 'Pokemon card Retro card',                      count: 6,  hint: 'Retro系PM候補' },
+    { crmName: 'Pokemon Card Victini red promo',               count: 1,  hint: 'プロモ単票' },
+    // 群1: B grade
+    { crmName: '[B grade] 84件計 (OD-00154〜00158)',           count: 84, hint: 'Bグレードバルクセット専用PM: 新規登録要否を確認' }
+  ];
+
+  candidates.forEach(function(c) {
+    L('CRM: "' + c.crmName + '" ×' + c.count + '件');
+    L('  候補: ' + c.hint);
+
+    // hits の中から関連しそうなPMを自動抽出（キーワード照合）
+    var cLow = c.crmName.toLowerCase();
+    var related = hits.filter(function(r) {
+      var en = String(r[CI_EN] || '').toLowerCase();
+      var ja = String(r[CI_JA] || '').toLowerCase();
+      var kw = String(r[CI_KW] || '').toLowerCase();
+      // 共通トークンを確認
+      var tokens = cLow.split(/[\s\-\/,()]+/).filter(function(t){ return t.length >= 3; });
+      return tokens.some(function(t){
+        return en.indexOf(t) >= 0 || ja.indexOf(t) >= 0 || kw.indexOf(t) >= 0;
+      });
+    });
+    if (related.length > 0) {
+      related.forEach(function(r) {
+        L('  → PM候補: ' + String(r[CI_ID]||'').trim()
+          + ' | ' + String(r[CI_EN]||'').trim()
+          + ' | ' + String(r[CI_JA]||'').trim());
+      });
+    } else {
+      L('  → 既存PMに合致なし（新規登録が必要な可能性）');
+    }
+    L('');
+  });
+
+  L('=== investigateBulkSinglePm 完了 ===');
+  return out.join('\n');
+}
