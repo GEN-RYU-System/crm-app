@@ -3891,3 +3891,244 @@ function dryRunOrderDetailPmId() {
   L('=== dryRunOrderDetailPmId 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// CRM名称パッチ: Tohoku Specialty Box → Special Box Tohoku
+// ============================================================
+function execCRMNamePatch() {
+  var out = [];
+  function L(s) { out.push(s); }
+  L('=== execCRMNamePatch ===');
+
+  var TARGET_BEFORE = 'Pokemon Card Tohoku Specialty Box';
+  var TARGET_AFTER  = 'Pokemon Card Special Box Tohoku';
+
+  var crmSS = getSpreadsheet();
+  var olSh  = crmSS.getSheetByName('オーダー明細');
+  var numCols = olSh.getLastColumn();
+  var headers = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var CI_OL   = _npnFindCol(headers, ['明細ID','詳細ID','lineitemid','odl']);
+  var CI_NAME = _npnFindCol(headers, ['商品名','productname','product_name']);
+  if (CI_NAME < 0) CI_NAME = 4;
+  if (CI_OL  < 0) CI_OL  = 0;
+
+  var olData = olSh.getRange(2, 1, olSh.getLastRow() - 1, numCols).getValues();
+
+  var hits = [];
+  olData.forEach(function(row, i) {
+    if (String(row[CI_NAME] || '').trim() === TARGET_BEFORE) {
+      hits.push({ rowNum: i + 2, odlId: String(row[CI_OL] || '').trim() });
+    }
+  });
+
+  L('対象行: ' + hits.length + '件');
+  hits.forEach(function(h) {
+    L('  row=' + h.rowNum + ' 明細ID=' + h.odlId);
+    L('  before: "' + TARGET_BEFORE + '"');
+    L('  after : "' + TARGET_AFTER + '"');
+    olSh.getRange(h.rowNum, CI_NAME + 1).setValue(TARGET_AFTER);
+  });
+
+  if (hits.length === 0) {
+    L('[WARNING] 対象行が見つかりません。既にパッチ済みか確認してください。');
+    return out.join('\n');
+  }
+
+  SpreadsheetApp.flush();
+
+  // 検証
+  var afterVal = olSh.getRange(hits[0].rowNum, CI_NAME + 1).getValue();
+  L('書込後実値: "' + afterVal + '"');
+  L('検証: ' + (afterVal === TARGET_AFTER ? 'OK' : 'NG'));
+
+  L('');
+  L('=== execCRMNamePatch 完了 ===');
+  return out.join('\n');
+}
+
+// ============================================================
+// パッチ後 再照合確認（書き込みなし）
+// ============================================================
+function rematchAfterPatch() {
+  var out = [];
+  function L(s) { out.push(s); }
+  L('=== rematchAfterPatch ===');
+
+  var crmSS = getSpreadsheet();
+  var invSS = SpreadsheetApp.openById(INV_BOOK_ID);
+  var pmEntries = _npnBuildPmEntries(invSS);
+
+  var olSh    = crmSS.getSheetByName('オーダー明細');
+  var numCols = olSh.getLastColumn();
+  var headers = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var CI_OL   = _npnFindCol(headers, ['明細ID','詳細ID','lineitemid','odl']);
+  var CI_NAME = _npnFindCol(headers, ['商品名','productname','product_name']);
+  if (CI_NAME < 0) CI_NAME = 4;
+  if (CI_OL  < 0) CI_OL  = 0;
+
+  var olData = olSh.getRange(2, 1, olSh.getLastRow() - 1, numCols).getValues();
+
+  function classifyRule(name) {
+    var n = _v3n(name);
+    if (/mega[\s\-]*premium[\s\-]*trainer/i.test(name)) return 'PM0093';
+    if (/retro/i.test(name) || /\[b\s*grade\]/i.test(name)) return 'PM0229';
+    if (/\bsar\b/.test(n)) return 'PM0006';
+    if (/\bsr\b/.test(n) && !/\bsar\b/.test(n) && !/\bar\b/.test(n)) return 'PM0005';
+    if (/\bar\b/.test(n) && !/\bsar\b/.test(n) && /no.?dup/i.test(n)) return 'PM0010';
+    if (/\bar\b/.test(n) && !/\bsar\b/.test(n) && /duplicate|random.?mix|bulk|single/i.test(n)) return 'PM0011';
+    return null;
+  }
+
+  var confirmed = 0, unmatched = [];
+  olData.forEach(function(row) {
+    var odlId = String(row[CI_OL]  || '').trim();
+    var name  = String(row[CI_NAME]|| '').trim();
+    if (!name) return;
+    if (odlId === 'ODL-00204') { confirmed++; return; }
+    var res = _v3match(name, pmEntries);
+    if (res.matched && !res.fuzzy) { confirmed++; return; }
+    var r = classifyRule(name);
+    if (r) { confirmed++; return; }
+    unmatched.push('"' + name + '"');
+  });
+
+  L('確定一致: ' + confirmed + '件（期待: 574）' + (confirmed === 574 ? ' OK' : ' NG'));
+  L('未一致: ' + unmatched.length + '件（期待: 6 非商品）');
+  unmatched.forEach(function(n){ L('  ' + n); });
+  L('');
+  L('=== rematchAfterPatch 完了 ===');
+  return out.join('\n');
+}
+
+// ============================================================
+// CONFIRM EXEC: オーダー明細 col11「商品ID」書き込み
+// ============================================================
+function execOrderDetailPmId() {
+  var out = [];
+  function L(s) { out.push(s); }
+  L('=== execOrderDetailPmId ===');
+
+  var crmSS = getSpreadsheet();
+  var invSS = SpreadsheetApp.openById(INV_BOOK_ID);
+  var pmEntries = _npnBuildPmEntries(invSS);
+
+  // PM master の全ID一覧（孤児チェック用）
+  var pmSh = invSS.getSheetByName('商品マスタ');
+  var pmIds = pmSh.getRange(2, 1, pmSh.getLastRow() - 1, 1).getValues()
+    .map(function(r){ return String(r[0]).trim(); }).filter(Boolean);
+  var pmIdSet = {};
+  pmIds.forEach(function(id){ pmIdSet[id] = true; });
+  L('PM master: ' + pmIds.length + '件');
+
+  var olSh    = crmSS.getSheetByName('オーダー明細');
+  var numCols = olSh.getLastColumn();
+  var headers = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var CI_OL   = _npnFindCol(headers, ['明細ID','詳細ID','lineitemid','odl']);
+  var CI_NAME = _npnFindCol(headers, ['商品名','productname','product_name']);
+  var CI_QTY  = _npnFindCol(headers, ['数量','qty','quantity']);
+  var CI_SUB  = _npnFindCol(headers, ['小計','subtotal']);
+  if (CI_NAME < 0) CI_NAME = 4;
+  if (CI_OL  < 0) CI_OL   = 0;
+  if (CI_QTY < 0) CI_QTY  = 7;
+  if (CI_SUB < 0) CI_SUB  = 9;
+
+  var olData = olSh.getRange(2, 1, olSh.getLastRow() - 1, numCols).getValues();
+  L('明細行数: ' + olData.length + '件');
+
+  // 書込前の合計値（不変確認用）
+  var qtyBefore = 0, subBefore = 0;
+  olData.forEach(function(r){
+    var q = parseFloat(r[CI_QTY]); if (!isNaN(q)) qtyBefore += q;
+    var s = parseFloat(r[CI_SUB]); if (!isNaN(s)) subBefore += s;
+  });
+  L('書込前 数量合計: ' + qtyBefore);
+  L('書込前 小計合計: ' + subBefore.toFixed(2));
+  L('');
+
+  function classifyRule(name) {
+    var n = _v3n(name);
+    if (/mega[\s\-]*premium[\s\-]*trainer/i.test(name)) return 'PM0093';
+    if (/retro/i.test(name) || /\[b\s*grade\]/i.test(name)) return 'PM0229';
+    if (/\bsar\b/.test(n)) return 'PM0006';
+    if (/\bsr\b/.test(n) && !/\bsar\b/.test(n) && !/\bar\b/.test(n)) return 'PM0005';
+    if (/\bar\b/.test(n) && !/\bsar\b/.test(n) && /no.?dup/i.test(n)) return 'PM0010';
+    if (/\bar\b/.test(n) && !/\bsar\b/.test(n) && /duplicate|random.?mix|bulk|single/i.test(n)) return 'PM0011';
+    return null;
+  }
+
+  // 全行の商品ID を計算
+  var assignments = olData.map(function(row) {
+    var odlId = String(row[CI_OL]  || '').trim();
+    var name  = String(row[CI_NAME]|| '').trim();
+    if (!name) return '';
+    if (odlId === 'ODL-00204') return 'PM0175';
+    var res = _v3match(name, pmEntries);
+    if (res.matched && !res.fuzzy) return res.pmId;
+    var r = classifyRule(name);
+    if (r) return r;
+    return '';
+  });
+
+  // col11 ヘッダー
+  olSh.getRange(1, 11).setValue('商品ID');
+
+  // 全行一括書き込み（col11のみ）
+  var writeData = assignments.map(function(id){ return [id]; });
+  olSh.getRange(2, 11, writeData.length, 1).setValues(writeData);
+  SpreadsheetApp.flush();
+
+  // ──検証──
+  L('════════════════════════════════════');
+  L('[検証]');
+  L('════════════════════════════════════');
+
+  var afterData = olSh.getDataRange().getValues();
+  var afterDataRows = afterData.length - 1;
+  L('行数: ' + afterDataRows + '件（期待: 595）' + (afterDataRows === 595 ? ' OK' : ' NG'));
+
+  // col11 集計
+  var filled = 0, emptyCount = 0;
+  var orphans = [];
+  afterData.slice(1).forEach(function(r){
+    var pmId = String(r[10] || '').trim();  // idx10 = col11
+    if (pmId) {
+      filled++;
+      if (!pmIdSet[pmId]) orphans.push(pmId + ' (row: "' + r[CI_NAME] + '")');
+    } else {
+      emptyCount++;
+    }
+  });
+  L('商品ID 記入: ' + filled + '件（期待: 574）' + (filled === 574 ? ' OK' : ' NG'));
+  L('商品ID 空欄: ' + emptyCount + '件（期待: 21）' + (emptyCount === 21 ? ' OK' : ' NG'));
+  L('孤児PM-ID:  ' + orphans.length + '件' + (orphans.length === 0 ? ' OK' : ' NG'));
+  if (orphans.length > 0) orphans.forEach(function(o){ L('  ' + o); });
+
+  // 既存10列不変（先頭3行・末尾3行サンプル）
+  var colOK = true;
+  var sampleRows = [1,2,3, afterDataRows-1, afterDataRows, afterDataRows+1];
+  sampleRows.forEach(function(ri) {
+    if (ri < 1 || ri >= afterData.length) return;
+    for (var ci = 0; ci < 10; ci++) {
+      var before = String(olData[ri-1] ? (olData[ri-1][ci]||'') : '');
+      var after  = String(afterData[ri][ci] || '');
+      if (before !== after) {
+        colOK = false;
+        L('  既存列変化検出 row=' + ri + ' col=' + (ci+1) + ': "' + before + '" → "' + after + '"');
+      }
+    }
+  });
+  L('既存10列（サンプル6行）不変: ' + (colOK ? 'OK' : 'NG'));
+
+  // 数量・小計 合計
+  var qtyAfter = 0, subAfter = 0;
+  afterData.slice(1).forEach(function(r){
+    var q = parseFloat(r[CI_QTY]); if (!isNaN(q)) qtyAfter += q;
+    var s = parseFloat(r[CI_SUB]); if (!isNaN(s)) subAfter += s;
+  });
+  L('数量合計: ' + qtyAfter + '（期待: 12281）' + (qtyAfter === 12281 ? ' OK' : ' NG → 差=' + (qtyAfter-12281)));
+  L('小計合計: ' + subAfter.toFixed(2) + '（期待: 76986599.50）' + (Math.abs(subAfter - 76986599.50) < 0.01 ? ' OK' : ' NG → 差=' + (subAfter-76986599.50).toFixed(2)));
+
+  L('');
+  L('=== execOrderDetailPmId 完了 ===');
+  return out.join('\n');
+}
