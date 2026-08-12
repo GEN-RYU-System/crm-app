@@ -4806,3 +4806,36 @@ function execGundamMKFix() {
   L('=== execGundamMKFix 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// investigateSheetList — CRM + INV_BOOK の全シート一覧
+// ============================================================
+function investigateSheetList() {
+  var out = [];
+  function L(s){ out.push(s); }
+  L('=== investigateSheetList ===');
+
+  var crmSS = getSpreadsheet();
+  L('[CRM] シート一覧:');
+  crmSS.getSheets().forEach(function(sh) {
+    var lastRow = sh.getLastRow();
+    var lastCol = sh.getLastColumn();
+    var h1 = lastCol > 0 && lastRow > 0 ? sh.getRange(1,1,1, Math.min(lastCol,20)).getValues()[0].map(function(v){ return String(v||'').trim(); }).filter(function(v){ return v; }).join(' | ') : '';
+    L('  "' + sh.getName() + '"  rows=' + lastRow + '  cols=' + lastCol);
+    if (h1) L('    headers: ' + h1);
+  });
+
+  L('');
+  var invSS = SpreadsheetApp.openById(INV_BOOK_ID);
+  L('[INV_BOOK] シート一覧:');
+  invSS.getSheets().forEach(function(sh) {
+    var lastRow = sh.getLastRow();
+    var lastCol = sh.getLastColumn();
+    var h1 = lastCol > 0 && lastRow > 0 ? sh.getRange(1,1,1, Math.min(lastCol,20)).getValues()[0].map(function(v){ return String(v||'').trim(); }).filter(function(v){ return v; }).join(' | ') : '';
+    L('  "' + sh.getName() + '"  rows=' + lastRow + '  cols=' + lastCol);
+    if (h1) L('    headers: ' + h1);
+  });
+
+  L('=== investigateSheetList 完了 ===');
+  return out.join('\n');
+}
