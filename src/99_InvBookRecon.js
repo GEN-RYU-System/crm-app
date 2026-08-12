@@ -3091,3 +3091,38 @@ function dryRunMasterSetup() {
   L('=== dryRunMasterSetup 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// GUNDUM 3件詳細確認（読み取り専用）
+// ============================================================
+function investigateGundumProducts() {
+  var out = [];
+  function L(s) { out.push(s); }
+  L('=== investigateGundumProducts ===');
+
+  var ss = SpreadsheetApp.openById(INV_BOOK_ID);
+  var pmSh = ss.getSheetByName('商品マスタ');
+  var data = pmSh.getDataRange().getValues();
+  var headers = data[0];
+  var rows = data.slice(1);
+
+  rows.forEach(function(r) {
+    var cat = String(r[1] || '').trim();
+    if (cat !== 'GUNDUM') return;
+    L('');
+    L('────────────────────────────────────');
+    L('product_id : ' + r[0]);
+    L('Category   : ' + r[1]);
+    L('Mark       : ' + r[2]);
+    L('JA Title   : ' + r[3]);
+    L('EN Title   : ' + r[4]);
+    L('Release    : ' + r[10]);
+    L('Keywords   : ' + r[11]);
+    L('カテゴリ分類: ' + r[14]);
+    L('RO Value   : ' + r[15]);
+  });
+
+  L('');
+  L('=== investigateGundumProducts 完了 ===');
+  return out.join('\n');
+}
