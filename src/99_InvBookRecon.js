@@ -1372,3 +1372,126 @@ function normalizeProductNamesExec() {
   L('=== normalizeProductNamesExec 完了 ===');
   return out.join('\n');
 }
+
+// ──────────────────────────────────────────────────────────
+// 補足調査: 空商品名15行の pre-existing 確認 + OD-00095 詳細
+// ──────────────────────────────────────────────────────────
+function investigatePostNormalize() {
+  var out = [];
+  function L(s) { out.push(String(s)); Logger.log(String(s)); }
+  L('=== investigatePostNormalize ===');
+
+  var crmSS;
+  try { crmSS = getSpreadsheet(); }
+  catch(e) { L('[ERROR] ' + e.message); return out.join('\n'); }
+
+  var olSh    = crmSS.getSheetByName('オーダー明細');
+  var numCols = olSh.getLastColumn();
+  var headers = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var olData  = olSh.getRange(2, 1, olSh.getLastRow() - 1, numCols).getValues();
+
+  var CI_DETAIL   = _npnFindCol(headers, ['明細ID','detailid','detail_id','明細行ID','行ID']);
+  var CI_ORDER    = _npnFindCol(headers, ['オーダーID','orderid','order_id','注文ID','受注ID']);
+  var CI_ROW      = _npnFindCol(headers, ['行番号','rowno','row_no','行No']);
+  var CI_NAME     = _npnFindCol(headers, ['商品名','productname','product_name','商品名称','itemname']);
+  var CI_STATUS   = _npnFindCol(headers, ['状態','status','ステータス']);
+  var CI_SKU      = _npnFindCol(headers, ['SKU','sku']);
+  var CI_QTY      = _npnFindCol(headers, ['数量','qty','quantity']);
+  var CI_PRICE    = _npnFindCol(headers, ['単価','unitprice','unit_price','price']);
+  var CI_SUBTOTAL = _npnFindCol(headers, ['小計','subtotal','sub_total']);
+  if (CI_NAME < 0) CI_NAME = 4;
+
+  // ── [A] 空商品名行の全件 ──
+  L('');
+  L('════════════════════════════════════');
+  L('[A] 空商品名行の全件（pre-existing 確認）');
+  L('════════════════════════════════════');
+  var emptyRows = [];
+  olData.forEach(function(row, ri) {
+    if (!String(row[CI_NAME] || '').trim()) {
+      emptyRows.push({
+        sheetRow: ri + 2,
+        detailId: CI_DETAIL >= 0 ? String(row[CI_DETAIL] || '') : '?',
+        orderId:  CI_ORDER  >= 0 ? String(row[CI_ORDER]  || '') : '?',
+        status:   CI_STATUS >= 0 ? String(row[CI_STATUS] || '') : '?',
+        sku:      CI_SKU    >= 0 ? String(row[CI_SKU]    || '') : '?',
+        qty:      CI_QTY    >= 0 ? String(row[CI_QTY]    || '') : '?',
+        sub:      CI_SUBTOTAL >= 0 ? String(row[CI_SUBTOTAL] || '') : '?'
+      });
+    }
+  });
+  L('空商品名行数: ' + emptyRows.length);
+  emptyRows.forEach(function(r) {
+    L('  row' + r.sheetRow + ' 明細=' + r.detailId + ' order=' + r.orderId
+      + ' status=' + r.status + ' sku=' + r.sku + ' qty=' + r.qty + ' sub=' + r.sub);
+  });
+
+  // ── [B] OD-00095 全明細（点4: Preimum Treaner Box の特定） ──
+  L('');
+  L('════════════════════════════════════');
+  L('[B] OD-00095 の全明細（日付・単価・数量）');
+  L('════════════════════════════════════');
+  var od0095 = [];
+  olData.forEach(function(row, ri) {
+    var orderId = CI_ORDER >= 0 ? String(row[CI_ORDER] || '').trim() : '';
+    if (orderId === 'OD-00095') {
+      od0095.push({
+        sheetRow: ri + 2,
+        detailId: CI_DETAIL >= 0 ? String(row[CI_DETAIL] || '') : '?',
+        rowNo:    CI_ROW    >= 0 ? String(row[CI_ROW]    || '') : '?',
+        name:     String(row[CI_NAME] || ''),
+        sku:      CI_SKU    >= 0 ? String(row[CI_SKU]    || '') : '?',
+        qty:      CI_QTY    >= 0 ? row[CI_QTY]    : '?',
+        price:    CI_PRICE  >= 0 ? row[CI_PRICE]  : '?',
+        subtotal: CI_SUBTOTAL >= 0 ? row[CI_SUBTOTAL] : '?'
+      });
+    }
+  });
+  L('OD-00095 明細件数: ' + od0095.length);
+  od0095.forEach(function(r) {
+    L('  [row' + r.sheetRow + '] ' + r.detailId + ' 行No=' + r.rowNo);
+    L('    商品名: ' + r.name);
+    L('    SKU=' + r.sku + ' 数量=' + r.qty + ' 単価=' + r.price + ' 小計=' + r.subtotal);
+  });
+
+  // ── [C] オーダーマスタから OD-00095 の日付を取得 ──
+  L('');
+  L('════════════════════════════════════');
+  L('[C] オーダーマスタ OD-00095 の日付');
+  L('════════════════════════════════════');
+  // オーダーシート候補を探す
+  var orderSheetNames = ['オーダー', 'Orders', 'Order', '注文', '受注', 'オーダーマスタ', 'OrderMaster'];
+  var orderSh = null;
+  orderSheetNames.forEach(function(name) {
+    if (!orderSh) orderSh = crmSS.getSheetByName(name);
+  });
+  if (!orderSh) {
+    // シート一覧を出力
+    var allSheets = crmSS.getSheets().map(function(s){ return s.getName(); });
+    L('オーダーマスタシートが見つかりません。シート一覧: ' + allSheets.join(' / '));
+  } else {
+    var ohLastRow = orderSh.getLastRow();
+    var ohNumCols = orderSh.getLastColumn();
+    var ohHeaders = orderSh.getRange(1, 1, 1, ohNumCols).getValues()[0].map(function(h){ return String(h).trim(); });
+    L('シート: "' + orderSh.getName() + '" ヘッダー: ' + ohHeaders.join(' | '));
+    var OCI_ID   = _npnFindCol(ohHeaders, ['オーダーID','orderid','order_id','注文ID','受注ID','ID']);
+    var OCI_DATE = _npnFindCol(ohHeaders, ['日付','date','注文日','受注日','オーダー日','order_date','orderdate','created_at','作成日']);
+    var ohData   = ohLastRow > 1 ? orderSh.getRange(2, 1, ohLastRow - 1, ohNumCols).getValues() : [];
+    var found = false;
+    ohData.forEach(function(row) {
+      var oid = OCI_ID >= 0 ? String(row[OCI_ID] || '').trim() : '';
+      if (oid === 'OD-00095') {
+        found = true;
+        L('OD-00095 発見:');
+        ohHeaders.forEach(function(h, i) {
+          L('  ' + h + ': ' + String(row[i] || ''));
+        });
+      }
+    });
+    if (!found) L('OD-00095 がオーダーマスタに見つかりません');
+  }
+
+  L('');
+  L('=== investigatePostNormalize 完了 ===');
+  return out.join('\n');
+}
