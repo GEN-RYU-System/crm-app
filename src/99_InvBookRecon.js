@@ -5186,3 +5186,47 @@ function hardFixOrderTotals() {
   L('=== hardFixOrderTotals 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// hardFixOrderTotals2 — setValues 2D配列で col34/35 を強制書き込み
+// ============================================================
+function hardFixOrderTotals2() {
+  var out = [];
+  function L(s){ out.push(s); }
+  L('=== hardFixOrderTotals2 ===');
+
+  // 完全に新しい参照で開く
+  var ss    = SpreadsheetApp.openById(getSpreadsheet().getId());
+  var omSh  = ss.getSheetByName('オーダー管理');
+
+  L('列数: ' + omSh.getLastColumn());
+
+  // 修正対象: 行番号は diagAndFixOrderTotals で判明した値
+  // OD-00107 row=108: col34=0, col35=29000
+  // OD-00123 row=124: col34=7730, col35=0
+  // OD-00132 row=133: col34=0,    col35=1200
+  var targets = [
+    { odId: 'OD-00107', row: 108, col34: 0,    col35: 29000 },
+    { odId: 'OD-00123', row: 124, col34: 7730,  col35: 0    },
+    { odId: 'OD-00132', row: 133, col34: 0,     col35: 1200 }
+  ];
+
+  targets.forEach(function(t) {
+    // 2D配列で cols 34-35 を一括書き込み
+    omSh.getRange(t.row, 34, 1, 2).setValues([[t.col34, t.col35]]);
+    SpreadsheetApp.flush();
+
+    // 即時読み取り（個別セル）
+    var r34_v = omSh.getRange(t.row, 34).getValue();
+    var r35_v = omSh.getRange(t.row, 35).getValue();
+    L(t.odId + '(row=' + t.row + '): col34=' + r34_v + '(期待:' + t.col34 + ') col35=' + r35_v + '(期待:' + t.col35 + ')');
+
+    // 2D配列でまとめ読み
+    var batch = omSh.getRange(t.row, 34, 1, 2).getValues()[0];
+    L('  batch read: [' + batch[0] + ', ' + batch[1] + ']');
+  });
+
+  L('');
+  L('=== hardFixOrderTotals2 完了 ===');
+  return out.join('\n');
+}
