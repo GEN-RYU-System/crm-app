@@ -3631,3 +3631,263 @@ function dryRunKWAdditions() {
   L('=== dryRunKWAdditions 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// CONFIRM EXEC: KW末尾追記 (PM0055/0117/0182/0183)
+// ============================================================
+function execKWAdditions() {
+  var out = [];
+  function L(s) { out.push(s); }
+  L('=== execKWAdditions ===');
+
+  var additions = {
+    'PM0055': 'shiny v box',
+    'PM0117': 'shiny treasures',
+    'PM0182': 'specialty box tohoku',
+    'PM0183': 'interspecies reviews'
+  };
+
+  var ss = SpreadsheetApp.openById(INV_BOOK_ID);
+  var pmSh = ss.getSheetByName('商品マスタ');
+  var data = pmSh.getDataRange().getValues();
+
+  var pidToRow = {};
+  data.slice(1).forEach(function(r, i) {
+    pidToRow[String(r[0]).trim()] = i + 2;  // 1-based row
+  });
+
+  Object.keys(additions).sort().forEach(function(pid) {
+    var rowNum = pidToRow[pid];
+    if (!rowNum) { L('[ERROR] ' + pid + ' 見つからず'); return; }
+    var currentKW = String(data[rowNum - 1][11] || '').trim();
+    var addKW = additions[pid];
+    var newKW = currentKW ? currentKW + ', ' + addKW : addKW;
+    pmSh.getRange(rowNum, 12).setValue(newKW);  // col12 = idx11
+    L(pid + ': "' + currentKW + '"');
+    L('  → "' + newKW + '"');
+  });
+  SpreadsheetApp.flush();
+  L('');
+
+  // 検証: 書込後の実際の値を再読
+  L('────────────────────────────────────');
+  L('[検証] 書込後の実値確認');
+  L('────────────────────────────────────');
+  var after = pmSh.getDataRange().getValues();
+  Object.keys(additions).sort().forEach(function(pid) {
+    var rowNum = pidToRow[pid];
+    var actualKW = String(after[rowNum - 1][11] || '').trim();
+    var ok = actualKW.indexOf(additions[pid]) >= 0;
+    L(pid + ': ' + (ok ? 'OK' : 'NG') + ' → "' + actualKW + '"');
+  });
+
+  L('');
+  L('=== execKWAdditions 完了 ===');
+  return out.join('\n');
+}
+
+// ============================================================
+// KW追加後 再照合シミュレーション（書き込みなし）
+// ============================================================
+function rematchAfterKW() {
+  var out = [];
+  function L(s) { out.push(s); }
+  L('=== rematchAfterKW ===');
+  L('ベースライン: 561件 (investigateStep23DryRun 結果)');
+  L('');
+
+  var crmSS = getSpreadsheet();
+  var invSS = SpreadsheetApp.openById(INV_BOOK_ID);
+  var pmEntries = _npnBuildPmEntries(invSS);
+  L('PM件数: ' + pmEntries.length + '件 (PM0229〜PM0234含む)');
+
+  var olSh    = crmSS.getSheetByName('オーダー明細');
+  var numCols = olSh.getLastColumn();
+  var headers = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var CI_OL   = _npnFindCol(headers, ['明細ID','詳細ID','lineitemid','odl']);
+  var CI_NAME = _npnFindCol(headers, ['商品名','productname','product_name']);
+  if (CI_NAME < 0) CI_NAME = 4;
+  if (CI_OL  < 0) CI_OL  = 0;
+
+  var olData = olSh.getRange(2, 1, olSh.getLastRow() - 1, numCols).getValues();
+  L('明細行数: ' + olData.length + '件');
+  L('');
+
+  // 分類ルール
+  function classifyRule(name) {
+    var n = _v3n(name);
+    if (/mega[\s\-]*premium[\s\-]*trainer/i.test(name)) return 'PM0093';
+    if (/retro/i.test(name) || /\[b\s*grade\]/i.test(name)) return 'PM0229';
+    if (/\bsar\b/.test(n)) return 'PM0006';
+    if (/\bsr\b/.test(n) && !/\bsar\b/.test(n) && !/\bar\b/.test(n)) return 'PM0005';
+    if (/\bar\b/.test(n) && !/\bsar\b/.test(n) && /no.?dup/i.test(n)) return 'PM0010';
+    if (/\bar\b/.test(n) && !/\bsar\b/.test(n) && /duplicate|random.?mix|bulk|single/i.test(n)) return 'PM0011';
+    return null;
+  }
+
+  var confirmed = 0, pmBreakdown = {}, stillUnmatched = [];
+  var manualOverrides = 0, ruleMatched = 0, autoMatched = 0;
+
+  olData.forEach(function(row) {
+    var odlId = String(row[CI_OL]  || '').trim();
+    var name  = String(row[CI_NAME]|| '').trim();
+    if (!name) return;
+
+    var pmId = null;
+
+    // 手動マッピング: ODL-00204 → PM0175
+    if (odlId === 'ODL-00204') {
+      pmId = 'PM0175'; manualOverrides++;
+    }
+
+    if (!pmId) {
+      // _v3match (Phase0/Phase1 のみ、fuzzy除外)
+      var res = _v3match(name, pmEntries);
+      if (res.matched && !res.fuzzy) { pmId = res.pmId; autoMatched++; }
+    }
+
+    if (!pmId) {
+      var ruleId = classifyRule(name);
+      if (ruleId) { pmId = ruleId; ruleMatched++; }
+    }
+
+    if (pmId) {
+      confirmed++;
+      pmBreakdown[pmId] = (pmBreakdown[pmId] || 0) + 1;
+    } else {
+      stillUnmatched.push(name);
+    }
+  });
+
+  L('════════════════════════════════════');
+  L('確定一致: ' + confirmed + '件');
+  L('  内訳: 自動=' + autoMatched + '件 / ルール=' + ruleMatched + '件 / 手動=' + manualOverrides + '件');
+  L('未一致: ' + stillUnmatched.length + '件');
+  L('ベースライン比: ' + confirmed + ' - 561 = ' + (confirmed - 561) + '件');
+  L('');
+  L('[PM別 上位20]');
+  var pmKeys = Object.keys(pmBreakdown).sort(function(a,b){ return pmBreakdown[b]-pmBreakdown[a]; });
+  pmKeys.slice(0,20).forEach(function(id){ L('  ' + id + ': ' + pmBreakdown[id] + '件'); });
+  L('');
+  L('[なお未一致 ' + stillUnmatched.length + '件]');
+  var uf = {};
+  stillUnmatched.forEach(function(n){ uf[n]=(uf[n]||0)+1; });
+  Object.keys(uf).sort(function(a,b){ return uf[b]-uf[a]; }).forEach(function(n){
+    L('  ' + uf[n] + '件  "' + n + '"');
+  });
+  L('');
+  L('=== rematchAfterKW 完了 ===');
+  return out.join('\n');
+}
+
+// ============================================================
+// DRY RUN: オーダー明細 col11「商品ID」追加
+// ============================================================
+function dryRunOrderDetailPmId() {
+  var out = [];
+  function L(s) { out.push(s); }
+  L('=== dryRunOrderDetailPmId ===');
+  L('※ DRY RUN - 書き込み一切なし');
+  L('');
+
+  var crmSS = getSpreadsheet();
+  var invSS = SpreadsheetApp.openById(INV_BOOK_ID);
+  var pmEntries = _npnBuildPmEntries(invSS);
+
+  var olSh    = crmSS.getSheetByName('オーダー明細');
+  var numCols = olSh.getLastColumn();
+  var headers = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var CI_OL   = _npnFindCol(headers, ['明細ID','詳細ID','lineitemid','odl']);
+  var CI_NAME = _npnFindCol(headers, ['商品名','productname','product_name']);
+  if (CI_NAME < 0) CI_NAME = 4;
+  if (CI_OL  < 0) CI_OL  = 0;
+
+  var olData = olSh.getRange(2, 1, olSh.getLastRow() - 1, numCols).getValues();
+
+  L('[スキーマ変更]');
+  L('  現在: ' + numCols + '列 (col1〜col' + numCols + ')');
+  L('  追加: col' + (numCols+1) + ' = "商品ID"');
+  L('  既存' + numCols + '列は一切変更しない');
+  L('');
+
+  function classifyRule(name) {
+    var n = _v3n(name);
+    if (/mega[\s\-]*premium[\s\-]*trainer/i.test(name)) return 'PM0093';
+    if (/retro/i.test(name) || /\[b\s*grade\]/i.test(name)) return 'PM0229';
+    if (/\bsar\b/.test(n)) return 'PM0006';
+    if (/\bsr\b/.test(n) && !/\bsar\b/.test(n) && !/\bar\b/.test(n)) return 'PM0005';
+    if (/\bar\b/.test(n) && !/\bsar\b/.test(n) && /no.?dup/i.test(n)) return 'PM0010';
+    if (/\bar\b/.test(n) && !/\bsar\b/.test(n) && /duplicate|random.?mix|bulk|single/i.test(n)) return 'PM0011';
+    return null;
+  }
+
+  var totalRows = olData.length, blankRows = 0, matchedCount = 0;
+  var unmatchedRows = [], manualRows = [], pmBreakdown = {};
+
+  var assignments = olData.map(function(row) {
+    var odlId = String(row[CI_OL]  || '').trim();
+    var name  = String(row[CI_NAME]|| '').trim();
+
+    if (!name) { blankRows++; return { odl: odlId, name: name, pmId: '', source: 'blank' }; }
+
+    // 手動: ODL-00204 → PM0175
+    if (odlId === 'ODL-00204') {
+      matchedCount++;
+      pmBreakdown['PM0175'] = (pmBreakdown['PM0175']||0)+1;
+      return { odl: odlId, name: name, pmId: 'PM0175', source: 'manual' };
+    }
+
+    // _v3match
+    var res = _v3match(name, pmEntries);
+    if (res.matched && !res.fuzzy) {
+      matchedCount++;
+      pmBreakdown[res.pmId] = (pmBreakdown[res.pmId]||0)+1;
+      return { odl: odlId, name: name, pmId: res.pmId, source: 'auto' };
+    }
+
+    // 分類ルール
+    var ruleId = classifyRule(name);
+    if (ruleId) {
+      matchedCount++;
+      pmBreakdown[ruleId] = (pmBreakdown[ruleId]||0)+1;
+      return { odl: odlId, name: name, pmId: ruleId, source: 'rule' };
+    }
+
+    return { odl: odlId, name: name, pmId: '', source: 'unmatched' };
+  });
+
+  // 手動マッピング行の表示
+  manualRows = assignments.filter(function(a){ return a.source === 'manual'; });
+  unmatchedRows = assignments.filter(function(a){ return a.source === 'unmatched'; });
+
+  L('════════════════════════════════════');
+  L('[サマリ]');
+  L('════════════════════════════════════');
+  L('総明細行数    : ' + totalRows + '件');
+  L('空行（商品名空）: ' + blankRows + '件  → 商品ID=空欄');
+  L('PM-ID確定    : ' + matchedCount + '件');
+  L('  うち手動    : ' + manualRows.length + '件');
+  L('  うち自動/ルール: ' + (matchedCount - manualRows.length) + '件');
+  L('未確定        : ' + unmatchedRows.length + '件  → 商品ID=空欄');
+  L('');
+
+  L('[手動マッピング]');
+  manualRows.forEach(function(a){ L('  ' + a.odl + ' → ' + a.pmId + '  ("' + a.name + '")'); });
+  L('');
+
+  L('[PM別 上位20]');
+  var pmKeys = Object.keys(pmBreakdown).sort(function(a,b){ return pmBreakdown[b]-pmBreakdown[a]; });
+  pmKeys.slice(0,20).forEach(function(id){ L('  ' + id + ': ' + pmBreakdown[id] + '件'); });
+  L('');
+
+  L('[未確定 ' + unmatchedRows.length + '件（全件）]');
+  var uf = {};
+  unmatchedRows.forEach(function(a){ uf[a.name]=(uf[a.name]||0)+1; });
+  Object.keys(uf).sort(function(a,b){ return uf[b]-uf[a]; }).forEach(function(n){
+    L('  ' + uf[n] + '件  "' + n + '"');
+  });
+
+  L('');
+  L('=== dryRunOrderDetailPmId 完了 ===');
+  return out.join('\n');
+}
