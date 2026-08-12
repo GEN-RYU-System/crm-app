@@ -4664,8 +4664,8 @@ function execFixODL00232() {
   function L(s){ out.push(s); }
   L('=== execFixODL00232 ===');
 
-  var ss   = SpreadsheetApp.openById(INV_BOOK_ID);
-  var olSh = ss.getSheetByName('オーダー明細');
+  var crmSS = getSpreadsheet();
+  var olSh  = crmSS.getSheetByName('オーダー明細');
 
   var olData = olSh.getRange(2, 1, olSh.getLastRow()-1, olSh.getLastColumn()).getValues();
   var targetRow = -1;
