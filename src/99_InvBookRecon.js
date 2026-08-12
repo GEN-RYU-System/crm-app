@@ -5031,3 +5031,105 @@ function postConfirmAudit() {
   L('=== postConfirmAudit 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// diagAndFixOrderTotals — col34/35確認 + 請求総額 再計算
+// ============================================================
+function diagAndFixOrderTotals() {
+  var out = [];
+  function L(s){ out.push(s); }
+  L('=== diagAndFixOrderTotals ===');
+
+  var crmSS = getSpreadsheet();
+  var omSh  = crmSS.getSheetByName('オーダー管理');
+  var olSh  = crmSS.getSheetByName('オーダー明細');
+
+  var omCols = omSh.getLastColumn();
+  var omHeaders = omSh.getRange(1, 1, 1, omCols).getValues()[0].map(function(h){ return String(h||'').trim(); });
+  var omData = omSh.getRange(2, 1, omSh.getLastRow()-1, omCols).getValues();
+  L('オーダー管理 列数: ' + omCols + ' / ヘッダーcol34="' + omHeaders[33] + '" col35="' + omHeaders[34] + '"');
+
+  var CI_OD    = 0;
+  var CI_SUB11 = 10;
+  var CI_SHIP  = 11;
+  var CI_TAX   = 12;
+  var CI_TOTAL = 13;
+
+  var omRowMap = {};
+  omData.forEach(function(r, i){ omRowMap[String(r[CI_OD]||'').trim()] = i + 2; });
+
+  // ─── [1] 現在値の診断（個別セル読み取り）───
+  L('');
+  L('[1] 現在値（個別セル読み取り）:');
+  var targets = ['OD-00046','OD-00107','OD-00123','OD-00132'];
+  targets.forEach(function(odId) {
+    var rn = omRowMap[odId]; if (!rn) { L('  ' + odId + ': NOT FOUND'); return; }
+    var v11  = parseFloat(omSh.getRange(rn, 11).getValue()) || 0;
+    var v12  = parseFloat(omSh.getRange(rn, 12).getValue()) || 0;
+    var v13  = parseFloat(omSh.getRange(rn, 13).getValue()) || 0;
+    var v14  = parseFloat(omSh.getRange(rn, 14).getValue()) || 0;
+    var v34  = parseFloat(omSh.getRange(rn, 34).getValue()) || 0;
+    var v35  = parseFloat(omSh.getRange(rn, 35).getValue()) || 0;
+    L('  ' + odId + ' row=' + rn + ':');
+    L('    col11(明細合計)=' + v11 + ' col12(送料)=' + v12 + ' col13(関税)=' + v13);
+    L('    col14(請求総額)=' + v14);
+    L('    col34(その他手数料)=' + v34 + ' col35(値引き)=' + v35);
+  });
+
+  // ─── [2] 正しい値を書き込む（B の内容を再適用）───
+  L('');
+  L('[2] col34/col35 正値を確認・再書き込み:');
+  var corrections = {
+    'OD-00046': { col34: 0,     col35: 0     },
+    'OD-00107': { col34: 0,     col35: 29000 },
+    'OD-00123': { col34: 7730,  col35: 0     },
+    'OD-00132': { col34: 0,     col35: 1200  }
+  };
+
+  targets.forEach(function(odId) {
+    var rn  = omRowMap[odId]; if (!rn) return;
+    var exp = corrections[odId];
+    var cur34 = parseFloat(omSh.getRange(rn, 34).getValue()) || 0;
+    var cur35 = parseFloat(omSh.getRange(rn, 35).getValue()) || 0;
+    if (cur34 !== exp.col34) { omSh.getRange(rn, 34).setValue(exp.col34); L('  ' + odId + ': col34 ' + cur34 + ' → ' + exp.col34); }
+    else                     { L('  ' + odId + ': col34=' + cur34 + ' (already correct)'); }
+    if (cur35 !== exp.col35) { omSh.getRange(rn, 35).setValue(exp.col35); L('  ' + odId + ': col35 ' + cur35 + ' → ' + exp.col35); }
+    else                     { L('  ' + odId + ': col35=' + cur35 + ' (already correct)'); }
+  });
+  SpreadsheetApp.flush();
+
+  // ─── [3] 明細合計 再計算 → 請求総額 再計算 ───
+  L('');
+  L('[3] 明細合計 → 請求総額 再計算:');
+  var olRows = olSh.getLastRow() - 1;
+  var olData = olSh.getRange(2, 1, olRows, olSh.getLastColumn()).getValues();
+  var subMap = {};
+  olData.forEach(function(r) {
+    var odId = String(r[1]||'').trim();
+    subMap[odId] = (subMap[odId]||0) + (parseFloat(r[9])||0);
+  });
+
+  var expectedTotals = { 'OD-00046': 5500, 'OD-00107': 81400, 'OD-00123': 56380, 'OD-00132': 693000 };
+  targets.forEach(function(odId) {
+    var rn = omRowMap[odId]; if (!rn) return;
+    var newSub  = subMap[odId] || 0;
+    omSh.getRange(rn, 11).setValue(newSub);
+    SpreadsheetApp.flush();
+
+    var sub   = parseFloat(omSh.getRange(rn, 11).getValue()) || 0;
+    var ship  = parseFloat(omSh.getRange(rn, 12).getValue()) || 0;
+    var tax   = parseFloat(omSh.getRange(rn, 13).getValue()) || 0;
+    var other = parseFloat(omSh.getRange(rn, 34).getValue()) || 0;
+    var disc  = parseFloat(omSh.getRange(rn, 35).getValue()) || 0;
+    var newTotal = sub + ship + tax + other - disc;
+    omSh.getRange(rn, 14).setValue(newTotal);
+    SpreadsheetApp.flush();
+
+    var exp = expectedTotals[odId];
+    L('  ' + odId + ': 明細合計=' + sub + ' 送料=' + ship + ' 関税=' + tax + ' その他=' + other + ' 値引き=' + disc);
+    L('    請求総額=' + newTotal + '（期待: ' + exp + '）' + (Math.abs(newTotal-exp)<1?' OK':' NG 差='+(newTotal-exp)));
+  });
+
+  L('=== diagAndFixOrderTotals 完了 ===');
+  return out.join('\n');
+}
