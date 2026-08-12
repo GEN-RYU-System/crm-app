@@ -6251,3 +6251,110 @@ function execCancelReason() {
   L('=== execCancelReason 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// verifyCancelReason — execCancelReason 後の総合検証
+// ============================================================
+function verifyCancelReason() {
+  var out = [];
+  function L(s){ out.push(s); }
+  L('=== verifyCancelReason ===');
+
+  var crmSS  = getSpreadsheet();
+  var omSh   = crmSS.getSheetByName('オーダー管理');
+  var stSh   = crmSS.getSheetByName('選択肢マスタ');
+  var omCols = omSh.getLastColumn();
+  var numRows= omSh.getLastRow() - 1;
+  var hdrs   = omSh.getRange(1,1,1,omCols).getValues()[0].map(function(h){ return String(h||'').trim(); });
+  var data   = omSh.getRange(2,1,numRows,omCols).getValues();
+
+  function ci(names) {
+    for (var i=0;i<names.length;i++){ var idx=hdrs.indexOf(names[i]); if(idx>=0) return idx; }
+    return -1;
+  }
+  var C_OD     = 0;
+  var C_ST     = ci(['ステータス']);
+  var C_SUB    = ci(['明細合計']);
+  var C_SHIP   = ci(['送料']);
+  var C_TAX    = ci(['関税']);
+  var C_TOT    = ci(['請求総額']);
+  var C_OTHER  = 33;
+  var C_DISC   = 34;
+  var C_CANCEL = ci(['キャンセル理由']);
+  var C_MEMO   = ci(['キャンセルメモ']);
+
+  // ─── [1] 選択肢マスタ「キャンセル理由」全値 ───
+  L('════════════════════════════════════');
+  L('[1] 選択肢マスタ「キャンセル理由」登録値');
+  L('════════════════════════════════════');
+  var stLastCol = stSh.getLastColumn();
+  var stHdrs = stSh.getRange(1,1,1,stLastCol).getValues()[0].map(function(h){ return String(h||'').trim(); });
+  var stCancelIdx = stHdrs.indexOf('キャンセル理由');
+  if (stCancelIdx < 0) {
+    L('ERROR: 「キャンセル理由」列が見つかりません');
+  } else {
+    var stLastRow = stSh.getLastRow();
+    var stVals = stSh.getRange(2, stCancelIdx+1, stLastRow-1, 1).getValues();
+    var stOpts = stVals.map(function(r){ return String(r[0]||'').trim(); }).filter(function(v){ return v; });
+    L('col' + (stCancelIdx+1) + ' / ' + stOpts.length + '値:');
+    stOpts.forEach(function(v, i){ L('  ' + (i+1) + '. ' + v); });
+    L(stOpts.length === 7 ? '→ 7値 OK' : '★ 値数NG! 期待7 実際' + stOpts.length);
+  }
+
+  // ─── [2] キャンセル44件: 理由・メモ全文 ───
+  L('');
+  L('════════════════════════════════════');
+  L('[2] キャンセル44件: 理由 / キャンセルメモ全文');
+  L('════════════════════════════════════');
+  var cancelAll=0, reasonFilled=0, reasonEmpty=0;
+  var snap = { sub:0, ship:0, tax:0, other:0, disc:0, tot:0 };
+
+  data.forEach(function(r) {
+    snap.sub   += parseFloat(r[C_SUB  ])||0;
+    snap.ship  += parseFloat(r[C_SHIP ])||0;
+    snap.tax   += parseFloat(r[C_TAX  ])||0;
+    snap.other += parseFloat(r[C_OTHER])||0;
+    snap.disc  += parseFloat(r[C_DISC ])||0;
+    snap.tot   += parseFloat(r[C_TOT  ])||0;
+
+    if (String(r[C_ST]||'').trim() !== 'キャンセル') return;
+    cancelAll++;
+    var odId   = String(r[C_OD    ]||'').trim();
+    var reason = C_CANCEL>=0 ? String(r[C_CANCEL]||'').trim() : '';
+    var memo   = C_MEMO  >=0 ? String(r[C_MEMO  ]||'').trim() : '';
+    if (reason) {
+      reasonFilled++;
+      L('  ' + odId + ':');
+      L('    理由: "' + reason + '"');
+      L('    メモ: "' + memo   + '"');
+    } else {
+      reasonEmpty++;
+      L('  ' + odId + ': (空)');
+    }
+  });
+
+  // ─── [3] 数値検証 ───
+  L('');
+  L('════════════════════════════════════');
+  L('[3] 数値検証');
+  L('════════════════════════════════════');
+  L('行数: ' + numRows + ' ' + (numRows===172 ? 'OK' : 'NG!'));
+  L('列数: ' + omCols  + ' ' + (omCols ===38  ? 'OK' : 'NG!'));
+  L('');
+  L('キャンセル計: ' + cancelAll + '件 / 理由あり: ' + reasonFilled + '件 / 空欄: ' + reasonEmpty + '件');
+  L(cancelAll===44 && reasonFilled===14 && reasonEmpty===30 ? '→ 件数 OK' : '★ 件数 NG!');
+  L('');
+  L('金額列:');
+  L('  明細合計:   ' + snap.sub);
+  L('  送料:       ' + snap.ship);
+  L('  関税:       ' + snap.tax);
+  L('  その他手数料: ' + snap.other);
+  L('  値引き:     ' + snap.disc);
+  L('  請求総額:   ' + snap.tot);
+  var amtOK = (snap.sub===76999169.5 && snap.ship===3158305 && snap.tax===4400 &&
+               snap.other===7730 && snap.disc===30200 && snap.tot===80139404.5);
+  L(amtOK ? '→ 全項目 DRY RUN値と一致 OK' : '★ 金額変化あり NG!');
+  L('');
+  L('=== verifyCancelReason 完了 ===');
+  return out.join('\n');
+}
