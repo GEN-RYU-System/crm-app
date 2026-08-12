@@ -4945,8 +4945,9 @@ function investigateSalesAudit8() {
     var status = String(r[0]||'').trim();    // col1
     var name   = String(r[7]||'').trim();    // col8 商品名
 
-    // オーダー管理と照合
-    var om = omByInv[inv];
+    // オーダー管理と照合（売上データの -NN サフィックスも除去して検索）
+    var baseInv = inv.replace(/-\d+$/, '');
+    var om = omByInv[inv] || omByInv[baseInv];
     var result, diff;
     if (om) {
       diff = om.total - sdVal;
