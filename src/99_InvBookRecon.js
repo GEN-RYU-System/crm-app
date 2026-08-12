@@ -2901,3 +2901,193 @@ function investigatePMColumns() {
   L('=== investigatePMColumns 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// DRY RUN: 大分類/作品/メーカーマスタ新設 + 商品マスタ3列追加
+// ============================================================
+function dryRunMasterSetup() {
+  var out = [];
+  function L(s) { out.push(s); }
+
+  L('=== dryRunMasterSetup ===');
+  L('※ DRY RUN - 書き込み一切なし');
+  L('');
+
+  // ─── マスタ定義 ───
+  var DIV = [
+    ['div_id','大分類名','説明','有効'],
+    ['DIV01','TCG','トレーディングカード','TRUE'],
+    ['DIV02','Figure','フィギュア','TRUE'],
+    ['DIV03','Goods','グッズ・雑貨','TRUE']
+  ];
+  var IP = [
+    ['ip_id','作品名','別名','有効'],
+    ['IP001','Pokemon','ポケモン, ポケットモンスター','TRUE'],
+    ['IP002','One Piece','ワンピース','TRUE'],
+    ['IP003','Dragon Ball','ドラゴンボール','TRUE'],
+    ['IP004','Yu-Gi-Oh','遊戯王','TRUE'],
+    ['IP005','Union Arena','ユニオンアリーナ','TRUE'],
+    ['IP006','GUNDAM','GUNDUM, ガンダム','TRUE'],
+    ['IP007','Weiss Schwarz','Weiss Shwarz, ヴァイスシュヴァルツ','TRUE'],
+    ['IP008','Digimon','','TRUE'],
+    ['IP009','hololive','','TRUE'],
+    ['IP010','LORCANA','','TRUE'],
+    ['IP011','Xross Stars','','TRUE']
+  ];
+  var MK = [
+    ['mk_id','メーカー名','別名','有効'],
+    ['MK001','The Pokemon Company','ポケモン','TRUE'],
+    ['MK002','Bandai','バンダイ','TRUE'],
+    ['MK003','Takara Tomy','タカラトミー','TRUE'],
+    ['MK004','Bushiroad','ブシロード','TRUE'],
+    ['MK005','Konami','コナミ','TRUE']
+  ];
+
+  // ─── Category → ip_id / mk_id マッピング ───
+  var CAT_IP = {
+    'Pokemon':         'IP001',
+    'One Piece':       'IP002',
+    'Dragon Ball':     'IP003',
+    'Yu-Gi-Oh':        'IP004',
+    'Union Arena':     'IP005',
+    'GUNDUM':          'IP006',
+    'Weiss Shwarz':    'IP007',
+    'Weiss Shwarz Rose':'IP007'   // ブランドライン → IP007に寄せ
+  };
+  var CAT_MK = {
+    'Pokemon':         'MK001',
+    'One Piece':       'MK002',
+    'Dragon Ball':     'MK002',
+    'GUNDUM':          'MK002',
+    'Weiss Shwarz':    'MK004',
+    'Weiss Shwarz Rose':'MK004',
+    'Yu-Gi-Oh':        'MK005',
+    'Union Arena':     'MK004'
+  };
+
+  // ─── [1] 大分類マスタ ───
+  L('════════════════════════════════════');
+  L('[1] 大分類マスタ（新規シート）');
+  L('════════════════════════════════════');
+  DIV.forEach(function(r){ L('  ' + r.join(' | ')); });
+  L('');
+
+  // ─── [2] 作品マスタ ───
+  L('════════════════════════════════════');
+  L('[2] 作品マスタ（新規シート）');
+  L('════════════════════════════════════');
+  IP.forEach(function(r){ L('  ' + r.join(' | ')); });
+  L('');
+  L('  ■ Weiss Shwarz Rose の扱い（提案）:');
+  L('    「Weiss Shwarz Rose」はIPではなくBushiroadのブランドライン。');
+  L('    → ip_id は IP007 に統一。');
+  L('    → Rose区分が必要な場合: 既存 col2「Category」が');
+  L('      "Weiss Shwarz" / "Weiss Shwarz Rose" を既に区別しているため');
+  L('      追加列不要。IPでフィルタ後 col2 でサブフィルタする。');
+  L('    → 別列（例: brand_line）を追加する案は現時点では過剰設計のため却下。');
+  L('');
+
+  // ─── [3] メーカーマスタ ───
+  L('════════════════════════════════════');
+  L('[3] メーカーマスタ（新規シート）');
+  L('════════════════════════════════════');
+  MK.forEach(function(r){ L('  ' + r.join(' | ')); });
+  L('  ※ MK003 Takara Tomy は現行229件に対応商品なし（将来用）');
+  L('');
+
+  // ─── [4] 商品マスタ 3列追加（スキーマ定義のみ）───
+  L('════════════════════════════════════');
+  L('[4] 商品マスタ 3列追加（スキーマ）');
+  L('════════════════════════════════════');
+  L('  col21（idx20）: 大分類ID  ← DIV01/DIV02/DIV03');
+  L('  col22（idx21）: 作品ID    ← IP001〜IP011');
+  L('  col23（idx22）: メーカーID ← MK001〜MK005');
+  L('  ※ 既存 col1〜col20（idx0〜idx19）は一切変更しない');
+  L('');
+
+  // ─── [5] 全229件 割当DRY RUN ───
+  L('════════════════════════════════════');
+  L('[5] 全229件 割当DRY RUN');
+  L('════════════════════════════════════');
+
+  var ss = SpreadsheetApp.openById(INV_BOOK_ID);
+  var pmSh = ss.getSheetByName('商品マスタ');
+  var data = pmSh.getDataRange().getValues();
+  var rows = data.slice(1);  // skip header
+
+  var unresolved = [];
+  var kcPatch = [];  // PM0229 カテゴリ分類 空欄補完
+  var ipCount = {}, mkCount = {}, divCount = {};
+
+  L('  pid      | Category             | div_id | ip_id | mk_id | 備考');
+  L('  ' + Array(80).join('-'));
+
+  rows.forEach(function(r) {
+    var pid  = String(r[0]  || '').trim();
+    var cat  = String(r[1]  || '').trim();
+    var kc   = String(r[14] || '').trim();
+    var div  = 'DIV01';  // 全件TCG（フィギュア・グッズ0件確認済み）
+    var ip   = CAT_IP[cat] || '';
+    var mk   = CAT_MK[cat] || '';
+    var note = [];
+
+    if (!ip) { note.push('ip未解決'); }
+    if (!mk) { note.push('mk未解決'); }
+    if (!kc) { note.push('カテゴリ分類空欄→Single補完'); kcPatch.push(pid); }
+
+    divCount[div] = (divCount[div] || 0) + 1;
+    if (ip) ipCount[ip] = (ipCount[ip] || 0) + 1;
+    if (mk) mkCount[mk] = (mkCount[mk] || 0) + 1;
+    if (note.length > 0) unresolved.push({ pid: pid, cat: cat, note: note.join(', ') });
+
+    var catPad = (cat + Array(22).join(' ')).slice(0, 20);
+    L('  ' + pid + ' | ' + catPad + ' | ' + div + ' | ' + (ip||'????') + ' | ' + (mk||'?????') + (note.length ? ' | ⚠ ' + note.join(', ') : ''));
+  });
+
+  L('');
+
+  // ─── [6] サマリ ───
+  L('════════════════════════════════════');
+  L('[6] サマリ');
+  L('════════════════════════════════════');
+  L('  総件数: ' + rows.length + '件');
+  L('');
+  L('  大分類ID 内訳:');
+  Object.keys(divCount).sort().forEach(function(k){ L('    ' + k + ': ' + divCount[k] + '件'); });
+  L('');
+  L('  作品ID 内訳:');
+  Object.keys(ipCount).sort().forEach(function(k){ L('    ' + k + ': ' + ipCount[k] + '件'); });
+  L('');
+  L('  メーカーID 内訳:');
+  Object.keys(mkCount).sort().forEach(function(k){ L('    ' + k + ': ' + mkCount[k] + '件'); });
+  L('');
+
+  // ─── [7] 未解決・要確認 ───
+  L('════════════════════════════════════');
+  L('[7] 未解決・要確認');
+  L('════════════════════════════════════');
+  if (unresolved.length === 0) {
+    L('  未解決: 0件 ✓');
+  } else {
+    L('  未解決 ' + unresolved.length + '件:');
+    unresolved.forEach(function(u){
+      L('  ' + u.pid + ' | cat="' + u.cat + '" | ' + u.note);
+    });
+  }
+  L('');
+
+  // ─── [8] カテゴリ分類 空欄補完 ───
+  L('════════════════════════════════════');
+  L('[8] col15「カテゴリ分類」空欄補完（"Single"に設定）');
+  L('════════════════════════════════════');
+  if (kcPatch.length === 0) {
+    L('  空欄なし（補完不要）');
+  } else {
+    kcPatch.forEach(function(pid){ L('  ' + pid + ': (空欄) → "Single"'); });
+  }
+  L('');
+  L('  ※ 検証予定: 既存20列不変・229行維持・重複ID0件');
+  L('');
+  L('=== dryRunMasterSetup 完了 ===');
+  return out.join('\n');
+}
