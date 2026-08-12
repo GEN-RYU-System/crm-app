@@ -5133,3 +5133,56 @@ function diagAndFixOrderTotals() {
   L('=== diagAndFixOrderTotals 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// hardFixOrderTotals — 正値を直接書き込み（読み取りなし）
+// ============================================================
+function hardFixOrderTotals() {
+  var out = [];
+  function L(s){ out.push(s); }
+  L('=== hardFixOrderTotals ===');
+
+  var crmSS = getSpreadsheet();
+  var omSh  = crmSS.getSheetByName('オーダー管理');
+
+  // diagAndFixOrderTotals で判明したシート行番号を使用
+  // OD-00046: row47  → 既に正値(5500) → スキップ
+  // OD-00107: row108 → col35(値引き)=29000 / col14(請求総額)=81400
+  // OD-00123: row124 → col34(その他手数料)=7730 / col14(請求総額)=56380
+  // OD-00132: row133 → col35(値引き)=1200  / col14(請求総額)=693000
+
+  var changes = [
+    { odId: 'OD-00107', row: 108, col34: 0,    col35: 29000, col14: 81400  },
+    { odId: 'OD-00123', row: 124, col34: 7730,  col35: 0,    col14: 56380  },
+    { odId: 'OD-00132', row: 133, col34: 0,     col35: 1200, col14: 693000 }
+  ];
+
+  changes.forEach(function(c) {
+    // col14 / col34 / col35 を同一行への個別書き込み（個別cellを直接指定）
+    var r14  = omSh.getRange(c.row, 14);
+    var r34  = omSh.getRange(c.row, 34);
+    var r35  = omSh.getRange(c.row, 35);
+
+    r34.setValue(c.col34);
+    r35.setValue(c.col35);
+    r14.setValue(c.col14);
+    SpreadsheetApp.flush();
+
+    // 個別セル再読み込みで検証
+    var v14 = parseFloat(omSh.getRange(c.row, 14).getValue()) || 0;
+    var v34 = parseFloat(omSh.getRange(c.row, 34).getValue()) || 0;
+    var v35 = parseFloat(omSh.getRange(c.row, 35).getValue()) || 0;
+    L(c.odId + ' (row=' + c.row + '):');
+    L('  col34=' + v34 + '（期待: ' + c.col34 + '）' + (v34===c.col34?' OK':' NG'));
+    L('  col35=' + v35 + '（期待: ' + c.col35 + '）' + (v35===c.col35?' OK':' NG'));
+    L('  col14=' + v14 + '（期待: ' + c.col14 + '）' + (v14===c.col14?' OK':' NG'));
+  });
+
+  // OD-00046 確認のみ
+  var v14_46 = parseFloat(omSh.getRange(47, 14).getValue()) || 0;
+  L('OD-00046 (row=47): col14=' + v14_46 + '（期待: 5500）' + (Math.abs(v14_46-5500)<1?' OK':' NG'));
+
+  L('');
+  L('=== hardFixOrderTotals 完了 ===');
+  return out.join('\n');
+}
