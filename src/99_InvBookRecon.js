@@ -4132,3 +4132,116 @@ function execOrderDetailPmId() {
   L('=== execOrderDetailPmId 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// 調査: 非商品6件 + 空行15件 詳細（読み取り専用）
+// ============================================================
+function investigateBlankAndNonProduct() {
+  var out = [];
+  function L(s) { out.push(s); }
+  L('=== investigateBlankAndNonProduct ===');
+
+  var crmSS = getSpreadsheet();
+  var olSh  = crmSS.getSheetByName('オーダー明細');
+  var numCols = olSh.getLastColumn();
+  var headers = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var CI_OL   = _npnFindCol(headers, ['明細ID','詳細ID','lineitemid','odl']);
+  var CI_OD   = _npnFindCol(headers, ['オーダーID','orderid','order_id']);
+  var CI_ROW  = _npnFindCol(headers, ['行番号','linenum','line']);
+  var CI_CAT  = _npnFindCol(headers, ['カテゴリ','category']);
+  var CI_NAME = _npnFindCol(headers, ['商品名','productname','product_name']);
+  var CI_STAT = _npnFindCol(headers, ['状態','status']);
+  var CI_SKU  = _npnFindCol(headers, ['SKU','sku']);
+  var CI_QTY  = _npnFindCol(headers, ['数量','qty','quantity']);
+  var CI_UNIT = _npnFindCol(headers, ['単価','unitprice','unit_price']);
+  var CI_SUB  = _npnFindCol(headers, ['小計','subtotal']);
+  var CI_PMID = 10;  // col11 = idx10 (商品ID)
+  if (CI_OL  < 0) CI_OL   = 0;
+  if (CI_OD  < 0) CI_OD   = 1;
+  if (CI_ROW < 0) CI_ROW  = 2;
+  if (CI_NAME< 0) CI_NAME = 4;
+  if (CI_QTY < 0) CI_QTY  = 7;
+  if (CI_UNIT< 0) CI_UNIT = 8;
+  if (CI_SUB < 0) CI_SUB  = 9;
+
+  var olData = olSh.getRange(2, 1, olSh.getLastRow() - 1, numCols).getValues();
+
+  // オーダーID → 含まれる明細一覧 を事前構築
+  var odToLines = {};
+  olData.forEach(function(r, i) {
+    var odId = String(r[CI_OD] || '').trim();
+    var name = String(r[CI_NAME] || '').trim();
+    if (!odToLines[odId]) odToLines[odId] = [];
+    odToLines[odId].push({ rowNum: i + 2, odlId: String(r[CI_OL]||'').trim(), name: name });
+  });
+
+  // 分類ヒューリスティック
+  function classify(name) {
+    var n = name.toLowerCase();
+    if (/shipping|freight|delivery/.test(n)) return '送料';
+    if (/customs|duty|tariff|関税/.test(n)) return '関税';
+    if (/discount|値引き|割引/.test(n)) return '値引き';
+    if (/mpf|merchandise processing|ddp|handling fee|surcharge/.test(n)) return 'その他手数料';
+    return '要確認';
+  }
+
+  // ─── [1] 非商品6件 ───
+  L('');
+  L('════════════════════════════════════');
+  L('[1] 非商品6件 詳細');
+  L('════════════════════════════════════');
+  var nonProducts = olData.filter(function(r) {
+    var name  = String(r[CI_NAME] || '').trim();
+    var pmId  = String(r[CI_PMID] || '').trim();
+    return name && !pmId;
+  });
+  L('件数: ' + nonProducts.length + '件');
+  L('');
+  nonProducts.forEach(function(r) {
+    var odlId = String(r[CI_OL]  || '').trim();
+    var odId  = String(r[CI_OD]  || '').trim();
+    var name  = String(r[CI_NAME]|| '').trim();
+    var qty   = r[CI_QTY];
+    var unit  = r[CI_UNIT];
+    var sub   = r[CI_SUB];
+    var cls   = classify(name);
+    L('  明細ID: ' + odlId);
+    L('  オーダーID: ' + odId);
+    L('  商品名: "' + name + '"');
+    L('  数量: ' + qty + ' / 単価: ' + unit + ' / 小計: ' + sub);
+    L('  → 分類案: ' + cls);
+    // 同オーダーの他明細
+    var sibs = (odToLines[odId] || []).filter(function(x){ return x.odlId !== odlId && x.name; });
+    L('  同オーダー他明細: ' + sibs.length + '件' + (sibs.length > 0 ? ' (' + sibs.map(function(s){ return s.odlId; }).join(', ') + ')' : ''));
+    L('');
+  });
+
+  // ─── [2] 空行15件 ───
+  L('════════════════════════════════════');
+  L('[2] 空行15件 詳細（商品名が空欄の行）');
+  L('════════════════════════════════════');
+  var blankRows = olData.filter(function(r) {
+    return !String(r[CI_NAME] || '').trim();
+  });
+  L('件数: ' + blankRows.length + '件');
+  L('');
+  blankRows.forEach(function(r) {
+    var odlId = String(r[CI_OL]  || '').trim();
+    var odId  = String(r[CI_OD]  || '').trim();
+    var rowNo = r[CI_ROW];
+    var qty   = r[CI_QTY];
+    var unit  = r[CI_UNIT];
+    var sub   = r[CI_SUB];
+    var hasSub = sub !== '' && sub !== null && sub !== undefined && parseFloat(sub) !== 0;
+    // 同オーダーの有効明細件数
+    var sibs = (odToLines[odId] || []).filter(function(x){ return x.odlId !== odlId && x.name; });
+    L('  明細ID: ' + odlId + ' | オーダーID: ' + odId + ' | 行番号: ' + rowNo);
+    L('  数量: ' + qty + ' / 単価: ' + unit + ' / 小計: ' + (sub === '' || sub === null || sub === undefined ? '(空)' : sub));
+    L('  金額あり: ' + (hasSub ? 'YES ← 注意' : 'no'));
+    L('  同オーダー有効明細: ' + sibs.length + '件');
+    L('');
+  });
+
+  L('=== investigateBlankAndNonProduct 完了 ===');
+  return out.join('\n');
+}
