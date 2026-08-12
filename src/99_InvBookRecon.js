@@ -5981,3 +5981,273 @@ function execOrderMgmtFix() {
   L('=== execOrderMgmtFix 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// dryRunCancelReason — キャンセル理由登録 DRY RUN
+// ============================================================
+function dryRunCancelReason() {
+  var out = [];
+  function L(s){ out.push(s); }
+  L('=== dryRunCancelReason (DRY RUN) ===');
+  L('※ 書き込み一切なし');
+
+  var OPTS = [
+    '支払期日超過（未入金）',
+    '顧客都合（予算が合わない）',
+    '顧客都合（発注ミス）',
+    '商品内容の変更のため再発行',
+    '請求書情報の修正のため再発行',
+    '商品の手配不可',
+    '決済手段の障害'
+  ];
+
+  // オーダーID → {reason: OPTS[n-1], note: '備考全文'} の確定マップ
+  var REASON_MAP = {
+    'OD-00004': { r: 1, note: '期日内に支払いいただけずキャンセル' },
+    'OD-00017': { r: 1, note: '支払い遅れによりキャンセル・デポジットのみいただいている' },
+    'OD-00013': { r: 2, note: '予算が合わずキャンセル希望' },
+    'OD-00067': { r: 3, note: '違う商品を頼んでしまったのでキャンセル→キャンセル手数料として5%の手数料をもらった。(¥871をP0009に計上)' },
+    'OD-00005': { r: 6, note: 'シュリンクなしボックスの手配が困難なためキャンセルしてシュリンク付きボックスの取引に切り替え' },
+    'OD-00051': { r: 4, note: '追加オーダーいただいたのでキャンセルして再作成(#0803)' },
+    'OD-00052': { r: 4, note: 'オーダー数量に変更があったのでキャンセルして再作成(#0808)' },
+    'OD-00065': { r: 4, note: '価格の伝え間違いが発生したので数量を調整して再作成(#0822)' },
+    'OD-00088': { r: 4, note: '他社から安い提案を受けたので価格下げて再発行(#0846)' },
+    'OD-00027': { r: 5, note: 'VAT IDを請求書に記載して欲しいとの要望があったので作り直し' },
+    'OD-00035': { r: 5, note: '請求書作り直し(#0788)' },
+    'OD-00068': { r: 5, note: '金額を間違えて発行したので破棄。P0009を再作成' },
+    'OD-00089': { r: 5, note: '請求先不明確なためキャンセルして再作成(#08440' },
+    'OD-00053': { r: 7, note: 'WISEアカウントが停まった影響でキャンセル' }
+  };
+
+  var crmSS  = getSpreadsheet();
+  var omSh   = crmSS.getSheetByName('オーダー管理');
+  var stSh   = crmSS.getSheetByName('選択肢マスタ');
+  var omCols = omSh.getLastColumn();
+  var hdrs   = omSh.getRange(1,1,1,omCols).getValues()[0].map(function(h){ return String(h||'').trim(); });
+  var data   = omSh.getRange(2,1,omSh.getLastRow()-1,omCols).getValues();
+
+  function ci(names) {
+    for (var i=0;i<names.length;i++){ var idx=hdrs.indexOf(names[i]); if(idx>=0) return idx; }
+    return -1;
+  }
+
+  var C_OD     = 0;
+  var C_ST     = ci(['ステータス']);
+  var C_SUB    = ci(['明細合計']);
+  var C_SHIP   = ci(['送料']);
+  var C_TAX    = ci(['関税']);
+  var C_TOT    = ci(['請求総額']);
+  var C_OTHER  = 33;
+  var C_DISC   = 34;
+  var C_CANCEL = ci(['キャンセル理由']);
+  var C_MEMO   = ci(['キャンセルメモ']);
+  var C_NOTE   = ci(['取引備考欄']);
+
+  L('列: キャンセル理由=col'+(C_CANCEL+1)+' キャンセルメモ=col'+(C_MEMO+1)+' 取引備考欄=col'+(C_NOTE+1));
+  L('総行数: ' + data.length + ' / 総列数: ' + omCols);
+  L('');
+
+  // ─── 選択肢マスタ DRY RUN ───
+  L('════════════════════════════════════');
+  L('[1] 選択肢マスタ「キャンセル理由」追加予定');
+  L('════════════════════════════════════');
+  var stLastCol = stSh.getLastColumn();
+  var stHdrs = stSh.getRange(1,1,1,stLastCol).getValues()[0].map(function(h){ return String(h||'').trim(); });
+  var existsInSt = stHdrs.indexOf('キャンセル理由') >= 0;
+  if (existsInSt) {
+    L('  既存 col' + (stHdrs.indexOf('キャンセル理由')+1) + ' (スキップ)');
+  } else {
+    L('  新規追加 → col' + (stLastCol+1));
+    OPTS.forEach(function(o,i){ L('    ' + (i+1) + '. ' + o); });
+  }
+
+  L('');
+  L('════════════════════════════════════');
+  L('[2] キャンセル理由付与 DRY RUN（14件）');
+  L('════════════════════════════════════');
+
+  var snap = { sub:0, ship:0, tax:0, other:0, disc:0, tot:0 };
+  var cancelCount = 0, reasonCount = 0, emptyCount = 0;
+
+  data.forEach(function(r) {
+    snap.sub   += parseFloat(r[C_SUB  ])||0;
+    snap.ship  += parseFloat(r[C_SHIP ])||0;
+    snap.tax   += parseFloat(r[C_TAX  ])||0;
+    snap.other += parseFloat(r[C_OTHER])||0;
+    snap.disc  += parseFloat(r[C_DISC ])||0;
+    snap.tot   += parseFloat(r[C_TOT  ])||0;
+
+    var odId = String(r[C_OD]||'').trim();
+    if (String(r[C_ST]||'').trim() !== 'キャンセル') return;
+    cancelCount++;
+
+    var entry = REASON_MAP[odId];
+    if (entry) {
+      reasonCount++;
+      L('  ' + odId + ' → キャンセル理由="' + OPTS[entry.r-1] + '"');
+      L('           キャンセルメモ="' + entry.note + '"');
+    } else {
+      emptyCount++;
+    }
+  });
+
+  L('');
+  L('[検証] スナップショット:');
+  L('  明細合計: ' + snap.sub);
+  L('  送料:     ' + snap.ship);
+  L('  関税:     ' + snap.tax);
+  L('  その他:   ' + snap.other);
+  L('  値引き:   ' + snap.disc);
+  L('  請求総額: ' + snap.tot);
+  L('  行数: '    + data.length);
+  L('  列数: '    + omCols);
+  L('');
+  L('キャンセル計: ' + cancelCount + '件 / 理由付与予定: ' + reasonCount + '件 / 空欄のまま: ' + emptyCount + '件');
+
+  var valid = (cancelCount===44 && reasonCount===14 && emptyCount===30);
+  L(valid ? '→ 件数チェック OK' : '★ 件数チェック NG!');
+  L('');
+  L('=== dryRunCancelReason 完了 ===');
+  return out.join('\n');
+}
+
+// ============================================================
+// execCancelReason — キャンセル理由登録 CONFIRM
+// ============================================================
+function execCancelReason() {
+  var out = [];
+  function L(s){ out.push(s); }
+  L('=== execCancelReason (CONFIRM) ===');
+
+  var OPTS = [
+    '支払期日超過（未入金）',
+    '顧客都合（予算が合わない）',
+    '顧客都合（発注ミス）',
+    '商品内容の変更のため再発行',
+    '請求書情報の修正のため再発行',
+    '商品の手配不可',
+    '決済手段の障害'
+  ];
+
+  var REASON_MAP = {
+    'OD-00004': { r: 1, note: '期日内に支払いいただけずキャンセル' },
+    'OD-00017': { r: 1, note: '支払い遅れによりキャンセル・デポジットのみいただいている' },
+    'OD-00013': { r: 2, note: '予算が合わずキャンセル希望' },
+    'OD-00067': { r: 3, note: '違う商品を頼んでしまったのでキャンセル→キャンセル手数料として5%の手数料をもらった。(¥871をP0009に計上)' },
+    'OD-00005': { r: 6, note: 'シュリンクなしボックスの手配が困難なためキャンセルしてシュリンク付きボックスの取引に切り替え' },
+    'OD-00051': { r: 4, note: '追加オーダーいただいたのでキャンセルして再作成(#0803)' },
+    'OD-00052': { r: 4, note: 'オーダー数量に変更があったのでキャンセルして再作成(#0808)' },
+    'OD-00065': { r: 4, note: '価格の伝え間違いが発生したので数量を調整して再作成(#0822)' },
+    'OD-00088': { r: 4, note: '他社から安い提案を受けたので価格下げて再発行(#0846)' },
+    'OD-00027': { r: 5, note: 'VAT IDを請求書に記載して欲しいとの要望があったので作り直し' },
+    'OD-00035': { r: 5, note: '請求書作り直し(#0788)' },
+    'OD-00068': { r: 5, note: '金額を間違えて発行したので破棄。P0009を再作成' },
+    'OD-00089': { r: 5, note: '請求先不明確なためキャンセルして再作成(#08440' },
+    'OD-00053': { r: 7, note: 'WISEアカウントが停まった影響でキャンセル' }
+  };
+
+  var crmSS  = getSpreadsheet();
+  var omSh   = crmSS.getSheetByName('オーダー管理');
+  var stSh   = crmSS.getSheetByName('選択肢マスタ');
+  var omCols = omSh.getLastColumn();
+  var hdrs   = omSh.getRange(1,1,1,omCols).getValues()[0].map(function(h){ return String(h||'').trim(); });
+  var numRows= omSh.getLastRow() - 1;
+  var data   = omSh.getRange(2,1,numRows,omCols).getValues();
+
+  function ci(names) {
+    for (var i=0;i<names.length;i++){ var idx=hdrs.indexOf(names[i]); if(idx>=0) return idx; }
+    return -1;
+  }
+
+  var C_OD     = 0;
+  var C_ST     = ci(['ステータス']);
+  var C_SUB    = ci(['明細合計']);
+  var C_SHIP   = ci(['送料']);
+  var C_TAX    = ci(['関税']);
+  var C_TOT    = ci(['請求総額']);
+  var C_OTHER  = 33;
+  var C_DISC   = 34;
+  var C_CANCEL = ci(['キャンセル理由']);
+  var C_MEMO   = ci(['キャンセルメモ']);
+
+  L('列: キャンセル理由=col'+(C_CANCEL+1)+' キャンセルメモ=col'+(C_MEMO+1));
+  L('総行数: ' + numRows + ' / 総列数: ' + omCols);
+
+  // スナップショット前
+  var snap = { sub:0, ship:0, tax:0, other:0, disc:0, tot:0 };
+  data.forEach(function(r) {
+    snap.sub   += parseFloat(r[C_SUB  ])||0;
+    snap.ship  += parseFloat(r[C_SHIP ])||0;
+    snap.tax   += parseFloat(r[C_TAX  ])||0;
+    snap.other += parseFloat(r[C_OTHER])||0;
+    snap.disc  += parseFloat(r[C_DISC ])||0;
+    snap.tot   += parseFloat(r[C_TOT  ])||0;
+  });
+
+  // ─── [1] 選択肢マスタ 追加 ───
+  var stLastCol = stSh.getLastColumn();
+  var stHdrs = stSh.getRange(1,1,1,stLastCol).getValues()[0].map(function(h){ return String(h||'').trim(); });
+  var stCancelIdx = stHdrs.indexOf('キャンセル理由');
+  if (stCancelIdx < 0) {
+    var newStCol = stLastCol + 1;
+    stSh.getRange(1, newStCol).setValue('キャンセル理由');
+    stSh.getRange(1, newStCol).setFontWeight('bold').setBackground('#4a86e8').setFontColor('#ffffff');
+    stSh.getRange(2, newStCol, OPTS.length, 1).setValues(OPTS.map(function(o){ return [o]; }));
+    SpreadsheetApp.flush();
+    L('[1] 選択肢マスタ「キャンセル理由」col' + newStCol + ' 追加 (' + OPTS.length + '値)');
+  } else {
+    L('[1] 選択肢マスタ「キャンセル理由」既存 col' + (stCancelIdx+1) + ' (スキップ)');
+  }
+
+  // ─── [2] 各行に書き込み ───
+  L('');
+  L('[2] 書き込み:');
+  var writeCount = 0, skipCount = 0;
+  for (var i=0; i<numRows; i++) {
+    var odId = String(data[i][C_OD]||'').trim();
+    if (String(data[i][C_ST]||'').trim() !== 'キャンセル') continue;
+    var entry = REASON_MAP[odId];
+    if (!entry) { skipCount++; continue; }
+    omSh.getRange(i+2, C_CANCEL+1).setValue(OPTS[entry.r-1]);
+    omSh.getRange(i+2, C_MEMO+1  ).setValue(entry.note);
+    writeCount++;
+    L('  ' + odId + ' → "' + OPTS[entry.r-1] + '" / メモ="' + entry.note.slice(0,30) + (entry.note.length>30?'...':'') + '"');
+  }
+  SpreadsheetApp.flush();
+
+  // ─── 検証 ───
+  var newData = omSh.getRange(2,1,numRows,omCols).getValues();
+  var snapAfter = { sub:0, ship:0, tax:0, other:0, disc:0, tot:0 };
+  var cancelAll=0, reasonFilled=0, reasonEmpty=0;
+  newData.forEach(function(r) {
+    snapAfter.sub   += parseFloat(r[C_SUB  ])||0;
+    snapAfter.ship  += parseFloat(r[C_SHIP ])||0;
+    snapAfter.tax   += parseFloat(r[C_TAX  ])||0;
+    snapAfter.other += parseFloat(r[C_OTHER])||0;
+    snapAfter.disc  += parseFloat(r[C_DISC ])||0;
+    snapAfter.tot   += parseFloat(r[C_TOT  ])||0;
+    if (String(r[C_ST]||'').trim() === 'キャンセル') {
+      cancelAll++;
+      var rv = String(r[C_CANCEL]||'').trim();
+      if (rv) reasonFilled++; else reasonEmpty++;
+    }
+  });
+
+  L('');
+  L('════════ 検証 ════════');
+  L('行数: ' + numRows + '件 ' + (numRows===172 ? 'OK' : 'NG!'));
+  L('列数: ' + omSh.getLastColumn() + '件 ' + (omSh.getLastColumn()===38 ? 'OK' : 'NG!'));
+  L('キャンセル計: ' + cancelAll + '件 / 理由あり: ' + reasonFilled + '件 / 空欄: ' + reasonEmpty + '件');
+  L(cancelAll===44 && reasonFilled===14 && reasonEmpty===30 ? '→ 件数チェック OK' : '★ 件数チェック NG!');
+  L('');
+  L('金額列 (前→後):');
+  L('  明細合計 ' + snap.sub   + ' → ' + snapAfter.sub   + (snap.sub  ===snapAfter.sub   ? ' OK' : ' ★NG!'));
+  L('  送料     ' + snap.ship  + ' → ' + snapAfter.ship  + (snap.ship ===snapAfter.ship  ? ' OK' : ' ★NG!'));
+  L('  関税     ' + snap.tax   + ' → ' + snapAfter.tax   + (snap.tax  ===snapAfter.tax   ? ' OK' : ' ★NG!'));
+  L('  その他   ' + snap.other + ' → ' + snapAfter.other + (snap.other===snapAfter.other ? ' OK' : ' ★NG!'));
+  L('  値引き   ' + snap.disc  + ' → ' + snapAfter.disc  + (snap.disc ===snapAfter.disc  ? ' OK' : ' ★NG!'));
+  L('  請求総額 ' + snap.tot   + ' → ' + snapAfter.tot   + (snap.tot  ===snapAfter.tot   ? ' OK' : ' ★NG!'));
+  L('');
+  L('=== execCancelReason 完了 ===');
+  return out.join('\n');
+}
