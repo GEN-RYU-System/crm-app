@@ -5230,3 +5230,81 @@ function hardFixOrderTotals2() {
   L('=== hardFixOrderTotals2 完了 ===');
   return out.join('\n');
 }
+
+// ============================================================
+// hardFixOrderTotals3 — 書式を数値に変換してから正値を書き込み
+// ============================================================
+function hardFixOrderTotals3() {
+  var out = [];
+  function L(s){ out.push(s); }
+  L('=== hardFixOrderTotals3 ===');
+
+  var ss   = SpreadsheetApp.openById(getSpreadsheet().getId());
+  var omSh = ss.getSheetByName('オーダー管理');
+  var numRows = omSh.getLastRow() - 1;  // data rows
+
+  // [1] col34/col35 全行の書式を数値に変更
+  L('[1] col34/col35 書式を数値（"0"）に変更...');
+  omSh.getRange(1, 34, numRows + 1, 2).setNumberFormat('0');
+  SpreadsheetApp.flush();
+  L('  完了');
+
+  // [2] 0 初期化（書式変更後に再設定）
+  L('[2] col34/col35 全行を 0 で再初期化...');
+  var initArr = [];
+  for (var z = 0; z < numRows; z++) initArr.push([0, 0]);
+  omSh.getRange(2, 34, numRows, 2).setValues(initArr);
+  SpreadsheetApp.flush();
+  L('  完了');
+
+  // [3] 正値を書き込み
+  L('[3] 正値書き込み...');
+  // OD-00107 row=108: col35=29000
+  // OD-00123 row=124: col34=7730
+  // OD-00132 row=133: col35=1200
+  omSh.getRange(108, 34, 1, 2).setValues([[0,     29000]]);
+  omSh.getRange(124, 34, 1, 2).setValues([[7730,  0    ]]);
+  omSh.getRange(133, 34, 1, 2).setValues([[0,     1200 ]]);
+  SpreadsheetApp.flush();
+  L('  完了');
+
+  // [4] 即時検証
+  L('[4] 検証（個別セル読み取り）:');
+  var checks = [
+    { odId: 'OD-00107', row: 108, e34: 0,    e35: 29000 },
+    { odId: 'OD-00123', row: 124, e34: 7730,  e35: 0    },
+    { odId: 'OD-00132', row: 133, e34: 0,     e35: 1200 }
+  ];
+  checks.forEach(function(c) {
+    var v34 = omSh.getRange(c.row, 34).getValue();
+    var v35 = omSh.getRange(c.row, 35).getValue();
+    var n34 = (v34 instanceof Date) ? '(DATE!)' : String(v34);
+    var n35 = (v35 instanceof Date) ? '(DATE!)' : String(v35);
+    L(c.odId + ': col34=' + n34 + '(期待:' + c.e34 + ') col35=' + n35 + '(期待:' + c.e35 + ')');
+  });
+
+  // [5] 請求総額 再計算
+  L('');
+  L('[5] 請求総額 再計算:');
+  var expected = { 108: { odId: 'OD-00107', total: 81400 },
+                   124: { odId: 'OD-00123', total: 56380 },
+                   133: { odId: 'OD-00132', total: 693000 } };
+  Object.keys(expected).forEach(function(rn_str) {
+    var rn = parseInt(rn_str);
+    var e  = expected[rn_str];
+    var sub   = Number(omSh.getRange(rn, 11).getValue()) || 0;
+    var ship  = Number(omSh.getRange(rn, 12).getValue()) || 0;
+    var tax   = Number(omSh.getRange(rn, 13).getValue()) || 0;
+    var other = Number(omSh.getRange(rn, 34).getValue()) || 0;
+    var disc  = Number(omSh.getRange(rn, 35).getValue()) || 0;
+    var newTotal = sub + ship + tax + other - disc;
+    omSh.getRange(rn, 14).setValue(newTotal);
+    SpreadsheetApp.flush();
+    L(e.odId + ': ' + sub + '+' + ship + '+' + tax + '+' + other + '-' + disc + '=' + newTotal + '（期待:' + e.total + '）' + (Math.abs(newTotal-e.total)<1?' OK':' NG'));
+  });
+
+  L('');
+  L('OD-00046 (row=47): col14=' + (Number(omSh.getRange(47, 14).getValue())||0) + '（期待:5500）');
+  L('=== hardFixOrderTotals3 完了 ===');
+  return out.join('\n');
+}
