@@ -2195,3 +2195,146 @@ function investigateBulkSinglePm() {
   L('=== investigateBulkSinglePm 完了 ===');
   return out.join('\n');
 }
+
+// ──────────────────────────────────────────────────────────
+// STEP 1: PM0178 が CRM名 "McDonald's promo" にマッチしない原因の特定
+// ──────────────────────────────────────────────────────────
+function investigatePM0178Match() {
+  var out = [];
+  function L(s) { out.push(String(s)); Logger.log(String(s)); }
+  // 文字コードを16進で表示するヘルパー
+  function charDump(s) {
+    var r = '';
+    for (var i = 0; i < s.length; i++) {
+      var cp = s.charCodeAt(i);
+      r += s[i] + '(U+' + ('0000' + cp.toString(16).toUpperCase()).slice(-4) + ')';
+    }
+    return r;
+  }
+  // アポストロフィ系文字の前後を抽出
+  function apoDump(s) {
+    var apos = [0x0027, 0x2019, 0x0060, 0x00B4, 0xFF07, 0x2018];
+    for (var i = 0; i < s.length; i++) {
+      if (apos.indexOf(s.charCodeAt(i)) >= 0) {
+        var start = Math.max(0, i - 4);
+        var end   = Math.min(s.length, i + 5);
+        return charDump(s.slice(start, end)) + ' (pos=' + i + ')';
+      }
+    }
+    return '(アポストロフィ系文字なし)';
+  }
+
+  L('=== investigatePM0178Match ===');
+
+  var crmSS, invSS;
+  try { crmSS = getSpreadsheet(); invSS = SpreadsheetApp.openById(INV_BOOK_ID); }
+  catch(e) { L('[ERROR] ' + e.message); return out.join('\n'); }
+
+  // ── [A] PM0178 の生フィールド値 ──
+  L('');
+  L('════════════════════════════════════');
+  L('[A] PM0178 生フィールド（文字コード付き）');
+  L('════════════════════════════════════');
+  var pmSh  = invSS.getSheetByName('商品マスタ');
+  var pmRaw = pmSh.getRange(2, 1, pmSh.getLastRow() - 1, 20).getValues();
+  var pm178 = null;
+  pmRaw.forEach(function(r) { if (String(r[0]||'').trim() === 'PM0178') pm178 = r; });
+
+  if (!pm178) { L('[ERROR] PM0178 が見つかりません'); return out.join('\n'); }
+
+  var en178 = String(pm178[4]  || '').trim();
+  var kw178 = String(pm178[11] || '').trim();
+  var ro178 = String(pm178[15] || '').trim();
+
+  L('EN raw: "' + en178 + '"');
+  L('EN apo: ' + apoDump(en178));
+  L('EN charDump: ' + charDump(en178));
+  L('');
+  L('KW raw: "' + kw178 + '"');
+  L('RO raw: "' + ro178 + '"');
+  L('');
+  L('EN _v3n: "' + _v3n(en178) + '"');
+  L('EN _v3b: "' + _v3b(en178) + '"');
+
+  // ── [B] CRM側 "McDonald" を含む全商品名（生値・文字コード付き）──
+  L('');
+  L('════════════════════════════════════');
+  L('[B] CRM明細 "McDonald" 含む行（生値・文字コード）');
+  L('════════════════════════════════════');
+  var olSh    = crmSS.getSheetByName('オーダー明細');
+  var numCols = olSh.getLastColumn();
+  var headers = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
+  var CI_NAME  = _npnFindCol(headers, ['商品名','productname','product_name']);
+  if (CI_NAME < 0) CI_NAME = 4;
+  var olData  = olSh.getRange(2, 1, olSh.getLastRow() - 1, numCols).getValues();
+
+  var seen = {};
+  olData.forEach(function(row) {
+    var name = String(row[CI_NAME] || '');
+    if (name.toLowerCase().indexOf('mcdonald') < 0 || seen[name]) return;
+    seen[name] = true;
+    L('');
+    L('CRM raw: "' + name + '"');
+    L('CRM apo: ' + apoDump(name));
+    L('CRM _v3n: "' + _v3n(name) + '"');
+    L('CRM _v3b: "' + _v3b(name) + '"');
+  });
+
+  // ── [C] 照合シミュレーション ──
+  L('');
+  L('════════════════════════════════════');
+  L('[C] 照合シミュレーション（Phase 0 / 1）');
+  L('════════════════════════════════════');
+  var en178n  = _v3n(en178);
+  var pb178   = _v3b(en178);
+
+  Object.keys(seen).forEach(function(crmName) {
+    var cn   = _v3n(crmName);
+    var cnNb = cn.replace(/\([^)]*\)/g,' ').replace(/\[[^\]]*\]/g,' ').replace(/\s+/g,' ').trim();
+    var cnQ  = cn.replace(/\(([^)]*)\)/g,' $1 ').replace(/\[[^\]]*\]/g,' ').replace(/\s+/g,' ').trim();
+    var cb   = _v3b(crmName);
+
+    // アポストロフィ種別
+    var apoEN  = en178.indexOf('\u2019') >= 0 ? 'U+2019 curly'
+               : en178.indexOf('\u0027') >= 0 ? 'U+0027 straight' : 'none';
+    var apoCRM = crmName.indexOf('\u2019') >= 0 ? 'U+2019 curly'
+               : crmName.indexOf('\u0027') >= 0 ? 'U+0027 straight' : 'none';
+
+    L('対象CRM: "' + crmName + '"');
+    L('  apostrophe → PM0178:' + apoEN + '  CRM:' + apoCRM);
+    L('  PM0178 directNorm(EN): "' + en178n + '"');
+    L('  Phase0 cn.indexOf  = ' + cn.indexOf(en178n));
+    L('  Phase0 cnNb.indexOf= ' + cnNb.indexOf(en178n));
+    L('  Phase0 cnQ.indexOf = ' + cnQ.indexOf(en178n));
+    L('  PM0178 base(pb178) : "' + pb178 + '"');
+    L('  CRM base(cb)       : "' + cb + '"');
+    L('  Phase1 exact       = ' + (cb === pb178));
+    L('  Phase1 cb⊃pb178    = ' + cb.indexOf(pb178));
+    L('  Phase1 pb178⊃cb    = ' + pb178.indexOf(cb));
+    L('');
+  });
+
+  // ── [D] アポストロフィ正規化を加えた修正案の検証 ──
+  L('');
+  L('════════════════════════════════════');
+  L('[D] 修正案: _v3n にアポストロフィ統一を追加した場合');
+  L('════════════════════════════════════');
+  // U+2018/2019/201A/201B/02BC/00B4/FF07 → U+0027 に統一
+  function v3nPlus(s) {
+    return _v3fw(String(s || ''))
+      .replace(/\u00e9/g, 'e').replace(/\u00c9/g, 'e')
+      .replace(/[\u2018\u2019\u201A\u201B\u02BC\u00B4\uFF07]/g, "'")
+      .toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+  var en178p = v3nPlus(en178);
+  L('PM0178 EN v3nPlus: "' + en178p + '"');
+  Object.keys(seen).forEach(function(crmName) {
+    var cnp = v3nPlus(crmName);
+    L('CRM v3nPlus: "' + cnp + '"');
+    L('  indexOf(en178p) = ' + cnp.indexOf(en178p) + '  → ' + (cnp.indexOf(en178p) >= 0 ? 'MATCH' : 'miss'));
+    L('');
+  });
+
+  L('=== investigatePM0178Match 完了 ===');
+  return out.join('\n');
+}
