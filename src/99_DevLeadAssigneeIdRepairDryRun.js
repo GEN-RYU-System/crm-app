@@ -1,10 +1,10 @@
 /**
  * DEVのリード担当者ID置換候補を、書き込まず件数だけで確認する。
  */
-const DEV_LEAD_ASSIGNEE_REPAIR_LEADS_SHEET = 'リード管理';
-const DEV_LEAD_ASSIGNEE_REPAIR_STAFF_SHEET = '担当者マスタ';
-const DEV_LEAD_ASSIGNEE_REPAIR_ID_HEADER = '担当者ID';
-const DEV_LEAD_ASSIGNEE_REPAIR_NAME_HEADERS = [
+const DEV_LEAD_ASSIGNEE_DRY_RUN_LEADS_SHEET = 'リード管理';
+const DEV_LEAD_ASSIGNEE_DRY_RUN_STAFF_SHEET = '担当者マスタ';
+const DEV_LEAD_ASSIGNEE_DRY_RUN_ID_HEADER = '担当者ID';
+const DEV_LEAD_ASSIGNEE_DRY_RUN_NAME_HEADERS = [
   'リード担当者', '営業担当者', '担当者', '担当者名'
 ];
 
@@ -13,32 +13,32 @@ function dryRunDevLeadAssigneeIdRepair() {
     throw new Error('dryRunDevLeadAssigneeIdRepair is available only in development');
   }
   try {
-    return buildDevLeadAssigneeIdRepairDryRun(getSpreadsheet());
+    return buildDevLeadAssigneeDryRun(getSpreadsheet());
   } catch (error) {
     return { success: false, errorType: 'LEAD_ASSIGNEE_ID_REPAIR_DRY_RUN_FAILED' };
   }
 }
 
-function buildDevLeadAssigneeIdRepairDryRun(spreadsheet) {
-  const leads = getDevLeadAssigneeRepairSheetData(
-    spreadsheet, DEV_LEAD_ASSIGNEE_REPAIR_LEADS_SHEET
+function buildDevLeadAssigneeDryRun(spreadsheet) {
+  const leads = getDevLeadAssigneeDryRunSheetData(
+    spreadsheet, DEV_LEAD_ASSIGNEE_DRY_RUN_LEADS_SHEET
   );
-  const staff = getDevLeadAssigneeRepairSheetData(
-    spreadsheet, DEV_LEAD_ASSIGNEE_REPAIR_STAFF_SHEET
+  const staff = getDevLeadAssigneeDryRunSheetData(
+    spreadsheet, DEV_LEAD_ASSIGNEE_DRY_RUN_STAFF_SHEET
   );
-  const leadIdIndex = requireDevLeadAssigneeRepairHeader(
-    leads.headerIndexes, DEV_LEAD_ASSIGNEE_REPAIR_ID_HEADER
+  const leadIdIndex = requireDevLeadAssigneeDryRunHeader(
+    leads.headerIndexes, DEV_LEAD_ASSIGNEE_DRY_RUN_ID_HEADER
   );
-  const staffIdIndex = requireDevLeadAssigneeRepairHeader(
-    staff.headerIndexes, DEV_LEAD_ASSIGNEE_REPAIR_ID_HEADER
+  const staffIdIndex = requireDevLeadAssigneeDryRunHeader(
+    staff.headerIndexes, DEV_LEAD_ASSIGNEE_DRY_RUN_ID_HEADER
   );
   const currentStaffIds = new Set();
   const currentStaffNames = new Map();
   staff.rows.forEach(row => {
     const staffId = row[staffIdIndex];
-    getDevLeadAssigneeRepairStaffNames(row, staff.headerIndexes).forEach(name => {
+    getDevLeadAssigneeDryRunStaffNames(row, staff.headerIndexes).forEach(name => {
       const candidates = currentStaffNames.get(name) || { ids: new Set(), unresolved: false };
-      if (isDevLeadAssigneeRepairEmpty(staffId)) {
+      if (isDevLeadAssigneeDryRunEmpty(staffId)) {
         candidates.unresolved = true;
       } else {
         candidates.ids.add(String(staffId));
@@ -46,9 +46,9 @@ function buildDevLeadAssigneeIdRepairDryRun(spreadsheet) {
       }
       currentStaffNames.set(name, candidates);
     });
-    if (!isDevLeadAssigneeRepairEmpty(staffId)) currentStaffIds.add(String(staffId));
+    if (!isDevLeadAssigneeDryRunEmpty(staffId)) currentStaffIds.add(String(staffId));
   });
-  const nameHeaders = DEV_LEAD_ASSIGNEE_REPAIR_NAME_HEADERS
+  const nameHeaders = DEV_LEAD_ASSIGNEE_DRY_RUN_NAME_HEADERS
     .filter(header => Object.prototype.hasOwnProperty.call(leads.headerIndexes, header));
   const groupsById = new Map();
   let emptyAssigneeIdCount = 0;
@@ -56,7 +56,7 @@ function buildDevLeadAssigneeIdRepairDryRun(spreadsheet) {
 
   leads.rows.forEach(row => {
     const assigneeId = row[leadIdIndex];
-    if (isDevLeadAssigneeRepairEmpty(assigneeId)) {
+    if (isDevLeadAssigneeDryRunEmpty(assigneeId)) {
       emptyAssigneeIdCount += 1;
       return;
     }
@@ -64,9 +64,9 @@ function buildDevLeadAssigneeIdRepairDryRun(spreadsheet) {
       currentStaffIdRecordCount += 1;
       return;
     }
-    const group = groupsById.get(String(assigneeId)) || createDevLeadAssigneeRepairGroup(groupsById.size + 1);
+    const group = groupsById.get(String(assigneeId)) || createDevLeadAssigneeDryRunGroup(groupsById.size + 1);
     group.orphanLeadRecordCount += 1;
-    classifyDevLeadAssigneeRepairCandidate(
+    classifyDevLeadAssigneeDryRunCandidate(
       row, leads.headerIndexes, nameHeaders, currentStaffNames, group
     );
     groupsById.set(String(assigneeId), group);
@@ -92,7 +92,7 @@ function buildDevLeadAssigneeIdRepairDryRun(spreadsheet) {
   };
 }
 
-function createDevLeadAssigneeRepairGroup(sequence) {
+function createDevLeadAssigneeDryRunGroup(sequence) {
   return {
     group: 'GROUP_' + String(sequence).padStart(2, '0'),
     orphanLeadRecordCount: 0,
@@ -106,10 +106,10 @@ function createDevLeadAssigneeRepairGroup(sequence) {
   };
 }
 
-function classifyDevLeadAssigneeRepairCandidate(row, headerIndexes, nameHeaders, names, group) {
+function classifyDevLeadAssigneeDryRunCandidate(row, headerIndexes, nameHeaders, names, group) {
   const rawName = nameHeaders.map(header => row[headerIndexes[header]])
-    .find(value => !isDevLeadAssigneeRepairEmpty(value));
-  const normalizedName = normalizeDevLeadAssigneeRepairName(rawName);
+    .find(value => !isDevLeadAssigneeDryRunEmpty(value));
+  const normalizedName = normalizeDevLeadAssigneeDryRunName(rawName);
   if (!normalizedName) {
     group.supplementalNameBlankCount += 1;
     group.pendingCount += 1;
@@ -131,11 +131,11 @@ function classifyDevLeadAssigneeRepairCandidate(row, headerIndexes, nameHeaders,
   }
 }
 
-function getDevLeadAssigneeRepairStaffNames(row, headerIndexes) {
+function getDevLeadAssigneeDryRunStaffNames(row, headerIndexes) {
   const names = new Set();
   ['氏名（日本語）', '氏名', '担当者名'].forEach(header => {
     if (Object.prototype.hasOwnProperty.call(headerIndexes, header)) {
-      const normalized = normalizeDevLeadAssigneeRepairName(row[headerIndexes[header]]);
+      const normalized = normalizeDevLeadAssigneeDryRunName(row[headerIndexes[header]]);
       if (normalized) names.add(normalized);
     }
   });
@@ -143,7 +143,7 @@ function getDevLeadAssigneeRepairStaffNames(row, headerIndexes) {
     Object.prototype.hasOwnProperty.call(headerIndexes, '苗字（日本語）') &&
     Object.prototype.hasOwnProperty.call(headerIndexes, '名前（日本語）')
   ) {
-    const normalized = normalizeDevLeadAssigneeRepairName(
+    const normalized = normalizeDevLeadAssigneeDryRunName(
       String(row[headerIndexes['苗字（日本語）']] || '') +
       String(row[headerIndexes['名前（日本語）']] || '')
     );
@@ -152,7 +152,7 @@ function getDevLeadAssigneeRepairStaffNames(row, headerIndexes) {
   return Array.from(names);
 }
 
-function getDevLeadAssigneeRepairSheetData(spreadsheet, sheetName) {
+function getDevLeadAssigneeDryRunSheetData(spreadsheet, sheetName) {
   const sheet = spreadsheet.getSheetByName(sheetName);
   if (!sheet) throw new Error('Required repair dry-run sheet is missing');
   const values = sheet.getDataRange().getValues();
@@ -160,15 +160,15 @@ function getDevLeadAssigneeRepairSheetData(spreadsheet, sheetName) {
     throw new Error('Required repair dry-run headers are missing');
   }
   return {
-    headerIndexes: getDevLeadAssigneeRepairHeaderIndexes(values[0]),
-    rows: values.slice(1).filter(row => row.some(value => !isDevLeadAssigneeRepairEmpty(value)))
+    headerIndexes: getDevLeadAssigneeDryRunHeaderIndexes(values[0]),
+    rows: values.slice(1).filter(row => row.some(value => !isDevLeadAssigneeDryRunEmpty(value)))
   };
 }
 
-function getDevLeadAssigneeRepairHeaderIndexes(headers) {
+function getDevLeadAssigneeDryRunHeaderIndexes(headers) {
   const indexes = {};
   headers.forEach((header, index) => {
-    if (isDevLeadAssigneeRepairEmpty(header)) return;
+    if (isDevLeadAssigneeDryRunEmpty(header)) return;
     if (Object.prototype.hasOwnProperty.call(indexes, header)) {
       throw new Error('Repair dry-run header is duplicated');
     }
@@ -177,18 +177,18 @@ function getDevLeadAssigneeRepairHeaderIndexes(headers) {
   return indexes;
 }
 
-function requireDevLeadAssigneeRepairHeader(headerIndexes, header) {
+function requireDevLeadAssigneeDryRunHeader(headerIndexes, header) {
   if (!Object.prototype.hasOwnProperty.call(headerIndexes, header)) {
     throw new Error('Required repair dry-run header is missing');
   }
   return headerIndexes[header];
 }
 
-function normalizeDevLeadAssigneeRepairName(value) {
-  if (isDevLeadAssigneeRepairEmpty(value)) return '';
+function normalizeDevLeadAssigneeDryRunName(value) {
+  if (isDevLeadAssigneeDryRunEmpty(value)) return '';
   return String(value).replace(/[\s　]+/g, '').toLowerCase();
 }
 
-function isDevLeadAssigneeRepairEmpty(value) {
+function isDevLeadAssigneeDryRunEmpty(value) {
   return value === '' || value === null || typeof value === 'undefined';
 }
