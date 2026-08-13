@@ -24,13 +24,13 @@ function checkExistingCustomer(email) {
     return archivedResult;
   }
 
-  // 3. アーカイブブックを検索（設定されている場合）
-  const archiveBookId = PropertiesService.getScriptProperties().getProperty('ARCHIVE_BOOK_ID');
-  if (archiveBookId) {
-    const archiveResult = searchInArchiveBook(email, archiveBookId);
-    if (archiveResult.found) {
-      return archiveResult;
-    }
+  // 3. アーカイブブックを検索（未設定なら安全のため停止）
+  const archiveResult = searchInArchiveBook(
+    email,
+    getRequiredScriptProperty('ARCHIVE_BOOK_ID')
+  );
+  if (archiveResult.found) {
+    return archiveResult;
   }
 
   return { found: false };

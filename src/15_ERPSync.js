@@ -373,29 +373,18 @@ function _getExchangeRate(currency) {
 
 /**
  * ERPスプレッドシートを取得する関数
- * PropertiesServiceからERP_SPREADSHEET_IDを取得、なければCONFIG.ERP.SPREADSHEET_IDをフォールバック
+ * ERP_SPREADSHEET_ID を必須スクリプトプロパティから取得する。
  *
  * @returns {Spreadsheet} ERPスプレッドシート
  */
 function getERPSpreadsheet() {
   try {
-    const props = PropertiesService.getScriptProperties();
-    let erpId = props.getProperty('ERP_SPREADSHEET_ID');
-
-    if (!erpId) {
-      Logger.log('警告: ERP_SPREADSHEET_IDがPropertiesServiceに未設定 - CONFIG.ERPからフォールバック');
-      erpId = CONFIG.ERP.SPREADSHEET_ID;
-    }
-
-    if (!erpId) {
-      throw new Error('ERPスプレッドシートIDが設定されていません（PropertiesServiceまたはCONFIG.ERP）');
-    }
-
-    Logger.log('ERPスプレッドシートID: ' + erpId);
+    getEnvironment();
+    const erpId = getRequiredScriptProperty('ERP_SPREADSHEET_ID');
     const erpSs = SpreadsheetApp.openById(erpId);
 
     if (!erpSs) {
-      throw new Error('ERPスプレッドシートを開けませんでした（ID: ' + erpId + '）');
+      throw new Error('ERPスプレッドシートを開けませんでした');
     }
 
     Logger.log('ERPスプレッドシート取得成功: ' + erpSs.getName());
@@ -647,25 +636,4 @@ function testGetExchangeRate() {
     usdRate: usdRate,
     eurRate: eurRate
   };
-}
-
-/**
- * PropertiesServiceにERP_SPREADSHEET_IDを設定するヘルパー関数
- */
-function setERPSpreadsheetId(spreadsheetId) {
-  try {
-    const props = PropertiesService.getScriptProperties();
-    props.setProperty('ERP_SPREADSHEET_ID', spreadsheetId);
-    Logger.log('ERP_SPREADSHEET_IDを設定しました: ' + spreadsheetId);
-    return {
-      success: true,
-      message: 'ERP_SPREADSHEET_IDを設定しました'
-    };
-  } catch (error) {
-    Logger.log('設定エラー: ' + error.message);
-    return {
-      success: false,
-      message: error.message
-    };
-  }
 }
