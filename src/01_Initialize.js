@@ -801,33 +801,9 @@ function initializeAllCRMSheets() {
       Logger.log('エラー: ' + e.message);
     }
 
-    // Phase 3: SCM同期シート作成
-    Logger.log('\n--- Phase 3: SCM同期シート作成 ---');
-    try {
-      const scmResult = initializeSCMSyncSheets();
-      if (scmResult.success) {
-        results.success.push(...scmResult.createdSheets);
-      } else {
-        results.errors.push('SCM同期: ' + scmResult.message);
-      }
-    } catch (e) {
-      results.errors.push('SCM同期: ' + e.message);
-      Logger.log('エラー: ' + e.message);
-    }
-
-    // Phase 4: ERP統合シート作成
-    Logger.log('\n--- Phase 4: ERP統合シート作成 ---');
-    try {
-      const erpResult = initializeERPIntegration();
-      if (erpResult.success) {
-        results.success.push(...erpResult.createdSheets);
-      } else {
-        results.errors.push('ERP統合: ' + erpResult.message);
-      }
-    } catch (e) {
-      results.errors.push('ERP統合: ' + e.message);
-      Logger.log('エラー: ' + e.message);
-    }
+    // ERP／SCMの旧連携は、この統合初期化から実行しない。
+    // 接続先の登録や廃止は、専用の別PRで扱う。
+    Logger.log('\n--- ERP／SCM連携はこの初期化では実行しません ---');
 
     // 結果サマリー
     Logger.log('\n========================================');
