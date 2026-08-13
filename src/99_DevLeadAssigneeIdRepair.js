@@ -20,6 +20,9 @@ function repairDevLeadAssigneeIds() {
     lock.waitLock(30000);
     lockAcquired = true;
     const plan = buildDevLeadAssigneeIdRepairPlan(getSpreadsheet());
+    if (plan.targetFormulaFound) {
+      return buildDevLeadAssigneeRepairResult(false, 'REPAIR_TARGET_FORMULA_FOUND', plan, 0);
+    }
     if (!plan.isSafeToWrite) {
       return buildDevLeadAssigneeRepairResult(false, 'REPAIR_PRECONDITION_FAILED', plan, 0);
     }
@@ -63,6 +66,9 @@ function buildDevLeadAssigneeIdRepairPlan(spreadsheet) {
   const rows = leadValues.slice(1);
   const originalTargetValues = rows.map(row => [row[leadIdIndex]]);
   const replacementValues = rows.map(row => [row[leadIdIndex]]);
+  const targetFormulaFound = leadsSheet.getRange(2, leadIdIndex + 1, rows.length, 1)
+    .getFormulas()
+    .some(row => row.some(formula => formula !== ''));
   const sourceSnapshot = rows.map(row => ({
     id: row[leadIdIndex],
     names: nameIndexes.map(index => row[index])
@@ -111,6 +117,7 @@ function buildDevLeadAssigneeIdRepairPlan(spreadsheet) {
     targetRange: leadsSheet.getRange(2, leadIdIndex + 1, rows.length, 1),
     originalTargetValues: originalTargetValues,
     replacementValues: replacementValues,
+    targetFormulaFound: targetFormulaFound,
     leadNonEmptyRecordCount: rows.filter(isDevLeadAssigneeRepairNonEmptyRow).length,
     emptyAssigneeIdCount: emptyAssigneeIdCount,
     currentStaffIdRecordCount: currentStaffIdRecordCount,
