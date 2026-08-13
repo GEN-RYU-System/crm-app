@@ -40,9 +40,18 @@ function runAndLogDevSpreadsheetStructureAudit() {
 
   try {
     const logRows = buildDevStructureAuditLogRows(audit.sheets, new Date());
+    if (logRows.length === 0) {
+      return { success: false, errorType: 'NO_AUDIT_ROWS' };
+    }
     const spreadsheet = getSpreadsheet();
     const logSheet = getOrCreateDevStructureAuditLogSheet(spreadsheet);
-    logRows.forEach(row => logSheet.appendRow(row));
+    const appendStartRow = logSheet.getLastRow() + 1;
+    logSheet.getRange(
+      appendStartRow,
+      1,
+      logRows.length,
+      DEV_STRUCTURE_AUDIT_LOG_HEADERS.length
+    ).setValues(logRows);
     return {
       success: true,
       resultType: 'AUDIT_LOG_RECORDED',
