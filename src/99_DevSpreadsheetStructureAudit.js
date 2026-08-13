@@ -20,21 +20,23 @@ function auditDevSpreadsheetSheet(sheet) {
   const headers = hasData
     ? sheet.getRange(1, 1, 1, lastColumn).getDisplayValues()[0]
     : [];
-  const dataRowCount = hasData ? Math.max(lastRow - 1, 0) : 0;
-  const dataRange = dataRowCount > 0
-    ? sheet.getRange(2, 1, dataRowCount, lastColumn)
+  const scannedDataRowCount = hasData ? Math.max(lastRow - 1, 0) : 0;
+  const dataRange = scannedDataRowCount > 0
+    ? sheet.getRange(2, 1, scannedDataRowCount, lastColumn)
     : null;
   const dataValues = dataRange ? dataRange.getValues() : [];
   const dataFormulas = dataRange ? dataRange.getFormulas() : [];
   const usedRange = hasData ? sheet.getRange(1, 1, lastRow, lastColumn) : null;
+  const completelyEmptyDataRowCount = countCompletelyEmptyRows(dataValues, dataFormulas);
 
   return {
     name: sheet.getName(),
-    dataRowCount: dataRowCount,
+    scannedDataRowCount: scannedDataRowCount,
+    completelyEmptyDataRowCount: completelyEmptyDataRowCount,
+    nonEmptyDataRowCount: scannedDataRowCount - completelyEmptyDataRowCount,
     columnCount: lastColumn,
     headers: headers,
     duplicateHeaderCount: countDuplicateHeaders(headers),
-    completelyEmptyDataRowCount: countCompletelyEmptyRows(dataValues, dataFormulas),
     formulaCellCount: countFormulaCells(usedRange ? usedRange.getFormulas() : []),
     hasFilter: sheet.getFilter() !== null,
     sheetProtectionCount: sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET).length,
@@ -103,5 +105,6 @@ function auditIdHeaders(headers, values) {
 }
 
 function isIdHeader(header) {
-  return /(?:ID|ＩＤ)/i.test(String(header));
+  const normalized = String(header).trim();
+  return /(?:ID|ＩＤ)$/i.test(normalized) || /\bID\b/i.test(normalized);
 }
