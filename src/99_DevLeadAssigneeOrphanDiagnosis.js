@@ -45,12 +45,29 @@ function buildDevLeadAssigneeOrphanDiagnosis(spreadsheet) {
   );
   const leadIdIndex = leads.headerIndexes[DEV_LEAD_ASSIGNEE_DIAGNOSIS_ID_HEADER];
   const orphanGroupsById = new Map();
+  const leadAssigneeNameHeaders = DEV_LEAD_ASSIGNEE_DIAGNOSIS_NAME_HEADERS
+    .filter(header => Object.prototype.hasOwnProperty.call(leads.headerIndexes, header));
+  const currentStaffIdsByNormalizedName = buildDevLeadAssigneeCurrentStaffNameIndex(staff);
 
   leads.rows.forEach(row => {
     const id = row[leadIdIndex];
     if (isDevLeadAssigneeDiagnosisEmpty(id) || currentStaffIds.has(String(id))) return;
-    const group = orphanGroupsById.get(String(id)) || { id: String(id), leadRecordCount: 0 };
+    const group = orphanGroupsById.get(String(id)) || {
+      id: String(id),
+      leadRecordCount: 0,
+      supplementalNameBlankCount: 0,
+      currentStaffNameUniqueMatchCount: 0,
+      currentStaffNameAmbiguousMatchCount: 0,
+      currentStaffNameMismatchCount: 0
+    };
     group.leadRecordCount += 1;
+    classifyDevLeadAssigneeSupplementalName(
+      row,
+      leads.headerIndexes,
+      leadAssigneeNameHeaders,
+      currentStaffIdsByNormalizedName,
+      group
+    );
     orphanGroupsById.set(String(id), group);
   });
 
@@ -75,16 +92,18 @@ function buildDevLeadAssigneeOrphanDiagnosis(spreadsheet) {
     groups.push({
       group: 'GROUP_' + String(groups.length + 1).padStart(2, '0'),
       leadRecordCount: group.leadRecordCount,
-      historicalStaffRecordCount: history ? history.recordCount : 0,
-      historicalStaffSheetCount: history ? history.sheetCount : 0,
+      supplementalNameBlankCount: group.supplementalNameBlankCount,
+      currentStaffNameUniqueMatchCount: group.currentStaffNameUniqueMatchCount,
+      currentStaffNameAmbiguousMatchCount: group.currentStaffNameAmbiguousMatchCount,
+      currentStaffNameMismatchCount: group.currentStaffNameMismatchCount,
+      historicalStaffIdMatchRecordCount: history ? history.recordCount : 0,
       classification: history
-        ? 'HISTORICAL_STAFF_CONFIRMED'
-        : 'INSUFFICIENT_EVIDENCE'
+        ? 'HISTORICAL_STAFF_ID_MATCH_FOUND'
+        : group.currentStaffNameUniqueMatchCount > 0
+          ? 'CURRENT_STAFF_NAME_MATCH_FOUND'
+          : 'INSUFFICIENT_EVIDENCE'
     });
   });
-
-  const leadAssigneeNameHeaders = DEV_LEAD_ASSIGNEE_DIAGNOSIS_NAME_HEADERS
-    .filter(header => Object.prototype.hasOwnProperty.call(leads.headerIndexes, header));
 
   return {
     success: true,
@@ -94,15 +113,77 @@ function buildDevLeadAssigneeOrphanDiagnosis(spreadsheet) {
     historicalStaffDataFound: historySheets.length > 0,
     historicalStaffDataSheetCount: historySheets.length,
     leadAssigneeNameHeaders: leadAssigneeNameHeaders,
-    nameComparison: leadAssigneeNameHeaders.length === 0
-      ? { available: false }
-      : { available: true, comparableRecordCount: 0, matchedCount: 0, mismatchedCount: 0, blankCount: 0 },
     overallClassification: groups.length === 0
       ? 'NO_ORPHAN_LEAD_ASSIGNEE_IDS'
-      : groups.every(group => group.classification === 'HISTORICAL_STAFF_CONFIRMED')
-        ? 'HISTORICAL_STAFF_CONFIRMED'
+      : groups.every(group => group.classification === 'HISTORICAL_STAFF_ID_MATCH_FOUND')
+        ? 'HISTORICAL_STAFF_ID_MATCH_FOUND'
         : 'INSUFFICIENT_EVIDENCE'
   };
+}
+
+function buildDevLeadAssigneeCurrentStaffNameIndex(staff) {
+  const index = new Map();
+  const idIndex = staff.headerIndexes[DEV_LEAD_ASSIGNEE_DIAGNOSIS_ID_HEADER];
+  staff.rows.forEach(row => {
+    const id = row[idIndex];
+    if (isDevLeadAssigneeDiagnosisEmpty(id)) return;
+    getDevLeadAssigneeStaffNormalizedNames(row, staff.headerIndexes).forEach(name => {
+      const ids = index.get(name) || new Set();
+      ids.add(String(id));
+      index.set(name, ids);
+    });
+  });
+  return index;
+}
+
+function getDevLeadAssigneeStaffNormalizedNames(row, headerIndexes) {
+  const names = new Set();
+  ['氏名（日本語）', '氏名', '担当者名'].forEach(header => {
+    if (Object.prototype.hasOwnProperty.call(headerIndexes, header)) {
+      const normalized = normalizeDevLeadAssigneeName(row[headerIndexes[header]]);
+      if (normalized) names.add(normalized);
+    }
+  });
+  if (
+    Object.prototype.hasOwnProperty.call(headerIndexes, '苗字（日本語）') &&
+    Object.prototype.hasOwnProperty.call(headerIndexes, '名前（日本語）')
+  ) {
+    const normalized = normalizeDevLeadAssigneeName(
+      String(row[headerIndexes['苗字（日本語）']] || '') +
+      String(row[headerIndexes['名前（日本語）']] || '')
+    );
+    if (normalized) names.add(normalized);
+  }
+  return Array.from(names);
+}
+
+function classifyDevLeadAssigneeSupplementalName(
+  row,
+  headerIndexes,
+  nameHeaders,
+  currentStaffIdsByNormalizedName,
+  group
+) {
+  const rawName = nameHeaders.map(header => row[headerIndexes[header]])
+    .find(value => !isDevLeadAssigneeDiagnosisEmpty(value));
+  const normalizedName = normalizeDevLeadAssigneeName(rawName);
+  if (!normalizedName) {
+    group.supplementalNameBlankCount += 1;
+    return;
+  }
+  const candidateIds = currentStaffIdsByNormalizedName.get(normalizedName);
+  if (!candidateIds) {
+    group.currentStaffNameMismatchCount += 1;
+  } else if (candidateIds.size === 1) {
+    group.currentStaffNameUniqueMatchCount += 1;
+  } else {
+    group.currentStaffNameAmbiguousMatchCount += 1;
+  }
+}
+
+function normalizeDevLeadAssigneeName(value) {
+  if (isDevLeadAssigneeDiagnosisEmpty(value)) return '';
+  return String(value).replace(/[\s　]+/g, '').toLowerCase();
 }
 
 function findDevLeadAssigneeHistorySheets(spreadsheet) {
@@ -156,6 +237,7 @@ function getDevLeadAssigneeDiagnosisSheetDataFromSheet(sheet, requiredHeaders) {
 function getDevLeadAssigneeDiagnosisHeaderIndexes(headers) {
   const headerIndexes = {};
   headers.forEach((header, index) => {
+    if (isDevLeadAssigneeDiagnosisEmpty(header)) return;
     if (Object.prototype.hasOwnProperty.call(headerIndexes, header)) {
       throw new Error('Diagnosis header is duplicated');
     }
