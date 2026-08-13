@@ -7,7 +7,7 @@
  *   META_PAGE_ACCESS_TOKEN  : Facebookページアクセストークン
  *   META_PAGE_ID            : FacebookページID
  *   DISCORD_WEBHOOK_URL     : Discord Webhook URL（既存プロパティを共用可）
- *   SPREADSHEET_ID          : スプレッドシートID（未設定時はgetSpreadsheet()の値を使用）
+ *   SPREADSHEET_ID          : スプレッドシートID（必須。未設定時は停止）
  */
 
 const META = {
@@ -71,18 +71,15 @@ function metaGetAppSecret()     { return getProperty('META_APP_SECRET')         
 function metaGetPageToken()     { return getProperty('META_PAGE_ACCESS_TOKEN')    || ''; }
 function metaGetPageId()        { return getProperty('META_PAGE_ID')              || ''; }
 function metaGetDiscordUrl()    { return getProperty('DISCORD_WEBHOOK_URL')       || ''; }
-function metaGetSpreadsheetId() { return getProperty('SPREADSHEET_ID')            || ''; }
+function metaGetSpreadsheetId() { return getRequiredScriptProperty('SPREADSHEET_ID'); }
 
 /**
  * Meta用スプレッドシート取得
- * SPREADSHEET_IDプロパティが設定されていれば使用、なければ既存のgetSpreadsheet()を使用
+ * SPREADSHEET_IDプロパティが必須。未設定時は停止する。
  */
 function metaGetSpreadsheet() {
-  const ssId = metaGetSpreadsheetId();
-  if (ssId) {
-    return SpreadsheetApp.openById(ssId);
-  }
-  return getSpreadsheet();
+  getEnvironment();
+  return SpreadsheetApp.openById(metaGetSpreadsheetId());
 }
 
 // ============================================================

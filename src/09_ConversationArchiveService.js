@@ -3,9 +3,6 @@
  * 会話ログのアーカイブ処理を担当
  */
 
-// アーカイブブックID
-const ARCHIVE_BOOK_ID = '1J4VFKwwV5xbEy15TrbwriFRDiYTH-YfrVTzwTQJpXpI';
-
 // アーカイブシート名
 const ARCHIVE_SHEETS = {
   LEAD_ARCHIVE: 'リード会話ログ_アーカイブ',
@@ -15,61 +12,6 @@ const ARCHIVE_SHEETS = {
   DEAL_NOT_APPLICABLE: '商談会話ログ_対象外',
   SETTINGS: CONFIG.SHEETS.SETTINGS
 };
-
-// ============================================================
-// アーカイブブック初期化（手動実行用）
-// ============================================================
-
-/**
- * アーカイブブックを初期化（手動実行用）
- */
-function setupArchiveBook() {
-  // スクリプトプロパティにアーカイブブックIDを設定
-  PropertiesService.getScriptProperties().setProperty('ARCHIVE_BOOK_ID', ARCHIVE_BOOK_ID);
-
-  try {
-    const archiveSs = SpreadsheetApp.openById(ARCHIVE_BOOK_ID);
-
-    // 既存シートを削除（Sheet1以外）
-    const existingSheets = archiveSs.getSheets();
-    existingSheets.forEach(sheet => {
-      const sheetName = sheet.getName();
-      if (sheetName !== 'Sheet1' && !Object.values(ARCHIVE_SHEETS).includes(sheetName)) {
-        try {
-          archiveSs.deleteSheet(sheet);
-        } catch (e) {
-          Logger.log('シート削除スキップ: ' + sheetName);
-        }
-      }
-    });
-
-    // 新しいシートを作成
-    Object.entries(ARCHIVE_SHEETS).forEach(([key, sheetName]) => {
-      if (sheetName === CONFIG.SHEETS.SETTINGS) {
-        createArchiveSettingsSheet(archiveSs, sheetName);
-      } else {
-        createArchiveLogSheet(archiveSs, sheetName);
-      }
-    });
-
-    // Sheet1を削除（他のシートがある場合のみ）
-    const sheet1 = archiveSs.getSheetByName('Sheet1');
-    if (sheet1 && archiveSs.getSheets().length > 1) {
-      try {
-        archiveSs.deleteSheet(sheet1);
-      } catch (e) {
-        Logger.log('Sheet1削除スキップ');
-      }
-    }
-
-    Logger.log('アーカイブブックの初期化が完了しました');
-    SpreadsheetApp.getActiveSpreadsheet().toast('アーカイブブックを初期化しました', 'セットアップ完了', 5);
-
-  } catch (e) {
-    Logger.log('アーカイブブック初期化エラー: ' + e.message);
-    throw new Error('アーカイブブックにアクセスできません: ' + e.message);
-  }
-}
 
 /**
  * アーカイブ用会話ログシートを作成
@@ -189,11 +131,7 @@ function createArchiveSettingsSheet(ss, sheetName) {
  * 月次アーカイブ処理（毎月1日AM3:00に実行）
  */
 function runMonthlyArchive() {
-  const archiveBookId = PropertiesService.getScriptProperties().getProperty('ARCHIVE_BOOK_ID');
-  if (!archiveBookId) {
-    Logger.log('アーカイブブックIDが設定されていません');
-    return;
-  }
+  getArchiveBook();
 
   // 成約・追客は90日経過後にアーカイブ
   archiveOldConversations('成約', 90);
@@ -249,11 +187,9 @@ function archiveOldConversations(status, days) {
  * 特定リードの会話ログをアーカイブ
  */
 function archiveConversationsForLead(leadId, status) {
-  const archiveBookId = PropertiesService.getScriptProperties().getProperty('ARCHIVE_BOOK_ID');
-  if (!archiveBookId) return;
+  const archiveSs = getArchiveBook();
 
   try {
-    const archiveSs = SpreadsheetApp.openById(archiveBookId);
 
     // アーカイブ先シートを決定
     let targetSheetName;
@@ -366,11 +302,9 @@ function deleteLogsFromSheet(ss, sheetName, leadId) {
  * ArchiveService.gsから呼び出される
  */
 function archiveConversationLogsForArchivedLead(leadId) {
-  const archiveBookId = PropertiesService.getScriptProperties().getProperty('ARCHIVE_BOOK_ID');
-  if (!archiveBookId) return;
+  const archiveSs = getArchiveBook();
 
   try {
-    const archiveSs = SpreadsheetApp.openById(archiveBookId);
     const targetSheet = archiveSs.getSheetByName(ARCHIVE_SHEETS.LEAD_ARCHIVE);
 
     if (!targetSheet) {
