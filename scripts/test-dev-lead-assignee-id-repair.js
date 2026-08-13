@@ -7,12 +7,22 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function expectedLeadValues(orphanCount = 59, blankIdCount = 320, currentIdCount = 0) {
+  const values = [['担当者ID', 'リード担当者', '対象外列']];
+  for (let index = 0; index < orphanCount; index += 1) {
+    values.push(['ORPHAN_' + index, '一意', 'unchanged-' + index]);
+  }
+  for (let index = 0; index < blankIdCount; index += 1) {
+    values.push(['', '空欄担当者', 'unchanged-blank-' + index]);
+  }
+  for (let index = 0; index < currentIdCount; index += 1) {
+    values.push(['CURRENT_1', '一意', 'unchanged-current-' + index]);
+  }
+  return values;
+}
+
 function createSpreadsheet(options = {}) {
-  const leadValues = clone(options.leadValues || [
-    ['担当者ID', 'リード担当者', '対象外列'],
-    ['ORPHAN_1', '一意', 'unchanged-a'],
-    ['ORPHAN_2', '一意', 'unchanged-b']
-  ]);
+  const leadValues = clone(options.leadValues || expectedLeadValues());
   const staffValues = clone(options.staffValues || [
     ['担当者ID', '苗字（日本語）', '名前（日本語）'],
     ['CURRENT_1', '一', '意']
@@ -88,12 +98,15 @@ function assertNoSensitiveValues(result) {
   });
   const result = JSON.parse(JSON.stringify(context.repairDevLeadAssigneeIds()));
   assert.equal(result.success, true);
-  assert.equal(result.replaceableCount, 2);
+  assert.equal(result.replaceableCount, 59);
   assert.equal(result.pendingCount, 0);
-  assert.equal(result.actualDataChangeCount, 2);
+  assert.equal(result.actualDataChangeCount, 59);
   assert.equal(spreadsheet.calls.writes.length, 1);
-  assert.deepEqual(spreadsheet.calls.writes[0], { row: 2, column: 1, rowCount: 2, columnCount: 1, values: [['CURRENT_1'], ['CURRENT_1']] });
-  assert.deepEqual(spreadsheet.leadValues.map(row => row[2]), ['対象外列', 'unchanged-a', 'unchanged-b']);
+  assert.equal(spreadsheet.calls.writes[0].row, 2);
+  assert.equal(spreadsheet.calls.writes[0].column, 1);
+  assert.equal(spreadsheet.calls.writes[0].rowCount, 379);
+  assert.equal(spreadsheet.calls.writes[0].columnCount, 1);
+  assert.deepEqual(spreadsheet.leadValues.map(row => row[2]), expectedLeadValues().map(row => row[2]));
   assert.equal(spreadsheet.calls.releases, 1);
   assertNoSensitiveValues(result);
 }
@@ -109,10 +122,7 @@ function assertNoSensitiveValues(result) {
 }
 
 {
-  const leadValues = [['担当者ID', 'リード担当者']];
-  for (let index = 0; index < 59; index += 1) leadValues.push(['ORPHAN_' + index, '一意']);
   const spreadsheet = createSpreadsheet({
-    leadValues: leadValues,
     staffValues: [['担当者ID', '氏名（日本語）'], ['CURRENT_1', '一意']]
   });
   const context = run({ getEnvironment: () => 'development', getSpreadsheet: () => spreadsheet });
@@ -124,6 +134,23 @@ function assertNoSensitiveValues(result) {
   assert.equal(result.actualDataChangeCount, 59);
   assert.equal(spreadsheet.calls.writes.length, 1);
 }
+
+[
+  { name: 'orphan-58', leadValues: expectedLeadValues(58) },
+  { name: 'orphan-60', leadValues: expectedLeadValues(60) },
+  { name: 'blank-count', leadValues: expectedLeadValues(59, 319) },
+  { name: 'current-id-count', leadValues: expectedLeadValues(59, 319, 1) },
+  { name: 'pending-count', leadValues: [
+    ...expectedLeadValues(58), ['ORPHAN_PENDING', '不一致', 'unchanged-pending']
+  ] }
+].forEach(testCase => {
+  const spreadsheet = createSpreadsheet({ leadValues: testCase.leadValues });
+  const context = run({ getEnvironment: () => 'development', getSpreadsheet: () => spreadsheet });
+  const result = JSON.parse(JSON.stringify(context.repairDevLeadAssigneeIds()));
+  assert.equal(result.resultType, 'REPAIR_EXPECTATION_MISMATCH', testCase.name);
+  assert.equal(result.actualDataChangeCount, 0, testCase.name);
+  assert.equal(spreadsheet.calls.writes.length, 0, testCase.name);
+});
 
 [
   {
@@ -176,7 +203,9 @@ function assertNoSensitiveValues(result) {
   assert.equal(result.resultType, 'REPAIR_WRITE_FAILED_ROLLED_BACK');
   assert.equal(result.actualDataChangeCount, 0);
   assert.equal(spreadsheet.calls.writes.length, 2);
-  assert.deepEqual(spreadsheet.calls.writes[1].values, [['ORPHAN_1'], ['ORPHAN_2']]);
+  assert.equal(spreadsheet.calls.writes[1].values.length, 379);
+  assert.deepEqual(spreadsheet.calls.writes[1].values[0], ['ORPHAN_0']);
+  assert.deepEqual(spreadsheet.calls.writes[1].values[378], ['']);
   assert.equal(spreadsheet.calls.releases, 1);
 }
 

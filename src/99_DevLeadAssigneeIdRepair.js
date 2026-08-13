@@ -8,6 +8,14 @@ const DEV_LEAD_ASSIGNEE_REPAIR_ID_HEADER = '担当者ID';
 const DEV_LEAD_ASSIGNEE_REPAIR_NAME_HEADERS = [
   'リード担当者', '営業担当者', '担当者', '担当者名'
 ];
+const DEV_LEAD_ASSIGNEE_REPAIR_EXPECTED_COUNTS = {
+  leadNonEmptyRecordCount: 379,
+  emptyAssigneeIdCount: 320,
+  currentStaffIdRecordCount: 0,
+  orphanLeadAssigneeIdCount: 59,
+  replaceableCount: 59,
+  pendingCount: 0
+};
 
 function repairDevLeadAssigneeIds() {
   if (getEnvironment() !== 'development') {
@@ -20,7 +28,10 @@ function repairDevLeadAssigneeIds() {
     lock.waitLock(30000);
     lockAcquired = true;
     const plan = buildDevLeadAssigneeIdRepairPlan(getSpreadsheet());
-    if (plan.targetFormulaFound) {
+    if (!isDevLeadAssigneeRepairExpectationMet(plan)) {
+      return buildDevLeadAssigneeRepairResult(false, 'REPAIR_EXPECTATION_MISMATCH', plan, 0);
+    }
+    if (hasDevLeadAssigneeRepairTargetFormula(plan)) {
       return buildDevLeadAssigneeRepairResult(false, 'REPAIR_TARGET_FORMULA_FOUND', plan, 0);
     }
     if (!plan.isSafeToWrite) {
@@ -47,6 +58,17 @@ function repairDevLeadAssigneeIds() {
   }
 }
 
+function isDevLeadAssigneeRepairExpectationMet(plan) {
+  return Object.keys(DEV_LEAD_ASSIGNEE_REPAIR_EXPECTED_COUNTS).every(key =>
+    plan[key] === DEV_LEAD_ASSIGNEE_REPAIR_EXPECTED_COUNTS[key]
+  ) && plan.orphanLeadAssigneeIdCount === plan.replaceableCount + plan.pendingCount;
+}
+
+function hasDevLeadAssigneeRepairTargetFormula(plan) {
+  return plan.targetRange.getFormulas()
+    .some(row => row.some(formula => formula !== ''));
+}
+
 function buildDevLeadAssigneeIdRepairPlan(spreadsheet) {
   const leadsSheet = requireDevLeadAssigneeRepairSheet(spreadsheet, DEV_LEAD_ASSIGNEE_REPAIR_SHEET);
   const staffSheet = requireDevLeadAssigneeRepairSheet(spreadsheet, DEV_LEAD_ASSIGNEE_REPAIR_STAFF_SHEET);
@@ -66,9 +88,6 @@ function buildDevLeadAssigneeIdRepairPlan(spreadsheet) {
   const rows = leadValues.slice(1);
   const originalTargetValues = rows.map(row => [row[leadIdIndex]]);
   const replacementValues = rows.map(row => [row[leadIdIndex]]);
-  const targetFormulaFound = leadsSheet.getRange(2, leadIdIndex + 1, rows.length, 1)
-    .getFormulas()
-    .some(row => row.some(formula => formula !== ''));
   const sourceSnapshot = rows.map(row => ({
     id: row[leadIdIndex],
     names: nameIndexes.map(index => row[index])
@@ -117,7 +136,6 @@ function buildDevLeadAssigneeIdRepairPlan(spreadsheet) {
     targetRange: leadsSheet.getRange(2, leadIdIndex + 1, rows.length, 1),
     originalTargetValues: originalTargetValues,
     replacementValues: replacementValues,
-    targetFormulaFound: targetFormulaFound,
     leadNonEmptyRecordCount: rows.filter(isDevLeadAssigneeRepairNonEmptyRow).length,
     emptyAssigneeIdCount: emptyAssigneeIdCount,
     currentStaffIdRecordCount: currentStaffIdRecordCount,
