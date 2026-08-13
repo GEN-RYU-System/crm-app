@@ -35,7 +35,9 @@
 
 環境分離の実装前には、DEV 設定不足時に PROD シートへフォールバックする既存実装があった。環境分離 PR はこの経路を削除し、上記の安全性を実装する。
 
-環境分離 PR では、各GASが `ENVIRONMENT`、`SPREADSHEET_ID`、`ARCHIVE_BOOK_ID`、`ERP_SPREADSHEET_ID` をスクリプトプロパティから必須取得し、未設定・不正値では停止する。SCM同期を実行する場合は `SCM_SPREADSHEET_ID` も必須とする。値はこの文書に記載しない。
+環境分離 PR では、各GASが `ENVIRONMENT`、`SPREADSHEET_ID`、`ARCHIVE_BOOK_ID` をスクリプトプロパティから必須取得し、未設定・不正値では停止する。値はこの文書に記載しない。
+
+ERP／SCM の旧機能は今回の環境分離の対象外とする。これらの接続設定がない場合は既存の停止動作を維持し、接続先のフォールバックは追加しない。ERP／SCM機能の削除は別PRで扱う。
 
 ## Secrets
 

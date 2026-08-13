@@ -52,8 +52,7 @@ function showCurrentEnvironment() {
   return {
     environment: env,
     spreadsheetConfigured: Boolean(getRequiredScriptProperty('SPREADSHEET_ID')),
-    archiveConfigured: Boolean(getRequiredScriptProperty('ARCHIVE_BOOK_ID')),
-    erpConfigured: Boolean(getRequiredScriptProperty('ERP_SPREADSHEET_ID'))
+    archiveConfigured: Boolean(getRequiredScriptProperty('ARCHIVE_BOOK_ID'))
   };
 }
 
