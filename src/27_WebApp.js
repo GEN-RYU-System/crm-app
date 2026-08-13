@@ -119,6 +119,13 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
+  // React + Vite フロントエンド基盤のDEV技術実証（認証後のみ）
+  if (page === 'frontend-poc') {
+    return HtmlService.createHtmlOutputFromFile('ReactPoc')
+      .setTitle('CRM Dashboard - Frontend POC')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
+
   // 通常のSPAレスポンス
   const template = HtmlService.createTemplateFromFile('index');
   return template.evaluate()
