@@ -1,5 +1,14 @@
 .ui-button { border: 0; border-radius: var(--radius-pill); cursor: pointer; padding: var(--space-md) var(--space-lg); font-weight: 700; }
-.ui-button:disabled { cursor: wait; opacity: .65; }
+.ui-button:disabled { cursor: wait; opacity: var(--opacity-disabled); }
 .ui-button--primary { background: var(--color-accent); color: var(--color-surface); }
 .ui-button--secondary { background: var(--color-accent-subtle); color: var(--color-accent); }
 .ui-button--danger { background: var(--color-danger); color: var(--color-surface); }
+.ui-button--ghost { background: transparent; color: var(--color-text-primary); }
+.ui-button--outline { border: var(--border-width) solid var(--color-border); background: transparent; color: var(--color-text-primary); }
+.ui-button--tab { background: transparent; color: var(--color-text-muted); }
+.ui-button--tab.ui-button--active { background: var(--color-accent-subtle); color: var(--color-accent); }
+.ui-button--sm { padding: var(--space-xs) var(--space-md); font-size: var(--font-xs); }
+.ui-button--lg { padding: var(--space-lg) var(--space-xl); font-size: var(--font-md); min-height: var(--input-height-mobile); }
+.ui-button--full { width: 100%; justify-content: center; }
+.ui-button--loading { display: inline-flex; align-items: center; gap: var(--space-sm); }
+.ui-button--icon-only { display: inline-flex; align-items: center; justify-content: center; padding: 0; min-width: var(--input-height-mobile); min-height: var(--input-height-mobile); }
