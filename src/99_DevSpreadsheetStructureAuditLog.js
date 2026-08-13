@@ -3,7 +3,7 @@
  * セル値、ID値、数式本文、例外詳細は保存・返却・ログ出力しない。
  */
 const DEV_STRUCTURE_AUDIT_LOG_SHEET_NAME = 'DEV構造監査ログ';
-const DEV_STRUCTURE_AUDIT_LOG_VERSION = '1';
+const DEV_STRUCTURE_AUDIT_LOG_VERSION = '2';
 const DEV_STRUCTURE_AUDIT_LOG_HEADERS = [
   '実行日時',
   '監査バージョン',

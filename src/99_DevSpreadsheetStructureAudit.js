@@ -44,7 +44,7 @@ function auditDevSpreadsheetSheet(sheet) {
     dataValidationCellCount: countDataValidationCells(
       usedRange ? usedRange.getDataValidations() : []
     ),
-    idHeaderIntegrity: auditIdHeaders(headers, dataValues)
+    idHeaderIntegrity: auditIdHeaders(headers, dataValues, dataFormulas)
   };
 }
 
@@ -60,9 +60,15 @@ function countDuplicateHeaders(headers) {
 }
 
 function countCompletelyEmptyRows(values, formulas) {
-  return values.filter((row, rowIndex) => row.every((value, columnIndex) =>
-    value === '' && formulas[rowIndex][columnIndex] === ''
-  )).length;
+  return values.filter((row, rowIndex) =>
+    !isNonEmptyDataRecord(row, formulas[rowIndex])
+  ).length;
+}
+
+function isNonEmptyDataRecord(values, formulas) {
+  return values.some((value, columnIndex) =>
+    value !== '' || formulas[columnIndex] !== ''
+  );
 }
 
 function countFormulaCells(formulas) {
@@ -77,13 +83,14 @@ function countDataValidationCells(validations) {
   );
 }
 
-function auditIdHeaders(headers, values) {
+function auditIdHeaders(headers, values, formulas) {
   return headers.reduce((result, header, columnIndex) => {
     if (!isIdHeader(header)) return result;
 
     const counts = {};
     let emptyCount = 0;
-    values.forEach(row => {
+    values.forEach((row, rowIndex) => {
+      if (!isNonEmptyDataRecord(row, formulas[rowIndex])) return;
       const value = row[columnIndex];
       if (value === '') {
         emptyCount += 1;
