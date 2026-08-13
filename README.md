@@ -8,6 +8,7 @@ CRM APP_DEV — Google Apps Script プロジェクト
 - `.github/workflows/deploy-dev.yml` — GitHub上でdevelopへマージ済みのPRだけを、検証済みSHAで DEV 環境へ自動配布するワークフロー。手動実行は検証済みのdevelop最新コミットの再配布だけに使え、DEV配布は同時実行せず1件ずつ行う
 - `.github/workflows/block-direct-push.yml` — GitHub上のマージ済みPRに紐づかない main / develop への push を後から検知し、CI を赤にするワークフロー
 - `.githooks/pre-push` — main / develop へのローカルpushをマージコミットを含めて拒否するフック
+- [配布の同時実行防止（標準仕様）](docs/ENVIRONMENT_AND_RELEASE_FLOW.md#配布の同時実行防止標準仕様)
 
 ## Git フック設定（クローン後に必ず実行）
 
