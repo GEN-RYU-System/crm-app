@@ -1,0 +1,5 @@
+.catalog-page__stack { display: grid; gap: var(--space-xl); }
+.catalog-page__row { display: flex; flex-wrap: wrap; gap: var(--space-md); }
+.catalog-page__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-lg); }
+.catalog-page__heading { margin: 0; font-size: var(--font-md); }
+.catalog-page__copy { margin: var(--space-sm) 0 0; color: var(--color-text-muted); }

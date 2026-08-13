@@ -1,0 +1,6 @@
+.shell-sidebar-nav { display: grid; gap: var(--space-xs); padding: var(--space-sm); }
+.shell-sidebar-nav__item { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); color: var(--color-text-muted); text-decoration: none; }
+.shell-sidebar-nav__item--active { border-radius: var(--radius-control); background: var(--color-accent-subtle); color: var(--color-accent); font-weight: 700; }
+.shell-sidebar-nav__icon { flex: 0 0 auto; }
+.shell-sidebar-nav__icon > svg { display: block; width: var(--icon-nav-size); height: var(--icon-nav-size); }
+.shell-sidebar-nav__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

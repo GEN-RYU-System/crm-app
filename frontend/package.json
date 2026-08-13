@@ -7,12 +7,15 @@
     "dev": "vite",
     "typecheck": "tsc --noEmit",
     "build": "vite build",
-    "build:gas": "npm run typecheck && npm run build && node scripts/emit-gas-html.mjs"
+    "check:design-system": "node scripts/check-design-system.mjs",
+    "build:gas": "npm run typecheck && npm run build && node scripts/emit-gas-html.mjs && npm run check:design-system"
   },
   "dependencies": {
+    "@heroicons/react": "2.2.0",
     "@vitejs/plugin-react": "4.3.4",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "react-router-dom": "^6.30.1",
     "vite": "5.4.11",
     "vite-plugin-singlefile": "2.0.1"
   },
