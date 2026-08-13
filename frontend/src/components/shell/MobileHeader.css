@@ -1,3 +1,6 @@
-.shell-mobile-header { display: flex; align-items: center; justify-content: space-between; min-height: var(--mobile-header-height); padding: var(--space-md) var(--space-lg); border-bottom: var(--border-width) solid var(--color-border); background: var(--color-surface); }
+.shell-mobile-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); min-height: var(--mobile-header-height); padding: var(--space-md) var(--space-lg); border-bottom: var(--border-width) solid var(--color-border); background: var(--color-surface); }
 .shell-mobile-header__brand { color: var(--color-accent); font-weight: 700; }
-.shell-mobile-header__catalog { color: var(--color-accent); font-size: var(--font-sm); }
+.shell-mobile-header__nav { display: flex; align-items: center; gap: var(--space-sm); }
+.shell-mobile-header__item { display: inline-flex; align-items: center; gap: var(--space-xs); color: var(--color-text-muted); font-size: var(--font-sm); text-decoration: none; }
+.shell-mobile-header__item--active { color: var(--color-accent); font-weight: 700; }
+.shell-mobile-header__item > svg { width: var(--icon-nav-size); height: var(--icon-nav-size); }
