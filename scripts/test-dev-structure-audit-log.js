@@ -5,7 +5,12 @@ const vm = require('node:vm');
 const source = fs.readFileSync('src/99_DevSpreadsheetStructureAuditLog.js', 'utf8');
 
 function createContext(overrides) {
-  return vm.createContext(Object.assign({ Date }, overrides));
+  return vm.createContext(Object.assign({
+    Date,
+    LockService: {
+      getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} })
+    }
+  }, overrides));
 }
 
 function load(context) {
@@ -88,24 +93,33 @@ function createSpreadsheet(mode) {
 
 {
   let spreadsheetOpened = false;
+  let releases = 0;
   const context = load(createContext({
     getEnvironment: () => 'development',
     auditDevSpreadsheetStructure: () => { throw new Error('audit failure'); },
-    getSpreadsheet: () => { spreadsheetOpened = true; }
+    getSpreadsheet: () => { spreadsheetOpened = true; },
+    LockService: {
+      getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => { releases += 1; } })
+    }
   }));
   assert.deepEqual(
     JSON.parse(JSON.stringify(context.runAndLogDevSpreadsheetStructureAudit())),
     { success: false, errorType: 'AUDIT_FAILED' }
   );
   assert.equal(spreadsheetOpened, false);
+  assert.equal(releases, 1);
 }
 
 {
   const spreadsheet = createSpreadsheet('new');
+  let releases = 0;
   const context = load(createContext({
     getEnvironment: () => 'development',
     auditDevSpreadsheetStructure: auditResult,
-    getSpreadsheet: () => spreadsheet
+    getSpreadsheet: () => spreadsheet,
+    LockService: {
+      getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => { releases += 1; } })
+    }
   }));
   assert.deepEqual(
     JSON.parse(JSON.stringify(context.runAndLogDevSpreadsheetStructureAudit())),
@@ -117,6 +131,7 @@ function createSpreadsheet(mode) {
   assert.equal(spreadsheet.calls.setValuesCalls[0].row, 1);
   assert.equal(spreadsheet.calls.setValuesCalls[0].rowCount, 2);
   assert.equal(spreadsheet.calls.setValuesCalls[0].columnCount, 17);
+  assert.equal(releases, 1);
 }
 
 {
@@ -136,10 +151,14 @@ function createSpreadsheet(mode) {
 
 {
   const spreadsheet = createSpreadsheet('new-failure');
+  let releases = 0;
   const context = load(createContext({
     getEnvironment: () => 'development',
     auditDevSpreadsheetStructure: auditResult,
-    getSpreadsheet: () => spreadsheet
+    getSpreadsheet: () => spreadsheet,
+    LockService: {
+      getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => { releases += 1; } })
+    }
   }));
   assert.deepEqual(
     JSON.parse(JSON.stringify(context.runAndLogDevSpreadsheetStructureAudit())),
@@ -148,6 +167,7 @@ function createSpreadsheet(mode) {
   assert.equal(spreadsheet.calls.inserted, 1);
   assert.equal(spreadsheet.calls.deleted, 1);
   assert.equal(spreadsheet.calls.setValuesCalls.length, 1);
+  assert.equal(releases, 1);
 }
 
 {
@@ -179,6 +199,30 @@ function createSpreadsheet(mode) {
     { success: false, errorType: 'NO_AUDIT_ROWS' }
   );
   assert.equal(spreadsheetOpened, false);
+}
+
+{
+  let audited = false;
+  let spreadsheetOpened = false;
+  let released = false;
+  const context = load(createContext({
+    getEnvironment: () => 'development',
+    auditDevSpreadsheetStructure: () => { audited = true; },
+    getSpreadsheet: () => { spreadsheetOpened = true; },
+    LockService: {
+      getScriptLock: () => ({
+        waitLock: () => { throw new Error('lock unavailable'); },
+        releaseLock: () => { released = true; }
+      })
+    }
+  }));
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(context.runAndLogDevSpreadsheetStructureAudit())),
+    { success: false, errorType: 'AUDIT_LOCK_UNAVAILABLE' }
+  );
+  assert.equal(audited, false);
+  assert.equal(spreadsheetOpened, false);
+  assert.equal(released, false);
 }
 
 console.log('PASS: DEV structure audit log unit checks');
