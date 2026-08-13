@@ -5,7 +5,12 @@ const vm = require('node:vm');
 const source = fs.readFileSync('src/99_DevSpreadsheetStructureAuditLog.js', 'utf8');
 
 function createContext(overrides) {
-  return vm.createContext(Object.assign({ Date }, overrides));
+  return vm.createContext(Object.assign({
+    Date,
+    LockService: {
+      getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} })
+    }
+  }, overrides));
 }
 
 function load(context) {
@@ -43,9 +48,9 @@ const auditLogHeaders = [
   'ID空欄数', 'ID重複値行数', '成功種別'
 ];
 
-function createSpreadsheet(hasExistingLogSheet) {
-  const calls = { inserted: 0, headerWrites: 0, logWrites: [] };
-  let sheet = hasExistingLogSheet ? createLogSheet(5) : null;
+function createSpreadsheet(mode) {
+  const calls = { inserted: 0, deleted: 0, setValuesCalls: [] };
+  let sheet = mode.startsWith('existing') ? createLogSheet(5) : null;
 
   function createLogSheet(initialLastRow) {
     let lastRow = initialLastRow;
@@ -53,12 +58,8 @@ function createSpreadsheet(hasExistingLogSheet) {
       getLastRow: () => lastRow,
       getRange: (row, column, rowCount, columnCount) => ({
         setValues: values => {
-          if (row === 1 && rowCount === 1) {
-            calls.headerWrites += 1;
-            lastRow = 1;
-            return;
-          }
-          calls.logWrites.push({ row, column, rowCount, columnCount, values });
+          calls.setValuesCalls.push({ row, column, rowCount, columnCount, values });
+          if (mode.endsWith('failure')) throw new Error('write failure');
           lastRow += rowCount;
         },
         getDisplayValues: () => [auditLogHeaders]
@@ -73,6 +74,10 @@ function createSpreadsheet(hasExistingLogSheet) {
       calls.inserted += 1;
       sheet = createLogSheet(0);
       return sheet;
+    },
+    deleteSheet: deletedSheet => {
+      assert.equal(deletedSheet, sheet);
+      calls.deleted += 1;
     }
   };
 }
@@ -88,41 +93,49 @@ function createSpreadsheet(hasExistingLogSheet) {
 
 {
   let spreadsheetOpened = false;
+  let releases = 0;
   const context = load(createContext({
     getEnvironment: () => 'development',
     auditDevSpreadsheetStructure: () => { throw new Error('audit failure'); },
-    getSpreadsheet: () => { spreadsheetOpened = true; }
+    getSpreadsheet: () => { spreadsheetOpened = true; },
+    LockService: {
+      getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => { releases += 1; } })
+    }
   }));
   assert.deepEqual(
     JSON.parse(JSON.stringify(context.runAndLogDevSpreadsheetStructureAudit())),
     { success: false, errorType: 'AUDIT_FAILED' }
   );
   assert.equal(spreadsheetOpened, false);
+  assert.equal(releases, 1);
 }
 
 {
-  const spreadsheet = createSpreadsheet(false);
+  const spreadsheet = createSpreadsheet('new');
+  let releases = 0;
   const context = load(createContext({
     getEnvironment: () => 'development',
     auditDevSpreadsheetStructure: auditResult,
-    getSpreadsheet: () => spreadsheet
+    getSpreadsheet: () => spreadsheet,
+    LockService: {
+      getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => { releases += 1; } })
+    }
   }));
   assert.deepEqual(
     JSON.parse(JSON.stringify(context.runAndLogDevSpreadsheetStructureAudit())),
     { success: true, resultType: 'AUDIT_LOG_RECORDED', logRowCount: 1 }
   );
   assert.equal(spreadsheet.calls.inserted, 1);
-  assert.equal(spreadsheet.calls.headerWrites, 1);
-  assert.equal(spreadsheet.calls.logWrites.length, 1);
-  assert.equal(spreadsheet.calls.logWrites[0].row, 2);
-  assert.equal(spreadsheet.calls.logWrites[0].column, 1);
-  assert.equal(spreadsheet.calls.logWrites[0].rowCount, 1);
-  assert.equal(spreadsheet.calls.logWrites[0].columnCount, 17);
-  assert.equal(spreadsheet.calls.logWrites[0].values.length, 1);
+  assert.equal(spreadsheet.calls.deleted, 0);
+  assert.equal(spreadsheet.calls.setValuesCalls.length, 1);
+  assert.equal(spreadsheet.calls.setValuesCalls[0].row, 1);
+  assert.equal(spreadsheet.calls.setValuesCalls[0].rowCount, 2);
+  assert.equal(spreadsheet.calls.setValuesCalls[0].columnCount, 17);
+  assert.equal(releases, 1);
 }
 
 {
-  const spreadsheet = createSpreadsheet(true);
+  const spreadsheet = createSpreadsheet('existing');
   const context = load(createContext({
     getEnvironment: () => 'development',
     auditDevSpreadsheetStructure: auditResult,
@@ -130,9 +143,48 @@ function createSpreadsheet(hasExistingLogSheet) {
   }));
   context.runAndLogDevSpreadsheetStructureAudit();
   assert.equal(spreadsheet.calls.inserted, 0);
-  assert.equal(spreadsheet.calls.headerWrites, 0);
-  assert.equal(spreadsheet.calls.logWrites.length, 1);
-  assert.equal(spreadsheet.calls.logWrites[0].row, 6);
+  assert.equal(spreadsheet.calls.deleted, 0);
+  assert.equal(spreadsheet.calls.setValuesCalls.length, 1);
+  assert.equal(spreadsheet.calls.setValuesCalls[0].row, 6);
+  assert.equal(spreadsheet.calls.setValuesCalls[0].rowCount, 1);
+}
+
+{
+  const spreadsheet = createSpreadsheet('new-failure');
+  let releases = 0;
+  const context = load(createContext({
+    getEnvironment: () => 'development',
+    auditDevSpreadsheetStructure: auditResult,
+    getSpreadsheet: () => spreadsheet,
+    LockService: {
+      getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => { releases += 1; } })
+    }
+  }));
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(context.runAndLogDevSpreadsheetStructureAudit())),
+    { success: false, errorType: 'AUDIT_LOG_WRITE_FAILED' }
+  );
+  assert.equal(spreadsheet.calls.inserted, 1);
+  assert.equal(spreadsheet.calls.deleted, 1);
+  assert.equal(spreadsheet.calls.setValuesCalls.length, 1);
+  assert.equal(releases, 1);
+}
+
+{
+  const spreadsheet = createSpreadsheet('existing-failure');
+  const context = load(createContext({
+    getEnvironment: () => 'development',
+    auditDevSpreadsheetStructure: auditResult,
+    getSpreadsheet: () => spreadsheet
+  }));
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(context.runAndLogDevSpreadsheetStructureAudit())),
+    { success: false, errorType: 'AUDIT_LOG_WRITE_FAILED' }
+  );
+  assert.equal(spreadsheet.calls.inserted, 0);
+  assert.equal(spreadsheet.calls.deleted, 0);
+  assert.equal(spreadsheet.calls.setValuesCalls.length, 1);
+  assert.equal(spreadsheet.calls.setValuesCalls[0].row, 6);
 }
 
 {
@@ -147,6 +199,30 @@ function createSpreadsheet(hasExistingLogSheet) {
     { success: false, errorType: 'NO_AUDIT_ROWS' }
   );
   assert.equal(spreadsheetOpened, false);
+}
+
+{
+  let audited = false;
+  let spreadsheetOpened = false;
+  let released = false;
+  const context = load(createContext({
+    getEnvironment: () => 'development',
+    auditDevSpreadsheetStructure: () => { audited = true; },
+    getSpreadsheet: () => { spreadsheetOpened = true; },
+    LockService: {
+      getScriptLock: () => ({
+        waitLock: () => { throw new Error('lock unavailable'); },
+        releaseLock: () => { released = true; }
+      })
+    }
+  }));
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(context.runAndLogDevSpreadsheetStructureAudit())),
+    { success: false, errorType: 'AUDIT_LOCK_UNAVAILABLE' }
+  );
+  assert.equal(audited, false);
+  assert.equal(spreadsheetOpened, false);
+  assert.equal(released, false);
 }
 
 console.log('PASS: DEV structure audit log unit checks');
