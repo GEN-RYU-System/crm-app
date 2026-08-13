@@ -23,8 +23,7 @@ const DEV_ARCHIVE_SHEET_NAMES = [
 
 /**
  * DEV専用アーカイブブックを初期化する。
- * 既存の対象タブは、9列ヘッダーが完全に一致する場合のみ変更しない。
- * それ以外の既存内容は安全のため上書きせず停止する。
+ * 全対象タブの事前検査が通過した場合に限り、構成を変更する。
  *
  * @returns {{createdTabs: string[], existingTabs: string[], deletedDefaultSheet: boolean}}
  */
@@ -42,15 +41,21 @@ function initializeDevArchiveBook() {
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
+    const plan = inspectDevArchiveBook(archiveBook, headers);
     const result = {
       createdTabs: [],
       existingTabs: [],
       deletedDefaultSheet: false
     };
 
-    DEV_ARCHIVE_SHEET_NAMES.forEach(sheetName => {
-      const status = initializeDevArchiveSheet(archiveBook, sheetName, headers);
-      result[status].push(sheetName);
+    plan.forEach(item => {
+      if (item.action === 'create') {
+        const sheet = item.sheet || archiveBook.insertSheet(item.sheetName);
+        setDevArchiveHeaders(sheet, headers);
+        result.createdTabs.push(item.sheetName);
+      } else {
+        result.existingTabs.push(item.sheetName);
+      }
     });
 
     const defaultSheet = archiveBook.getSheetByName('Sheet1');
@@ -67,27 +72,22 @@ function initializeDevArchiveBook() {
 }
 
 /**
- * 対象タブを安全に初期化する。既存データは上書きしない。
- * @returns {'createdTabs'|'existingTabs'}
+ * 全対象タブを読み取りで検査し、実行可能な構成計画を返す。
+ * 1件でも不適合なら例外で停止し、呼び出し元は変更を開始しない。
  */
-function initializeDevArchiveSheet(archiveBook, sheetName, headers) {
-  let sheet = archiveBook.getSheetByName(sheetName);
-  if (!sheet) {
-    sheet = archiveBook.insertSheet(sheetName);
-    setDevArchiveHeaders(sheet, headers);
-    return 'createdTabs';
-  }
+function inspectDevArchiveBook(archiveBook, headers) {
+  return DEV_ARCHIVE_SHEET_NAMES.map(sheetName => {
+    const sheet = archiveBook.getSheetByName(sheetName);
+    if (!sheet || isCompletelyEmptySheet(sheet)) {
+      return { sheetName: sheetName, sheet: sheet, action: 'create' };
+    }
 
-  if (isCompletelyEmptySheet(sheet)) {
-    setDevArchiveHeaders(sheet, headers);
-    return 'createdTabs';
-  }
+    if (hasExpectedConversationLogHeaders(sheet, headers)) {
+      return { sheetName: sheetName, sheet: sheet, action: 'retain' };
+    }
 
-  if (hasExpectedConversationLogHeaders(sheet, headers)) {
-    return 'existingTabs';
-  }
-
-  throw new Error('Existing archive tab is not empty or does not have the expected header: ' + sheetName);
+    throw new Error('Existing archive tab is not empty or does not have the expected header: ' + sheetName);
+  });
 }
 
 function hasExpectedConversationLogHeaders(sheet, headers) {
