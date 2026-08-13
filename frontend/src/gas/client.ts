@@ -15,13 +15,13 @@ function toError(error: unknown): Error {
   if (typeof error === 'object' && error !== null && 'message' in error) {
     return new Error(String(error.message));
   }
-  return new Error('サーバーとの通信に失敗しました。');
+  return new Error(errorCopy.communication);
 }
 
 export function getDashboardKpis(): Promise<DashboardKpis> {
   const runner = window.google?.script?.run;
   if (!runner) {
-    return Promise.reject(new Error('Apps Script の画面として開いてください。'));
+    return Promise.reject(new Error(errorCopy.appsScriptOnly));
   }
 
   return new Promise((resolve, reject) => {
@@ -31,3 +31,4 @@ export function getDashboardKpis(): Promise<DashboardKpis> {
       .getDashboardKPIs();
   });
 }
+import { errorCopy } from '../content/ja';

@@ -1,0 +1,1 @@
+export const commonCopy = { brand: 'CRM', loading: '読み込み中', refresh: '更新', disabled: '無効', primary: '主要', secondary: '補助', danger: '危険', ghost: '控えめ', outline: '枠線', actionExample: '見本アクション' } as const;
