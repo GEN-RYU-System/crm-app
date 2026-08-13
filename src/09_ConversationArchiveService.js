@@ -13,6 +13,102 @@ const ARCHIVE_SHEETS = {
   SETTINGS: CONFIG.SHEETS.SETTINGS
 };
 
+const DEV_ARCHIVE_SHEET_NAMES = [
+  ARCHIVE_SHEETS.LEAD_ARCHIVE,
+  ARCHIVE_SHEETS.DEAL_WON,
+  ARCHIVE_SHEETS.DEAL_LOST,
+  ARCHIVE_SHEETS.DEAL_FOLLOWUP,
+  ARCHIVE_SHEETS.DEAL_NOT_APPLICABLE
+];
+
+/**
+ * DEV専用アーカイブブックを初期化する。
+ * 既存の対象タブは、9列ヘッダーが完全に一致する場合のみ変更しない。
+ * それ以外の既存内容は安全のため上書きせず停止する。
+ *
+ * @returns {{createdTabs: string[], existingTabs: string[], deletedDefaultSheet: boolean}}
+ */
+function initializeDevArchiveBook() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('initializeDevArchiveBook is available only in development');
+  }
+
+  const archiveBook = getArchiveBook();
+  const headers = HEADERS.CONVERSATION_LOG;
+  if (headers.length !== 9) {
+    throw new Error('Conversation log header definition must contain nine columns');
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const result = {
+      createdTabs: [],
+      existingTabs: [],
+      deletedDefaultSheet: false
+    };
+
+    DEV_ARCHIVE_SHEET_NAMES.forEach(sheetName => {
+      const status = initializeDevArchiveSheet(archiveBook, sheetName, headers);
+      result[status].push(sheetName);
+    });
+
+    const defaultSheet = archiveBook.getSheetByName('Sheet1');
+    if (defaultSheet && isCompletelyEmptySheet(defaultSheet)) {
+      archiveBook.deleteSheet(defaultSheet);
+      result.deletedDefaultSheet = true;
+    }
+
+    Logger.log('DEV archive book initialization completed');
+    return result;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * 対象タブを安全に初期化する。既存データは上書きしない。
+ * @returns {'createdTabs'|'existingTabs'}
+ */
+function initializeDevArchiveSheet(archiveBook, sheetName, headers) {
+  let sheet = archiveBook.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = archiveBook.insertSheet(sheetName);
+    setDevArchiveHeaders(sheet, headers);
+    return 'createdTabs';
+  }
+
+  if (isCompletelyEmptySheet(sheet)) {
+    setDevArchiveHeaders(sheet, headers);
+    return 'createdTabs';
+  }
+
+  if (hasExpectedConversationLogHeaders(sheet, headers)) {
+    return 'existingTabs';
+  }
+
+  throw new Error('Existing archive tab is not empty or does not have the expected header: ' + sheetName);
+}
+
+function hasExpectedConversationLogHeaders(sheet, headers) {
+  if (sheet.getLastColumn() !== headers.length || sheet.getLastRow() < 1) {
+    return false;
+  }
+
+  const actualHeaders = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+  return headers.every((header, index) => actualHeaders[index] === header);
+}
+
+function isCompletelyEmptySheet(sheet) {
+  return sheet.getLastRow() === 0 && sheet.getLastColumn() === 0;
+}
+
+function setDevArchiveHeaders(sheet, headers) {
+  const headerRange = sheet.getRange(1, 1, 1, headers.length);
+  headerRange.setValues([headers]);
+  headerRange.setFontWeight('bold');
+}
+
 /**
  * アーカイブ用会話ログシートを作成
  * LockService使用（TROUBLE-018対応）
