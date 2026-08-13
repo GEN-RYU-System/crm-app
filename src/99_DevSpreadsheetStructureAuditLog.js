@@ -3,7 +3,7 @@
  * セル値、ID値、数式本文、例外詳細は保存・返却・ログ出力しない。
  */
 const DEV_STRUCTURE_AUDIT_LOG_SHEET_NAME = 'DEV構造監査ログ';
-const DEV_STRUCTURE_AUDIT_LOG_VERSION = '1';
+const DEV_STRUCTURE_AUDIT_LOG_VERSION = '2';
 const DEV_STRUCTURE_AUDIT_LOG_HEADERS = [
   '実行日時',
   '監査バージョン',
@@ -31,50 +31,75 @@ function runAndLogDevSpreadsheetStructureAudit() {
     );
   }
 
-  let audit;
+  let lock;
+  let lockAcquired = false;
   try {
-    audit = auditDevSpreadsheetStructure();
-  } catch (error) {
-    return { success: false, errorType: 'AUDIT_FAILED' };
-  }
+    lock = LockService.getScriptLock();
+    lock.waitLock(30000);
+    lockAcquired = true;
 
-  try {
-    const logRows = buildDevStructureAuditLogRows(audit.sheets, new Date());
-    if (logRows.length === 0) {
-      return { success: false, errorType: 'NO_AUDIT_ROWS' };
+    let audit;
+    try {
+      audit = auditDevSpreadsheetStructure();
+    } catch (error) {
+      return { success: false, errorType: 'AUDIT_FAILED' };
     }
-    const spreadsheet = getSpreadsheet();
-    const logSheet = getOrCreateDevStructureAuditLogSheet(spreadsheet);
-    const appendStartRow = logSheet.getLastRow() + 1;
-    logSheet.getRange(
-      appendStartRow,
-      1,
-      logRows.length,
-      DEV_STRUCTURE_AUDIT_LOG_HEADERS.length
-    ).setValues(logRows);
-    return {
-      success: true,
-      resultType: 'AUDIT_LOG_RECORDED',
-      logRowCount: logRows.length
-    };
+
+    try {
+      const logRows = buildDevStructureAuditLogRows(audit.sheets, new Date());
+      if (logRows.length === 0) {
+        return { success: false, errorType: 'NO_AUDIT_ROWS' };
+      }
+      const spreadsheet = getSpreadsheet();
+      writeDevStructureAuditLogRows(spreadsheet, logRows);
+      return {
+        success: true,
+        resultType: 'AUDIT_LOG_RECORDED',
+        logRowCount: logRows.length
+      };
+    } catch (error) {
+      return { success: false, errorType: 'AUDIT_LOG_WRITE_FAILED' };
+    }
   } catch (error) {
-    return { success: false, errorType: 'AUDIT_LOG_WRITE_FAILED' };
+    return { success: false, errorType: 'AUDIT_LOCK_UNAVAILABLE' };
+  } finally {
+    if (lockAcquired) {
+      lock.releaseLock();
+    }
   }
 }
 
-function getOrCreateDevStructureAuditLogSheet(spreadsheet) {
+function writeDevStructureAuditLogRows(spreadsheet, logRows) {
   const existingSheet = spreadsheet.getSheetByName(DEV_STRUCTURE_AUDIT_LOG_SHEET_NAME);
   if (existingSheet) {
     if (!hasDevStructureAuditLogHeaders(existingSheet)) {
       throw new Error('DEV structure audit log header is invalid');
     }
-    return existingSheet;
+    existingSheet.getRange(
+      existingSheet.getLastRow() + 1,
+      1,
+      logRows.length,
+      DEV_STRUCTURE_AUDIT_LOG_HEADERS.length
+    ).setValues(logRows);
+    return;
   }
 
-  const newSheet = spreadsheet.insertSheet(DEV_STRUCTURE_AUDIT_LOG_SHEET_NAME);
-  newSheet.getRange(1, 1, 1, DEV_STRUCTURE_AUDIT_LOG_HEADERS.length)
-    .setValues([DEV_STRUCTURE_AUDIT_LOG_HEADERS]);
-  return newSheet;
+  let newSheet;
+  try {
+    newSheet = spreadsheet.insertSheet(DEV_STRUCTURE_AUDIT_LOG_SHEET_NAME);
+    const allRows = [DEV_STRUCTURE_AUDIT_LOG_HEADERS].concat(logRows);
+    newSheet.getRange(1, 1, allRows.length, DEV_STRUCTURE_AUDIT_LOG_HEADERS.length)
+      .setValues(allRows);
+  } catch (error) {
+    if (newSheet) {
+      try {
+        spreadsheet.deleteSheet(newSheet);
+      } catch (rollbackError) {
+        // Rollback failure is intentionally not exposed.
+      }
+    }
+    throw new Error('DEV structure audit log write failed');
+  }
 }
 
 function hasDevStructureAuditLogHeaders(sheet) {
