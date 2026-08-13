@@ -1,4 +1,4 @@
-name: Detect Direct Push to Main
+name: Detect Direct Push to Protected Branches
 
 # ⚠️ このワークフローは「検知・記録用」です。
 #    push を物理的に阻止するものではありません（GitHub Free private repo の制約）。
@@ -6,11 +6,11 @@ name: Detect Direct Push to Main
 #    shingo-ops/bay-auto の Branch Protection (server-side) です。
 #
 # 直 push が来た場合: CI が赤になり、履歴に残ります。
-# 対象: main への非マージコミット（親が1つ以下 = 直 push）
+# 対象: main / develop への非マージコミット（親が1つ以下 = 直 push）
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
 
 jobs:
   detect-direct-push:
@@ -26,7 +26,7 @@ jobs:
           echo "Parent count: $PARENTS"
           echo "Commit: $(git log --oneline -1)"
           if [ "$PARENTS" -lt 2 ]; then
-            echo "::error::Direct push to main DETECTED (not a merge commit)."
+            echo "::error::Direct push to ${GITHUB_REF_NAME} DETECTED (not a merge commit)."
             echo "::error::This push bypassed the pre-push hook. Use a Pull Request."
             exit 1
           fi
