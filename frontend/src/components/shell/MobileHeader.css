@@ -1,0 +1,3 @@
+.shell-mobile-header { display: flex; align-items: center; justify-content: space-between; min-height: var(--mobile-header-height); padding: var(--space-md) var(--space-lg); border-bottom: var(--border-width) solid var(--color-border); background: var(--color-surface); }
+.shell-mobile-header__brand { color: var(--color-accent); font-weight: 700; }
+.shell-mobile-header__catalog { color: var(--color-accent); font-size: var(--font-sm); }

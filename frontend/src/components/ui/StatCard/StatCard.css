@@ -1,0 +1,3 @@
+.ui-stat-card__label { color: var(--color-text-muted); font-size: var(--font-md); font-weight: 600; }
+.ui-stat-card__value { margin-top: var(--space-lg); font-size: var(--font-stat); font-weight: 750; letter-spacing: -.04em; }
+.ui-stat-card__help { margin-top: var(--space-sm); color: var(--color-text-muted); font-size: var(--font-xs); }

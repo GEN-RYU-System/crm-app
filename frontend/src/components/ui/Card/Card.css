@@ -1,0 +1,2 @@
+.ui-card { min-height: var(--layout-card-min-height); padding: var(--space-xl); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-surface); background: var(--color-surface); box-shadow: var(--shadow-raised); }
+.ui-card--outlined { box-shadow: none; }

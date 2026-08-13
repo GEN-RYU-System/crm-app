@@ -1,0 +1,2 @@
+.dashboard-page__metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-lg); }
+.dashboard-page__note { margin-top: var(--space-2xl); color: var(--color-text-muted); font-size: var(--font-sm); line-height: 1.65; }
