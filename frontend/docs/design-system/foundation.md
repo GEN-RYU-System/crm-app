@@ -15,3 +15,5 @@ App Shell本文のグラデーション背景は`--app-canvas-gradient`だけを
 React POCは`HashRouter`内で`#/dashboard`と`#/components`を表示します。モバイル下部タブは、実ページが3〜5個揃った段階で別PRで検討します。
 
 フィードバック色は、`--color-success`、`--color-warning`、`--color-info`と各`-subtle`／`-text`を用途トークンとして使用します。キーボードフォーカスは`--focus-ring-shadow`を使用し、金型・ページから色や影を再定義しません。
+
+Badgeはsoft appearanceだけを提供し、`neutral`、`info`、`success`、`warning`、`danger`の用途トークンを使用します。業務status名やstatusからvariantへの対応はBadgeに持たせず、業務画面をReactへ移行する際にCRM側で別途確定します。
