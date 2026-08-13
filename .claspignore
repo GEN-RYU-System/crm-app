@@ -5,5 +5,19 @@ docs/
 # clasp 設定ファイル自体は GAS 不要
 .clasp.json
 **/.clasp.json
+# 環境切替・本番コピー・固定IDの診断／移行関数は DEV 配布対象外
+00_SetupEnvironment.js
+14_DevEnvironmentService.js
+00_EmailColumnHelper.js
+22_SetupIntegratedSheet.js
+98_DebugLogger.js
+HealthCheck.js
+99_DataTransfer.js
+99_ERPAnalyzer.js
+99_ERPDataCleaning.js
+99_InvBookRecon.js
+99_TestFunctions.js
+check_staff_headers.js
+checkEnv.js
 .claspignore
 .gitignore

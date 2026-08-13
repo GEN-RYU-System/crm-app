@@ -463,7 +463,7 @@ function initializeERPIntegration() {
   Logger.log('========================================\n');
 
   const ss = getSpreadsheet();
-  const erpId = CONFIG.ERP.SPREADSHEET_ID;
+  const erpId = getRequiredScriptProperty('ERP_SPREADSHEET_ID');
 
   try {
     // 1. 見積書管理シート
@@ -536,7 +536,7 @@ function initializeSCMSyncSheets() {
   Logger.log('========================================\n');
 
   const ss = getSpreadsheet();
-  const scmId = PRODUCTION_IDS.SCM_SPREADSHEET_ID;
+  const scmId = getRequiredScriptProperty('SCM_SPREADSHEET_ID');
 
   try {
     // 1. 商品マスタ同期
@@ -781,7 +781,7 @@ function initializeAllCRMSheets() {
     Logger.log('\n--- Phase 1: 環境確認 ---');
     const env = showCurrentEnvironment();
     Logger.log('環境: ' + env.environment);
-    Logger.log('スプレッドシート: ' + env.spreadsheetName);
+    Logger.log('スプレッドシート設定済み: ' + env.spreadsheetConfigured);
 
     // Phase 2: CRM基本シート作成
     Logger.log('\n--- Phase 2: CRM基本シート作成 ---');
