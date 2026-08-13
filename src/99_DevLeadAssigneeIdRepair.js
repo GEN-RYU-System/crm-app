@@ -23,7 +23,7 @@ function repairDevLeadAssigneeIds() {
     if (!plan.isSafeToWrite) {
       return buildDevLeadAssigneeRepairResult(false, 'REPAIR_PRECONDITION_FAILED', plan, 0);
     }
-    if (!isDevLeadAssigneeRepairSnapshotCurrent(plan)) {
+    if (!isDevLeadAssigneeRepairSourceCurrent(plan)) {
       return buildDevLeadAssigneeRepairResult(false, 'REPAIR_SOURCE_CHANGED', plan, 0);
     }
     try {
@@ -53,6 +53,9 @@ function buildDevLeadAssigneeIdRepairPlan(spreadsheet) {
   const staffHeaders = requireDevLeadAssigneeRepairHeaders(staffValues);
   const leadIdIndex = requireDevLeadAssigneeRepairHeader(leadHeaders, DEV_LEAD_ASSIGNEE_REPAIR_ID_HEADER);
   const staffIdIndex = requireDevLeadAssigneeRepairHeader(staffHeaders, DEV_LEAD_ASSIGNEE_REPAIR_ID_HEADER);
+  const staffComparisonIndexes = getDevLeadAssigneeRepairStaffComparisonIndexes(
+    staffHeaders, staffIdIndex
+  );
   const staffByName = buildDevLeadAssigneeRepairStaffByName(staffValues.slice(1), staffHeaders, staffIdIndex);
   const nameIndexes = DEV_LEAD_ASSIGNEE_REPAIR_NAME_HEADERS
     .filter(header => Object.prototype.hasOwnProperty.call(leadHeaders, header))
@@ -100,6 +103,11 @@ function buildDevLeadAssigneeIdRepairPlan(spreadsheet) {
     leadIdIndex: leadIdIndex,
     nameIndexes: nameIndexes,
     sourceSnapshot: sourceSnapshot,
+    staffSheet: staffSheet,
+    staffComparisonIndexes: staffComparisonIndexes,
+    staffSourceSnapshot: staffValues.map(row =>
+      staffComparisonIndexes.map(index => row[index])
+    ),
     targetRange: leadsSheet.getRange(2, leadIdIndex + 1, rows.length, 1),
     originalTargetValues: originalTargetValues,
     replacementValues: replacementValues,
@@ -146,16 +154,24 @@ function resolveDevLeadAssigneeRepairCandidate(row, nameIndexes, staffNames) {
   return { status: 'UNIQUE', staffId: Array.from(ids)[0] };
 }
 
-function isDevLeadAssigneeRepairSnapshotCurrent(plan) {
+function isDevLeadAssigneeRepairSourceCurrent(plan) {
   const values = plan.leadsSheet.getDataRange().getValues().slice(1);
   if (values.length !== plan.sourceSnapshot.length) return false;
-  return values.every((row, index) => {
+  const leadsCurrent = values.every((row, index) => {
     const snapshot = plan.sourceSnapshot[index];
-    return String(row[plan.leadIdIndex]) === String(snapshot.id) &&
+    return row[plan.leadIdIndex] === snapshot.id &&
       plan.nameIndexes.every((nameIndex, namePosition) =>
-        String(row[nameIndex]) === String(snapshot.names[namePosition])
+        row[nameIndex] === snapshot.names[namePosition]
       );
   });
+  if (!leadsCurrent) return false;
+  const staffValues = plan.staffSheet.getDataRange().getValues();
+  if (staffValues.length !== plan.staffSourceSnapshot.length) return false;
+  return staffValues.every((row, rowIndex) =>
+    plan.staffComparisonIndexes.every((columnIndex, columnPosition) =>
+      row[columnIndex] === plan.staffSourceSnapshot[rowIndex][columnPosition]
+    )
+  );
 }
 
 function buildDevLeadAssigneeRepairResult(success, type, plan, actualDataChangeCount) {
@@ -221,6 +237,17 @@ function getDevLeadAssigneeRepairStaffNames(row, indexes) {
     if (name) names.add(name);
   }
   return Array.from(names);
+}
+
+function getDevLeadAssigneeRepairStaffComparisonIndexes(indexes, staffIdIndex) {
+  const comparisonIndexes = new Set([staffIdIndex]);
+  ['氏名（日本語）', '氏名', '担当者名', '苗字（日本語）', '名前（日本語）']
+    .forEach(header => {
+      if (Object.prototype.hasOwnProperty.call(indexes, header)) {
+        comparisonIndexes.add(indexes[header]);
+      }
+    });
+  return Array.from(comparisonIndexes).sort((left, right) => left - right);
 }
 
 function normalizeDevLeadAssigneeRepairName(value) {
