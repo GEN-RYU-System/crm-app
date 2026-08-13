@@ -7,40 +7,19 @@
  * 現在の環境を取得（'production' or 'development'）
  */
 function getERPEnvironment() {
-  try {
-    const props = PropertiesService.getScriptProperties();
-    return props.getProperty('ENVIRONMENT') || 'production';
-  } catch (e) {
-    return 'production';
-  }
+  return getEnvironment();
 }
 
 /**
  * 環境に応じたスプレッドシートIDを取得
  */
 function getERPSpreadsheetId() {
-  const env = getERPEnvironment();
-
-  if (env === 'development') {
-    // テスト環境: Script Propertiesから取得
-    try {
-      const props = PropertiesService.getScriptProperties();
-      const devId = props.getProperty('DEV_SPREADSHEET_ID');
-      if (devId) {
-        Logger.log('テスト環境を使用: ' + devId);
-        return devId;
-      }
-    } catch (e) {
-      Logger.log('DEV_SPREADSHEET_ID取得エラー: ' + e.message);
-    }
-  }
-
-  // 本番環境: 固定ID
-  return '1kF-o4jCrbQePktWaFEBvWhJJjRXhkuw5-AcISa4ClAk';
+  getERPEnvironment();
+  return getRequiredScriptProperty('ERP_SPREADSHEET_ID');
 }
 
 const ERP_CONFIG = {
-  SPREADSHEET_ID: getERPSpreadsheetId(),  // 環境切り替え対応
+  SPREADSHEET_ID: null,
 
   SHEETS: {
     CONFIG: { NAME: '⚙️設定', ID: 1159512127 },
@@ -152,77 +131,13 @@ function getGeminiApiKey() {
   return getERPProperty('GEMINI_API_KEY');
 }
 
-// ============================================================
-// 環境設定（テスト/本番切り替え）
-// ============================================================
-
-/**
- * テスト環境を設定
- * GASエディタから実行してテスト環境に切り替える
- */
-function setupERPTestEnvironment() {
-  const props = PropertiesService.getScriptProperties();
-  props.setProperty('ENVIRONMENT', 'development');
-  props.setProperty('DEV_SPREADSHEET_ID', '1G4ffyH8Abiki0861CjRvGiO_Ks_8wMiZKaWfujcOzvs');
-
-  Logger.log('========================================');
-  Logger.log('テスト環境を設定しました');
-  Logger.log('環境: development');
-  Logger.log('スプレッドシートID: 1G4ffyH8Abiki0861CjRvGiO_Ks_8wMiZKaWfujcOzvs');
-  Logger.log('========================================');
-
-  return {
-    success: true,
-    environment: 'development',
-    spreadsheetId: '1G4ffyH8Abiki0861CjRvGiO_Ks_8wMiZKaWfujcOzvs'
-  };
-}
-
-/**
- * 本番環境を設定
- * GASエディタから実行して本番環境に切り替える
- */
-function setupERPProductionEnvironment() {
-  const props = PropertiesService.getScriptProperties();
-  props.setProperty('ENVIRONMENT', 'production');
-
-  Logger.log('========================================');
-  Logger.log('本番環境を設定しました');
-  Logger.log('環境: production');
-  Logger.log('スプレッドシートID: 1kF-o4jCrbQePktWaFEBvWhJJjRXhkuw5-AcISa4ClAk');
-  Logger.log('========================================');
-
-  return {
-    success: true,
-    environment: 'production',
-    spreadsheetId: '1kF-o4jCrbQePktWaFEBvWhJJjRXhkuw5-AcISa4ClAk'
-  };
-}
-
 /**
  * 現在の環境情報を表示
  */
 function showERPEnvironment() {
   const env = getERPEnvironment();
-  const spreadsheetId = getERPSpreadsheetId();
-
-  Logger.log('========================================');
-  Logger.log('現在の環境情報（ERP）');
-  Logger.log('========================================');
-  Logger.log('環境: ' + env);
-  Logger.log('スプレッドシートID: ' + spreadsheetId);
-
-  try {
-    const ss = SpreadsheetApp.openById(spreadsheetId);
-    Logger.log('スプレッドシート名: ' + ss.getName());
-  } catch (e) {
-    Logger.log('スプレッドシート取得エラー: ' + e.message);
-  }
-
-  Logger.log('========================================');
-
   return {
     environment: env,
-    spreadsheetId: spreadsheetId
+    erpConfigured: Boolean(getERPSpreadsheetId())
   };
 }

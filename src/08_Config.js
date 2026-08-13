@@ -7,82 +7,41 @@
 // ============================================================
 
 /**
- * 本番環境の固定ID
- */
-const PRODUCTION_IDS = {
-  SPREADSHEET_ID: '1kF-o4jCrbQePktWaFEBvWhJJjRXhkuw5-AcISa4ClAk',
-  ARCHIVE_BOOK_ID: '1J4VFKwwV5xbEy15TrbwriFRDiYTH-YfrVTzwTQJpXpI',
-  DEV_FOLDER_ID: '1BKFjFJIxEM2j-HFaxgFuTLAcgAnRuXMi',
-  // SCM（サプライチェーン管理）スプレッドシート
-  SCM_SPREADSHEET_ID: '1IvM1lBvPRPJRaMLODHYgWwDJzu1j038hYQxrk6ipZPs'
-};
-
-/**
- * デプロイID
- */
-const DEPLOY_IDS = {
-  PRODUCTION: 'AKfycbzpeOkyBzA0kyD6T9aDE1uYVIil1z6KY0Ssc6Hta5EX7xoIAk_-EkxgmjILhN9Ceg5M',
-  TEST: 'AKfycbwGUUcdUs_L-a4c9Ux9PBPuX9X6t5YMGVnlInL5RGOq63a2QfaJUgIbNdV4ylcN0Xou2g'
-};
-
-/**
- * 現在の環境を取得（'production' or 'development'）
+ * 現在の環境を取得する。未設定・不正値は安全のため停止する。
  */
 function getEnvironment() {
-  const props = PropertiesService.getScriptProperties();
-  return props.getProperty('ENVIRONMENT') || 'production';
+  const environment = PropertiesService.getScriptProperties().getProperty('ENVIRONMENT');
+  if (environment !== 'development' && environment !== 'production') {
+    throw new Error('ENVIRONMENT must be explicitly set to development or production');
+  }
+  return environment;
 }
 
 /**
- * 環境を設定
- * @param {string} env - 'production' or 'development'
+ * 必須スクリプトプロパティを取得する。環境間フォールバックはしない。
  */
-function setEnvironment(env) {
-  if (env !== 'production' && env !== 'development') {
-    throw new Error('環境は "production" または "development" を指定してください');
+function getRequiredScriptProperty(key) {
+  const value = PropertiesService.getScriptProperties().getProperty(key);
+  if (!value) {
+    throw new Error(`Required script property is not set: ${key}`);
   }
-  const props = PropertiesService.getScriptProperties();
-  props.setProperty('ENVIRONMENT', env);
-  Logger.log('環境を ' + env + ' に設定しました');
+  return value;
 }
 
 /**
  * スプレッドシートを取得（環境に応じて切り替え）
  */
 function getSpreadsheet() {
-  const env = getEnvironment();
-  const props = PropertiesService.getScriptProperties();
-
-  if (env === 'development') {
-    const devId = props.getProperty('DEV_SPREADSHEET_ID');
-    if (!devId) {
-      Logger.log('警告: DEV_SPREADSHEET_ID が未設定のため、本番スプレッドシートを使用します');
-      return SpreadsheetApp.openById(PRODUCTION_IDS.SPREADSHEET_ID);
-    }
-    return SpreadsheetApp.openById(devId);
-  }
-
-  // 本番環境
-  return SpreadsheetApp.openById(PRODUCTION_IDS.SPREADSHEET_ID);
+  getEnvironment();
+  return SpreadsheetApp.openById(getRequiredScriptProperty('SPREADSHEET_ID'));
 }
 
 /**
  * アーカイブブックを取得（環境に応じて切り替え）
  */
 function getArchiveBook() {
-  const env = getEnvironment();
-  const props = PropertiesService.getScriptProperties();
-
-  if (env === 'development') {
-    const devArchiveId = props.getProperty('DEV_ARCHIVE_BOOK_ID');
-    if (devArchiveId) {
-      return SpreadsheetApp.openById(devArchiveId);
-    }
-    // 開発環境でもアーカイブブックがない場合は本番を使用（読み取り専用想定）
-    Logger.log('警告: DEV_ARCHIVE_BOOK_ID が未設定のため、本番アーカイブブックを使用します');
-  }
-
-  return SpreadsheetApp.openById(PRODUCTION_IDS.ARCHIVE_BOOK_ID);
+  getEnvironment();
+  return SpreadsheetApp.openById(getRequiredScriptProperty('ARCHIVE_BOOK_ID'));
 }
 
 /**
@@ -90,32 +49,10 @@ function getArchiveBook() {
  */
 function showCurrentEnvironment() {
   const env = getEnvironment();
-  const props = PropertiesService.getScriptProperties();
-
-  Logger.log('========================================');
-  Logger.log('現在の環境情報');
-  Logger.log('========================================');
-  Logger.log('ENVIRONMENT: ' + env);
-
-  try {
-    const ss = getSpreadsheet();
-    Logger.log('スプレッドシート: ' + ss.getName());
-    Logger.log('スプレッドシートID: ' + ss.getId());
-  } catch (e) {
-    Logger.log('スプレッドシート取得エラー: ' + e.message);
-  }
-
-  if (env === 'development') {
-    Logger.log('DEV_SPREADSHEET_ID: ' + (props.getProperty('DEV_SPREADSHEET_ID') || '未設定'));
-    Logger.log('DEV_ARCHIVE_BOOK_ID: ' + (props.getProperty('DEV_ARCHIVE_BOOK_ID') || '未設定'));
-  }
-
-  Logger.log('========================================');
-
   return {
     environment: env,
-    spreadsheetId: getSpreadsheet().getId(),
-    spreadsheetName: getSpreadsheet().getName()
+    spreadsheetConfigured: Boolean(getRequiredScriptProperty('SPREADSHEET_ID')),
+    archiveConfigured: Boolean(getRequiredScriptProperty('ARCHIVE_BOOK_ID'))
   };
 }
 
@@ -279,11 +216,8 @@ const CONFIG = {
     EUR: 'ユーロ（EUR）'
   },
 
-  // ERP連携設定
+  // ERP連携設定（接続先IDはスクリプトプロパティから必須取得）
   ERP: {
-    // ERPスプレッドシートID（PropertiesServiceから取得、フォールバック）
-    SPREADSHEET_ID: '1_ThEcJWBUUiLOTkiJ2wavoNkVMUk1Mu1AUh9zz-9LZY',
-
     // ERPシート名（同期先）
     SHEETS: {
       SALES_DATA: '📊売上データ',
@@ -1301,56 +1235,4 @@ function getStaffData() {
   }
 
   return staff;
-}
-
-// ============================================================
-// ファイル管理（clasp run用）
-// ============================================================
-
-/**
- * スプレッドシートを指定フォルダに移動
- * - 本番スプレッドシート → 本番フォルダ
- * - アーカイブブック → 本番フォルダ
- * - 開発スプレッドシート → 開発フォルダ
- */
-function moveSpreadsheets() {
-  const PROD_FOLDER_ID = '1JIPeqiT_2ucBUK875sQBcuSYHkT-GtdD';
-  const DEV_FOLDER_ID = '1rV7ZKxZZtCubafp-9lMyCIPgmaAbJjh_';
-
-  const props = PropertiesService.getScriptProperties();
-  const devSpreadsheetId = props.getProperty('DEV_SPREADSHEET_ID') || '1G4ffyH8Abiki0861CjRvGiO_Ks_8wMiZKaWfujcOzvs';
-
-  const filesToMove = [
-    { id: PRODUCTION_IDS.SPREADSHEET_ID, targetFolder: PROD_FOLDER_ID, name: '本番スプレッドシート' },
-    { id: PRODUCTION_IDS.ARCHIVE_BOOK_ID, targetFolder: PROD_FOLDER_ID, name: 'アーカイブブック' },
-    { id: devSpreadsheetId, targetFolder: DEV_FOLDER_ID, name: '開発スプレッドシート' }
-  ];
-
-  const results = [];
-
-  filesToMove.forEach(item => {
-    try {
-      const file = DriveApp.getFileById(item.id);
-      const targetFolder = DriveApp.getFolderById(item.targetFolder);
-
-      // 現在の親フォルダから削除
-      const parents = file.getParents();
-      while (parents.hasNext()) {
-        parents.next().removeFile(file);
-      }
-
-      // 新しいフォルダに追加
-      targetFolder.addFile(file);
-
-      const result = item.name + ' → ' + targetFolder.getName() + ' に移動完了';
-      Logger.log(result);
-      results.push({ success: true, message: result });
-    } catch (e) {
-      const error = item.name + ' の移動に失敗: ' + e.message;
-      Logger.log(error);
-      results.push({ success: false, message: error });
-    }
-  });
-
-  return results;
 }
