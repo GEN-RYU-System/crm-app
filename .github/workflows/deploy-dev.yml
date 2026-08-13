@@ -1,6 +1,8 @@
 name: Deploy to DEV
 
 on:
+  push:
+    branches: [develop]
   workflow_dispatch:
 
 jobs:
@@ -11,7 +13,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: develop
+
+      - name: Require merge commit for automatic deploy
+        if: github.event_name == 'push'
+        run: |
+          PARENTS=$(git log --pretty=%P -n 1 HEAD | wc -w)
+          if [ "$PARENTS" -lt 2 ]; then
+            echo "::error::Automatic DEV deployment requires a merge commit to develop."
+            exit 1
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -31,9 +42,9 @@ jobs:
 
       - name: Generate .clasp.json
         env:
-          SCRIPT_ID: ${{ secrets.SCRIPT_ID_DEV }}
+          SCRIPT_ID_DEV: ${{ secrets.SCRIPT_ID_DEV }}
         run: |
-          printf '{"scriptId":"%s","rootDir":"src"}\n' "$SCRIPT_ID" > .clasp.json
+          printf '{"scriptId":"%s","rootDir":"src"}\n' "$SCRIPT_ID_DEV" > .clasp.json
           echo "scriptId: $(python3 -c "import json; print(json.load(open('.clasp.json'))['scriptId'][:8] + '...')")"
 
       - name: Push to DEV
