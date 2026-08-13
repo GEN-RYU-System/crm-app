@@ -21,6 +21,9 @@ function createSpreadsheet(options = {}) {
   const leadSheet = {
     getDataRange: () => ({ getValues: () => clone(leadValues) }),
     getRange: (row, column, rowCount, columnCount) => ({
+      getFormulas: () => Array.from({ length: rowCount }, (_, index) => [
+        options.targetFormulaRow === index ? '=FORMULA' : ''
+      ]),
       setValues: values => {
         calls.writes.push({ row, column, rowCount, columnCount, values: clone(values) });
         if (options.failWrite && calls.writes.length === 1) throw new Error('write failed');
@@ -93,6 +96,16 @@ function assertNoSensitiveValues(result) {
   assert.deepEqual(spreadsheet.leadValues.map(row => row[2]), ['対象外列', 'unchanged-a', 'unchanged-b']);
   assert.equal(spreadsheet.calls.releases, 1);
   assertNoSensitiveValues(result);
+}
+
+{
+  const spreadsheet = createSpreadsheet({ targetFormulaRow: 0 });
+  const context = run({ getEnvironment: () => 'development', getSpreadsheet: () => spreadsheet });
+  const result = JSON.parse(JSON.stringify(context.repairDevLeadAssigneeIds()));
+  assert.equal(result.success, false);
+  assert.equal(result.resultType, 'REPAIR_TARGET_FORMULA_FOUND');
+  assert.equal(result.actualDataChangeCount, 0);
+  assert.equal(spreadsheet.calls.writes.length, 0);
 }
 
 {
