@@ -3,9 +3,6 @@
  * 会話ログのアーカイブ処理を担当
  */
 
-// アーカイブブックID
-const ARCHIVE_BOOK_ID = '1J4VFKwwV5xbEy15TrbwriFRDiYTH-YfrVTzwTQJpXpI';
-
 // アーカイブシート名
 const ARCHIVE_SHEETS = {
   LEAD_ARCHIVE: 'リード会話ログ_アーカイブ',
@@ -16,59 +13,100 @@ const ARCHIVE_SHEETS = {
   SETTINGS: CONFIG.SHEETS.SETTINGS
 };
 
-// ============================================================
-// アーカイブブック初期化（手動実行用）
-// ============================================================
+const DEV_ARCHIVE_SHEET_NAMES = [
+  ARCHIVE_SHEETS.LEAD_ARCHIVE,
+  ARCHIVE_SHEETS.DEAL_WON,
+  ARCHIVE_SHEETS.DEAL_LOST,
+  ARCHIVE_SHEETS.DEAL_FOLLOWUP,
+  ARCHIVE_SHEETS.DEAL_NOT_APPLICABLE
+];
 
 /**
- * アーカイブブックを初期化（手動実行用）
+ * DEV専用アーカイブブックを初期化する。
+ * 全対象タブの事前検査が通過した場合に限り、構成を変更する。
+ *
+ * @returns {{createdTabs: string[], existingTabs: string[], deletedDefaultSheet: boolean}}
  */
-function setupArchiveBook() {
-  // スクリプトプロパティにアーカイブブックIDを設定
-  PropertiesService.getScriptProperties().setProperty('ARCHIVE_BOOK_ID', ARCHIVE_BOOK_ID);
+function initializeDevArchiveBook() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('initializeDevArchiveBook is available only in development');
+  }
 
+  const archiveBook = getArchiveBook();
+  const headers = HEADERS.CONVERSATION_LOG;
+  if (headers.length !== 9) {
+    throw new Error('Conversation log header definition must contain nine columns');
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
   try {
-    const archiveSs = SpreadsheetApp.openById(ARCHIVE_BOOK_ID);
+    const plan = inspectDevArchiveBook(archiveBook, headers);
+    const result = {
+      createdTabs: [],
+      existingTabs: [],
+      deletedDefaultSheet: false
+    };
 
-    // 既存シートを削除（Sheet1以外）
-    const existingSheets = archiveSs.getSheets();
-    existingSheets.forEach(sheet => {
-      const sheetName = sheet.getName();
-      if (sheetName !== 'Sheet1' && !Object.values(ARCHIVE_SHEETS).includes(sheetName)) {
-        try {
-          archiveSs.deleteSheet(sheet);
-        } catch (e) {
-          Logger.log('シート削除スキップ: ' + sheetName);
-        }
-      }
-    });
-
-    // 新しいシートを作成
-    Object.entries(ARCHIVE_SHEETS).forEach(([key, sheetName]) => {
-      if (sheetName === CONFIG.SHEETS.SETTINGS) {
-        createArchiveSettingsSheet(archiveSs, sheetName);
+    plan.forEach(item => {
+      if (item.action === 'create') {
+        const sheet = item.sheet || archiveBook.insertSheet(item.sheetName);
+        setDevArchiveHeaders(sheet, headers);
+        result.createdTabs.push(item.sheetName);
       } else {
-        createArchiveLogSheet(archiveSs, sheetName);
+        result.existingTabs.push(item.sheetName);
       }
     });
 
-    // Sheet1を削除（他のシートがある場合のみ）
-    const sheet1 = archiveSs.getSheetByName('Sheet1');
-    if (sheet1 && archiveSs.getSheets().length > 1) {
-      try {
-        archiveSs.deleteSheet(sheet1);
-      } catch (e) {
-        Logger.log('Sheet1削除スキップ');
-      }
+    const defaultSheet = archiveBook.getSheetByName('Sheet1');
+    if (defaultSheet && isCompletelyEmptySheet(defaultSheet)) {
+      archiveBook.deleteSheet(defaultSheet);
+      result.deletedDefaultSheet = true;
     }
 
-    Logger.log('アーカイブブックの初期化が完了しました');
-    SpreadsheetApp.getActiveSpreadsheet().toast('アーカイブブックを初期化しました', 'セットアップ完了', 5);
-
-  } catch (e) {
-    Logger.log('アーカイブブック初期化エラー: ' + e.message);
-    throw new Error('アーカイブブックにアクセスできません: ' + e.message);
+    Logger.log('DEV archive book initialization completed');
+    return result;
+  } finally {
+    lock.releaseLock();
   }
+}
+
+/**
+ * 全対象タブを読み取りで検査し、実行可能な構成計画を返す。
+ * 1件でも不適合なら例外で停止し、呼び出し元は変更を開始しない。
+ */
+function inspectDevArchiveBook(archiveBook, headers) {
+  return DEV_ARCHIVE_SHEET_NAMES.map(sheetName => {
+    const sheet = archiveBook.getSheetByName(sheetName);
+    if (!sheet || isCompletelyEmptySheet(sheet)) {
+      return { sheetName: sheetName, sheet: sheet, action: 'create' };
+    }
+
+    if (hasExpectedConversationLogHeaders(sheet, headers)) {
+      return { sheetName: sheetName, sheet: sheet, action: 'retain' };
+    }
+
+    throw new Error('Existing archive tab is not empty or does not have the expected header: ' + sheetName);
+  });
+}
+
+function hasExpectedConversationLogHeaders(sheet, headers) {
+  if (sheet.getLastColumn() !== headers.length || sheet.getLastRow() < 1) {
+    return false;
+  }
+
+  const actualHeaders = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+  return headers.every((header, index) => actualHeaders[index] === header);
+}
+
+function isCompletelyEmptySheet(sheet) {
+  return sheet.getLastRow() === 0 && sheet.getLastColumn() === 0;
+}
+
+function setDevArchiveHeaders(sheet, headers) {
+  const headerRange = sheet.getRange(1, 1, 1, headers.length);
+  headerRange.setValues([headers]);
+  headerRange.setFontWeight('bold');
 }
 
 /**
@@ -189,11 +227,7 @@ function createArchiveSettingsSheet(ss, sheetName) {
  * 月次アーカイブ処理（毎月1日AM3:00に実行）
  */
 function runMonthlyArchive() {
-  const archiveBookId = PropertiesService.getScriptProperties().getProperty('ARCHIVE_BOOK_ID');
-  if (!archiveBookId) {
-    Logger.log('アーカイブブックIDが設定されていません');
-    return;
-  }
+  getArchiveBook();
 
   // 成約・追客は90日経過後にアーカイブ
   archiveOldConversations('成約', 90);
@@ -249,11 +283,9 @@ function archiveOldConversations(status, days) {
  * 特定リードの会話ログをアーカイブ
  */
 function archiveConversationsForLead(leadId, status) {
-  const archiveBookId = PropertiesService.getScriptProperties().getProperty('ARCHIVE_BOOK_ID');
-  if (!archiveBookId) return;
+  const archiveSs = getArchiveBook();
 
   try {
-    const archiveSs = SpreadsheetApp.openById(archiveBookId);
 
     // アーカイブ先シートを決定
     let targetSheetName;
@@ -366,11 +398,9 @@ function deleteLogsFromSheet(ss, sheetName, leadId) {
  * ArchiveService.gsから呼び出される
  */
 function archiveConversationLogsForArchivedLead(leadId) {
-  const archiveBookId = PropertiesService.getScriptProperties().getProperty('ARCHIVE_BOOK_ID');
-  if (!archiveBookId) return;
+  const archiveSs = getArchiveBook();
 
   try {
-    const archiveSs = SpreadsheetApp.openById(archiveBookId);
     const targetSheet = archiveSs.getSheetByName(ARCHIVE_SHEETS.LEAD_ARCHIVE);
 
     if (!targetSheet) {
