@@ -3,7 +3,8 @@
 ## DEV
 
 - `release/*` → PR → `develop` へマージする。
-- GitHub上で `develop` をbaseとしてマージ済みのPRだけが DEV スクリプトへ自動配布される。
+- GitHub上で `develop` をbaseとしてマージ済みのPRだけが、検証済みSHAで DEV スクリプトへ自動配布される。
+- 手動実行は、GitHub APIで取得した `develop` の最新SHAが同じ条件を満たす場合の再配布だけに使える。
 - 開発確認は DEV の `/dev` 画面だけで行う。
 - `/dev` は開発者だけが使い、顧客には渡さない。
 
@@ -41,4 +42,4 @@ GAS 実行中は GitHub Secrets を読めないため、シート ID は各 GAS 
 - private リポジトリのプラン制約で、GitHub 側のブランチ保護は未設定。
 - 設定済みのローカル環境では、ローカルフックがマージコミットを含む直接 push を push 前に拒否する。
 - GitHub Actions は、GitHub上のマージ済みPRに紐づかない直接 push を push 後に検知し、失敗として記録する。
-- 直接 push は GitHub 上では入り得るが、DEV 配布ワークフローはGitHub上で `develop` をbaseとしてマージ済みのPRに紐づかない限り、Secrets参照前に停止する。
+- 直接 push は GitHub 上では入り得るが、DEV 配布ワークフローはpush・手動実行のいずれも、GitHub上で `develop` をbaseとしてマージ済みのPRに紐づかない限り、Secrets参照前に停止する。
