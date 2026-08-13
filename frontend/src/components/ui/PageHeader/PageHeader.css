@@ -1,0 +1,4 @@
+.ui-page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-lg); margin-bottom: var(--space-2xl); }
+.ui-page-header__eyebrow { color: var(--color-accent); font-size: var(--font-xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.ui-page-header__title { margin: var(--space-sm) 0 0; font-size: var(--font-title); letter-spacing: -.035em; }
+.ui-page-header__subtitle { margin: var(--space-sm) 0 0; color: var(--color-text-muted); }
