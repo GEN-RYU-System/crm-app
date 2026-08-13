@@ -1,0 +1,4 @@
+import './Skeleton.css';
+export type SkeletonVariant = 'text' | 'table' | 'list' | 'card';
+export type SkeletonProps = { variant?: SkeletonVariant; rows?: number; label?: string };
+export function Skeleton({ variant = 'text', rows = 3, label }: SkeletonProps) { const statusProps = label ? { role: 'status', 'aria-label': label } : { 'aria-hidden': true }; const bars = Array.from({ length: rows }, (_, index) => <span key={index} className="ui-skeleton__bar" />); if (variant === 'text') return <span className="ui-skeleton ui-skeleton--text" {...statusProps} />; if (variant === 'table') return <div className="ui-skeleton__table" {...statusProps}>{bars}</div>; if (variant === 'list') return <div className="ui-skeleton__list" {...statusProps}>{bars}</div>; return <div className="ui-skeleton__card" {...statusProps}>{bars}</div>; }
