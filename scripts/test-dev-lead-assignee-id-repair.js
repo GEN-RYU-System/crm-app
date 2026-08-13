@@ -29,7 +29,14 @@ function createSpreadsheet(options = {}) {
       }
     })
   };
-  const staffSheet = { getDataRange: () => ({ getValues: () => clone(staffValues) }) };
+  let staffReadCount = 0;
+  const staffSheet = { getDataRange: () => ({ getValues: () => {
+    staffReadCount += 1;
+    const values = clone(staffValues);
+    if (staffReadCount === 2 && options.changeStaffIdBeforeWrite) values[1][0] = 'changed-staff-id';
+    if (staffReadCount === 2 && options.changeStaffNameBeforeWrite) values[1][1] = 'changed-staff-name';
+    return values;
+  }}) };
   if (options.changeBeforeWrite) {
     const original = leadSheet.getDataRange;
     let callsToData = 0;
@@ -168,6 +175,15 @@ function assertNoSensitiveValues(result) {
   assert.equal(result.actualDataChangeCount, 0);
   assert.equal(spreadsheet.calls.writes.length, 0);
 }
+
+['changeStaffIdBeforeWrite', 'changeStaffNameBeforeWrite'].forEach(option => {
+  const spreadsheet = createSpreadsheet({ [option]: true });
+  const context = run({ getEnvironment: () => 'development', getSpreadsheet: () => spreadsheet });
+  const result = JSON.parse(JSON.stringify(context.repairDevLeadAssigneeIds()));
+  assert.equal(result.resultType, 'REPAIR_SOURCE_CHANGED', option);
+  assert.equal(result.actualDataChangeCount, 0, option);
+  assert.equal(spreadsheet.calls.writes.length, 0, option);
+});
 
 ['appendRow', 'clear', 'deleteRow', 'insertSheet', 'PropertiesService', 'ScriptApp', 'UrlFetchApp', 'Logger.', 'console.'].forEach(token => {
   assert.equal(source.includes(token), false, token + ' must not be used');
