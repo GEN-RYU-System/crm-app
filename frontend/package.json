@@ -11,6 +11,7 @@
     "build:gas": "npm run typecheck && npm run build && node scripts/emit-gas-html.mjs && npm run check:design-system"
   },
   "dependencies": {
+    "@heroicons/react": "2.2.0",
     "@vitejs/plugin-react": "4.3.4",
     "react": "18.3.1",
     "react-dom": "18.3.1",
