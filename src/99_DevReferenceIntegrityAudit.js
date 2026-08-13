@@ -50,13 +50,7 @@ function runAndLogDevReferenceIntegrityAudit() {
     }
 
     try {
-      const logSheet = getOrCreateDevReferenceIntegrityAuditLogSheet(getSpreadsheet());
-      logSheet.getRange(
-        logSheet.getLastRow() + 1,
-        1,
-        auditRows.length,
-        DEV_REFERENCE_INTEGRITY_AUDIT_LOG_HEADERS.length
-      ).setValues(auditRows);
+      writeDevReferenceIntegrityAuditLogRows(getSpreadsheet(), auditRows);
       return {
         success: true,
         resultType: 'REFERENCE_INTEGRITY_AUDIT_LOG_RECORDED',
@@ -201,7 +195,7 @@ function getDevReferenceIntegrityStatus(policy, emptyCount, orphanCount) {
   return 'OK';
 }
 
-function getOrCreateDevReferenceIntegrityAuditLogSheet(spreadsheet) {
+function writeDevReferenceIntegrityAuditLogRows(spreadsheet, auditRows) {
   const existingSheet = spreadsheet.getSheetByName(
     DEV_REFERENCE_INTEGRITY_AUDIT_LOG_SHEET_NAME
   );
@@ -209,12 +203,31 @@ function getOrCreateDevReferenceIntegrityAuditLogSheet(spreadsheet) {
     if (!hasDevReferenceIntegrityAuditLogHeaders(existingSheet)) {
       throw new Error('Reference integrity audit log header is invalid');
     }
-    return existingSheet;
+    existingSheet.getRange(
+      existingSheet.getLastRow() + 1,
+      1,
+      auditRows.length,
+      DEV_REFERENCE_INTEGRITY_AUDIT_LOG_HEADERS.length
+    ).setValues(auditRows);
+    return;
   }
-  const newSheet = spreadsheet.insertSheet(DEV_REFERENCE_INTEGRITY_AUDIT_LOG_SHEET_NAME);
-  newSheet.getRange(1, 1, 1, DEV_REFERENCE_INTEGRITY_AUDIT_LOG_HEADERS.length)
-    .setValues([DEV_REFERENCE_INTEGRITY_AUDIT_LOG_HEADERS]);
-  return newSheet;
+
+  let newSheet;
+  try {
+    newSheet = spreadsheet.insertSheet(DEV_REFERENCE_INTEGRITY_AUDIT_LOG_SHEET_NAME);
+    const allRows = [DEV_REFERENCE_INTEGRITY_AUDIT_LOG_HEADERS].concat(auditRows);
+    newSheet.getRange(1, 1, allRows.length, DEV_REFERENCE_INTEGRITY_AUDIT_LOG_HEADERS.length)
+      .setValues(allRows);
+  } catch (error) {
+    if (newSheet) {
+      try {
+        spreadsheet.deleteSheet(newSheet);
+      } catch (rollbackError) {
+        // Rollback failure is intentionally not exposed.
+      }
+    }
+    throw new Error('Reference integrity audit log write failed');
+  }
 }
 
 function hasDevReferenceIntegrityAuditLogHeaders(sheet) {

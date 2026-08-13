@@ -115,20 +115,18 @@ function mockSheet(headers, values, formulas) {
 }
 
 {
-  const calls = { headerWrites: 0, auditWrites: 0, releases: 0 };
+  const calls = { writes: [], deleted: 0, releases: 0 };
   const logSheet = {
     getLastRow: () => 1,
     getRange: (row, column, rowCount) => ({
-      setValues: () => {
-        if (row === 1 && rowCount === 1) calls.headerWrites += 1;
-        else calls.auditWrites += 1;
-      },
+      setValues: values => { calls.writes.push({ row, column, rowCount, values }); },
       getDisplayValues: () => [[]]
     })
   };
   const spreadsheet = {
     getSheetByName: () => null,
-    insertSheet: () => logSheet
+    insertSheet: () => logSheet,
+    deleteSheet: () => { calls.deleted += 1; }
   };
   const context = load({
     getEnvironment: () => 'development',
@@ -144,7 +142,86 @@ function mockSheet(headers, values, formulas) {
     resultType: 'REFERENCE_INTEGRITY_AUDIT_LOG_RECORDED',
     logRowCount: 1
   });
-  assert.deepEqual(calls, { headerWrites: 1, auditWrites: 1, releases: 1 });
+  assert.equal(calls.writes.length, 1);
+  assert.equal(calls.writes[0].row, 1);
+  assert.equal(calls.writes[0].rowCount, 2);
+  assert.equal(calls.deleted, 0);
+  assert.equal(calls.releases, 1);
+}
+
+{
+  const calls = { writes: [], deleted: 0 };
+  const headers = [
+    '実行日時', '監査バージョン', '親タブ', '子タブ', '親ID見出し', '子ID見出し',
+    '子実レコード数', '参照ID空欄数', '親存在参照数', '孤立参照数', '判定'
+  ];
+  const existingSheet = {
+    getLastRow: () => 5,
+    getRange: (row, column, rowCount) => ({
+      setValues: values => { calls.writes.push({ row, column, rowCount, values }); },
+      getDisplayValues: () => [headers]
+    })
+  };
+  const context = load({});
+  context.writeDevReferenceIntegrityAuditLogRows(
+    {
+      getSheetByName: () => existingSheet,
+      insertSheet: () => { throw new Error('must not insert'); },
+      deleteSheet: () => { calls.deleted += 1; }
+    },
+    [[new Date(), '2', '親タブ', '子タブ', '親ID', '子ID', 1, 0, 1, 0, 'OK']]
+  );
+  assert.equal(calls.writes.length, 1);
+  assert.equal(calls.writes[0].row, 6);
+  assert.equal(calls.deleted, 0);
+}
+
+{
+  const calls = { deleted: 0, releases: 0 };
+  const newSheet = {
+    getRange: () => ({ setValues: () => { throw new Error('write failure'); } })
+  };
+  const context = load({
+    getEnvironment: () => 'development',
+    getSpreadsheet: () => ({
+      getSheetByName: () => null,
+      insertSheet: () => newSheet,
+      deleteSheet: sheet => { assert.equal(sheet, newSheet); calls.deleted += 1; }
+    }),
+    LockService: { getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => { calls.releases += 1; } }) }
+  });
+  context.buildDevReferenceIntegrityAuditRows = () => [[
+    new Date(), '2', '親タブ', '子タブ', '親ID', '子ID', 1, 0, 1, 0, 'OK'
+  ]];
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(context.runAndLogDevReferenceIntegrityAudit())),
+    { success: false, errorType: 'REFERENCE_INTEGRITY_AUDIT_LOG_WRITE_FAILED' }
+  );
+  assert.deepEqual(calls, { deleted: 1, releases: 1 });
+}
+
+{
+  const calls = { writes: 0, deleted: 0 };
+  const headers = [
+    '実行日時', '監査バージョン', '親タブ', '子タブ', '親ID見出し', '子ID見出し',
+    '子実レコード数', '参照ID空欄数', '親存在参照数', '孤立参照数', '判定'
+  ];
+  const existingSheet = {
+    getLastRow: () => 5,
+    getRange: () => ({
+      setValues: () => { calls.writes += 1; throw new Error('write failure'); },
+      getDisplayValues: () => [headers]
+    })
+  };
+  const context = load({});
+  assert.throws(() => context.writeDevReferenceIntegrityAuditLogRows(
+    {
+      getSheetByName: () => existingSheet,
+      deleteSheet: () => { calls.deleted += 1; }
+    },
+    [[new Date(), '2', '親タブ', '子タブ', '親ID', '子ID', 1, 0, 1, 0, 'OK']]
+  ));
+  assert.deepEqual(calls, { writes: 1, deleted: 0 });
 }
 
 assert.equal(/Logger\.log|console\.log/.test(referenceSource), false);
