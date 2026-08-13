@@ -31,27 +31,41 @@ function runAndLogDevSpreadsheetStructureAudit() {
     );
   }
 
-  let audit;
+  let lock;
+  let lockAcquired = false;
   try {
-    audit = auditDevSpreadsheetStructure();
-  } catch (error) {
-    return { success: false, errorType: 'AUDIT_FAILED' };
-  }
+    lock = LockService.getScriptLock();
+    lock.waitLock(30000);
+    lockAcquired = true;
 
-  try {
-    const logRows = buildDevStructureAuditLogRows(audit.sheets, new Date());
-    if (logRows.length === 0) {
-      return { success: false, errorType: 'NO_AUDIT_ROWS' };
+    let audit;
+    try {
+      audit = auditDevSpreadsheetStructure();
+    } catch (error) {
+      return { success: false, errorType: 'AUDIT_FAILED' };
     }
-    const spreadsheet = getSpreadsheet();
-    writeDevStructureAuditLogRows(spreadsheet, logRows);
-    return {
-      success: true,
-      resultType: 'AUDIT_LOG_RECORDED',
-      logRowCount: logRows.length
-    };
+
+    try {
+      const logRows = buildDevStructureAuditLogRows(audit.sheets, new Date());
+      if (logRows.length === 0) {
+        return { success: false, errorType: 'NO_AUDIT_ROWS' };
+      }
+      const spreadsheet = getSpreadsheet();
+      writeDevStructureAuditLogRows(spreadsheet, logRows);
+      return {
+        success: true,
+        resultType: 'AUDIT_LOG_RECORDED',
+        logRowCount: logRows.length
+      };
+    } catch (error) {
+      return { success: false, errorType: 'AUDIT_LOG_WRITE_FAILED' };
+    }
   } catch (error) {
-    return { success: false, errorType: 'AUDIT_LOG_WRITE_FAILED' };
+    return { success: false, errorType: 'AUDIT_LOCK_UNAVAILABLE' };
+  } finally {
+    if (lockAcquired) {
+      lock.releaseLock();
+    }
   }
 }
 
