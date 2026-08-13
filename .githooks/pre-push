@@ -13,23 +13,20 @@ PROTECTED_BRANCHES="main develop"
 while read local_ref local_sha remote_ref remote_sha; do
   for protected_branch in $PROTECTED_BRANCHES; do
     if echo "$remote_ref" | grep -q "refs/heads/${protected_branch}$"; then
-      # マージコミット（親が2つ以上）は許可
-      PARENT_COUNT=$(git log --pretty=%P -n 1 "$local_sha" 2>/dev/null | wc -w | tr -d ' ')
-      if [ "$PARENT_COUNT" -lt 2 ]; then
-        echo ""
-        echo "======================================================"
-        echo "  ERROR: Direct push to '${protected_branch}' is FORBIDDEN"
-        echo "------------------------------------------------------"
-        echo "  Use a Pull Request instead:"
-        echo "    git checkout -b release/<topic>"
-        echo "    git push origin release/<topic>"
-        echo "    gh pr create --base ${protected_branch}"
-        echo ""
-        echo "  --no-verify の使用は禁止されています（CLAUDE.md 参照）"
-        echo "======================================================"
-        echo ""
-        exit 1
-      fi
+      echo ""
+      echo "======================================================"
+      echo "  ERROR: Direct push to '${protected_branch}' is FORBIDDEN"
+      echo "------------------------------------------------------"
+      echo "  This includes locally-created merge commits."
+      echo "  Use a Pull Request merged on GitHub instead:"
+      echo "    git checkout -b release/<topic>"
+      echo "    git push origin release/<topic>"
+      echo "    gh pr create --base ${protected_branch}"
+      echo ""
+      echo "  --no-verify の使用は禁止されています（CLAUDE.md 参照）"
+      echo "======================================================"
+      echo ""
+      exit 1
     fi
   done
 done
