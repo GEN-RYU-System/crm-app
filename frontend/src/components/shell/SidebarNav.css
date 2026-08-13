@@ -1,6 +1,12 @@
-.shell-sidebar-nav { display: grid; gap: var(--space-xs); padding: var(--space-sm); }
-.shell-sidebar-nav__item { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); color: var(--color-text-muted); text-decoration: none; }
-.shell-sidebar-nav__item--active { border-radius: var(--radius-control); background: var(--color-accent-subtle); color: var(--color-accent); font-weight: 700; }
-.shell-sidebar-nav__icon { flex: 0 0 auto; }
-.shell-sidebar-nav__icon > svg { display: block; width: var(--icon-nav-size); height: var(--icon-nav-size); }
+.shell-sidebar-nav { flex: 1; overflow-x: hidden; overflow-y: auto; padding: var(--space-sm) 0; }
+.shell-sidebar-nav::-webkit-scrollbar { width: var(--sidebar-scrollbar-width); }
+.shell-sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.shell-sidebar-nav::-webkit-scrollbar-thumb { background: var(--sidebar-scrollbar-thumb); border-radius: var(--sidebar-scrollbar-radius); }
+.shell-sidebar-nav__item { display: flex; align-items: center; gap: var(--space-md); width: 100%; border-left: var(--sidebar-active-border-width) solid transparent; padding: var(--sidebar-item-padding-block) var(--sidebar-item-padding-inline-collapsed); color: var(--sidebar-text); font-size: var(--font-sm); line-height: var(--sidebar-line-height); text-align: left; text-decoration: none; white-space: nowrap; transition: background var(--sidebar-item-transition), color var(--sidebar-item-transition); }
+.shell-sidebar-nav__item:hover { background: var(--sidebar-item-hover-bg); color: var(--sidebar-item-active-color); }
+.shell-sidebar-nav__item--active { background: var(--sidebar-item-active-bg); color: var(--sidebar-item-active-color); font-weight: var(--sidebar-active-font-weight); border-left-color: var(--sidebar-item-active-border); }
+.shell-sidebar-nav__icon { display: flex; align-items: center; flex: 0 0 auto; width: var(--sidebar-icon-size); }
+.shell-sidebar-nav__icon > svg { display: block; width: var(--sidebar-icon-size); height: var(--sidebar-icon-size); }
 .shell-sidebar-nav__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shell-desktop-sidebar--expanded .shell-sidebar-nav__item, .shell-desktop-sidebar:not(.shell-desktop-sidebar--hover-suppressed):hover .shell-sidebar-nav__item { padding: var(--sidebar-item-padding-block) var(--sidebar-item-padding-inline-expanded); }
+.shell-desktop-sidebar.shell-desktop-sidebar--hover-suppressed:hover .shell-sidebar-nav__item { padding: var(--sidebar-item-padding-block) var(--sidebar-item-padding-inline-collapsed); }
