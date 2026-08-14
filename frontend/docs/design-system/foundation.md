@@ -24,7 +24,7 @@ Tabsは純粋UI金型で、`pill`と`underline`、`sm`と`md`、任意のicon・
 
 TabBarは受信箱由来の、ページまたは一覧上部に置くカテゴリ切替バーです。`key`、`label`、`disabled`だけを扱い、iconやcountを必要とする領域内切替にはTabsを使用します。
 
-DataTableは表面、border、角丸、overflow、横スクロール、table inset、列見出しの配置を管理します。見出しは既定で中央配置とし、sortable／staticを問わず同じ配置責務を持ちます。本文セルは既定で左寄せです。ソート状態・行データ・セルの業務表示・行クリック後の遷移は呼出側の正本で管理します。TabBarと同じCardへ埋め込む場合は`embedded`を使い、二重のborder・角丸を作りません。
+DataTableは表面、border、角丸、overflow、横スクロール、table inset、列見出しの配置を管理します。見出しは既定で中央配置とし、sortable／staticを問わず同じ配置責務を持ちます。headerとbody cellは既定で縦中央配置であり、複数行セルだけ`cellVerticalAlignment="top"`を明示できます。`loading`では実際の列見出しと同じtable DOM内に既存Skeleton金型を描画し、`aria-busy`と呼出側の`loadingLabel`で状態を伝えます。本文セルは既定で左寄せです。ソート状態・行データ・セルの業務表示・行クリック後の遷移は呼出側の正本で管理します。TabBarと同じCardへ埋め込む場合は`embedded`を使い、二重のborder・角丸を作りません。
 
 Skeletonは初回読込みの標準UIです。`table` variantは任意の`columns`を受け、指定時は`rows × columns`のバーを表示します。`columns`未指定時は既存の3列表示を維持します。aria-labelは呼出側のCopy SSOTから渡し、金型自身はCopyをimportしません。reduced-motionではshimmerを停止します。
 
