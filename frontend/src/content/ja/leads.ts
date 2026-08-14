@@ -1,7 +1,7 @@
 export const leadsCopy = {
-  eyebrow: 'Read-only leads',
+  eyebrow: 'Lead management',
   title: 'リード一覧',
-  subtitle: '既存のリード管理から読取り専用で表示します。',
+  subtitle: '権限に応じてリードの表示・追加・編集ができます。',
   inbound: 'インバウンド',
   outbound: 'アウトバウンド',
   leadTypes: { inbound: 'インバウンド', outbound: 'アウトバウンド' },
