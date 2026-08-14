@@ -60,10 +60,8 @@ const CONFIG = {
   // シート名
   SHEETS: {
     // 統合リード管理シート（メイン）
-    LEADS: getCoreSchemaV1TableName('LEADS'),
 
     // マスタ・設定シート
-    STAFF: getCoreSchemaV1TableName('STAFF'),
     SETTINGS: '選択肢マスタ',
     PERMISSIONS: '権限設定',
     GOALS: '目標設定',
@@ -108,23 +106,14 @@ const CONFIG = {
     SALES_DATA_SYNC: '📊売上データ同期',
 
     // ★ SCM統合: マスタデータ（IMPORTRANGE同期） ★
-    SCM_PRODUCT_MASTER_SYNC: getCoreSchemaV1TableName('PRODUCTS'),
     SCM_STOCK_SYNC: '集計同期',
     SCM_SUPPLIER_MASTER_SYNC: '仕入元マスタ同期',
 
     // ★ CRM顧客マスタ（CRM内ネイティブ） ★
-    CRM_CUSTOMERS: getCoreSchemaV1TableName('CUSTOMERS'),
-    CRM_SHIPPING: getCoreSchemaV1TableName('SHIPPING_DESTINATIONS'),
-    CRM_PAYMENT: getCoreSchemaV1TableName('PAYMENT_DESTINATIONS'),
 
     // ★ オーダー管理 ★
-    ORDER_MASTER: getCoreSchemaV1TableName('ORDERS'),
-    ORDER_LINES: getCoreSchemaV1TableName('ORDER_LINES'),
 
     // ★ 発送・仕入れ（1オーダーn個口/複数仕入れ） ★
-    SHIPMENT: getCoreSchemaV1TableName('SHIPMENTS'),
-    PURCHASE: getCoreSchemaV1TableName('PURCHASES'),
-    FORM_TOKENS: getCoreSchemaV1TableName('FORM_TOKENS')
   },
 
   // リードID接頭辞（インバウンド: LDI-, アウトバウンド: LDO-）
@@ -228,6 +217,22 @@ const CONFIG = {
     }
   }
 };
+
+// Core Schema V1 の値はアクセス時に解決する。これにより、別ファイルの
+// Registry const 初期化順に CONFIG 自体が依存しない。
+Object.defineProperties(CONFIG.SHEETS, {
+  LEADS: { enumerable: true, get: function() { return getCoreSchemaV1TableName('LEADS'); } },
+  STAFF: { enumerable: true, get: function() { return getCoreSchemaV1TableName('STAFF'); } },
+  SCM_PRODUCT_MASTER_SYNC: { enumerable: true, get: function() { return getCoreSchemaV1TableName('PRODUCTS'); } },
+  CRM_CUSTOMERS: { enumerable: true, get: function() { return getCoreSchemaV1TableName('CUSTOMERS'); } },
+  CRM_SHIPPING: { enumerable: true, get: function() { return getCoreSchemaV1TableName('SHIPPING_DESTINATIONS'); } },
+  CRM_PAYMENT: { enumerable: true, get: function() { return getCoreSchemaV1TableName('PAYMENT_DESTINATIONS'); } },
+  ORDER_MASTER: { enumerable: true, get: function() { return getCoreSchemaV1TableName('ORDERS'); } },
+  ORDER_LINES: { enumerable: true, get: function() { return getCoreSchemaV1TableName('ORDER_LINES'); } },
+  SHIPMENT: { enumerable: true, get: function() { return getCoreSchemaV1TableName('SHIPMENTS'); } },
+  PURCHASE: { enumerable: true, get: function() { return getCoreSchemaV1TableName('PURCHASES'); } },
+  FORM_TOKENS: { enumerable: true, get: function() { return getCoreSchemaV1TableName('FORM_TOKENS'); } }
+});
 
 /**
  * プルダウン選択肢（デフォルト値・初期設定用）

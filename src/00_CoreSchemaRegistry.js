@@ -4,7 +4,11 @@ const CORE_SCHEMA_V1_TABLES = {
     headers: createCoreSchemaV1Headers([
       ['LEAD_ID', 'リードID'], ['REGISTERED_AT', '登録日'], ['CUSTOMER_NAME', '顧客名'], ['LEAD_PROGRESS', 'リード進捗'], ['DEAL_PROGRESS', '商談進捗'], ['DEAL_RESULT', '商談結果'], ['ENGLISH_CALL_NAME', '呼び方（英語）'], ['COUNTRY', '国'], ['SHEET_UPDATED_AT', 'シート更新日'], ['LEAD_ASSIGNEE_NAME', 'リード担当者'], ['LEAD_TYPE', 'リード種別'], ['LEAD_SOURCE', '流入経路'], ['MESSAGE_URL', 'メッセージURL'], ['HANDLED_TITLE', '取り扱いタイトル'], ['CS_NOTE', 'CSメモ'], ['EMAIL', 'メール'], ['PHONE', '電話番号'], ['CONTACT_METHOD', '連絡手段'], ['TEMPERATURE', '温度感'], ['EXPECTED_SCALE', '想定規模'], ['RESPONSE_SPEED', '返信速度'], ['INQUIRY_COUNT', '問い合わせ回数'], ['ARCHIVED_AT', 'アーカイブ日'], ['ARCHIVE_REASON', 'アーカイブ理由'], ['ASSIGNED_AT', 'アサイン日'], ['SALES_ASSIGNEE_NAME', '営業担当者'], ['ASSIGNEE_ID', '担当者ID'], ['CUSTOMER_TYPE', '顧客タイプ'], ['LAST_RESPONDER_ID', '最終対応者ID'], ['PROSPECT_SCORE', '見込度'], ['NEXT_ACTION', '次回アクション'], ['NEXT_ACTION_DATE', '次回アクション日'], ['DEAL_NOTE', '商談メモ'], ['CUSTOMER_ISSUE', '相手の課題'], ['SALES_CHANNEL', '販売形態'], ['MONTHLY_EXPECTED_AMOUNT', '月間見込み金額'], ['ORDER_AMOUNT', '1回の発注金額'], ['PURCHASE_FREQUENCY_MONTHLY', '購入頻度(月次)'], ['COMPETITOR_COMPARISON', '競合比較中'], ['DEAL_CONFIDENCE', '商談の手応え'], ['ALERT_CONFIRMED_AT', 'アラート確認日'], ['EXCLUSION_REASON', '対象外理由'], ['LOSS_REASON', '失注理由'], ['FIRST_TRANSACTION_DATE', '初回取引日'], ['FIRST_TRANSACTION_AMOUNT', '初回取引金額'], ['CUMULATIVE_TRANSACTION_AMOUNT', '累計取引金額'], ['GOOD_POINT', 'Good Point'], ['MORE_POINT', 'More Point'], ['REFLECTION', '反省と今後の抱負'], ['REPORT_SUBMITTED_AT', 'レポート提出日'], ['REPORT_REVIEWER', 'レポート確認者'], ['REPORT_REVIEWED_AT', 'レポート確認日'], ['REPORT_COMMENT', 'レポートコメント'], ['BUDDY_FEEDBACK', 'Buddyフィードバック'], ['CONVERSATION_SUMMARY', '会話要約'], ['LAST_CONVERSATION_AT', '最終会話日時'], ['CONVERSATION_COUNT', '会話数'], ['DUPLICATE_FLAG', '重複フラグ'], ['DUPLICATE_SOURCE_LEAD_ID', '重複元リードID'], ['DUPLICATE_CONFIRMED_AT', '重複確認日'], ['DUPLICATE_CONFIRMED_BY', '重複確認者'], ['LEAD_STATUS', 'リードステータス']
     ]), primaryKey: 'LEAD_ID',
-    referenceIds: [{ headerKey: 'ASSIGNEE_ID', targetTableKey: 'STAFF' }]
+    referenceIds: [
+      { headerKey: 'ASSIGNEE_ID', targetTableKey: 'STAFF' },
+      { headerKey: 'LAST_RESPONDER_ID', targetTableKey: 'STAFF' },
+      { headerKey: 'DUPLICATE_SOURCE_LEAD_ID', targetTableKey: 'LEADS' }
+    ]
   },
   CUSTOMERS: {
     sheetName: '顧客マスタ', canonicalName: '顧客マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
@@ -58,11 +62,18 @@ const CORE_SCHEMA_V1_TABLES = {
   },
   PRODUCTS: {
     sheetName: '商品マスタ同期', canonicalName: '商品マスタ同期', aliases: [], headerRowNumber: 1, sheetType: 'SYNC_MASTER', writeAllowed: false,
-    headers: createCoreSchemaV1Headers([['PRODUCT_ID', 'product_id'], ['CATEGORY', 'Category'], ['MARK', 'Mark'], ['JAPANESE_TITLE', 'Japanese Title'], ['ENGLISH_TITLE', 'English Title'], ['BOXES_PER_CASE', 'Boxes per Case'], ['PACKS_PER_BOX', 'Packs per Box'], ['VOLUME_WEIGHT', 'VOLUME WEIGHT'], ['BOX_WEIGHT', 'Box重量'], ['CASE_WEIGHT', 'Case重量'], ['RELEASE_DATE', 'Release Date'], ['SEARCH_KEYWORDS', 'Search Keywords'], ['EXCLUDE_KEYWORDS', 'Exclude Keywords'], ['RELATED_SERIES', 'Related Series'], ['CATEGORY_CLASSIFICATION', 'カテゴリ分類'], ['REQUIRED_OUTPUT_VALUE', 'REQUIRED_OUTPUT_VALUE'], ['MOQ', 'MOQ'], ['ITEM', '品目'], ['HS_CODE', 'HSコード'], ['MATERIAL', '素材'], ['MAJOR_CATEGORY_ID', '大分類ID'], ['WORK_ID', '作品ID'], ['MANUFACTURER_ID', 'メーカーID'], ['PRODUCT_CATEGORY_ID', 'product_category_ID']]), primaryKey: 'PRODUCT_ID', referenceIds: []
+    headers: createCoreSchemaV1Headers([['PRODUCT_ID', 'product_id'], ['CATEGORY', 'Category'], ['MARK', 'Mark'], ['JAPANESE_TITLE', 'Japanese Title'], ['ENGLISH_TITLE', 'English Title'], ['BOXES_PER_CASE', 'Boxes per Case'], ['PACKS_PER_BOX', 'Packs per Box'], ['VOLUME_WEIGHT', 'VOLUME WEIGHT'], ['BOX_WEIGHT', 'Box重量'], ['CASE_WEIGHT', 'Case重量'], ['RELEASE_DATE', 'Release Date'], ['SEARCH_KEYWORDS', 'Search Keywords'], ['EXCLUDE_KEYWORDS', 'Exclude Keywords'], ['RELATED_SERIES', 'Related Series'], ['CATEGORY_CLASSIFICATION', 'カテゴリ分類'], ['REQUIRED_OUTPUT_VALUE', 'REQUIRED_OUTPUT_VALUE'], ['MOQ', 'MOQ'], ['ITEM', '品目'], ['HS_CODE', 'HSコード'], ['MATERIAL', '素材'], ['MAJOR_CATEGORY_ID', '大分類ID'], ['WORK_ID', '作品ID'], ['MANUFACTURER_ID', 'メーカーID'], ['PRODUCT_CATEGORY_ID', 'product_category_ID']]), primaryKey: 'PRODUCT_ID', referenceIds: [],
+    unmanagedReferenceIds: [
+      { headerKey: 'MAJOR_CATEGORY_ID', reason: 'PARENT_TABLE_OUTSIDE_CORE_SCHEMA_V1' },
+      { headerKey: 'WORK_ID', reason: 'PARENT_TABLE_OUTSIDE_CORE_SCHEMA_V1' },
+      { headerKey: 'MANUFACTURER_ID', reason: 'PARENT_TABLE_OUTSIDE_CORE_SCHEMA_V1' },
+      { headerKey: 'PRODUCT_CATEGORY_ID', reason: 'PARENT_TABLE_OUTSIDE_CORE_SCHEMA_V1' }
+    ]
   },
   STAFF: {
     sheetName: '担当者マスタ', canonicalName: '担当者マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
-    headers: createCoreSchemaV1Headers([['STAFF_ID', '担当者ID'], ['LAST_NAME_JA', '苗字（日本語）'], ['FIRST_NAME_JA', '名前（日本語）'], ['FULL_NAME_JA', '氏名（日本語）'], ['LAST_NAME_KANA', '苗字ふりがな'], ['FIRST_NAME_KANA', '名前ふりがな'], ['LAST_NAME_EN', '苗字（英語）'], ['FIRST_NAME_EN', '名前（英語）'], ['EMAIL', 'メール'], ['DISCORD_ID', 'Discord ID'], ['ROLE', '役割'], ['STATUS', 'ステータス'], ['SOURCE_CANDIDATE_ID', '元候補者ID'], ['DARK_MODE', 'ダークモード'], ['CHAT_MENU_VISIBLE', 'チャットメニュー表示'], ['SALES_MENU_VISIBLE', '営業メニュー表示'], ['SETTINGS_MENU_VISIBLE', '設定メニュー表示'], ['ADMIN_MENU_VISIBLE', '管理者メニュー表示'], ['BUDDY_MAINTENANCE_MENU_VISIBLE', 'Buddyメンテナンスメニュー表示'], ['SIDEBAR_VISIBLE', 'サイドバー表示']]), primaryKey: 'STAFF_ID', referenceIds: []
+    headers: createCoreSchemaV1Headers([['STAFF_ID', '担当者ID'], ['LAST_NAME_JA', '苗字（日本語）'], ['FIRST_NAME_JA', '名前（日本語）'], ['FULL_NAME_JA', '氏名（日本語）'], ['LAST_NAME_KANA', '苗字ふりがな'], ['FIRST_NAME_KANA', '名前ふりがな'], ['LAST_NAME_EN', '苗字（英語）'], ['FIRST_NAME_EN', '名前（英語）'], ['EMAIL', 'メール'], ['DISCORD_ID', 'Discord ID'], ['ROLE', '役割'], ['STATUS', 'ステータス'], ['SOURCE_CANDIDATE_ID', '元候補者ID'], ['DARK_MODE', 'ダークモード'], ['CHAT_MENU_VISIBLE', 'チャットメニュー表示'], ['SALES_MENU_VISIBLE', '営業メニュー表示'], ['SETTINGS_MENU_VISIBLE', '設定メニュー表示'], ['ADMIN_MENU_VISIBLE', '管理者メニュー表示'], ['BUDDY_MAINTENANCE_MENU_VISIBLE', 'Buddyメンテナンスメニュー表示'], ['SIDEBAR_VISIBLE', 'サイドバー表示']]), primaryKey: 'STAFF_ID', referenceIds: [],
+    unmanagedReferenceIds: [{ headerKey: 'SOURCE_CANDIDATE_ID', reason: 'PARENT_TABLE_OUTSIDE_CORE_SCHEMA_V1' }]
   },
   LEGACY_INPUT: {
     sheetName: '請求書作成', canonicalName: '請求書作成', aliases: [], headerRowNumber: 1, sheetType: 'LEGACY_INPUT', writeAllowed: false,
