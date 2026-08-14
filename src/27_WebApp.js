@@ -719,6 +719,8 @@ function addNewLead(leadType, leadData) {
  * 新規リードを作成
  */
 function createLead(leadData) {
+  checkPermission('lead_add');
+
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
 
@@ -778,6 +780,8 @@ function createLead(leadData) {
  * リードを更新
  */
 function updateLead(sheetName, leadId, updateData) {
+  checkPermission('lead_edit');
+
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
 
