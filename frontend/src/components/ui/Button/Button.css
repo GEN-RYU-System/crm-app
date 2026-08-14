@@ -1,4 +1,4 @@
-.ui-button { border: 0; border-radius: var(--radius-pill); cursor: pointer; padding: var(--space-md) var(--space-lg); font-weight: var(--font-weight-bold); }
+.ui-button { border: 0; border-radius: var(--radius-button); cursor: pointer; padding: var(--space-md) var(--space-lg); font-weight: var(--font-weight-bold); }
 .ui-button:disabled { cursor: wait; opacity: var(--opacity-disabled); }
 .ui-button--primary { background: var(--color-accent); color: var(--color-surface); }
 .ui-button--secondary { background: var(--color-accent-subtle); color: var(--color-accent); }
