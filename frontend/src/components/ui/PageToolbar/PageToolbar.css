@@ -1,0 +1,8 @@
+.ui-page-toolbar { align-items: center; display: flex; flex-wrap: wrap; gap: var(--page-toolbar-gap); margin-bottom: var(--page-toolbar-margin-bottom); }
+.ui-page-toolbar__start { flex: 1 1 auto; min-width: var(--space-none); }
+.ui-page-toolbar__end { align-items: center; display: flex; flex: 0 1 auto; flex-wrap: wrap; gap: var(--page-toolbar-gap); margin-left: auto; }
+
+@media (max-width: 767px) {
+  .ui-page-toolbar__start, .ui-page-toolbar__end { flex-basis: 100%; }
+  .ui-page-toolbar__end { margin-left: var(--space-none); }
+}

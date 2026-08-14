@@ -1,8 +1,0 @@
-.ui-data-table-toolbar { align-items: center; display: flex; flex-wrap: wrap; gap: var(--data-table-toolbar-gap); margin-bottom: var(--data-table-toolbar-margin-bottom); }
-.ui-data-table-toolbar__start { flex: 1 1 auto; min-width: var(--space-none); }
-.ui-data-table-toolbar__end { align-items: center; display: flex; flex: 0 1 auto; flex-wrap: wrap; gap: var(--data-table-toolbar-gap); margin-left: auto; }
-
-@media (max-width: 767px) {
-  .ui-data-table-toolbar__start, .ui-data-table-toolbar__end { flex-basis: 100%; }
-  .ui-data-table-toolbar__end { margin-left: var(--space-none); }
-}
