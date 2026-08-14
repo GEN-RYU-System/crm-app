@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { HashRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { canAccessNavigationItem, DATA_MANAGEMENT_ROOT, hasNavigationPermission, NAVIGATION_BY_ID, visibleDataManagementItems, visibleNavigationGroups, type NavigationPermissions } from './app/navigation';
 import { AppShell } from './components/shell';
 import { Spinner, StatusMessage } from './components/ui';
@@ -9,7 +9,7 @@ import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { DataManagementPage } from './pages/data-management/DataManagementPage';
 import { LeadListCacheProvider } from './pages/leads/LeadListCacheContext';
 import { LeadEditorPage } from './pages/leads/LeadEditorPage';
-import { LEAD_EDITOR_PATHS, LEAD_EDITOR_SEGMENTS, LEGACY_LEAD_EDITOR_PATHS } from './pages/leads/leadEditorConfig';
+import { LEAD_EDITOR_SEGMENTS } from './pages/leads/leadEditorConfig';
 import { LeadListPage } from './pages/leads/LeadListPage';
 import { RouteChatPreviewPage } from './pages/route-chat/RouteChatPreviewPage';
 import { errorCopy, leadsCopy } from './content/ja';
@@ -22,11 +22,6 @@ type PermissionState =
 
 function LeadPermissionLoading() {
   return <StatusMessage variant="loading"><Spinner size="sm" aria-label={leadsCopy.permissionsChecking} />{leadsCopy.permissionsChecking}</StatusMessage>;
-}
-
-function LegacyLeadDetailRedirect() {
-  const { leadId = '' } = useParams();
-  return <Navigate to={LEAD_EDITOR_PATHS.detailFor(leadId)} replace />;
 }
 
 export default function App() {
@@ -76,14 +71,10 @@ export default function App() {
   return <HashRouter><LeadListCacheProvider><AppShell navigationGroups={navigationGroups}><Routes>
     <Route path={NAVIGATION_BY_ID.dashboard.hash} element={<DashboardPage kpis={kpis} state={state} error={error} onRefresh={() => void load()} />} />
     <Route path={DATA_MANAGEMENT_ROOT} element={dataManagementRoute}>
-      <Route index element={<Navigate to={NAVIGATION_BY_ID.leads.hash} replace />} />
-      <Route path={LEAD_EDITOR_SEGMENTS.list} element={leadsRoute} />
+      <Route index element={leadsRoute} />
       <Route path={LEAD_EDITOR_SEGMENTS.create} element={createRoute} />
       <Route path={LEAD_EDITOR_SEGMENTS.detail} element={detailRoute} />
     </Route>
-    <Route path={LEGACY_LEAD_EDITOR_PATHS.list} element={<Navigate to={LEAD_EDITOR_PATHS.list} replace />} />
-    <Route path={LEGACY_LEAD_EDITOR_PATHS.create} element={<Navigate to={LEAD_EDITOR_PATHS.create} replace />} />
-    <Route path={LEGACY_LEAD_EDITOR_PATHS.detail} element={<LegacyLeadDetailRedirect />} />
     <Route path={NAVIGATION_BY_ID.routeChat.hash} element={routeChatRoute} />
     <Route path={NAVIGATION_BY_ID.components.hash} element={<ComponentCatalogPage />} />
     <Route path="*" element={<Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />} />

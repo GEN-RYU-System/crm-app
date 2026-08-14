@@ -11,4 +11,4 @@
 | Management | `/deals`, `/staff`, `/permissions`, `/settings` | Data management parent available with React `/leads` child; others planned | route-specific permission |
 | Tools | `/preferences`, `/knowledge`, `/translation-prompts`, `/templates` | planned | active user or admin/staff permission |
 
-React固有のリード管理は、主サイドバーの直接リンク「データ管理」から管理ハブへ入り、独立したSubMenuの「リード管理」から開く既存の利用可能画面として維持します。旧`/leads`は新しい`/data-management/leads`へ置換遷移し、`/components`も既存の利用可能画面として維持します。`/route-chat` Previewはローカルの明示的ダミーデータだけを使い、`google.script.run`、storage、シート、保存処理へ接続しません。
+React固有のリード管理は、主サイドバーの直接リンク「データ管理」から管理ハブへ入り、独立したSubMenuの「リード管理」から開く既存の利用可能画面として維持します。リードのReact URLは`#/leads`、`#/leads/new`、`#/leads/:leadId`を維持し、`/components`も既存の利用可能画面として維持します。`/route-chat` Previewはローカルの明示的ダミーデータだけを使い、`google.script.run`、storage、シート、保存処理へ接続しません。
