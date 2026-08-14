@@ -1,32 +1,43 @@
 export type CustomerSummaryDto = {
   customerId: string;
   customerName: string;
-  customerType: string;
   emailAddress: string;
   country: string;
+  phone: string;
   shippingAddressCount: number;
   paymentProfileCount: number;
-  status: string;
-  updatedAt: string;
+  salesAssigneeName: string;
+  contactTool: string;
+  registeredAt: string;
 };
 
 export type CustomerProfileDto = CustomerSummaryDto & {
-  note: string;
+  sourceLeadId: string;
+  countryCode: string;
+  firstTransactionDate: string;
+  shippingNote: string;
 };
 
 export type ShippingAddressDto = {
   addressId: string;
-  label: string;
   recipient: string;
   country: string;
   address: string;
+  phone: string;
+  emailAddress: string;
+  isDefault: string;
+  isActive: string;
 };
 
 export type PaymentProfileDto = {
   paymentProfileId: string;
-  label: string;
+  billingName: string;
+  country: string;
+  address: string;
   method: string;
-  status: string;
+  currency: string;
+  isDefault: string;
+  isActive: string;
 };
 
 export type CustomerAggregateDto = {

@@ -1,10 +1,9 @@
 export const customersCopy = {
   eyebrow: 'Customer management',
   title: '顧客一覧',
-  subtitle: 'プレビュー用の顧客情報を確認できます。',
+  subtitle: '顧客マスタと顧客IDで紐づく配送先・支払先を確認できます。',
   detailTitle: '顧客詳細',
-  detailSubtitle: 'プレビュー用の顧客情報を読取り専用で確認できます。',
-  previewBadge: 'プレビュー',
+  detailSubtitle: '顧客マスタと顧客IDで紐づく情報を読取り専用で確認できます。',
   searchLabel: '顧客を検索',
   searchPlaceholder: '表示中の8項目から検索',
   loading: '顧客一覧を読み込んでいます。',
@@ -30,30 +29,38 @@ export const customersCopy = {
   sortLabel: (label: string, direction: string) => `${label}を${direction}で並べ替え`,
   columns: {
     customerName: '顧客名',
-    customerType: '顧客区分',
     emailAddress: 'メールアドレス',
     country: '国',
+    phone: '電話番号',
     shippingAddressCount: '配送先件数',
     paymentProfileCount: '支払情報件数',
-    status: 'ステータス',
-    updatedAt: '更新日',
+    salesAssigneeName: '営業担当者',
+    contactTool: '連絡ツール',
+    registeredAt: '登録日',
     recipient: '宛先',
     address: '住所',
-    paymentLabel: '支払情報',
-    paymentMethod: '支払方法'
+    paymentMethod: '支払方法',
+    billingName: '請求名義',
+    currency: '通貨',
+    defaultFlag: '既定',
+    activeFlag: '有効'
   },
   shippingLabel: '区分',
   fields: {
     customerId: '顧客ID',
     customerName: '顧客名',
-    customerType: '顧客区分',
     emailAddress: 'メールアドレス',
     country: '国',
-    note: 'メモ'
+    phone: '電話番号',
+    countryCode: '国番号',
+    firstTransactionDate: '初回取引日',
+    registeredAt: '登録日',
+    salesAssigneeName: '営業担当者',
+    contactTool: '連絡ツール',
+    shippingNote: '発送時メモ'
   },
   shippingEmptyTitle: '配送先はありません',
-  shippingEmptyDescription: 'このプレビュー顧客には配送先がありません。',
+  shippingEmptyDescription: 'この顧客IDに紐づく配送先はありません。',
   paymentEmptyTitle: '支払情報はありません',
-  paymentEmptyDescription: 'このプレビュー顧客には支払情報がありません。',
-  previewNote: 'この画面はダミーデータのみを表示し、保存や外部接続は行いません。'
+  paymentEmptyDescription: 'この顧客IDに紐づく支払先はありません。'
 } as const;
