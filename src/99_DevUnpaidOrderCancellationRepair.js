@@ -87,8 +87,17 @@ function readDevUnpaidOrderCancellationRepairInspection(spreadsheet) {
     rowCount: rowCount,
     lastColumn: lastColumn,
     statusRange: statusRange,
-    statusFormulas: statusFormulas
+    statusFormulas: statusFormulas,
+    sourceSnapshot: createDevUnpaidOrderCancellationRepairSourceSnapshot(values, indexes)
   };
+}
+
+function createDevUnpaidOrderCancellationRepairSourceSnapshot(values, indexes) {
+  const idIndex = requireDevUnpaidOrderCancellationRepairHeader(indexes, 'オーダーID');
+  const statusIndex = requireDevUnpaidOrderCancellationRepairHeader(indexes, 'ステータス');
+  const paymentIndex = requireDevUnpaidOrderCancellationRepairHeader(indexes, '支払確認日');
+  const orderDateIndex = requireDevUnpaidOrderCancellationRepairHeader(indexes, '受注日');
+  return values.map(row => [row[idIndex], row[statusIndex], row[paymentIndex], row[orderDateIndex]]);
 }
 
 function getDevUnpaidOrderCancellationRepairHeaderIndexes(headers) {
@@ -177,18 +186,23 @@ function matchesDevUnpaidOrderCancellationRepairExpectation(counts) {
 }
 
 function isDevUnpaidOrderCancellationRepairSourceUnchanged(inspection) {
-  if (inspection.candidates.length === 0) return false;
+  if (inspection.sheet.getLastRow() - 1 !== inspection.rowCount) return false;
   const latestValues = inspection.rowCount > 0
     ? inspection.sheet.getRange(2, 1, inspection.rowCount, inspection.lastColumn).getValues()
     : [];
+  const latestStatusFormulas = inspection.statusRange
+    ? inspection.statusRange.getFormulas().map(row => row[0])
+    : [];
   const statusIndex = requireDevUnpaidOrderCancellationRepairHeader(inspection.indexes, 'ステータス');
   const paymentIndex = requireDevUnpaidOrderCancellationRepairHeader(inspection.indexes, '支払確認日');
-  return inspection.candidates.every(candidate =>
-    areDevUnpaidOrderCancellationRepairValuesEqual(
-      latestValues[candidate.rowIndex][paymentIndex], candidate.paymentConfirmedDate
-    ) && areDevUnpaidOrderCancellationRepairValuesEqual(
-      latestValues[candidate.rowIndex][statusIndex], candidate.status
-    )
+  const idIndex = requireDevUnpaidOrderCancellationRepairHeader(inspection.indexes, 'オーダーID');
+  const orderDateIndex = requireDevUnpaidOrderCancellationRepairHeader(inspection.indexes, '受注日');
+  return inspection.sourceSnapshot.every((snapshot, rowIndex) =>
+    areDevUnpaidOrderCancellationRepairValuesEqual(latestValues[rowIndex][idIndex], snapshot[0]) &&
+    areDevUnpaidOrderCancellationRepairValuesEqual(latestValues[rowIndex][statusIndex], snapshot[1]) &&
+    areDevUnpaidOrderCancellationRepairValuesEqual(latestValues[rowIndex][paymentIndex], snapshot[2]) &&
+    areDevUnpaidOrderCancellationRepairValuesEqual(latestValues[rowIndex][orderDateIndex], snapshot[3]) &&
+    latestStatusFormulas[rowIndex] === inspection.statusFormulas[rowIndex]
   );
 }
 
@@ -210,12 +224,17 @@ function writeDevUnpaidOrderCancellationRepairStatuses(inspection, counts) {
   try {
     inspection.statusRange.setValues(updatedStatuses);
   } catch (error) {
-    try {
-      inspection.statusRange.setValues(oldStatuses);
-      return createDevUnpaidOrderCancellationRepairFailure('REPAIR_WRITE_FAILED_RESTORED');
-    } catch (restoreError) {
-      return createDevUnpaidOrderCancellationRepairFailure('REPAIR_WRITE_FAILED_RESTORE_FAILED');
-    }
+    return restoreDevUnpaidOrderCancellationRepairStatuses(
+      inspection.statusRange, oldStatuses, 'REPAIR_WRITE_FAILED_RESTORED',
+      'REPAIR_WRITE_FAILED_RESTORE_FAILED'
+    );
+  }
+  const writtenStatuses = inspection.statusRange.getValues().map(row => row[0]);
+  if (!areDevUnpaidOrderCancellationRepairStatusColumnsEqual(writtenStatuses, updatedStatuses)) {
+    return restoreDevUnpaidOrderCancellationRepairStatuses(
+      inspection.statusRange, oldStatuses, 'REPAIR_POST_WRITE_VERIFICATION_FAILED_RESTORED',
+      'REPAIR_POST_WRITE_VERIFICATION_FAILED_RESTORE_FAILED'
+    );
   }
   return {
     success: true,
@@ -228,13 +247,32 @@ function writeDevUnpaidOrderCancellationRepairStatuses(inspection, counts) {
   };
 }
 
-function createDevUnpaidOrderCancellationRepairFailure(resultType) {
-  return {
+function areDevUnpaidOrderCancellationRepairStatusColumnsEqual(actualStatuses, expectedStatuses) {
+  return actualStatuses.length === expectedStatuses.length && actualStatuses.every((status, index) =>
+    areDevUnpaidOrderCancellationRepairValuesEqual(status, expectedStatuses[index][0])
+  );
+}
+
+function restoreDevUnpaidOrderCancellationRepairStatuses(
+  statusRange, oldStatuses, restoredResultType, restoreFailedResultType
+) {
+  try {
+    statusRange.setValues(oldStatuses);
+    return createDevUnpaidOrderCancellationRepairFailure(restoredResultType);
+  } catch (restoreError) {
+    return createDevUnpaidOrderCancellationRepairFailure(restoreFailedResultType, true);
+  }
+}
+
+function createDevUnpaidOrderCancellationRepairFailure(resultType, dataChangeStateUnknown) {
+  const result = {
     success: false,
     resultType: resultType,
     auditVersion: DEV_UNPAID_ORDER_CANCELLATION_REPAIR_VERSION,
-    actualDataChangeCount: 0
+    actualDataChangeCount: dataChangeStateUnknown ? null : 0
   };
+  if (dataChangeStateUnknown) result.dataChangeState = 'UNKNOWN';
+  return result;
 }
 
 function getDevUnpaidOrderCancellationRepairDateState(value) {
