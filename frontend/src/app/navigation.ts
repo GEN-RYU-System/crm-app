@@ -1,5 +1,5 @@
 import type { CRM_NAV_ICONS } from './icons';
-import { navigationCopy } from '../content/ja';
+import { dataManagementCopy, navigationCopy } from '../content/ja';
 
 export type NavigationPermission =
   | 'lead_view'
@@ -15,6 +15,7 @@ export type NavigationPermissions = Partial<Record<NavigationPermission, boolean
 export type NavigationItemId =
   | 'dashboard'
   | 'leads'
+  | 'customers'
   | 'leadsChat'
   | 'newChat'
   | 'routeChat'
@@ -61,7 +62,8 @@ export type NavigationGroup = {
 export const DATA_MANAGEMENT_ROOT = '/leads';
 
 export const DATA_MANAGEMENT_ITEMS: readonly NavigationItem[] = [
-  { id: 'leads', label: navigationCopy.leads, hash: DATA_MANAGEMENT_ROOT, icon: 'leads', order: 1, state: 'available', requiredPermission: 'lead_view' }
+  { id: 'leads', label: dataManagementCopy.leads, hash: DATA_MANAGEMENT_ROOT, icon: 'leads', order: 1, state: 'available', requiredPermission: 'lead_view' },
+  { id: 'customers', label: dataManagementCopy.customers, hash: '/customers', icon: 'customers', order: 2, state: 'preview', requiredPermission: 'lead_view' }
 ];
 
 export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
@@ -132,4 +134,8 @@ export function visibleNavigationGroups(permissions: NavigationPermissions | nul
     .map((item) => item.children == null ? item : ({ ...item, children: item.children.filter((child) => canAccessNavigationItem(child, permissions)) }))
     .filter((item) => item.children == null || item.children.length > 0) }))
     .filter((group) => group.items.length > 0);
+}
+
+export function navigationItemMatchesPath(item: NavigationItem, pathname: string): boolean {
+  return pathname === item.hash || pathname.startsWith(`${item.hash}/`) || item.children?.some((child) => navigationItemMatchesPath(child, pathname)) === true;
 }
