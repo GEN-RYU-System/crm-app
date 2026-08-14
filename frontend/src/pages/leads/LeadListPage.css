@@ -1,6 +1,6 @@
-.lead-list-page__actions, .lead-list-page__tabs { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
-.lead-list-page__tabs { margin-bottom: var(--space-xl); }
-.lead-list-page__table-surface { border: var(--border-width) solid var(--color-border); border-radius: var(--radius-data-table); overflow: hidden; }
+.lead-list-page__actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.lead-list-page__data-card { border-radius: var(--radius-data-table); overflow: hidden; padding: var(--space-none); }
+.lead-list-page__data-state { padding: var(--space-xl); }
 .lead-list-page__table-wrap { overflow-x: auto; }
 .lead-list-page__table { width: 100%; border-collapse: collapse; color: var(--color-text-primary); font-size: var(--font-sm); text-align: left; }
 .lead-list-page__table th, .lead-list-page__table td { border-bottom: var(--border-width) solid var(--color-border); padding: var(--space-md); vertical-align: top; }
