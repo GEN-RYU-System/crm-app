@@ -36,12 +36,23 @@ function dryRunDevCustomerAnalyticsMaterialization() {
 }
 
 function buildDevCustomerAnalyticsMaterializationDryRun(spreadsheet) {
+  return buildDevCustomerAnalyticsMaterializationDryRunFromSnapshot(
+    createDevCustomerAnalyticsMaterializationSourceSnapshot(spreadsheet)
+  );
+}
+
+function createDevCustomerAnalyticsMaterializationSourceSnapshot(spreadsheet) {
   const data = {};
   Object.keys(DEV_CUSTOMER_ANALYTICS_MATERIALIZATION_SCHEMAS).forEach(key => {
     data[key] = readDevCustomerAnalyticsMaterializationSheet(
       spreadsheet, DEV_CUSTOMER_ANALYTICS_MATERIALIZATION_SCHEMAS[key]
     );
   });
+  return { spreadsheetTimeZone: spreadsheet.getSpreadsheetTimeZone(), data: data };
+}
+
+function buildDevCustomerAnalyticsMaterializationDryRunFromSnapshot(snapshot) {
+  const data = snapshot.data;
   const counts = createDevCustomerAnalyticsMaterializationCounts();
   const customers = createDevCustomerAnalyticsMaterializationParentMap(
     data.customers, '顧客ID', counts, 'customerId'
@@ -54,7 +65,7 @@ function buildDevCustomerAnalyticsMaterializationDryRun(spreadsheet) {
     data.orders,
     customers,
     counts,
-    spreadsheet.getSpreadsheetTimeZone()
+    snapshot.spreadsheetTimeZone
   );
   inspectDevCustomerAnalyticsMaterializationLines(data.lines, orders, products, counts);
   const referenceInvalid = hasDevCustomerAnalyticsMaterializationReferenceInvalid(counts);
@@ -82,8 +93,33 @@ function readDevCustomerAnalyticsMaterializationSheet(spreadsheet, schema) {
   const indexes = getDevCustomerAnalyticsMaterializationHeaderIndexes(headers);
   schema.headers.forEach(header => requireDevCustomerAnalyticsMaterializationHeader(indexes, header));
   const lastRow = sheet.getLastRow();
-  const rows = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues() : [];
-  return { indexes: indexes, rows: rows.filter(isDevCustomerAnalyticsMaterializationRecord) };
+  const sourceRows = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues() : [];
+  return {
+    indexes: indexes,
+    headers: headers,
+    sourceDataRowCount: sourceRows.length,
+    sourceRequiredValues: sourceRows.map(row => schema.headers.map(header => row[indexes[header]])),
+    rows: sourceRows.filter(isDevCustomerAnalyticsMaterializationRecord)
+  };
+}
+
+function isDevCustomerAnalyticsMaterializationSourceSnapshotUnchanged(before, after) {
+  return Object.keys(DEV_CUSTOMER_ANALYTICS_MATERIALIZATION_SCHEMAS).every(key => {
+    const left = before.data[key];
+    const right = after.data[key];
+    return left.sourceDataRowCount === right.sourceDataRowCount &&
+      isDevCustomerAnalyticsMaterializationEqual(left.headers, right.headers) &&
+      isDevCustomerAnalyticsMaterializationEqual(left.sourceRequiredValues, right.sourceRequiredValues);
+  });
+}
+
+function isDevCustomerAnalyticsMaterializationEqual(left, right) {
+  if (left === right) return true;
+  if (left instanceof Date && right instanceof Date) return left.getTime() === right.getTime();
+  if (Array.isArray(left) && Array.isArray(right) && left.length === right.length) {
+    return left.every((value, index) => isDevCustomerAnalyticsMaterializationEqual(value, right[index]));
+  }
+  return false;
 }
 
 function getDevCustomerAnalyticsMaterializationHeaderIndexes(headers) {

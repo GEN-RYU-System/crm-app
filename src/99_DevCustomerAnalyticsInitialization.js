@@ -4,6 +4,8 @@ const DEV_CUSTOMER_ANALYTICS_INITIALIZATION_EXPECTED = {
   orderDateEmptyCount: 8, totalOrderAmount: 80139404.5, cancelledOrderAmount: 28776519,
   completedOrderAmount: 47155185.5, unconfirmedOrderAmount: 4207700
 };
+const DEV_CUSTOMER_ANALYTICS_INITIALIZATION_DATA_ROW_WRITE_COUNT = 382;
+const DEV_CUSTOMER_ANALYTICS_INITIALIZATION_HEADER_ROW_WRITE_COUNT = 3;
 
 function initializeDevCustomerAnalytics() {
   if (getEnvironment() !== 'development') throw new Error('initializeDevCustomerAnalytics is available only in development');
@@ -16,27 +18,49 @@ function initializeDevCustomerAnalytics() {
     if (DEV_CUSTOMER_ANALYTICS_INITIALIZATION_SHEETS.some(name => ss.getSheetByName(name))) {
       return { success: false, resultType: 'INITIALIZATION_TARGET_EXISTS', actualDataChangeCount: 0 };
     }
-    const audit = buildDevCustomerAnalyticsMaterializationDryRun(ss);
+
+    // Audit and table materialization consume exactly the same in-memory source snapshot.
+    const sourceSnapshot = createDevCustomerAnalyticsMaterializationSourceSnapshot(ss);
+    const audit = buildDevCustomerAnalyticsMaterializationDryRunFromSnapshot(sourceSnapshot);
     if (!audit.success || !Object.keys(DEV_CUSTOMER_ANALYTICS_INITIALIZATION_EXPECTED).every(key => audit[key] === DEV_CUSTOMER_ANALYTICS_INITIALIZATION_EXPECTED[key])) {
       return { success: false, resultType: 'INITIALIZATION_EXPECTATION_MISMATCH', actualDataChangeCount: 0 };
     }
-    const tables = buildDevCustomerAnalyticsInitializationTables(ss);
+    const tables = buildDevCustomerAnalyticsInitializationTables(sourceSnapshot);
     if (tables.customer.length !== 51 || tables.monthly.length !== 69 || tables.product.length !== 262) {
       return { success: false, resultType: 'INITIALIZATION_TABLE_COUNT_MISMATCH', actualDataChangeCount: 0 };
     }
-    const specifications = [
-      [DEV_CUSTOMER_ANALYTICS_INITIALIZATION_SHEETS[0], ['顧客ID','初回受注日','初回取引完了日','累計総受注数','累計総受注額','累計キャンセル数','累計キャンセル額','累計完了数','累計完了額','累計未確定数','累計未確定額','受注日未設定注文数'], tables.customer, [2, 3]],
-      [DEV_CUSTOMER_ANALYTICS_INITIALIZATION_SHEETS[1], ['顧客ID','受注年月','総受注数','総受注額','キャンセル数','キャンセル額','完了数','完了額','未確定数','未確定額'], tables.monthly, []],
-      [DEV_CUSTOMER_ANALYTICS_INITIALIZATION_SHEETS[2], ['顧客ID','商品ID','購入明細行数','購入注文数','キャンセル明細行数','完了明細行数','未確定明細行数'], tables.product, []]
-    ];
+
+    // Re-read immediately before the first insert. Any source change means zero analytics writes.
+    if (!isDevCustomerAnalyticsMaterializationSourceSnapshotUnchanged(
+      sourceSnapshot,
+      createDevCustomerAnalyticsMaterializationSourceSnapshot(ss)
+    )) {
+      return { success: false, resultType: 'INITIALIZATION_SOURCE_CHANGED', actualDataChangeCount: 0 };
+    }
+
+    const specifications = getDevCustomerAnalyticsInitializationSpecifications(tables);
     specifications.forEach(spec => {
-      const sh = ss.insertSheet(spec[0]);
+      const sh = ss.insertSheet(spec.name);
       created.push(sh);
-      sh.getRange(1, 1, 1, spec[1].length).setValues([spec[1]]);
-      sh.getRange(2, 1, spec[2].length, spec[1].length).setValues(spec[2]);
-      spec[3].forEach(column => sh.getRange(2, column, spec[2].length, 1).setNumberFormat('yyyy-MM-dd'));
+      sh.getRange(1, 1, 1, spec.headers.length).setValues([spec.headers]);
+      sh.getRange(2, 1, spec.rows.length, spec.headers.length).setValues(spec.rows);
+      spec.dateColumns.forEach(column => sh.getRange(2, column, spec.rows.length, 1).setNumberFormat('yyyy-MM-dd'));
     });
-    return { success: true, resultType: 'INITIALIZATION_SUCCEEDED', actualDataChangeCount: 0, customerAnalyticsRowCount: 51, customerMonthlyAnalyticsRowCount: 69, customerProductAnalyticsRowCount: 262 };
+    verifyDevCustomerAnalyticsInitializationSheets(ss, specifications);
+
+    // actualDataChangeCount means analytics output row writes only (header + data), never source CRM changes.
+    return {
+      success: true,
+      resultType: 'INITIALIZATION_SUCCEEDED',
+      sourceDataChangeCount: 0,
+      analyticsSheetCreateCount: 3,
+      analyticsDataRowWriteCount: DEV_CUSTOMER_ANALYTICS_INITIALIZATION_DATA_ROW_WRITE_COUNT,
+      analyticsHeaderRowWriteCount: DEV_CUSTOMER_ANALYTICS_INITIALIZATION_HEADER_ROW_WRITE_COUNT,
+      actualDataChangeCount: DEV_CUSTOMER_ANALYTICS_INITIALIZATION_DATA_ROW_WRITE_COUNT + DEV_CUSTOMER_ANALYTICS_INITIALIZATION_HEADER_ROW_WRITE_COUNT,
+      customerAnalyticsRowCount: 51,
+      customerMonthlyAnalyticsRowCount: 69,
+      customerProductAnalyticsRowCount: 262
+    };
   } catch (e) {
     let rollbackFailed = false;
     created.reverse().forEach(sh => {
@@ -51,12 +75,82 @@ function initializeDevCustomerAnalytics() {
   } finally { lock.releaseLock(); }
 }
 
-function buildDevCustomerAnalyticsInitializationTables(ss) {
-  const d={}; Object.keys(DEV_CUSTOMER_ANALYTICS_MATERIALIZATION_SCHEMAS).forEach(k=>d[k]=readDevCustomerAnalyticsMaterializationSheet(ss,DEV_CUSTOMER_ANALYTICS_MATERIALIZATION_SCHEMAS[k]));
-  const customers={}; d.customers.rows.forEach(r=>{const id=String(getDevCustomerAnalyticsMaterializationValue(d.customers,r,'顧客ID')); if(id) customers[id]={id:id,first:'',firstCompleted:'',empty:0,cancelled:[0,0],completed:[0,0],unconfirmed:[0,0]};});
-  const orders={}; const monthly={};
-  const spreadsheetTimeZone = ss.getSpreadsheetTimeZone();
-  d.orders.rows.forEach(r=>{const id=String(getDevCustomerAnalyticsMaterializationValue(d.orders,r,'オーダーID')); const cid=String(getDevCustomerAnalyticsMaterializationValue(d.orders,r,'顧客ID')); const c=customers[cid]; if(!id||!c)return; const kind=getDevCustomerAnalyticsMaterializationClassification(getDevCustomerAnalyticsMaterializationValue(d.orders,r,'ステータス')); const date=getDevCustomerAnalyticsMaterializationDateState(getDevCustomerAnalyticsMaterializationValue(d.orders,r,'受注日'),spreadsheetTimeZone); const amount=getDevCustomerAnalyticsMaterializationNumberState(getDevCustomerAnalyticsMaterializationValue(d.orders,r,'請求総額')); const v=amount.state==='valid'?amount.value:0; c[kind][0]++; c[kind][1]+=v; if(date.state==='empty')c.empty++; if(date.state==='valid'){const key=cid+'|'+date.yearMonth; const m=monthly[key]||(monthly[key]={cid:cid,ym:date.yearMonth,cancelled:[0,0],completed:[0,0],unconfirmed:[0,0]});m[kind][0]++;m[kind][1]+=v;if(!c.first||date.date.getTime()<c.first.getTime())c.first=date.date;if(kind==='completed'&&(!c.firstCompleted||date.date.getTime()<c.firstCompleted.getTime()))c.firstCompleted=date.date;} orders[id]={cid:cid,kind:kind};});
-  const product={}; d.lines.rows.forEach(r=>{const o=orders[String(getDevCustomerAnalyticsMaterializationValue(d.lines,r,'オーダーID'))];const pid=String(getDevCustomerAnalyticsMaterializationValue(d.lines,r,'商品ID'));if(!o||!pid)return;const key=o.cid+'|'+pid;const p=product[key]||(product[key]={cid:o.cid,pid:pid,orders:{},cancelled:0,completed:0,unconfirmed:0,lines:0});p.lines++;p.orders[String(getDevCustomerAnalyticsMaterializationValue(d.lines,r,'オーダーID'))]=true;p[o.kind]++;});
-  return {customer:Object.keys(customers).sort().map(k=>{const c=customers[k];return [c.id,c.first,c.firstCompleted,c.cancelled[0]+c.completed[0]+c.unconfirmed[0],c.cancelled[1]+c.completed[1]+c.unconfirmed[1],c.cancelled[0],c.cancelled[1],c.completed[0],c.completed[1],c.unconfirmed[0],c.unconfirmed[1],c.empty];}),monthly:Object.keys(monthly).sort().map(k=>{const m=monthly[k];return [m.cid,m.ym,m.cancelled[0]+m.completed[0]+m.unconfirmed[0],m.cancelled[1]+m.completed[1]+m.unconfirmed[1],m.cancelled[0],m.cancelled[1],m.completed[0],m.completed[1],m.unconfirmed[0],m.unconfirmed[1]];}),product:Object.keys(product).sort().map(k=>{const p=product[k];return [p.cid,p.pid,p.lines,Object.keys(p.orders).length,p.cancelled,p.completed,p.unconfirmed];})};
+function getDevCustomerAnalyticsInitializationSpecifications(tables) {
+  return [
+    { name: DEV_CUSTOMER_ANALYTICS_INITIALIZATION_SHEETS[0], headers: ['顧客ID','初回受注日','初回取引完了日','累計総受注数','累計総受注額','累計キャンセル数','累計キャンセル額','累計完了数','累計完了額','累計未確定数','累計未確定額','受注日未設定注文数'], rows: tables.customer, dateColumns: [2, 3] },
+    { name: DEV_CUSTOMER_ANALYTICS_INITIALIZATION_SHEETS[1], headers: ['顧客ID','受注年月','総受注数','総受注額','キャンセル数','キャンセル額','完了数','完了額','未確定数','未確定額'], rows: tables.monthly, dateColumns: [] },
+    { name: DEV_CUSTOMER_ANALYTICS_INITIALIZATION_SHEETS[2], headers: ['顧客ID','商品ID','購入明細行数','購入注文数','キャンセル明細行数','完了明細行数','未確定明細行数'], rows: tables.product, dateColumns: [] }
+  ];
+}
+
+function verifyDevCustomerAnalyticsInitializationSheets(ss, specifications) {
+  specifications.forEach(spec => {
+    const sheet = ss.getSheetByName(spec.name);
+    if (!sheet || sheet.getLastRow() !== spec.rows.length + 1 || sheet.getLastColumn() !== spec.headers.length) {
+      throw new Error('INITIALIZATION_WRITE_VERIFICATION_FAILED');
+    }
+    const actualHeaders = sheet.getRange(1, 1, 1, spec.headers.length).getDisplayValues()[0];
+    if (!isDevCustomerAnalyticsMaterializationEqual(actualHeaders, spec.headers)) {
+      throw new Error('INITIALIZATION_WRITE_VERIFICATION_FAILED');
+    }
+  });
+}
+
+function buildDevCustomerAnalyticsInitializationTables(sourceSnapshot) {
+  const d = sourceSnapshot.data;
+  const customers = {};
+  d.customers.rows.forEach(row => {
+    const id = String(getDevCustomerAnalyticsMaterializationValue(d.customers, row, '顧客ID'));
+    if (id) customers[id] = { id: id, first: '', firstCompleted: '', empty: 0, cancelled: [0, 0], completed: [0, 0], unconfirmed: [0, 0] };
+  });
+  const orders = {};
+  const monthly = {};
+  d.orders.rows.forEach(row => {
+    const id = String(getDevCustomerAnalyticsMaterializationValue(d.orders, row, 'オーダーID'));
+    const customerId = String(getDevCustomerAnalyticsMaterializationValue(d.orders, row, '顧客ID'));
+    const customer = customers[customerId];
+    if (!id || !customer) return;
+    const classification = getDevCustomerAnalyticsMaterializationClassification(getDevCustomerAnalyticsMaterializationValue(d.orders, row, 'ステータス'));
+    const date = getDevCustomerAnalyticsMaterializationDateState(getDevCustomerAnalyticsMaterializationValue(d.orders, row, '受注日'), sourceSnapshot.spreadsheetTimeZone);
+    const amount = getDevCustomerAnalyticsMaterializationNumberState(getDevCustomerAnalyticsMaterializationValue(d.orders, row, '請求総額'));
+    const value = amount.state === 'valid' ? amount.value : 0;
+    customer[classification][0]++;
+    customer[classification][1] += value;
+    if (date.state === 'empty') customer.empty++;
+    if (date.state === 'valid') {
+      const key = customerId + '|' + date.yearMonth;
+      const month = monthly[key] || (monthly[key] = { customerId: customerId, yearMonth: date.yearMonth, cancelled: [0, 0], completed: [0, 0], unconfirmed: [0, 0] });
+      month[classification][0]++;
+      month[classification][1] += value;
+      if (!customer.first || date.date.getTime() < customer.first.getTime()) customer.first = date.date;
+      if (classification === 'completed' && (!customer.firstCompleted || date.date.getTime() < customer.firstCompleted.getTime())) customer.firstCompleted = date.date;
+    }
+    orders[id] = { customerId: customerId, classification: classification };
+  });
+  const product = {};
+  d.lines.rows.forEach(row => {
+    const orderId = String(getDevCustomerAnalyticsMaterializationValue(d.lines, row, 'オーダーID'));
+    const order = orders[orderId];
+    const productId = String(getDevCustomerAnalyticsMaterializationValue(d.lines, row, '商品ID'));
+    if (!order || !productId) return;
+    const key = order.customerId + '|' + productId;
+    const item = product[key] || (product[key] = { customerId: order.customerId, productId: productId, orders: {}, cancelled: 0, completed: 0, unconfirmed: 0, lines: 0 });
+    item.lines++;
+    item.orders[orderId] = true;
+    item[order.classification]++;
+  });
+  return {
+    customer: Object.keys(customers).sort().map(key => {
+      const customer = customers[key];
+      return [customer.id, customer.first, customer.firstCompleted, customer.cancelled[0] + customer.completed[0] + customer.unconfirmed[0], customer.cancelled[1] + customer.completed[1] + customer.unconfirmed[1], customer.cancelled[0], customer.cancelled[1], customer.completed[0], customer.completed[1], customer.unconfirmed[0], customer.unconfirmed[1], customer.empty];
+    }),
+    monthly: Object.keys(monthly).sort().map(key => {
+      const month = monthly[key];
+      return [month.customerId, month.yearMonth, month.cancelled[0] + month.completed[0] + month.unconfirmed[0], month.cancelled[1] + month.completed[1] + month.unconfirmed[1], month.cancelled[0], month.cancelled[1], month.completed[0], month.completed[1], month.unconfirmed[0], month.unconfirmed[1]];
+    }),
+    product: Object.keys(product).sort().map(key => {
+      const item = product[key];
+      return [item.customerId, item.productId, item.lines, Object.keys(item.orders).length, item.cancelled, item.completed, item.unconfirmed];
+    })
+  };
 }
