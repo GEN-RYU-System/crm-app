@@ -5,7 +5,7 @@ import { leadsCopy } from '../../content/ja';
 import { createLead, getLeadDetail, updateLead, type LeadType } from '../../gas/client';
 import { useLeadListCache } from './LeadListCacheContext';
 import { emptyLeadEditorValues, LEAD_EDITOR_PATHS, toLeadCreateValues, toLeadEditorValues, toLeadUpdateValues, type LeadEditorValues } from './leadEditorConfig';
-import { LEAD_LIST_TABS } from './leadListConfig';
+import { LEAD_TYPE_TABS } from './leadListConfig';
 import './LeadEditorPage.css';
 
 type Props = { mode: 'create' | 'detail'; canEdit: boolean };
@@ -13,7 +13,7 @@ type DetailState = 'loading' | 'ready' | 'missing' | 'error';
 type NavigationState = { leadType?: LeadType } | null;
 
 function isLeadType(value: unknown): value is LeadType {
-  return LEAD_LIST_TABS.some(({ type }) => type === value);
+  return LEAD_TYPE_TABS.some(({ type }) => type === value);
 }
 
 export function LeadEditorPage({ mode, canEdit }: Props) {
@@ -22,7 +22,7 @@ export function LeadEditorPage({ mode, canEdit }: Props) {
   const { leadId } = useParams();
   const { refreshAll } = useLeadListCache();
   const requestedType = (location.state as NavigationState)?.leadType;
-  const selectedType = isLeadType(requestedType) ? requestedType : LEAD_LIST_TABS[0]!.type;
+  const selectedType = isLeadType(requestedType) ? requestedType : LEAD_TYPE_TABS[0]!.type;
   const [leadType, setLeadType] = useState<LeadType>(selectedType);
   const [values, setValues] = useState<LeadEditorValues>(emptyLeadEditorValues);
   const [detailState, setDetailState] = useState<DetailState>(mode === 'create' ? 'ready' : 'loading');
@@ -76,5 +76,5 @@ export function LeadEditorPage({ mode, canEdit }: Props) {
   if (detailState === 'missing') return <EmptyState title={leadsCopy.detailNotFoundTitle} description={leadsCopy.detailNotFoundDescription} action={<Button onClick={() => navigate(LEAD_EDITOR_PATHS.list)}>{leadsCopy.backToList}</Button>} />;
   if (detailState === 'error') return <StatusMessage variant="error">{leadsCopy.detailLoadErrorPrefix} {loadError}<Button variant="outline" onClick={() => navigate(LEAD_EDITOR_PATHS.list)}>{leadsCopy.backToList}</Button></StatusMessage>;
 
-  return <><PageHeader eyebrow={leadsCopy.eyebrow} title={mode === 'create' ? leadsCopy.createTitle : leadsCopy.detailTitle} subtitle={mode === 'create' ? leadsCopy.createSubtitle : leadsCopy.detailSubtitle} action={<div className="lead-editor-page__actions"><Button variant="outline" onClick={() => navigate(LEAD_EDITOR_PATHS.list)}>{leadsCopy.backToList}</Button>{editable && <Button onClick={() => void save()} loading={saving} loadingText={leadsCopy.saving}>{leadsCopy.save}</Button>}</div>} />{mode === 'detail' && !canEdit && <StatusMessage variant="loading">{leadsCopy.editingUnavailable}</StatusMessage>}{saveError && <StatusMessage variant="error">{leadsCopy.saveErrorPrefix} {saveError}</StatusMessage>}<Card><div className="lead-editor-page__form"><Select label={leadsCopy.form.leadType} options={LEAD_LIST_TABS.map(({ type, label }) => ({ value: type, label }))} value={leadType} disabled /><TextField label={leadsCopy.form.customerName} value={values.customerName} onChange={(event) => updateValue('customerName', event.target.value)} required disabled={!editable} /><TextField label={leadsCopy.form.source} value={values.source} onChange={(event) => updateValue('source', event.target.value)} disabled={!editable} /><TextField label={leadsCopy.form.country} value={values.country} onChange={(event) => updateValue('country', event.target.value)} disabled={!editable} /><TextField label={leadsCopy.form.productTitle} value={values.productTitle} onChange={(event) => updateValue('productTitle', event.target.value)} disabled={!editable} /><TextField label={leadsCopy.form.responseSpeed} value={values.responseSpeed} onChange={(event) => updateValue('responseSpeed', event.target.value)} disabled={!editable} /><Textarea label={leadsCopy.form.csMemo} value={values.csMemo} onChange={(event) => updateValue('csMemo', event.target.value)} disabled={!editable} /></div></Card></>;
+  return <><PageHeader eyebrow={leadsCopy.eyebrow} title={mode === 'create' ? leadsCopy.createTitle : leadsCopy.detailTitle} subtitle={mode === 'create' ? leadsCopy.createSubtitle : leadsCopy.detailSubtitle} action={<div className="lead-editor-page__actions"><Button variant="outline" onClick={() => navigate(LEAD_EDITOR_PATHS.list)}>{leadsCopy.backToList}</Button>{editable && <Button onClick={() => void save()} loading={saving} loadingText={leadsCopy.saving}>{leadsCopy.save}</Button>}</div>} />{mode === 'detail' && !canEdit && <StatusMessage variant="loading">{leadsCopy.editingUnavailable}</StatusMessage>}{saveError && <StatusMessage variant="error">{leadsCopy.saveErrorPrefix} {saveError}</StatusMessage>}<Card><div className="lead-editor-page__form"><Select label={leadsCopy.form.leadType} options={LEAD_TYPE_TABS.map(({ type, label }) => ({ value: type, label }))} value={leadType} disabled /><TextField label={leadsCopy.form.customerName} value={values.customerName} onChange={(event) => updateValue('customerName', event.target.value)} required disabled={!editable} /><TextField label={leadsCopy.form.source} value={values.source} onChange={(event) => updateValue('source', event.target.value)} disabled={!editable} /><TextField label={leadsCopy.form.country} value={values.country} onChange={(event) => updateValue('country', event.target.value)} disabled={!editable} /><TextField label={leadsCopy.form.productTitle} value={values.productTitle} onChange={(event) => updateValue('productTitle', event.target.value)} disabled={!editable} /><TextField label={leadsCopy.form.responseSpeed} value={values.responseSpeed} onChange={(event) => updateValue('responseSpeed', event.target.value)} disabled={!editable} /><Textarea label={leadsCopy.form.csMemo} value={values.csMemo} onChange={(event) => updateValue('csMemo', event.target.value)} disabled={!editable} /></div></Card></>;
 }
