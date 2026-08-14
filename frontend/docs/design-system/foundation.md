@@ -24,7 +24,9 @@ Tabsは純粋UI金型で、`pill`と`underline`、`sm`と`md`、任意のicon・
 
 TabBarは受信箱由来の、ページまたは一覧上部に置くカテゴリ切替バーです。`key`、`label`、`disabled`だけを扱い、iconやcountを必要とする領域内切替にはTabsを使用します。
 
-DataTableは表面、border、角丸、overflow、横スクロール、table inset、列見出しの配置を管理します。見出しは既定で中央配置とし、sortable／staticを問わず同じ配置責務を持ちます。headerとbody cellは既定で縦中央配置であり、複数行セルだけ`cellVerticalAlignment="top"`を明示できます。`loading`では実際の列見出しと同じtable DOM内に既存Skeleton金型を描画し、`aria-busy`と呼出側の`loadingLabel`で状態を伝えます。本文セルは既定で左寄せです。ソート状態・行データ・セルの業務表示・行クリック後の遷移は呼出側の正本で管理します。TabBarと同じCardへ埋め込む場合は`embedded`を使い、二重のborder・角丸を作りません。
+PageHeaderは`eyebrow → title row（titleと右側action）→ subtitle`の順に描画します。title rowは最小高40px、gap 12px、actionは右寄せです。titleは24px／600／line-height 1.25、subtitleは13.6px／line-height 1.4／primary textで、subtitleの最小高は1.4em、下余白は12pxです。CRM固有のeyebrowは互換性のため維持し、PageHeader tokenだけを使用します。モバイルの`max-width: 767px`ではtitleとactionの折返しを許容します。CSS変数をmedia query条件に使えないため、このbreakpointだけはSales AnchorのPageLayoutと一致する固定値として許可し、それ以外の文字・色・余白はtokenを使用します。
+
+DataTableは表面、border、角丸、overflow、横スクロール、セル余白、列見出しの配置を管理します。scroll領域に横paddingは置かず、セル自身の横paddingで本文と見出しが表面端へ密着しないようにします。見出しは既定で中央配置とし、sortable／staticを問わず同じ配置責務を持ちます。本文セルは既定で左寄せであり、選択値や日付など中央配置が必要な列だけ`cellAlignment="center"`を明示します。headerとbody cellは既定で縦中央配置であり、複数行セルだけ`cellVerticalAlignment="top"`を明示できます。`loading`では実際の列見出しと同じtable DOM内に既存Skeleton金型を描画し、`aria-busy`と呼出側の`loadingLabel`で状態を伝えます。ソート状態・行データ・セルの業務表示・行クリック後の遷移は呼出側の正本で管理します。TabBarと同じCardへ埋め込む場合は`embedded`を使い、二重のborder・角丸を作りません。
 
 Skeletonは初回読込みの標準UIです。`table` variantは任意の`columns`を受け、指定時は`rows × columns`のバーを表示します。`columns`未指定時は既存の3列表示を維持します。aria-labelは呼出側のCopy SSOTから渡し、金型自身はCopyをimportしません。reduced-motionではshimmerを停止します。
 
