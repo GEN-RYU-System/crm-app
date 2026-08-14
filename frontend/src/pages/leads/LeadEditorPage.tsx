@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Button, Card, EmptyState, PageHeader, Select, Spinner, StatusMessage, Textarea, TextField } from '../../components/ui';
+import { Button, Card, EmptyState, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField } from '../../components/ui';
 import { leadsCopy } from '../../content/ja';
 import { createLead, getLeadDetail, updateLead, type LeadType } from '../../gas/client';
 import { useLeadListCache } from './LeadListCacheContext';
@@ -72,7 +72,7 @@ export function LeadEditorPage({ mode, canEdit }: Props) {
     }
   };
 
-  if (detailState === 'loading') return <StatusMessage variant="loading"><Spinner size="sm" aria-label={leadsCopy.detailLoading} />{leadsCopy.detailLoading}</StatusMessage>;
+  if (detailState === 'loading') return <><PageHeader eyebrow={leadsCopy.eyebrow} title={leadsCopy.detailTitle} subtitle={leadsCopy.detailSubtitle} action={<Button variant="outline" onClick={() => navigate(LEAD_EDITOR_PATHS.list)}>{leadsCopy.backToList}</Button>} /><Card><Skeleton variant="list" rows={7} label={leadsCopy.detailLoading} /></Card></>;
   if (detailState === 'missing') return <EmptyState title={leadsCopy.detailNotFoundTitle} description={leadsCopy.detailNotFoundDescription} action={<Button onClick={() => navigate(LEAD_EDITOR_PATHS.list)}>{leadsCopy.backToList}</Button>} />;
   if (detailState === 'error') return <StatusMessage variant="error">{leadsCopy.detailLoadErrorPrefix} {loadError}<Button variant="outline" onClick={() => navigate(LEAD_EDITOR_PATHS.list)}>{leadsCopy.backToList}</Button></StatusMessage>;
 
