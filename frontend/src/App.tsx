@@ -5,7 +5,7 @@ import { AppShell } from './components/shell';
 import { Spinner, StatusMessage } from './components/ui';
 import { getCurrentUser, getDashboardKpis, type DashboardKpis } from './gas/client';
 import { ComponentCatalogPage } from './pages/catalog/ComponentCatalogPage';
-import { customerPreviewRepository } from './features/customers/previewAdapter';
+import { customerGasRepository } from './features/customers/gasAdapter';
 import { CustomerDetailPage } from './pages/customers/CustomerDetailPage';
 import { CustomerListPage } from './pages/customers/CustomerListPage';
 import { CUSTOMER_ROUTE_SEGMENTS } from './pages/customers/customerConfig';
@@ -72,8 +72,8 @@ export default function App() {
   const inboxRoute = permissionState.status === 'checking' ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={inboxCopy.loading} />{inboxCopy.loading}</StatusMessage> : canAccessInbox ? <InboxPreviewPage repository={inboxPreviewRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const createRoute = canAccessLeads && canAddLeads ? <LeadEditorPage mode="create" canEdit={false} /> : <Navigate to={canAccessLeads ? NAVIGATION_BY_ID.leads.hash : NAVIGATION_BY_ID.dashboard.hash} replace />;
   const detailRoute = canAccessLeads ? <LeadEditorPage mode="detail" canEdit={canEditLeads} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
-  const customersRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerListPage repository={customerPreviewRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
-  const customerDetailRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerDetailPage repository={customerPreviewRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+  const customersRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerListPage repository={customerGasRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+  const customerDetailRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerDetailPage repository={customerGasRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const dataManagementRoute = permissionState.status === 'checking'
     ? <LeadPermissionLoading />
     : canAccessLeads
