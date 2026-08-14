@@ -31,14 +31,21 @@ function createRows() {
 
 function createSheet(rows, options) {
   const settings = Object.assign({
-    formulas: [], failWrites: 0, mutateBeforeSecondDataRead: false, mutateColumn: 1, customHeaders: headers
+    formulas: [], failWrites: 0, mutateBeforeSecondDataRead: false, mutateColumn: 1,
+    mutateRowIndex: 164, postWriteMismatch: false, customHeaders: headers,
+    changedLastRowAtRead: 0, changedLastRowValue: 0, failWriteAt: []
   }, options);
   let dataReadCount = 0;
   let writeCount = 0;
+  let lastRowReadCount = 0;
   return {
     rows: rows,
     getLastColumn: () => settings.customHeaders.length,
-    getLastRow: () => rows.length + 1,
+    getLastRow: () => {
+      lastRowReadCount += 1;
+      if (settings.changedLastRowAtRead === lastRowReadCount) return settings.changedLastRowValue;
+      return rows.length + 1;
+    },
     getRange: (row, column, numRows, numColumns) => {
       if (row === 1) return { getDisplayValues: () => [settings.customHeaders] };
       const start = row - 2;
@@ -47,8 +54,11 @@ function createSheet(rows, options) {
           if (column === 1 && numColumns === settings.customHeaders.length) {
             dataReadCount += 1;
             if (settings.mutateBeforeSecondDataRead && dataReadCount === 2) {
-              rows[164][settings.mutateColumn] = 'CHANGED';
+              rows[settings.mutateRowIndex][settings.mutateColumn] = 'CHANGED';
             }
+          }
+          if (settings.postWriteMismatch && writeCount === 1 && column === 2 && numColumns === 1) {
+            rows[0][1] = 'CHANGED';
           }
           return rows.slice(start, start + numRows).map(values => values.slice(column - 1, column - 1 + numColumns));
         },
@@ -57,7 +67,9 @@ function createSheet(rows, options) {
         ]),
         setValues: values => {
           writeCount += 1;
-          if (writeCount <= settings.failWrites) throw new Error('WRITE_FAILED');
+          if (writeCount <= settings.failWrites || settings.failWriteAt.includes(writeCount)) {
+            throw new Error('WRITE_FAILED');
+          }
           values.forEach((value, index) => { rows[start + index][column - 1] = value[0]; });
         }
       };
@@ -166,7 +178,7 @@ function execute(rows, options) {
 
 {
   const rows = createRows();
-  const execution = execute(rows, { mutateBeforeSecondDataRead: true });
+  const execution = execute(rows, { mutateBeforeSecondDataRead: true, mutateRowIndex: 0 });
   assert.equal(execution.result.resultType, 'REPAIR_SOURCE_CHANGED');
   assert.equal(execution.result.actualDataChangeCount, 0);
   assert.equal(execution.sheet.getWriteCount(), 0);
@@ -175,7 +187,33 @@ function execute(rows, options) {
 
 {
   const rows = createRows();
-  const execution = execute(rows, { mutateBeforeSecondDataRead: true, mutateColumn: 2 });
+  const execution = execute(rows, {
+    mutateBeforeSecondDataRead: true, mutateRowIndex: 0, mutateColumn: 2
+  });
+  assert.equal(execution.result.resultType, 'REPAIR_SOURCE_CHANGED');
+  assert.equal(execution.result.actualDataChangeCount, 0);
+  assert.equal(execution.sheet.getWriteCount(), 0);
+  assert.equal(execution.lock.getReleased(), 1);
+}
+
+{
+  const rows = createRows();
+  const execution = execute(rows, {
+    changedLastRowAtRead: 3,
+    changedLastRowValue: rows.length + 2
+  });
+  assert.equal(execution.result.resultType, 'REPAIR_SOURCE_CHANGED');
+  assert.equal(execution.result.actualDataChangeCount, 0);
+  assert.equal(execution.sheet.getWriteCount(), 0);
+  assert.equal(execution.lock.getReleased(), 1);
+}
+
+{
+  const rows = createRows();
+  const execution = execute(rows, {
+    changedLastRowAtRead: 3,
+    changedLastRowValue: rows.length
+  });
   assert.equal(execution.result.resultType, 'REPAIR_SOURCE_CHANGED');
   assert.equal(execution.result.actualDataChangeCount, 0);
   assert.equal(execution.sheet.getWriteCount(), 0);
@@ -206,10 +244,31 @@ function execute(rows, options) {
 
 {
   const rows = createRows();
-  const execution = execute(rows, { failWrites: 2 });
-  assert.equal(execution.result.resultType, 'REPAIR_WRITE_FAILED_RESTORE_FAILED');
+  const beforeStatuses = rows.map(row => row[1]);
+  const execution = execute(rows, { postWriteMismatch: true });
+  assert.equal(execution.result.resultType, 'REPAIR_POST_WRITE_VERIFICATION_FAILED_RESTORED');
   assert.equal(execution.result.actualDataChangeCount, 0);
   assert.equal(execution.sheet.getWriteCount(), 2);
+  assert.deepEqual(rows.map(row => row[1]), beforeStatuses);
+  assert.equal(execution.lock.getReleased(), 1);
+}
+
+{
+  const rows = createRows();
+  const execution = execute(rows, { failWrites: 2 });
+  assert.equal(execution.result.resultType, 'REPAIR_WRITE_FAILED_RESTORE_FAILED');
+  assert.equal(execution.result.actualDataChangeCount, null);
+  assert.equal(execution.result.dataChangeState, 'UNKNOWN');
+  assert.equal(execution.sheet.getWriteCount(), 2);
+  assert.equal(execution.lock.getReleased(), 1);
+}
+
+{
+  const rows = createRows();
+  const execution = execute(rows, { postWriteMismatch: true, failWriteAt: [2] });
+  assert.equal(execution.result.resultType, 'REPAIR_POST_WRITE_VERIFICATION_FAILED_RESTORE_FAILED');
+  assert.equal(execution.result.actualDataChangeCount, null);
+  assert.equal(execution.result.dataChangeState, 'UNKNOWN');
   assert.equal(execution.lock.getReleased(), 1);
 }
 
