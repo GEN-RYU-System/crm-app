@@ -10,7 +10,7 @@
 | Spinner | 部分的な読込み中の表示 | sm, md, lg | Component catalog | 整備済み |
 | EmptyState | データがない状態と次の操作の案内 | actionなし, actionあり | Component catalog | 整備済み |
 | Badge | 状態・ラベル | neutral, info, success, warning, danger / soft, solid / sm, md / dot, icon | Component catalog | 整備済み |
-| Skeleton | 読込み中の形状 | text, table, list, card | Component catalog | 整備済み |
+| Skeleton | 読込み中の形状 | text, table（任意columns）, list, card | Dashboard, Lead list, Lead detail, Component catalog | 整備済み |
 | TextField | 単一行入力の表示金型 | sm, md, lg / helper, error, required, disabled | Component catalog | 整備済み |
 | Textarea | 複数行入力の表示金型 | sm, md, lg / helper, error, required, disabled | Component catalog | 整備済み |
 | Select | 選択入力の表示金型 | sm, md, lg / helper, error, required, disabled | Component catalog | 整備済み |
