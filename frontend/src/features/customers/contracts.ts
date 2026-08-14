@@ -1,17 +1,12 @@
-export type CustomerCategory = 'company' | 'individual';
-export type CustomerStatus = 'active' | 'inactive' | 'pending';
-export type CountryCode = 'JP' | 'US' | 'GB';
-export type PaymentMethod = 'card' | 'transfer' | 'invoice';
-
 export type CustomerSummaryDto = {
   customerId: string;
   customerName: string;
-  customerType: CustomerCategory;
+  customerType: string;
   emailAddress: string;
-  country: CountryCode;
+  country: string;
   shippingAddressCount: number;
   paymentProfileCount: number;
-  status: CustomerStatus;
+  status: string;
   updatedAt: string;
 };
 
@@ -21,17 +16,17 @@ export type CustomerProfileDto = CustomerSummaryDto & {
 
 export type ShippingAddressDto = {
   addressId: string;
-  label: 'primary' | 'secondary';
+  label: string;
   recipient: string;
-  country: CountryCode;
+  country: string;
   address: string;
 };
 
 export type PaymentProfileDto = {
   paymentProfileId: string;
-  label: 'primary' | 'secondary';
-  method: PaymentMethod;
-  status: CustomerStatus;
+  label: string;
+  method: string;
+  status: string;
 };
 
 export type CustomerAggregateDto = {

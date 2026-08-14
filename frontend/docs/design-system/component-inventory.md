@@ -13,7 +13,7 @@
 | ConversationWorkspace | 一覧・会話・詳細の3領域を持つ業務画面枠 | list, conversation, details / desktop, tablet, mobile | Route chat preview, Component catalog | 整備済み |
 | Card | セクションの表面 | default, outlined | Lead list, Customer list, Customer detail, Component catalog, StatCard | 整備済み |
 | StatCard | KPIの表示 | なし | Dashboard, Component catalog | 整備済み |
-| StatusMessage | loading / error / empty | Dashboard, Customer list, Customer detail, Component catalog | 整備済み |
+| StatusMessage | loading / error / empty | loading, error, empty | Dashboard, Customer list, Customer detail, Component catalog | 整備済み |
 | Spinner | 部分的な読込み中の表示 | sm, md, lg | Component catalog | 整備済み |
 | EmptyState | データがない状態と次の操作の案内 | actionなし, actionあり | Customer list, Customer detail, Component catalog | 整備済み |
 | Badge | 状態・ラベル | neutral, info, success, warning, danger / soft, solid / sm, md / dot, icon | Component catalog | 整備済み |
