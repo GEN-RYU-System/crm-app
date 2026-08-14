@@ -6,9 +6,10 @@ const registrySource = fs.readFileSync('src/00_CoreSchemaRegistry.js', 'utf8');
 const registrationSource = fs.readFileSync('src/18_CustomerRegistration.js', 'utf8');
 const TABLE_KEYS = ['CUSTOMERS', 'SHIPPING_DESTINATIONS', 'PAYMENT_DESTINATIONS', 'FORM_TOKENS'];
 
-function createSheet(name, headers, rows, writes) {
+function createSheet(name, headers, rows, writes, sheetId) {
   const data = [headers].concat(rows || []);
   return {
+    getSheetId: () => sheetId,
     getDataRange: () => ({ getValues: () => data.map(row => row.slice()) }),
     getLastColumn: () => headers.length,
     getLastRow: () => data.length,
@@ -52,33 +53,33 @@ function createRuntime(options) {
   });
   vm.runInContext(registrySource, context, { filename: '00_CoreSchemaRegistry.js' });
 
-  TABLE_KEYS.forEach(tableKey => {
+  TABLE_KEYS.forEach((tableKey, index) => {
     const table = context.getCoreSchemaV1Table(tableKey);
     const headers = Object.keys(table.headers).map(key => table.headers[key]);
-    sheets[table.sheetName] = createSheet(table.sheetName, headers, [], writes);
+    sheets[table.sheetName] = createSheet(table.sheetName, headers, [], writes, index + 1);
   });
   const tokenHeaders = Object.keys(context.getCoreSchemaV1Table('FORM_TOKENS').headers)
     .map(key => context.getCoreSchemaV1Table('FORM_TOKENS').headers[key]);
-  sheets['フォームトークン'] = createSheet('フォームトークン', tokenHeaders, [['TOKEN', 'LEAD', '', '']], writes);
-  sheets['国マスタ'] = createSheet('国マスタ', ['国名（表示）', '州必須', '郵便番号必須'], [['Japan', 'FALSE', 'FALSE']], writes);
+  sheets['フォームトークン'] = createSheet('フォームトークン', tokenHeaders, [['TOKEN', 'LEAD', '', '']], writes, 4);
+  sheets['国マスタ'] = createSheet('国マスタ', ['国名（表示）', '州必須', '郵便番号必須'], [['Japan', 'FALSE', 'FALSE']], writes, 99);
 
   if (options && options.missingTable) delete sheets[context.getCoreSchemaV1Table(options.missingTable).sheetName];
   if (options && options.duplicateTable) {
     const table = context.getCoreSchemaV1Table(options.duplicateTable);
     const headers = Object.keys(table.headers).map(key => table.headers[key]);
     headers.push(headers[0]);
-    sheets[table.sheetName] = createSheet(table.sheetName, headers, [], writes);
+    sheets[table.sheetName] = createSheet(table.sheetName, headers, [], writes, sheets[table.sheetName].getSheetId());
   }
   if (options && options.missingHeaderTable) {
     const table = context.getCoreSchemaV1Table(options.missingHeaderTable);
     const headers = Object.keys(table.headers).map(key => table.headers[key]).slice(1);
-    sheets[table.sheetName] = createSheet(table.sheetName, headers, [], writes);
+    sheets[table.sheetName] = createSheet(table.sheetName, headers, [], writes, sheets[table.sheetName].getSheetId());
   }
   if (options && options.reorderedTable) {
     const table = context.getCoreSchemaV1Table(options.reorderedTable);
     const headers = Object.keys(table.headers).map(key => table.headers[key]);
     [headers[0], headers[1]] = [headers[1], headers[0]];
-    sheets[table.sheetName] = createSheet(table.sheetName, headers, [], writes);
+    sheets[table.sheetName] = createSheet(table.sheetName, headers, [], writes, sheets[table.sheetName].getSheetId());
   }
 
   context.HEADERS.CRM_CUSTOMERS = Object.keys(context.getCoreSchemaV1Table('CUSTOMERS').headers).map(key => context.getCoreSchemaV1Table('CUSTOMERS').headers[key]);
@@ -145,7 +146,7 @@ function payload() {
       const table = context.getCoreSchemaV1Table('CUSTOMERS');
       const headers = Object.keys(table.headers).map(key => table.headers[key]);
       headers[0] = 'CHANGED_HEADER';
-      sheets[table.sheetName] = createSheet(table.sheetName, headers, [], writes);
+      sheets[table.sheetName] = createSheet(table.sheetName, headers, [], writes, sheets[table.sheetName].getSheetId());
     }
   });
   const result = runtime.context.registerCustomerFromForm(payload());
@@ -159,7 +160,7 @@ function payload() {
     afterLock: (sheets, context, writes) => {
       const table = context.getCoreSchemaV1Table('PAYMENT_DESTINATIONS');
       const headers = Object.keys(table.headers).map(key => table.headers[key]);
-      sheets[table.sheetName] = createSheet(table.sheetName, headers, [], writes);
+      sheets[table.sheetName] = createSheet(table.sheetName, headers, [], writes, 1004);
     }
   });
   const result = runtime.context.registerCustomerFromForm(payload());
@@ -171,9 +172,23 @@ function payload() {
 {
   const runtime = createRuntime({
     afterLock: (sheets, context, writes) => {
+      const table = context.getCoreSchemaV1Table('PAYMENT_DESTINATIONS');
+      const headers = Object.keys(table.headers).map(key => table.headers[key]);
+      sheets[table.sheetName] = createSheet(table.sheetName, headers, [], writes, sheets[table.sheetName].getSheetId());
+    }
+  });
+  const result = runtime.context.registerCustomerFromForm(payload());
+  assert.equal(result.success, true);
+  assert.equal(runtime.writes.length, 4);
+  assert.equal(runtime.lockState.releaseCount, 1);
+}
+
+{
+  const runtime = createRuntime({
+    afterLock: (sheets, context, writes) => {
       const table = context.getCoreSchemaV1Table('SHIPPING_DESTINATIONS');
       const headers = Object.keys(table.headers).map(key => table.headers[key]).concat(['EXTRA_HEADER']);
-      sheets[table.sheetName] = createSheet(table.sheetName, headers, [], writes);
+      sheets[table.sheetName] = createSheet(table.sheetName, headers, [], writes, sheets[table.sheetName].getSheetId());
     }
   });
   const result = runtime.context.registerCustomerFromForm(payload());
