@@ -36,7 +36,7 @@ function createSpreadsheet(options = {}) {
     created,
     deleted,
     getSpreadsheetTimeZone: () => 'Asia/Tokyo',
-    getSheetByName: name => sheets[name] || null,
+    getSheetByName: name => options.missingSheet === name ? null : (sheets[name] || null),
     insertSheet: name => {
       if (options.failAtName === name) throw new Error('insert failure');
       const events = [];
@@ -45,10 +45,10 @@ function createSpreadsheet(options = {}) {
       const sheet = {
         name,
         events,
-        getLastRow: () => dataRows.length + 1,
-        getLastColumn: () => headers.length,
+        getLastRow: () => dataRows.length + 1 + (options.rowCountMismatch ? 1 : 0),
+        getLastColumn: () => headers.length + (options.columnCountMismatch ? 1 : 0),
         getRange: row => ({
-          getDisplayValues: () => [headers],
+          getDisplayValues: () => [options.headerMismatch ? headers.concat('MISMATCH') : headers],
           getValues: () => options.corruptAfterWrite && row === 2
             ? dataRows.map(values => values.slice()).map((values, index) => index === 0 ? values.concat('CORRUPTED') : values)
             : dataRows,
@@ -83,7 +83,8 @@ function run(spreadsheet, auditOverride) {
     Utilities: { formatDate: date => date.toISOString().slice(0, 7) },
     getEnvironment: () => 'development',
     getSpreadsheet: () => spreadsheet,
-    LockService: { getScriptLock: () => lock }
+    LockService: { getScriptLock: () => lock },
+    SpreadsheetApp: { flush: () => {} }
   });
   vm.runInContext(dryRunSource, context, { filename: '99_DevCustomerAnalyticsMaterializationDryRun.js' });
   vm.runInContext(initializationSource, context, { filename: '99_DevCustomerAnalyticsInitialization.js' });
@@ -113,6 +114,13 @@ function installExpectedTables(context) {
 function assertFailurePhase(result, phase) {
   assert.equal(result.resultType, 'INITIALIZATION_FAILED');
   assert.equal(result.failurePhase, phase);
+  assert.equal(result.sourceDataChangeCount, 0);
+  assert.equal(result.actualDataChangeCount, 0);
+}
+
+function assertPostWriteFailure(result, resultType) {
+  assert.equal(result.resultType, resultType);
+  assert.equal(result.failurePhase, 'INITIALIZATION_PHASE_POST_WRITE_VERIFY');
   assert.equal(result.sourceDataChangeCount, 0);
   assert.equal(result.actualDataChangeCount, 0);
 }
@@ -242,14 +250,33 @@ function assertFailurePhase(result, phase) {
 {
   const spreadsheet = createSpreadsheet({ corruptAfterWrite: true });
   const { context } = run(spreadsheet);
-  context.buildDevCustomerAnalyticsInitializationTables = () => ({
-    customer: Array.from({ length: 51 }, () => Array(12).fill('')),
-    monthly: Array.from({ length: 69 }, () => Array(10).fill('')),
-    product: Array.from({ length: 262 }, () => Array(7).fill(''))
-  });
-  context.hasDevCustomerAnalyticsInitializationOutputInvariants = () => true;
+  installExpectedTables(context);
   const result = context.initializeDevCustomerAnalytics();
-  assertFailurePhase(result, 'INITIALIZATION_PHASE_POST_WRITE_VERIFY');
+  assertPostWriteFailure(result, 'INITIALIZATION_POST_WRITE_DATA_MISMATCH');
+  assert.deepEqual(spreadsheet.deleted, ['顧客購入商品分析', '顧客月次分析', '顧客分析']);
+}
+
+[
+  ['INITIALIZATION_POST_WRITE_SHEET_MISSING', { missingSheet: '顧客月次分析' }],
+  ['INITIALIZATION_POST_WRITE_ROW_COUNT_MISMATCH', { rowCountMismatch: true }],
+  ['INITIALIZATION_POST_WRITE_COLUMN_COUNT_MISMATCH', { columnCountMismatch: true }],
+  ['INITIALIZATION_POST_WRITE_HEADER_MISMATCH', { headerMismatch: true }]
+].forEach(([resultType, options]) => {
+  const spreadsheet = createSpreadsheet(options);
+  const { context } = run(spreadsheet);
+  installExpectedTables(context);
+  const result = context.initializeDevCustomerAnalytics();
+  assertPostWriteFailure(result, resultType);
+  assert.deepEqual(spreadsheet.deleted, ['顧客購入商品分析', '顧客月次分析', '顧客分析']);
+});
+
+{
+  const spreadsheet = createSpreadsheet();
+  const { context } = run(spreadsheet);
+  installExpectedTables(context);
+  context.SpreadsheetApp.flush = () => { throw new Error('flush failure'); };
+  const result = context.initializeDevCustomerAnalytics();
+  assertPostWriteFailure(result, 'INITIALIZATION_POST_WRITE_VERIFY_EXCEPTION');
   assert.deepEqual(spreadsheet.deleted, ['顧客購入商品分析', '顧客月次分析', '顧客分析']);
 }
 
@@ -359,7 +386,7 @@ function assertFailurePhase(result, phase) {
     throw new Error('verification failure');
   };
   const result = context.initializeDevCustomerAnalytics();
-  assertFailurePhase(result, 'INITIALIZATION_PHASE_POST_WRITE_VERIFY');
+  assertPostWriteFailure(result, 'INITIALIZATION_POST_WRITE_VERIFY_EXCEPTION');
   assert.deepEqual(spreadsheet.deleted, ['顧客購入商品分析', '顧客月次分析', '顧客分析']);
 }
 
