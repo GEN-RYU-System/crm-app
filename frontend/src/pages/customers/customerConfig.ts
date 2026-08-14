@@ -6,41 +6,37 @@ import { customersCopy } from '../../content/ja';
 export type CustomerListRow = {
   customerId: string;
   customerName: string;
-  emailAddress: string;
   country: string;
-  phone: string;
-  shippingAddressCount: string;
-  paymentProfileCount: string;
+  salesChannel: string;
+  handledTitle: string;
   salesAssigneeName: string;
-  contactTool: string;
-  registeredAt: string;
-  registeredAtRaw: string;
+  transactionCount: string;
+  transactionAmount: string;
 };
 
-export type CustomerSortKey = Exclude<keyof CustomerListRow, 'customerId' | 'registeredAtRaw'>;
+export type CustomerListColumnKey = Exclude<keyof CustomerListRow, 'customerId'>;
+export type CustomerSortKey = Exclude<CustomerListColumnKey, 'transactionAmount'>;
 export type CustomerSortDirection = 'ascending' | 'descending';
 export type CustomerSort = { key: CustomerSortKey; direction: CustomerSortDirection };
 export type CustomerDetailTab = 'basic' | 'shipping' | 'payment';
 
 export const CUSTOMER_ROUTE_SEGMENTS = { detail: ':customerId' } as const;
-export const CUSTOMER_LIST_INITIAL_SORT: CustomerSort = { key: 'registeredAt', direction: 'descending' };
+export const CUSTOMER_LIST_INITIAL_SORT: CustomerSort = { key: 'customerName', direction: 'ascending' };
 export const CUSTOMER_DETAIL_TABS: readonly { key: CustomerDetailTab; label: string }[] = [
   { key: 'basic', label: customersCopy.tabs.basic },
   { key: 'shipping', label: customersCopy.tabs.shipping },
   { key: 'payment', label: customersCopy.tabs.payment }
 ];
-export const CUSTOMER_LIST_COLUMNS: readonly { key: CustomerSortKey; label: string; cellAlignment: DataTableCellAlignment }[] = [
-  { key: 'customerName', label: customersCopy.columns.customerName, cellAlignment: 'center' },
-  { key: 'emailAddress', label: customersCopy.columns.emailAddress, cellAlignment: 'center' },
-  { key: 'country', label: customersCopy.columns.country, cellAlignment: 'center' },
-  { key: 'phone', label: customersCopy.columns.phone, cellAlignment: 'center' },
-  { key: 'shippingAddressCount', label: customersCopy.columns.shippingAddressCount, cellAlignment: 'center' },
-  { key: 'paymentProfileCount', label: customersCopy.columns.paymentProfileCount, cellAlignment: 'center' },
-  { key: 'salesAssigneeName', label: customersCopy.columns.salesAssigneeName, cellAlignment: 'center' },
-  { key: 'contactTool', label: customersCopy.columns.contactTool, cellAlignment: 'center' },
-  { key: 'registeredAt', label: customersCopy.columns.registeredAt, cellAlignment: 'center' }
+export const CUSTOMER_LIST_COLUMNS: readonly { key: CustomerListColumnKey; label: string; cellAlignment: DataTableCellAlignment; sortable: boolean }[] = [
+  { key: 'customerName', label: customersCopy.columns.customerName, cellAlignment: 'center', sortable: true },
+  { key: 'country', label: customersCopy.columns.country, cellAlignment: 'center', sortable: true },
+  { key: 'salesChannel', label: customersCopy.columns.salesChannel, cellAlignment: 'center', sortable: true },
+  { key: 'handledTitle', label: customersCopy.columns.handledTitle, cellAlignment: 'center', sortable: true },
+  { key: 'salesAssigneeName', label: customersCopy.columns.salesAssigneeName, cellAlignment: 'center', sortable: true },
+  { key: 'transactionCount', label: customersCopy.columns.transactionCount, cellAlignment: 'center', sortable: true },
+  { key: 'transactionAmount', label: customersCopy.columns.transactionAmount, cellAlignment: 'center', sortable: false }
 ];
-export const CUSTOMER_LIST_SEARCH_COLUMNS: readonly CustomerSortKey[] = CUSTOMER_LIST_COLUMNS.map(({ key }) => key);
+export const CUSTOMER_LIST_SEARCH_COLUMNS: readonly CustomerListColumnKey[] = CUSTOMER_LIST_COLUMNS.map(({ key }) => key);
 export const CUSTOMER_PROFILE_FIELDS: readonly { key: keyof Pick<CustomerProfileDto, 'customerId' | 'customerName' | 'emailAddress' | 'country' | 'phone' | 'countryCode' | 'firstTransactionDate' | 'registeredAt' | 'salesAssigneeName' | 'contactTool' | 'shippingNote'>; label: string }[] = [
   { key: 'customerId', label: customersCopy.fields.customerId },
   { key: 'customerName', label: customersCopy.fields.customerName },
@@ -73,13 +69,14 @@ export const CUSTOMER_PAYMENT_COLUMNS: readonly { key: keyof Pick<PaymentProfile
   { key: 'isActive', label: customersCopy.columns.activeFlag, cellAlignment: 'center' }
 ];
 
-function formatDate(value: string): string { const date = new Date(value); return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('ja-JP'); }
+function formatTransactionAmounts(amounts: CustomerSummaryDto['transactionAmounts']): string {
+  if (amounts.length === 0) return customersCopy.emptyValue;
+  return amounts.map(({ currency, amount }) => `${currency ? `${currency} ` : ''}${amount.toLocaleString('ja-JP')}`).join(' / ');
+}
 export function toCustomerListRows(customers: readonly CustomerSummaryDto[], sort: CustomerSort): CustomerListRow[] {
-  const rows = customers.map((customer) => ({ customerId: customer.customerId, customerName: customer.customerName, emailAddress: customer.emailAddress, country: customer.country, phone: customer.phone, shippingAddressCount: String(customer.shippingAddressCount), paymentProfileCount: String(customer.paymentProfileCount), salesAssigneeName: customer.salesAssigneeName, contactTool: customer.contactTool, registeredAt: formatDate(customer.registeredAt), registeredAtRaw: customer.registeredAt }));
+  const rows = customers.map((customer) => ({ customerId: customer.customerId, customerName: customer.customerName, country: customer.country, salesChannel: customer.salesChannel, handledTitle: customer.handledTitle, salesAssigneeName: customer.salesAssigneeName, transactionCount: String(customer.transactionCount), transactionAmount: formatTransactionAmounts(customer.transactionAmounts) }));
   const direction = sort.direction === 'ascending' ? 1 : -1;
-  return rows.sort((left, right) => sort.key === 'registeredAt'
-    ? (new Date(left.registeredAtRaw).getTime() - new Date(right.registeredAtRaw).getTime()) * direction
-    : left[sort.key].localeCompare(right[sort.key], 'ja-JP', { numeric: true, sensitivity: 'base' }) * direction);
+  return rows.sort((left, right) => left[sort.key].localeCompare(right[sort.key], 'ja-JP', { numeric: true, sensitivity: 'base' }) * direction);
 }
 
 export function filterCustomerListRows(rows: readonly CustomerListRow[], query: string): readonly CustomerListRow[] {

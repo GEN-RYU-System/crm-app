@@ -33,6 +33,8 @@ function createSheet(tableKey, records) {
 const customerSheetName = context.getCoreSchemaV1Table('CUSTOMERS').sheetName;
 const shippingSheetName = context.getCoreSchemaV1Table('SHIPPING_DESTINATIONS').sheetName;
 const paymentSheetName = context.getCoreSchemaV1Table('PAYMENT_DESTINATIONS').sheetName;
+const leadSheetName = context.getCoreSchemaV1Table('LEADS').sheetName;
+const orderSheetName = context.getCoreSchemaV1Table('ORDERS').sheetName;
 
 sheets[customerSheetName] = createSheet('CUSTOMERS', [{
   CUSTOMER_ID: 'customer-a', CUSTOMER_NAME: 'Customer A', COUNTRY: 'JP', EMAIL: 'customer@example.invalid',
@@ -47,13 +49,29 @@ sheets[paymentSheetName] = createSheet('PAYMENT_DESTINATIONS', [{
   PAYMENT_DESTINATION_ID: 'payment-a', CUSTOMER_ID: 'customer-a', BILLING_NAME: 'Billing A', ADDRESS_LINE_1: 'Billing line',
   COUNTRY: 'JP', PAYMENT_METHOD: 'Invoice', CURRENCY: 'JPY', IS_DEFAULT: true, IS_ACTIVE: true
 }]);
+sheets[leadSheetName] = createSheet('LEADS', [{
+  LEAD_ID: 'lead-a', SALES_CHANNEL: 'Wholesale', HANDLED_TITLE: 'Product A'
+}]);
+sheets[orderSheetName] = createSheet('ORDERS', [
+  { ORDER_ID: 'order-a', CUSTOMER_ID: 'customer-a', CURRENCY: 'JPY', INVOICE_TOTAL: 1200 },
+  { ORDER_ID: 'order-b', CUSTOMER_ID: 'customer-a', CURRENCY: 'JPY', INVOICE_TOTAL: '2,300' },
+  { ORDER_ID: 'order-c', CUSTOMER_ID: 'customer-a', CURRENCY: 'USD', INVOICE_TOTAL: 45 },
+  { ORDER_ID: '', CUSTOMER_ID: 'customer-a', CURRENCY: 'JPY', INVOICE_TOTAL: 9999 }
+]);
 
 vm.runInContext(apiSource, context);
 const list = JSON.parse(JSON.stringify(context.getCoreCustomersForFrontend()));
 assert.strictEqual(list.length, 1);
-assert.strictEqual(list[0].shippingAddressCount, 1);
-assert.strictEqual(list[0].paymentProfileCount, 1);
-assert.strictEqual(list[0].registeredAt, '2026-01-02T00:00:00.000Z');
+assert.strictEqual(list[0].salesChannel, 'Wholesale');
+assert.strictEqual(list[0].handledTitle, 'Product A');
+assert.strictEqual(list[0].salesAssigneeName, 'Staff A');
+assert.strictEqual(list[0].transactionCount, 3);
+assert.deepStrictEqual(list[0].transactionAmounts, [
+  { currency: 'JPY', amount: 3500 },
+  { currency: 'USD', amount: 45 }
+]);
+assert.strictEqual(Object.prototype.hasOwnProperty.call(list[0], 'emailAddress'), false);
+assert.strictEqual(Object.prototype.hasOwnProperty.call(list[0], 'phone'), false);
 
 const detail = JSON.parse(JSON.stringify(context.getCoreCustomerForFrontend('customer-a')));
 assert.strictEqual(detail.profile.customerId, 'customer-a');
