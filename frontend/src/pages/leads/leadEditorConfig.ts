@@ -12,15 +12,8 @@ export const LEAD_EDITOR_PATHS = {
 } as const;
 
 export const LEAD_EDITOR_SEGMENTS = {
-  list: 'leads',
-  create: 'leads/new',
-  detail: 'leads/:leadId'
-} as const;
-
-export const LEGACY_LEAD_EDITOR_PATHS = {
-  list: '/leads',
-  create: '/leads/new',
-  detail: '/leads/:leadId'
+  create: 'new',
+  detail: ':leadId'
 } as const;
 
 function value(record: LeadRecord, field: keyof typeof leadsCopy.fields): string {
