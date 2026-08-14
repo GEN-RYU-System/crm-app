@@ -5,9 +5,9 @@ import {
   Button,
   Card,
   DataTable,
-  DataTableToolbar,
   EmptyState,
   PageHeader,
+  PageToolbar,
   Select,
   Skeleton,
   Spinner,
@@ -153,15 +153,14 @@ export function ComponentCatalogPage() {
         </Card>
         <Card>
           <h2 className="catalog-page__heading">
-            {catalogCopy.dataTableToolbar}
+            {catalogCopy.pageToolbar}
           </h2>
-          <DataTableToolbar
+          <PageToolbar
             start={
-              <TabBar
-                items={tabBarItems}
-                activeKey={activeTabBar}
-                onChange={setActiveTabBar}
-                aria-label={catalogCopy.tabBarLabel}
+              <TextField
+                aria-label={catalogCopy.textLabel}
+                placeholder={catalogCopy.placeholder}
+                fullWidth
               />
             }
             end={
