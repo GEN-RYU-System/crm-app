@@ -22,6 +22,7 @@
 | AppShell | React POCの画面枠と本文グラデーション | なし | Dashboard, Component catalog | 整備済み |
 | DesktopSidebar | PC幅の固定サイドバー | collapsed, expanded | Dashboard, Component catalog | 整備済み |
 | SidebarNav | navigation.tsのグループ・項目・実装状態を描画するナビ | available, preview, planned | DesktopSidebar | 整備済み |
+| SidebarAccordion | サイドバーの親項目と子ルートを開閉する階層ナビ | collapsed, expanded / active / planned child | SidebarNav | 整備済み |
 | MobileHeader | モバイル帯の最小ヘッダー | なし | Dashboard, Component catalog | 整備済み |
 
 この表には、現在存在する金型だけを記載します。
