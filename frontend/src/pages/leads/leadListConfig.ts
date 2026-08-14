@@ -1,4 +1,5 @@
 import type { LeadRecord, LeadType } from '../../gas/client';
+import type { DataTableCellAlignment } from '../../components/ui';
 import { leadsCopy } from '../../content/ja';
 
 export type LeadListRow = { id: string; customerName: string; responseSpeed: string; updatedAt: string; csMemo: string; source: string; country: string; productTitle: string };
@@ -19,14 +20,14 @@ export const LEAD_LIST_TABS: readonly { type: LeadListTabType; label: string }[]
   ...LEAD_TYPE_TABS
 ];
 
-export const LEAD_LIST_COLUMNS: readonly { key: LeadSortKey; label: string }[] = [
-  { key: 'customerName', label: leadsCopy.columns.customerName },
-  { key: 'responseSpeed', label: leadsCopy.columns.responseSpeed },
-  { key: 'updatedAt', label: leadsCopy.columns.updatedAt },
-  { key: 'csMemo', label: leadsCopy.columns.csMemo },
-  { key: 'source', label: leadsCopy.columns.source },
-  { key: 'country', label: leadsCopy.columns.country },
-  { key: 'productTitle', label: leadsCopy.columns.productTitle }
+export const LEAD_LIST_COLUMNS: readonly { key: LeadSortKey; label: string; cellAlignment: DataTableCellAlignment }[] = [
+  { key: 'customerName', label: leadsCopy.columns.customerName, cellAlignment: 'start' },
+  { key: 'responseSpeed', label: leadsCopy.columns.responseSpeed, cellAlignment: 'center' },
+  { key: 'updatedAt', label: leadsCopy.columns.updatedAt, cellAlignment: 'center' },
+  { key: 'csMemo', label: leadsCopy.columns.csMemo, cellAlignment: 'start' },
+  { key: 'source', label: leadsCopy.columns.source, cellAlignment: 'center' },
+  { key: 'country', label: leadsCopy.columns.country, cellAlignment: 'center' },
+  { key: 'productTitle', label: leadsCopy.columns.productTitle, cellAlignment: 'center' }
 ];
 
 function text(value: unknown): string {
