@@ -60,10 +60,8 @@ const CONFIG = {
   // シート名
   SHEETS: {
     // 統合リード管理シート（メイン）
-    LEADS: 'リード管理',
 
     // マスタ・設定シート
-    STAFF: '担当者マスタ',
     SETTINGS: '選択肢マスタ',
     PERMISSIONS: '権限設定',
     GOALS: '目標設定',
@@ -108,22 +106,14 @@ const CONFIG = {
     SALES_DATA_SYNC: '📊売上データ同期',
 
     // ★ SCM統合: マスタデータ（IMPORTRANGE同期） ★
-    SCM_PRODUCT_MASTER_SYNC: '商品マスタ同期',
     SCM_STOCK_SYNC: '集計同期',
     SCM_SUPPLIER_MASTER_SYNC: '仕入元マスタ同期',
 
     // ★ CRM顧客マスタ（CRM内ネイティブ） ★
-    CRM_CUSTOMERS: '顧客マスタ',
-    CRM_SHIPPING: '配送先マスタ',
-    CRM_PAYMENT: '支払先マスタ',
 
     // ★ オーダー管理 ★
-    ORDER_MASTER: 'オーダー管理',
-    ORDER_LINES: 'オーダー明細',
 
     // ★ 発送・仕入れ（1オーダーn個口/複数仕入れ） ★
-    SHIPMENT: '発送',
-    PURCHASE: '仕入れ'
   },
 
   // リードID接頭辞（インバウンド: LDI-, アウトバウンド: LDO-）
@@ -227,6 +217,22 @@ const CONFIG = {
     }
   }
 };
+
+// Core Schema V1 の値はアクセス時に解決する。これにより、別ファイルの
+// Registry const 初期化順に CONFIG 自体が依存しない。
+Object.defineProperties(CONFIG.SHEETS, {
+  LEADS: { enumerable: true, get: function() { return getCoreSchemaV1TableName('LEADS'); } },
+  STAFF: { enumerable: true, get: function() { return getCoreSchemaV1TableName('STAFF'); } },
+  SCM_PRODUCT_MASTER_SYNC: { enumerable: true, get: function() { return getCoreSchemaV1TableName('PRODUCTS'); } },
+  CRM_CUSTOMERS: { enumerable: true, get: function() { return getCoreSchemaV1TableName('CUSTOMERS'); } },
+  CRM_SHIPPING: { enumerable: true, get: function() { return getCoreSchemaV1TableName('SHIPPING_DESTINATIONS'); } },
+  CRM_PAYMENT: { enumerable: true, get: function() { return getCoreSchemaV1TableName('PAYMENT_DESTINATIONS'); } },
+  ORDER_MASTER: { enumerable: true, get: function() { return getCoreSchemaV1TableName('ORDERS'); } },
+  ORDER_LINES: { enumerable: true, get: function() { return getCoreSchemaV1TableName('ORDER_LINES'); } },
+  SHIPMENT: { enumerable: true, get: function() { return getCoreSchemaV1TableName('SHIPMENTS'); } },
+  PURCHASE: { enumerable: true, get: function() { return getCoreSchemaV1TableName('PURCHASES'); } },
+  FORM_TOKENS: { enumerable: true, get: function() { return getCoreSchemaV1TableName('FORM_TOKENS'); } }
+});
 
 /**
  * プルダウン選択肢（デフォルト値・初期設定用）
