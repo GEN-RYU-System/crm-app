@@ -76,8 +76,8 @@ function initializeDevCustomerAnalytics() {
       spec.dateColumns.forEach(column => sh.getRange(2, column, spec.rows.length, 1).setNumberFormat('yyyy-MM-dd'));
     });
     failurePhase = DEV_CUSTOMER_ANALYTICS_INITIALIZATION_PHASE_POST_WRITE_VERIFY;
-    const postWriteResultType = verifyDevCustomerAnalyticsInitializationAfterFlush(ss, specifications);
-    if (postWriteResultType) throw createDevCustomerAnalyticsInitializationPostWriteError(postWriteResultType);
+    const postWriteResult = verifyDevCustomerAnalyticsInitializationAfterFlush(ss, specifications);
+    if (postWriteResult) throw createDevCustomerAnalyticsInitializationPostWriteError(postWriteResult);
 
     // actualDataChangeCount means analytics output row writes only (header + data), never source CRM changes.
     return {
@@ -94,23 +94,24 @@ function initializeDevCustomerAnalytics() {
     };
   } catch (e) {
     const originalFailurePhase = failurePhase;
-    const fixedResultType = e && e.devCustomerAnalyticsInitializationResultType;
+    const fixedResult = e && e.devCustomerAnalyticsInitializationResult;
     let rollbackFailed = false;
     failurePhase = DEV_CUSTOMER_ANALYTICS_INITIALIZATION_PHASE_ROLLBACK;
     created.reverse().forEach(sh => {
       try { ss.deleteSheet(sh); } catch (ignored) { rollbackFailed = true; }
     });
     return createDevCustomerAnalyticsInitializationFailure(
-      rollbackFailed ? 'INITIALIZATION_ROLLBACK_STATE_UNKNOWN' : (fixedResultType || 'INITIALIZATION_FAILED'),
+      rollbackFailed ? 'INITIALIZATION_ROLLBACK_STATE_UNKNOWN' : (fixedResult ? fixedResult.resultType : 'INITIALIZATION_FAILED'),
       rollbackFailed ? failurePhase : originalFailurePhase,
       rollbackFailed ? null : 0,
-      rollbackFailed ? 'UNKNOWN' : 'UNCHANGED'
+      rollbackFailed ? 'UNKNOWN' : 'UNCHANGED',
+      rollbackFailed ? null : fixedResult
     );
   } finally { lock.releaseLock(); }
 }
 
-function createDevCustomerAnalyticsInitializationPostWriteError(resultType) {
-  return { devCustomerAnalyticsInitializationResultType: resultType };
+function createDevCustomerAnalyticsInitializationPostWriteError(result) {
+  return { devCustomerAnalyticsInitializationResult: result };
 }
 
 function verifyDevCustomerAnalyticsInitializationAfterFlush(ss, specifications) {
@@ -118,14 +119,14 @@ function verifyDevCustomerAnalyticsInitializationAfterFlush(ss, specifications) 
     SpreadsheetApp.flush();
     return verifyDevCustomerAnalyticsInitializationSheets(ss, specifications);
   } catch (e) {
-    return e && e.devCustomerAnalyticsInitializationResultType
-      ? e.devCustomerAnalyticsInitializationResultType
-      : 'INITIALIZATION_POST_WRITE_VERIFY_EXCEPTION';
+    return e && e.devCustomerAnalyticsInitializationResult
+      ? e.devCustomerAnalyticsInitializationResult
+      : { resultType: 'INITIALIZATION_POST_WRITE_VERIFY_EXCEPTION' };
   }
 }
 
-function createDevCustomerAnalyticsInitializationFailure(resultType, failurePhase, actualDataChangeCount, dataChangeState) {
-  return {
+function createDevCustomerAnalyticsInitializationFailure(resultType, failurePhase, actualDataChangeCount, dataChangeState, verification) {
+  const result = {
     success: false,
     resultType: resultType,
     failurePhase: failurePhase,
@@ -133,6 +134,13 @@ function createDevCustomerAnalyticsInitializationFailure(resultType, failurePhas
     actualDataChangeCount: actualDataChangeCount === undefined ? 0 : actualDataChangeCount,
     dataChangeState: dataChangeState || 'UNCHANGED'
   };
+  if (resultType === 'INITIALIZATION_POST_WRITE_DATA_MISMATCH' && verification) {
+    result.verificationSheetName = verification.verificationSheetName;
+    result.mismatchCellCount = verification.mismatchCellCount;
+    result.mismatchColumnHeaders = verification.mismatchColumnHeaders;
+    result.mismatchValueTypeSummary = verification.mismatchValueTypeSummary;
+  }
+  return result;
 }
 
 function getDevCustomerAnalyticsInitializationSpecifications(tables) {
@@ -146,21 +154,50 @@ function getDevCustomerAnalyticsInitializationSpecifications(tables) {
 function verifyDevCustomerAnalyticsInitializationSheets(ss, specifications) {
   specifications.forEach(spec => {
     const sheet = ss.getSheetByName(spec.name);
-    if (!sheet) throw createDevCustomerAnalyticsInitializationPostWriteError('INITIALIZATION_POST_WRITE_SHEET_MISSING');
-    if (sheet.getLastRow() !== spec.rows.length + 1) throw createDevCustomerAnalyticsInitializationPostWriteError('INITIALIZATION_POST_WRITE_ROW_COUNT_MISMATCH');
-    if (sheet.getLastColumn() !== spec.headers.length) throw createDevCustomerAnalyticsInitializationPostWriteError('INITIALIZATION_POST_WRITE_COLUMN_COUNT_MISMATCH');
+    if (!sheet) throw createDevCustomerAnalyticsInitializationPostWriteError({ resultType: 'INITIALIZATION_POST_WRITE_SHEET_MISSING' });
+    if (sheet.getLastRow() !== spec.rows.length + 1) throw createDevCustomerAnalyticsInitializationPostWriteError({ resultType: 'INITIALIZATION_POST_WRITE_ROW_COUNT_MISMATCH' });
+    if (sheet.getLastColumn() !== spec.headers.length) throw createDevCustomerAnalyticsInitializationPostWriteError({ resultType: 'INITIALIZATION_POST_WRITE_COLUMN_COUNT_MISMATCH' });
     const actualHeaders = sheet.getRange(1, 1, 1, spec.headers.length).getDisplayValues()[0];
     if (!isDevCustomerAnalyticsMaterializationEqual(actualHeaders, spec.headers)) {
-      throw createDevCustomerAnalyticsInitializationPostWriteError('INITIALIZATION_POST_WRITE_HEADER_MISMATCH');
+      throw createDevCustomerAnalyticsInitializationPostWriteError({ resultType: 'INITIALIZATION_POST_WRITE_HEADER_MISMATCH' });
     }
     const actualRows = spec.rows.length > 0
       ? sheet.getRange(2, 1, spec.rows.length, spec.headers.length).getValues()
       : [];
     if (!isDevCustomerAnalyticsMaterializationEqual(actualRows, spec.rows)) {
-      throw createDevCustomerAnalyticsInitializationPostWriteError('INITIALIZATION_POST_WRITE_DATA_MISMATCH');
+      throw createDevCustomerAnalyticsInitializationPostWriteError(buildDevCustomerAnalyticsInitializationDataMismatchResult(spec, actualRows));
     }
   });
   return null;
+}
+
+function buildDevCustomerAnalyticsInitializationDataMismatchResult(spec, actualRows) {
+  const mismatchColumnHeaders = [];
+  const mismatchValueTypeSummary = { DATE: 0, NUMBER: 0, TEXT: 0, BLANK: 0 };
+  let mismatchCellCount = 0;
+  spec.rows.forEach((expectedRow, rowIndex) => {
+    const actualRow = actualRows[rowIndex] || [];
+    spec.headers.forEach((header, columnIndex) => {
+      if (isDevCustomerAnalyticsMaterializationEqual(expectedRow[columnIndex], actualRow[columnIndex])) return;
+      mismatchCellCount++;
+      if (mismatchColumnHeaders.indexOf(header) === -1) mismatchColumnHeaders.push(header);
+      mismatchValueTypeSummary[getDevCustomerAnalyticsInitializationValueType(actualRow[columnIndex])]++;
+    });
+  });
+  return {
+    resultType: 'INITIALIZATION_POST_WRITE_DATA_MISMATCH',
+    verificationSheetName: spec.name,
+    mismatchCellCount: mismatchCellCount,
+    mismatchColumnHeaders: mismatchColumnHeaders,
+    mismatchValueTypeSummary: mismatchValueTypeSummary
+  };
+}
+
+function getDevCustomerAnalyticsInitializationValueType(value) {
+  if (value instanceof Date) return 'DATE';
+  if (value === '' || value === null || value === undefined) return 'BLANK';
+  if (typeof value === 'number' && isFinite(value)) return 'NUMBER';
+  return 'TEXT';
 }
 
 function hasDevCustomerAnalyticsInitializationOutputInvariants(tables) {
