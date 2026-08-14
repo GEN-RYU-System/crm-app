@@ -74,9 +74,9 @@ function run(overrides) {
   const result = JSON.parse(JSON.stringify(context.dryRunDevLeadAssigneeAssignmentPolicy()));
   assert.deepEqual(result, {
     success: false,
-    errorType: 'LEAD_ASSIGNEE_POLICY_NAME_HEADER_MISSING'
+    errorType: 'LEAD_ASSIGNEE_POLICY_NAME_HEADER_MISSING',
+    actualDataChangeCount: 0
   });
-  assert.equal(result.actualDataChangeCount, undefined);
   const serialized = JSON.stringify(result);
   ['LEAD-001', 'EMP-00001'].forEach(value => assert.equal(serialized.includes(value), false));
 }
@@ -87,7 +87,9 @@ function run(overrides) {
     getSpreadsheet: () => createSpreadsheet([['リードID', '担当者ID', '担当者ID'], ['', '', '']])
   });
   assert.deepEqual(JSON.parse(JSON.stringify(context.dryRunDevLeadAssigneeAssignmentPolicy())), {
-    success: false, errorType: 'LEAD_ASSIGNEE_POLICY_DRY_RUN_FAILED'
+    success: false,
+    errorType: 'LEAD_ASSIGNEE_POLICY_DRY_RUN_FAILED',
+    actualDataChangeCount: 0
   });
 }
 
