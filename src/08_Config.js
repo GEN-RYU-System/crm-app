@@ -60,10 +60,10 @@ const CONFIG = {
   // シート名
   SHEETS: {
     // 統合リード管理シート（メイン）
-    LEADS: 'リード管理',
+    LEADS: getCoreSchemaV1TableName('LEADS'),
 
     // マスタ・設定シート
-    STAFF: '担当者マスタ',
+    STAFF: getCoreSchemaV1TableName('STAFF'),
     SETTINGS: '選択肢マスタ',
     PERMISSIONS: '権限設定',
     GOALS: '目標設定',
@@ -108,22 +108,23 @@ const CONFIG = {
     SALES_DATA_SYNC: '📊売上データ同期',
 
     // ★ SCM統合: マスタデータ（IMPORTRANGE同期） ★
-    SCM_PRODUCT_MASTER_SYNC: '商品マスタ同期',
+    SCM_PRODUCT_MASTER_SYNC: getCoreSchemaV1TableName('PRODUCTS'),
     SCM_STOCK_SYNC: '集計同期',
     SCM_SUPPLIER_MASTER_SYNC: '仕入元マスタ同期',
 
     // ★ CRM顧客マスタ（CRM内ネイティブ） ★
-    CRM_CUSTOMERS: '顧客マスタ',
-    CRM_SHIPPING: '配送先マスタ',
-    CRM_PAYMENT: '支払先マスタ',
+    CRM_CUSTOMERS: getCoreSchemaV1TableName('CUSTOMERS'),
+    CRM_SHIPPING: getCoreSchemaV1TableName('SHIPPING_DESTINATIONS'),
+    CRM_PAYMENT: getCoreSchemaV1TableName('PAYMENT_DESTINATIONS'),
 
     // ★ オーダー管理 ★
-    ORDER_MASTER: 'オーダー管理',
-    ORDER_LINES: 'オーダー明細',
+    ORDER_MASTER: getCoreSchemaV1TableName('ORDERS'),
+    ORDER_LINES: getCoreSchemaV1TableName('ORDER_LINES'),
 
     // ★ 発送・仕入れ（1オーダーn個口/複数仕入れ） ★
-    SHIPMENT: '発送',
-    PURCHASE: '仕入れ'
+    SHIPMENT: getCoreSchemaV1TableName('SHIPMENTS'),
+    PURCHASE: getCoreSchemaV1TableName('PURCHASES'),
+    FORM_TOKENS: getCoreSchemaV1TableName('FORM_TOKENS')
   },
 
   // リードID接頭辞（インバウンド: LDI-, アウトバウンド: LDO-）
