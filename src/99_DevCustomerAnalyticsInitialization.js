@@ -197,8 +197,8 @@ function buildDevCustomerAnalyticsInitializationDataMismatchResult(spec, actualR
 function isDevCustomerAnalyticsInitializationWrittenValueEqual(spec, rowIndex, columnIndex, expectedValue, actualValue) {
   if (spec.yearMonthColumn === columnIndex + 1 && expectedValue instanceof Date && !isNaN(expectedValue.getTime())) {
     return actualValue instanceof Date && !isNaN(actualValue.getTime()) &&
-      Utilities.formatDate(expectedValue, spec.spreadsheetTimeZone, 'yyyy-MM') ===
-      Utilities.formatDate(actualValue, spec.spreadsheetTimeZone, 'yyyy-MM');
+      Utilities.formatDate(expectedValue, spec.spreadsheetTimeZone, 'yyyy-MM-dd') ===
+      Utilities.formatDate(actualValue, spec.spreadsheetTimeZone, 'yyyy-MM-dd');
   }
   return isDevCustomerAnalyticsMaterializationEqual(expectedValue, actualValue);
 }
@@ -251,7 +251,12 @@ function buildDevCustomerAnalyticsInitializationTables(sourceSnapshot) {
     if (date.state === 'empty') customer.empty++;
     if (date.state === 'valid') {
       const key = customerId + '|' + date.yearMonth;
-      const month = monthly[key] || (monthly[key] = { customerId: customerId, yearMonth: date.yearMonth, date: date.date, cancelled: [0, 0], completed: [0, 0], unconfirmed: [0, 0] });
+      const month = monthly[key] || (monthly[key] = {
+        customerId: customerId,
+        yearMonth: date.yearMonth,
+        monthStartDate: createDevCustomerAnalyticsInitializationMonthStartDate(date.yearMonth, sourceSnapshot.spreadsheetTimeZone),
+        cancelled: [0, 0], completed: [0, 0], unconfirmed: [0, 0]
+      });
       month[classification][0]++;
       month[classification][1] += value;
       if (!customer.first || date.date.getTime() < customer.first.getTime()) customer.first = date.date;
@@ -278,11 +283,26 @@ function buildDevCustomerAnalyticsInitializationTables(sourceSnapshot) {
     }),
     monthly: Object.keys(monthly).sort().map(key => {
       const month = monthly[key];
-      return [month.customerId, month.date, month.cancelled[0] + month.completed[0] + month.unconfirmed[0], month.cancelled[1] + month.completed[1] + month.unconfirmed[1], month.cancelled[0], month.cancelled[1], month.completed[0], month.completed[1], month.unconfirmed[0], month.unconfirmed[1]];
+      return [month.customerId, month.monthStartDate, month.cancelled[0] + month.completed[0] + month.unconfirmed[0], month.cancelled[1] + month.completed[1] + month.unconfirmed[1], month.cancelled[0], month.cancelled[1], month.completed[0], month.completed[1], month.unconfirmed[0], month.unconfirmed[1]];
     }),
     product: Object.keys(product).sort().map(key => {
       const item = product[key];
       return [item.customerId, item.productId, item.lines, Object.keys(item.orders).length, item.cancelled, item.completed, item.unconfirmed];
     })
   };
+}
+
+function createDevCustomerAnalyticsInitializationMonthStartDate(yearMonth, spreadsheetTimeZone) {
+  const parts = String(yearMonth).split('-');
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  const target = yearMonth + '-01';
+  if (!/^\d{4}-\d{2}$/.test(String(yearMonth)) || !isFinite(year) || !isFinite(month) || month < 1 || month > 12) {
+    throw new Error('INITIALIZATION_INVALID_YEAR_MONTH');
+  }
+  for (let hour = 0; hour < 24; hour++) {
+    const candidate = new Date(Date.UTC(year, month - 1, 1, hour, 0, 0));
+    if (Utilities.formatDate(candidate, spreadsheetTimeZone, 'yyyy-MM-dd') === target) return candidate;
+  }
+  throw new Error('INITIALIZATION_MONTH_START_CREATION_FAILED');
 }
