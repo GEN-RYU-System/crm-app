@@ -56,7 +56,7 @@ function createSpreadsheet(options = {}) {
                 return values;
               });
             }
-            if (options.dataMismatchEntries && row === 2) {
+            if (options.dataMismatchEntries && row === 2 && (!options.dataMismatchSheet || options.dataMismatchSheet === name)) {
               const copy = dataRows.map(values => values.slice());
               options.dataMismatchEntries.forEach(entry => { copy[entry.row][entry.column] = entry.value; });
               return copy;
@@ -91,7 +91,7 @@ function run(spreadsheet, auditOverride) {
   const lock = { released: false, tryLock: () => true, releaseLock: () => { lock.released = true; } };
   const context = vm.createContext({
     Date, Number, Object, String, Array, Set, isFinite, isNaN,
-    Utilities: { formatDate: date => date.toISOString().slice(0, 7) },
+    Utilities: { formatDate: (date, timeZone, format) => format === 'yyyy-MM-dd' ? date.toISOString().slice(0, 10) : date.toISOString().slice(0, 7) },
     getEnvironment: () => 'development',
     getSpreadsheet: () => spreadsheet,
     LockService: { getScriptLock: () => lock },
@@ -117,6 +117,17 @@ function installExpectedTables(context) {
   context.buildDevCustomerAnalyticsInitializationTables = () => ({
     customer: Array.from({ length: 51 }, () => Array(12).fill('')),
     monthly: Array.from({ length: 69 }, () => Array(10).fill('')),
+    product: Array.from({ length: 262 }, () => Array(7).fill(''))
+  });
+  context.hasDevCustomerAnalyticsInitializationOutputInvariants = () => true;
+}
+
+function installExpectedTablesWithMonthlyDate(context) {
+  const monthly = Array.from({ length: 69 }, () => Array(10).fill(''));
+  monthly[0][1] = new Date('2026-02-01T00:00:00Z');
+  context.buildDevCustomerAnalyticsInitializationTables = () => ({
+    customer: Array.from({ length: 51 }, () => Array(12).fill('')),
+    monthly,
     product: Array.from({ length: 262 }, () => Array(7).fill(''))
   });
   context.hasDevCustomerAnalyticsInitializationOutputInvariants = () => true;
@@ -148,11 +159,13 @@ function assertPostWriteFailure(result, resultType) {
   assert.equal(tables.customer[1][1], '');
   assert.equal(tables.customer[1][2], '');
   assert.equal(tables.monthly.length, 2);
+  assert.ok(tables.monthly[0][1] instanceof Date);
+  assert.equal(tables.monthly[0][1].toISOString(), '2026-01-01T00:00:00.000Z');
   assert.equal(JSON.stringify(tables.customer[0].slice(1)), JSON.stringify([
     new Date('2026-01-01T00:00:00Z'), new Date('2026-01-01T00:00:00Z'), 2, 30, 0, 0, 2, 30, 0, 0, 0
   ]));
   assert.equal(JSON.stringify(tables.customer[1].slice(1)), JSON.stringify(['', '', 1, 30, 1, 30, 0, 0, 0, 0, 1]));
-  assert.equal(JSON.stringify(tables.monthly[0].slice(1)), JSON.stringify(['2026-01', 1, 20, 0, 0, 1, 20, 0, 0]));
+  assert.equal(JSON.stringify(tables.monthly[0].slice(1)), JSON.stringify([new Date('2026-01-01T00:00:00Z'), 1, 20, 0, 0, 1, 20, 0, 0]));
   assert.equal(JSON.stringify(tables.product[0].slice(2)), JSON.stringify([2, 2, 0, 2, 0]));
 }
 
@@ -296,6 +309,69 @@ function assertPostWriteFailure(result, resultType) {
   assert.deepEqual(JSON.parse(JSON.stringify(result.mismatchValueTypeSummary)), { DATE: 1, NUMBER: 1, TEXT: 1, BLANK: 1 });
   assert.equal(JSON.stringify(result).includes('ACTUAL_TEXT'), false);
   assert.equal(JSON.stringify(result).includes('EXPECTED_TEXT'), false);
+  assert.deepEqual(spreadsheet.deleted, ['顧客購入商品分析', '顧客月次分析', '顧客分析']);
+}
+
+{
+  const spreadsheet = createSpreadsheet({
+    dataMismatchSheet: '顧客月次分析',
+    dataMismatchEntries: [{ row: 0, column: 1, value: new Date('2026-02-01T00:00:00Z') }]
+  });
+  const { context } = run(spreadsheet);
+  installExpectedTablesWithMonthlyDate(context);
+  const result = context.initializeDevCustomerAnalytics();
+  assert.equal(result.resultType, 'INITIALIZATION_SUCCEEDED');
+  const monthlyFormatEvents = spreadsheet.created[1].events.filter(event => event.type === 'setNumberFormat');
+  assert.equal(monthlyFormatEvents.length, 1);
+  assert.equal(monthlyFormatEvents[0].format, 'yyyy-MM');
+}
+
+{
+  const spreadsheet = createSpreadsheet({
+    dataMismatchSheet: '顧客月次分析',
+    dataMismatchEntries: [{ row: 0, column: 1, value: new Date('2026-02-28T00:00:00Z') }]
+  });
+  const { context } = run(spreadsheet);
+  installExpectedTablesWithMonthlyDate(context);
+  const result = context.initializeDevCustomerAnalytics();
+  assertPostWriteFailure(result, 'INITIALIZATION_POST_WRITE_DATA_MISMATCH');
+  assert.equal(result.verificationSheetName, '顧客月次分析');
+  assert.equal(result.mismatchCellCount, 1);
+  assert.deepEqual(Array.from(result.mismatchColumnHeaders), ['受注年月']);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.mismatchValueTypeSummary)), { DATE: 1, NUMBER: 0, TEXT: 0, BLANK: 0 });
+  assert.deepEqual(spreadsheet.deleted, ['顧客購入商品分析', '顧客月次分析', '顧客分析']);
+}
+
+{
+  const spreadsheet = createSpreadsheet({
+    dataMismatchSheet: '顧客月次分析',
+    dataMismatchEntries: [{ row: 0, column: 1, value: new Date('2026-03-01T00:00:00Z') }]
+  });
+  const { context } = run(spreadsheet);
+  installExpectedTablesWithMonthlyDate(context);
+  const result = context.initializeDevCustomerAnalytics();
+  assertPostWriteFailure(result, 'INITIALIZATION_POST_WRITE_DATA_MISMATCH');
+  assert.equal(result.verificationSheetName, '顧客月次分析');
+  assert.equal(result.mismatchCellCount, 1);
+  assert.deepEqual(Array.from(result.mismatchColumnHeaders), ['受注年月']);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.mismatchValueTypeSummary)), { DATE: 1, NUMBER: 0, TEXT: 0, BLANK: 0 });
+  assert.deepEqual(spreadsheet.deleted, ['顧客購入商品分析', '顧客月次分析', '顧客分析']);
+}
+
+{
+  const spreadsheet = createSpreadsheet({
+    dataMismatchSheet: '顧客月次分析',
+    dataMismatchEntries: [{ row: 0, column: 1, value: 'NOT_A_DATE' }]
+  });
+  const { context } = run(spreadsheet);
+  installExpectedTablesWithMonthlyDate(context);
+  const result = context.initializeDevCustomerAnalytics();
+  assertPostWriteFailure(result, 'INITIALIZATION_POST_WRITE_DATA_MISMATCH');
+  assert.equal(result.verificationSheetName, '顧客月次分析');
+  assert.equal(result.mismatchCellCount, 1);
+  assert.deepEqual(Array.from(result.mismatchColumnHeaders), ['受注年月']);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.mismatchValueTypeSummary)), { DATE: 0, NUMBER: 0, TEXT: 1, BLANK: 0 });
+  assert.equal(JSON.stringify(result).includes('NOT_A_DATE'), false);
   assert.deepEqual(spreadsheet.deleted, ['顧客購入商品分析', '顧客月次分析', '顧客分析']);
 }
 
