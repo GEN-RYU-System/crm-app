@@ -20,7 +20,7 @@ import {
   TextField,
   type DataTableColumn,
 } from "../../components/ui";
-import { catalogCopy, commonCopy } from "../../content/ja";
+import { catalogCopy, commonCopy, inboxCopy } from "../../content/ja";
 import "./ComponentCatalogPage.css";
 
 export function ComponentCatalogPage() {
@@ -218,7 +218,7 @@ export function ComponentCatalogPage() {
           </div>
         </Card>
         <Card>
-          <h2 className="catalog-page__heading">{catalogCopy.conversationWorkspace}</h2>
+          <h2 className="catalog-page__heading">{catalogCopy.conversationWorkspace} / {inboxCopy.title}</h2>
           <ConversationWorkspace
             listLabel={catalogCopy.conversationListLabel}
             listHeader={<strong>{catalogCopy.conversationList}</strong>}

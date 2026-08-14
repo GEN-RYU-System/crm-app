@@ -16,10 +16,7 @@ export type NavigationItemId =
   | 'dashboard'
   | 'leads'
   | 'customers'
-  | 'leadsChat'
-  | 'newChat'
-  | 'routeChat'
-  | 'archiveChat'
+  | 'inbox'
   | 'inventory'
   | 'quotes'
   | 'quoteHistory'
@@ -71,10 +68,7 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
     { id: 'dashboard', label: navigationCopy.dashboard, hash: '/dashboard', icon: 'dashboard', order: 1, state: 'available' }
   ] },
   { id: 'leads', label: navigationCopy.groups.leads, order: 2, items: [
-    { id: 'leadsChat', label: navigationCopy.leadsChat, hash: '/leads-chat', icon: 'chat', order: 2, state: 'planned', requiredPermission: 'lead_view' },
-    { id: 'newChat', label: navigationCopy.newChat, hash: '/new-chat', icon: 'newLead', order: 3, state: 'planned', requiredPermission: 'lead_view' },
-    { id: 'routeChat', label: navigationCopy.routeChat, hash: '/route-chat', icon: 'route', order: 4, state: 'preview', requiredPermission: 'lead_view' },
-    { id: 'archiveChat', label: navigationCopy.archiveChat, hash: '/archive-chat', icon: 'archive', order: 5, state: 'planned', requiredPermission: 'lead_view' }
+    { id: 'inbox', label: navigationCopy.inbox, hash: '/inbox', icon: 'chat', order: 2, state: 'preview', requiredPermission: 'lead_view' }
   ] },
   { id: 'sales', label: navigationCopy.groups.sales, order: 3, items: [
     { id: 'inventory', label: navigationCopy.inventory, hash: '/inventory', icon: 'inventory', order: 1, state: 'planned', anyPermissions: ['deal_view_all', 'deal_view_own'] },
