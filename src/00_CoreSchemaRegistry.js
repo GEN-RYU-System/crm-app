@@ -30,6 +30,12 @@ const CORE_SCHEMA_V1_TABLES = {
     headers: createCoreSchemaV1Headers([
       ['ORDER_ID', 'オーダーID'], ['INVOICE_NUMBER', '請求書番号'], ['CUSTOMER_ID', '顧客ID'], ['SHIPPING_DESTINATION_ID', '配送先ID'], ['PAYMENT_DESTINATION_ID', '支払先ID'], ['SOURCE_LEAD_ID', '源流リードID'], ['STATUS', 'ステータス'], ['ORDER_DATE', '受注日'], ['CURRENCY', '通貨'], ['EXCHANGE_RATE', '為替レート'], ['LINE_TOTAL', '明細合計'], ['SHIPPING_FEE', '送料'], ['DUTY', '関税'], ['INVOICE_TOTAL', '請求総額'], ['PAYMENT_METHOD', '決済手段'], ['INVOICE_LINK', '請求書リンク'], ['INVOICE_ISSUED_AT', '請求書発行日'], ['PAYMENT_DUE_AT', '支払期日'], ['PAYMENT_CONFIRMED_AT', '支払確認日'], ['SHIPPING_METHOD', '発送方法'], ['SHIPPED_AT', '発送日'], ['TRACKING_NUMBER', '運送状番号'], ['SHIPPING_NOTE', '発送時メモ'], ['NOTE', '備考'], ['REGISTERED_AT', '登録日'], ['UPDATED_AT', '更新日'], ['ORDER_ASSIGNEE_ID', '受注担当ID'], ['SALES_ASSIGNEE_ID', '営業担当ID'], ['SHIPPING_ASSIGNEE_ID', '発送担当ID'], ['TRANSACTION_NOTE', '取引備考欄'], ['RESERVED_INVOICE_NUMBER', '予約請求書番号'], ['RELEASE_SCHEDULED_AT', '発売予定日'], ['DEPOSIT_RATE', 'デポジット率'], ['OTHER_FEE', 'その他手数料'], ['DISCOUNT', '値引き'], ['PAYMENT_TERMS', '支払サイト'], ['CANCELLATION_REASON', 'キャンセル理由'], ['CANCELLATION_NOTE', 'キャンセルメモ']
     ]), primaryKey: 'ORDER_ID',
+    values: {
+      STATUS: {
+        COMPLETED: '完了',
+        CANCELLED: 'キャンセル'
+      }
+    },
     referenceIds: [
       { headerKey: 'CUSTOMER_ID', targetTableKey: 'CUSTOMERS' },
       { headerKey: 'SHIPPING_DESTINATION_ID', targetTableKey: 'SHIPPING_DESTINATIONS' },
@@ -137,6 +143,14 @@ function getCoreSchemaV1HeaderName(tableKey, headerKey) {
   const headerName = getCoreSchemaV1Table(resolveCoreSchemaV1TableKey(tableKey)).headers[headerKey];
   if (!headerName) throw new Error('CORE_SCHEMA_HEADER_KEY_NOT_FOUND');
   return headerName;
+}
+function getCoreSchemaV1Value(tableKey, valueGroupKey, valueKey) {
+  const table = getCoreSchemaV1Table(resolveCoreSchemaV1TableKey(tableKey));
+  const group = table.values && table.values[valueGroupKey];
+  if (!group || !Object.prototype.hasOwnProperty.call(group, valueKey)) {
+    throw new Error('CORE_SCHEMA_VALUE_KEY_NOT_FOUND');
+  }
+  return group[valueKey];
 }
 
 function getCoreSchemaV1Sheet(spreadsheet, tableKey) {
