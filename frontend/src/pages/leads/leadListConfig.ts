@@ -7,9 +7,16 @@ export type LeadSortDirection = 'ascending' | 'descending';
 export type LeadSort = { key: LeadSortKey; direction: LeadSortDirection };
 type LeadListSortableRow = LeadListRow & { updatedAtRaw: string };
 
-export const LEAD_LIST_TABS: readonly { type: LeadType; label: string }[] = [
+export const LEAD_TYPE_TABS: readonly { type: LeadType; label: string }[] = [
   { type: leadsCopy.leadTypes.inbound, label: leadsCopy.inbound },
   { type: leadsCopy.leadTypes.outbound, label: leadsCopy.outbound }
+];
+
+export type LeadListTabType = 'all' | LeadType;
+
+export const LEAD_LIST_TABS: readonly { type: LeadListTabType; label: string }[] = [
+  { type: 'all', label: leadsCopy.all },
+  ...LEAD_TYPE_TABS
 ];
 
 export const LEAD_LIST_COLUMNS: readonly { key: LeadSortKey; label: string }[] = [
