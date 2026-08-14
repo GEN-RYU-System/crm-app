@@ -53,11 +53,15 @@ function createSpreadsheet(options = {}) {
             ? dataRows.map(values => values.slice()).map((values, index) => index === 0 ? values.concat('CORRUPTED') : values)
             : dataRows,
           setValues: values => {
+            if ((row === 1 && options.failHeaderWrite) || (row === 2 && options.failDataWrite)) throw new Error('write failure');
             events.push({ type: 'setValues', values });
             if (row === 1) headers = values[0];
             if (row === 2) dataRows = values;
           },
-          setNumberFormat: format => { events.push({ type: 'setNumberFormat', format }); }
+          setNumberFormat: format => {
+            if (options.failFormat) throw new Error('format failure');
+            events.push({ type: 'setNumberFormat', format });
+          }
         })
       };
       sheets[name] = sheet;
@@ -97,6 +101,22 @@ function run(spreadsheet, auditOverride) {
   return { context, lock };
 }
 
+function installExpectedTables(context) {
+  context.buildDevCustomerAnalyticsInitializationTables = () => ({
+    customer: Array.from({ length: 51 }, () => Array(12).fill('')),
+    monthly: Array.from({ length: 69 }, () => Array(10).fill('')),
+    product: Array.from({ length: 262 }, () => Array(7).fill(''))
+  });
+  context.hasDevCustomerAnalyticsInitializationOutputInvariants = () => true;
+}
+
+function assertFailurePhase(result, phase) {
+  assert.equal(result.resultType, 'INITIALIZATION_FAILED');
+  assert.equal(result.failurePhase, phase);
+  assert.equal(result.sourceDataChangeCount, 0);
+  assert.equal(result.actualDataChangeCount, 0);
+}
+
 {
   const spreadsheet = createSpreadsheet();
   const { context } = run(spreadsheet);
@@ -115,6 +135,84 @@ function run(spreadsheet, auditOverride) {
   assert.equal(JSON.stringify(tables.customer[1].slice(1)), JSON.stringify(['', '', 1, 30, 1, 30, 0, 0, 0, 0, 1]));
   assert.equal(JSON.stringify(tables.monthly[0].slice(1)), JSON.stringify(['2026-01', 1, 20, 0, 0, 1, 20, 0, 0]));
   assert.equal(JSON.stringify(tables.product[0].slice(2)), JSON.stringify([2, 2, 0, 2, 0]));
+}
+
+{
+  const spreadsheet = createSpreadsheet();
+  const { context } = run(spreadsheet);
+  context.createDevCustomerAnalyticsMaterializationSourceSnapshot = () => { throw new Error('snapshot failure'); };
+  const result = context.initializeDevCustomerAnalytics();
+  assertFailurePhase(result, 'INITIALIZATION_PHASE_SNAPSHOT');
+  assert.equal(spreadsheet.created.length, 0);
+}
+
+{
+  const spreadsheet = createSpreadsheet();
+  const { context } = run(spreadsheet, () => { throw new Error('audit failure'); });
+  const result = context.initializeDevCustomerAnalytics();
+  assertFailurePhase(result, 'INITIALIZATION_PHASE_AUDIT');
+  assert.equal(spreadsheet.created.length, 0);
+}
+
+{
+  const spreadsheet = createSpreadsheet();
+  const { context } = run(spreadsheet);
+  context.buildDevCustomerAnalyticsInitializationTables = () => { throw new Error('table failure'); };
+  const result = context.initializeDevCustomerAnalytics();
+  assertFailurePhase(result, 'INITIALIZATION_PHASE_TABLE_BUILD');
+  assert.equal(spreadsheet.created.length, 0);
+}
+
+{
+  const spreadsheet = createSpreadsheet();
+  const { context } = run(spreadsheet);
+  installExpectedTables(context);
+  const originalSnapshot = context.createDevCustomerAnalyticsMaterializationSourceSnapshot;
+  let calls = 0;
+  context.createDevCustomerAnalyticsMaterializationSourceSnapshot = ss => {
+    calls++;
+    if (calls === 2) throw new Error('source recheck failure');
+    return originalSnapshot(ss);
+  };
+  const result = context.initializeDevCustomerAnalytics();
+  assertFailurePhase(result, 'INITIALIZATION_PHASE_SOURCE_RECHECK');
+  assert.equal(spreadsheet.created.length, 0);
+}
+
+{
+  const spreadsheet = createSpreadsheet({ failAtName: '顧客分析' });
+  const { context } = run(spreadsheet);
+  installExpectedTables(context);
+  const result = context.initializeDevCustomerAnalytics();
+  assertFailurePhase(result, 'INITIALIZATION_PHASE_SHEET_CREATE');
+  assert.deepEqual(spreadsheet.deleted, []);
+}
+
+{
+  const spreadsheet = createSpreadsheet({ failHeaderWrite: true });
+  const { context } = run(spreadsheet);
+  installExpectedTables(context);
+  const result = context.initializeDevCustomerAnalytics();
+  assertFailurePhase(result, 'INITIALIZATION_PHASE_HEADER_WRITE');
+  assert.deepEqual(spreadsheet.deleted, ['顧客分析']);
+}
+
+{
+  const spreadsheet = createSpreadsheet({ failDataWrite: true });
+  const { context } = run(spreadsheet);
+  installExpectedTables(context);
+  const result = context.initializeDevCustomerAnalytics();
+  assertFailurePhase(result, 'INITIALIZATION_PHASE_DATA_WRITE');
+  assert.deepEqual(spreadsheet.deleted, ['顧客分析']);
+}
+
+{
+  const spreadsheet = createSpreadsheet({ failFormat: true });
+  const { context } = run(spreadsheet);
+  installExpectedTables(context);
+  const result = context.initializeDevCustomerAnalytics();
+  assertFailurePhase(result, 'INITIALIZATION_PHASE_FORMAT');
+  assert.deepEqual(spreadsheet.deleted, ['顧客分析']);
 }
 
 {
@@ -151,7 +249,7 @@ function run(spreadsheet, auditOverride) {
   });
   context.hasDevCustomerAnalyticsInitializationOutputInvariants = () => true;
   const result = context.initializeDevCustomerAnalytics();
-  assert.equal(result.resultType, 'INITIALIZATION_FAILED');
+  assertFailurePhase(result, 'INITIALIZATION_PHASE_POST_WRITE_VERIFY');
   assert.deepEqual(spreadsheet.deleted, ['顧客購入商品分析', '顧客月次分析', '顧客分析']);
 }
 
@@ -242,6 +340,8 @@ function run(spreadsheet, auditOverride) {
   context.hasDevCustomerAnalyticsInitializationOutputInvariants = () => true;
   const result = context.initializeDevCustomerAnalytics();
   assert.equal(result.resultType, 'INITIALIZATION_ROLLBACK_STATE_UNKNOWN');
+  assert.equal(result.failurePhase, 'INITIALIZATION_PHASE_ROLLBACK');
+  assert.equal(result.sourceDataChangeCount, 0);
   assert.equal(result.actualDataChangeCount, null);
   assert.equal(result.dataChangeState, 'UNKNOWN');
 }
@@ -259,8 +359,7 @@ function run(spreadsheet, auditOverride) {
     throw new Error('verification failure');
   };
   const result = context.initializeDevCustomerAnalytics();
-  assert.equal(result.resultType, 'INITIALIZATION_FAILED');
-  assert.equal(result.actualDataChangeCount, 0);
+  assertFailurePhase(result, 'INITIALIZATION_PHASE_POST_WRITE_VERIFY');
   assert.deepEqual(spreadsheet.deleted, ['顧客購入商品分析', '顧客月次分析', '顧客分析']);
 }
 
