@@ -217,10 +217,8 @@ function resolveCustomerRegistrationCoreSchemaWriteContext_(spreadsheet) {
   var tables = {};
 
   tableKeys.forEach(function(tableKey) {
-    // 明示的な取得と書込み検証を両方通すことで、別名解決にも依存しない。
-    var sheet = getCoreSchemaV1Sheet(spreadsheet, tableKey);
     var validation = validateCoreSchemaV1TableForWrite(spreadsheet, tableKey);
-    if (validation.sheet !== sheet) throw new Error('CORE_SCHEMA_SHEET_RESOLUTION_MISMATCH');
+    var sheet = validation.sheet;
     var orderedHeaderNames = Object.keys(getCoreSchemaV1Table(tableKey).headers)
       .map(function(headerKey) { return getCoreSchemaV1HeaderName(tableKey, headerKey); });
     if (orderedHeaderNames.some(function(headerName, index) {
@@ -327,7 +325,6 @@ function registerCustomerFromForm(payload) {
       'CORE_SCHEMA_NON_EMPTY_HEADER_DUPLICATE',
       'CORE_SCHEMA_REQUIRED_HEADER_MISSING',
       'CORE_SCHEMA_WRITE_NOT_ALLOWED',
-      'CORE_SCHEMA_SHEET_RESOLUTION_MISMATCH',
       'CORE_SCHEMA_REGISTRATION_HEADER_ORDER_MISMATCH'
     ];
     return ng([allowedCoreSchemaErrors.indexOf(coreSchemaError) >= 0

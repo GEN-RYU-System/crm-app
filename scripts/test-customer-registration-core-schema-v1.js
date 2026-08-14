@@ -9,6 +9,8 @@ const TABLE_KEYS = ['CUSTOMERS', 'SHIPPING_DESTINATIONS', 'PAYMENT_DESTINATIONS'
 function createSheet(name, headers, rows, writes, sheetId) {
   const data = [headers].concat(rows || []);
   return {
+    __headers: headers,
+    __rows: rows || [],
     getSheetId: () => sheetId,
     getDataRange: () => ({ getValues: () => data.map(row => row.slice()) }),
     getLastColumn: () => headers.length,
@@ -85,7 +87,13 @@ function createRuntime(options) {
   context.HEADERS.CRM_CUSTOMERS = Object.keys(context.getCoreSchemaV1Table('CUSTOMERS').headers).map(key => context.getCoreSchemaV1Table('CUSTOMERS').headers[key]);
   context.HEADERS.CRM_SHIPPING = Object.keys(context.getCoreSchemaV1Table('SHIPPING_DESTINATIONS').headers).map(key => context.getCoreSchemaV1Table('SHIPPING_DESTINATIONS').headers[key]);
   context.HEADERS.CRM_PAYMENT = Object.keys(context.getCoreSchemaV1Table('PAYMENT_DESTINATIONS').headers).map(key => context.getCoreSchemaV1Table('PAYMENT_DESTINATIONS').headers[key]);
-  context.getSpreadsheet = () => ({ getSheetByName: name => sheets[name] || null });
+  context.getSpreadsheet = () => ({
+    getSheetByName: name => {
+      const sheet = sheets[name];
+      if (!sheet || !(options && options.freshSheetWrapperPerLookup)) return sheet || null;
+      return createSheet(name, sheet.__headers, sheet.__rows, writes, sheet.getSheetId());
+    }
+  });
   vm.runInContext(registrationSource, context, { filename: '18_CustomerRegistration.js' });
   return { context, writes, sheets, lockState };
 }
@@ -109,6 +117,14 @@ function payload() {
     ['フォームトークン', 'setValue', 4, undefined]
   ]);
   assert.deepEqual(runtime.lockState, { waitCount: 1, releaseCount: 1 });
+}
+
+{
+  const runtime = createRuntime({ freshSheetWrapperPerLookup: true });
+  const result = runtime.context.registerCustomerFromForm(payload());
+  assert.equal(result.success, true);
+  assert.equal(runtime.writes.length, 4);
+  assert.equal(runtime.lockState.releaseCount, 1);
 }
 
 ['CUSTOMERS', 'SHIPPING_DESTINATIONS', 'PAYMENT_DESTINATIONS', 'FORM_TOKENS'].forEach(tableKey => {
