@@ -5,3 +5,7 @@
 .shell-mobile-header__item--active { color: var(--color-accent); font-weight: 700; }
 .shell-mobile-header__item--planned { opacity: var(--opacity-disabled); }
 .shell-mobile-header__item > svg { width: var(--icon-nav-size); height: var(--icon-nav-size); }
+.shell-mobile-header__submenu, .shell-mobile-header__submenu-items, .shell-mobile-header__submenu-parent { display: inline-flex; align-items: center; gap: var(--space-xs); white-space: nowrap; }
+.shell-mobile-header__submenu-items { padding-left: var(--space-sm); border-left: var(--border-width) solid var(--color-border); }
+.shell-mobile-header__submenu-parent { color: var(--color-text-muted); font-size: var(--font-sm); font-weight: var(--font-weight-semibold); }
+.shell-mobile-header__submenu-parent > svg { width: var(--icon-nav-size); height: var(--icon-nav-size); }
