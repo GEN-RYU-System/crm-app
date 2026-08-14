@@ -2,7 +2,7 @@
  * DEVのオーダー実態を、参照証拠の件数だけで監査する。
  * ID、日付、URL、金額、ステータス値、その他のセル値は返却・記録しない。
  */
-const DEV_ORDER_REALITY_AUDIT_VERSION = '1';
+const DEV_ORDER_REALITY_AUDIT_VERSION = '2';
 const DEV_ORDER_REALITY_AUDIT_SCHEMA_INVALID = 'ORDER_REALITY_AUDIT_SCHEMA_INVALID';
 const DEV_ORDER_REALITY_AUDIT_FAILED = 'ORDER_REALITY_AUDIT_FAILED';
 const DEV_ORDER_REALITY_AUDIT_ORDER_SCHEMA = {
@@ -23,18 +23,23 @@ const DEV_ORDER_REALITY_AUDIT_STATUS_GROUPS = {
   cancelled: 'キャンセル'
 };
 const DEV_ORDER_REALITY_AUDIT_BLANK_DATE_EVIDENCE = [
-  ['invoiceNumberPresent', '請求書番号'],
-  ['invoiceLinkPresent', '請求書リンク'],
-  ['invoiceIssueDatePresent', '請求書発行日'],
-  ['paymentConfirmedDatePresent', '支払確認日'],
+  ['invoiceNumberRecorded'],
+  ['invoiceLinkRecorded'],
+  ['invoiceIssueDateValid'],
+  ['paymentConfirmedDateValid'],
+  ['orderShippingDateValid'],
   ['shipmentRecordPresent'],
-  ['shipmentDatePresent'],
+  ['shipmentDateValid'],
   ['purchaseRecordPresent']
 ];
 const DEV_ORDER_REALITY_AUDIT_ALL_ORDER_EVIDENCE = [
-  ['paymentConfirmedDatePresent', '支払確認日'],
+  ['invoiceNumberRecorded'],
+  ['invoiceLinkRecorded'],
+  ['invoiceIssueDateValid'],
+  ['paymentConfirmedDateValid'],
+  ['orderShippingDateValid'],
   ['shipmentRecordPresent'],
-  ['shipmentDatePresent'],
+  ['shipmentDateValid'],
   ['purchaseRecordPresent']
 ];
 
@@ -144,17 +149,26 @@ function getDevOrderRealityIds(data, header) {
 
 function getDevOrderRealityShipmentEvidence(shipments) {
   const shipmentOrderIds = new Set();
-  const shipmentDateOrderIds = new Set();
+  const shipmentDateStatesByOrderId = {};
   shipments.rows.forEach(row => {
     const orderId = getDevOrderRealityValue(shipments, row, 'オーダーID');
     if (isDevOrderRealityEmpty(orderId)) return;
     const normalizedOrderId = String(orderId);
     shipmentOrderIds.add(normalizedOrderId);
-    if (!isDevOrderRealityEmpty(getDevOrderRealityValue(shipments, row, '発送日'))) {
-      shipmentDateOrderIds.add(normalizedOrderId);
-    }
+    const state = getDevOrderRealityDateState(getDevOrderRealityValue(shipments, row, '発送日'));
+    const states = shipmentDateStatesByOrderId[normalizedOrderId] || { valid: false, invalid: false };
+    states.valid = states.valid || state === 'valid';
+    states.invalid = states.invalid || state === 'invalid';
+    shipmentDateStatesByOrderId[normalizedOrderId] = states;
   });
-  return { shipmentOrderIds: shipmentOrderIds, shipmentDateOrderIds: shipmentDateOrderIds };
+  return { shipmentOrderIds: shipmentOrderIds, shipmentDateStatesByOrderId: shipmentDateStatesByOrderId };
+}
+
+function getDevOrderRealityShipmentDateState(shipmentEvidence, orderId) {
+  const states = shipmentEvidence.shipmentDateStatesByOrderId[orderId];
+  if (!states) return 'empty';
+  if (states.valid) return 'valid';
+  return states.invalid ? 'invalid' : 'empty';
 }
 
 function createDevOrderRealityEvidence(orders, row, shipmentEvidence, purchaseOrderIds) {
@@ -163,14 +177,37 @@ function createDevOrderRealityEvidence(orders, row, shipmentEvidence, purchaseOr
   return {
     orderDateEmpty: isDevOrderRealityEmpty(getDevOrderRealityValue(orders, row, '受注日')),
     statusGroup: getDevOrderRealityStatusGroup(status),
-    invoiceNumberPresent: !isDevOrderRealityEmpty(getDevOrderRealityValue(orders, row, '請求書番号')),
-    invoiceLinkPresent: !isDevOrderRealityEmpty(getDevOrderRealityValue(orders, row, '請求書リンク')),
-    invoiceIssueDatePresent: !isDevOrderRealityEmpty(getDevOrderRealityValue(orders, row, '請求書発行日')),
-    paymentConfirmedDatePresent: !isDevOrderRealityEmpty(getDevOrderRealityValue(orders, row, '支払確認日')),
+    invoiceNumberRecorded: !isDevOrderRealityEmpty(getDevOrderRealityValue(orders, row, '請求書番号')),
+    invoiceLinkRecorded: !isDevOrderRealityEmpty(getDevOrderRealityValue(orders, row, '請求書リンク')),
+    invoiceIssueDateState: getDevOrderRealityDateState(
+      getDevOrderRealityValue(orders, row, '請求書発行日')
+    ),
+    paymentConfirmedDateState: getDevOrderRealityDateState(
+      getDevOrderRealityValue(orders, row, '支払確認日')
+    ),
+    orderShippingDateState: getDevOrderRealityDateState(
+      getDevOrderRealityValue(orders, row, '発送日')
+    ),
     shipmentRecordPresent: shipmentEvidence.shipmentOrderIds.has(orderId),
-    shipmentDatePresent: shipmentEvidence.shipmentDateOrderIds.has(orderId),
+    shipmentDateState: getDevOrderRealityShipmentDateState(shipmentEvidence, orderId),
     purchaseRecordPresent: purchaseOrderIds.has(orderId)
   };
+}
+
+function getDevOrderRealityDateState(value) {
+  if (isDevOrderRealityEmpty(value)) return 'empty';
+  if (Object.prototype.toString.call(value) === '[object Date]') {
+    return isNaN(value.getTime()) ? 'invalid' : 'valid';
+  }
+  if (typeof value !== 'string') return 'invalid';
+  const match = value.trim().match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
+  if (!match) return 'invalid';
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day ? 'valid' : 'invalid';
 }
 
 function getDevOrderRealityStatusGroup(status) {
@@ -187,7 +224,11 @@ function auditDevOrderRealityBlankDateEvidence(evidenceRows) {
   const counts = createDevOrderRealityEvidenceCounts(
     rows, DEV_ORDER_REALITY_AUDIT_BLANK_DATE_EVIDENCE
   );
-  return Object.assign({ blankOrderDateOrderCount: rows.length }, counts);
+  return Object.assign(
+    { blankOrderDateOrderCount: rows.length },
+    createDevOrderRealityDateStateCounts(rows),
+    counts
+  );
 }
 
 function auditDevOrderRealityAllOrderEvidence(evidenceRows) {
@@ -210,7 +251,28 @@ function auditDevOrderRealityAllOrderEvidence(evidenceRows) {
   const counts = createDevOrderRealityEvidenceCounts(
     evidenceRows, DEV_ORDER_REALITY_AUDIT_ALL_ORDER_EVIDENCE
   );
-  return Object.assign({ orderRecordCount: evidenceRows.length }, statusCounts, counts);
+  return Object.assign(
+    { orderRecordCount: evidenceRows.length },
+    statusCounts,
+    createDevOrderRealityDateStateCounts(evidenceRows),
+    counts
+  );
+}
+
+function createDevOrderRealityDateStateCounts(rows) {
+  const definitions = [
+    ['invoiceIssueDate', 'invoiceIssueDateState'],
+    ['paymentConfirmedDate', 'paymentConfirmedDateState'],
+    ['orderShippingDate', 'orderShippingDateState'],
+    ['shipmentDate', 'shipmentDateState']
+  ];
+  return definitions.reduce((result, definition) => {
+    ['valid', 'empty', 'invalid'].forEach(state => {
+      result[definition[0] + state.charAt(0).toUpperCase() + state.slice(1) + 'Count'] =
+        rows.filter(row => row[definition[1]] === state).length;
+    });
+    return result;
+  }, {});
 }
 
 function createDevOrderRealityEvidenceCounts(rows, evidenceDefinitions) {
@@ -218,11 +280,18 @@ function createDevOrderRealityEvidenceCounts(rows, evidenceDefinitions) {
   evidenceDefinitions.forEach(definition => { presentCounts[definition[0] + 'Count'] = 0; });
   const combinations = {};
   rows.forEach(row => {
-    const combination = evidenceDefinitions.filter(definition => row[definition[0]])
+    const combination = evidenceDefinitions.filter(definition =>
+      definition[0].endsWith('Valid')
+        ? row[definition[0].slice(0, -5) + 'State'] === 'valid'
+        : row[definition[0]]
+    )
       .map(definition => definition[0]).join('|') || 'NONE';
     combinations[combination] = (combinations[combination] || 0) + 1;
     evidenceDefinitions.forEach(definition => {
-      if (row[definition[0]]) presentCounts[definition[0] + 'Count'] += 1;
+      const isPresent = definition[0].endsWith('Valid')
+        ? row[definition[0].slice(0, -5) + 'State'] === 'valid'
+        : row[definition[0]];
+      if (isPresent) presentCounts[definition[0] + 'Count'] += 1;
     });
   });
   return Object.assign(presentCounts, { evidenceCombinationCounts: combinations });
