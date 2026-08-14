@@ -6,6 +6,7 @@ export type LeadListRow = { id: string; customerName: string; responseSpeed: str
 export type LeadSortKey = keyof Omit<LeadListRow, 'id'>;
 export type LeadSortDirection = 'ascending' | 'descending';
 export type LeadSort = { key: LeadSortKey; direction: LeadSortDirection };
+export type LeadListSearchState = { query: string };
 type LeadListSortableRow = LeadListRow & { updatedAtRaw: string };
 
 export const LEAD_TYPE_TABS: readonly { type: LeadType; label: string }[] = [
@@ -29,6 +30,9 @@ export const LEAD_LIST_COLUMNS: readonly { key: LeadSortKey; label: string; cell
   { key: 'country', label: leadsCopy.columns.country, cellAlignment: 'center' },
   { key: 'productTitle', label: leadsCopy.columns.productTitle, cellAlignment: 'center' }
 ];
+
+export const LEAD_LIST_SEARCH_INITIAL_STATE: LeadListSearchState = { query: '' };
+export const LEAD_LIST_SEARCH_COLUMNS: readonly LeadSortKey[] = LEAD_LIST_COLUMNS.map(({ key }) => key);
 
 function text(value: unknown): string {
   return value == null || value === '' ? '-' : String(value);
@@ -70,4 +74,10 @@ export function toLeadListRows(records: readonly LeadRecord[], sort: LeadSort = 
     }))
     .sort((left, right) => compareRows(left, right, sort))
     .map(({ updatedAtRaw, ...row }) => row);
+}
+
+export function filterLeadListRows(rows: readonly LeadListRow[], query: string): readonly LeadListRow[] {
+  const normalizedQuery = query.trim().toLocaleLowerCase('ja-JP');
+  if (normalizedQuery === '') return rows;
+  return rows.filter((row) => LEAD_LIST_SEARCH_COLUMNS.some((key) => row[key].toLocaleLowerCase('ja-JP').includes(normalizedQuery)));
 }
