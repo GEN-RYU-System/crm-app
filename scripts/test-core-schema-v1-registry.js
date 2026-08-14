@@ -32,11 +32,11 @@ function run() {
   const context = run();
   const expectedHeaderCounts = {
     LEADS: 62, CUSTOMERS: 19, SHIPPING_DESTINATIONS: 16, PAYMENT_DESTINATIONS: 15,
-    ORDERS: 38, ORDER_LINES: 11, SHIPMENTS: 20, PURCHASES: 17, FORM_TOKENS: 4,
-    PRODUCTS: 24, STAFF: 20
+    ORDERS: 38, ORDER_LINES: 11, INVOICES: 29, INVOICE_LINES: 15,
+    SHIPMENTS: 20, PURCHASES: 17, FORM_TOKENS: 4, PRODUCTS: 24, STAFF: 20
   };
   const tableKeys = vm.runInContext('Object.keys(CORE_SCHEMA_V1_TABLES)', context);
-  assert.deepEqual(Array.from(tableKeys).slice(0, 11), Object.keys(expectedHeaderCounts));
+  assert.deepEqual(Array.from(tableKeys).slice(0, 13), Object.keys(expectedHeaderCounts));
   Object.keys(expectedHeaderCounts).forEach(tableKey => {
     const table = context.getCoreSchemaV1Table(tableKey);
     assert.equal(Object.keys(table.headers).length, expectedHeaderCounts[tableKey]);
@@ -59,6 +59,17 @@ function run() {
     { headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' },
     { headerKey: 'PRODUCT_ID', targetTableKey: 'PRODUCTS' }
   ]);
+  assert.deepEqual(JSON.parse(JSON.stringify(context.getCoreSchemaV1Table('INVOICES').referenceIds)), [
+    { headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' },
+    { headerKey: 'CUSTOMER_ID', targetTableKey: 'CUSTOMERS' },
+    { headerKey: 'CREATED_BY_ID', targetTableKey: 'STAFF' }
+  ]);
+  assert.deepEqual(JSON.parse(JSON.stringify(context.getCoreSchemaV1Table('INVOICE_LINES').referenceIds)), [
+    { headerKey: 'INVOICE_ID', targetTableKey: 'INVOICES' },
+    { headerKey: 'PRODUCT_ID', targetTableKey: 'PRODUCTS' }
+  ]);
+  assert.equal(context.getCoreSchemaV1HeaderName('INVOICES', 'ORDER_ID'), 'オーダーID');
+  assert.equal(Object.values(context.getCoreSchemaV1Table('INVOICES').headers).includes('商談ID'), false);
   assert.deepEqual(JSON.parse(JSON.stringify(context.getCoreSchemaV1Table('LEADS').referenceIds)), [
     { headerKey: 'ASSIGNEE_ID', targetTableKey: 'STAFF' },
     { headerKey: 'LAST_RESPONDER_ID', targetTableKey: 'STAFF' },
@@ -83,6 +94,8 @@ function run() {
   const configSheets = vm.runInContext('JSON.parse(JSON.stringify(CONFIG.SHEETS))', context);
   assert.equal(configSheets.LEADS, 'リード管理');
   assert.equal(configSheets.CRM_PAYMENT, '支払先マスタ');
+  assert.equal(configSheets.INVOICES, '請求書管理');
+  assert.equal(configSheets.INVOICE_ITEMS, '請求書明細');
   assert.equal(configSheets.SHIPMENT, '発送');
   assert.equal(configSheets.PURCHASE, '仕入れ');
   assert.equal(configSheets.FORM_TOKENS, 'フォームトークン');

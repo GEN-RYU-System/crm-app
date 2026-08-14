@@ -45,6 +45,27 @@ const CORE_SCHEMA_V1_TABLES = {
     headers: createCoreSchemaV1Headers([['ORDER_LINE_ID', '明細ID'], ['ORDER_ID', 'オーダーID'], ['LINE_NUMBER', '行番号'], ['CATEGORY', 'カテゴリ'], ['PRODUCT_NAME', '商品名'], ['STATUS', '状態'], ['SKU', 'SKU'], ['QUANTITY', '数量'], ['UNIT_PRICE', '単価'], ['SUBTOTAL', '小計'], ['PRODUCT_ID', '商品ID']]), primaryKey: 'ORDER_LINE_ID',
     referenceIds: [{ headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' }, { headerKey: 'PRODUCT_ID', targetTableKey: 'PRODUCTS' }]
   },
+  INVOICES: {
+    sheetName: '請求書管理', canonicalName: '請求書管理', aliases: [], headerRowNumber: 1, sheetType: 'TRANSACTION', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['INVOICE_ID', '請求書ID'], ['INVOICE_NUMBER', '請求書番号'], ['ORDER_ID', 'オーダーID'], ['CUSTOMER_ID', '顧客ID'], ['CUSTOMER_NAME', '顧客名'], ['INVOICE_DATE', '請求日'], ['PAYMENT_DUE_DATE', '支払期限'], ['CURRENCY', '通貨'], ['ITEM_SUBTOTAL', '商品小計'], ['SHIPPING_FEE', '配送料'], ['TOTAL_AMOUNT', '合計金額'], ['PAID_AMOUNT', '支払済み金額'], ['BALANCE', '残額'], ['STATUS', 'ステータス'], ['PAYMENT_METHOD', '決済方法'], ['BILLING_COUNTRY', '請求先国'], ['BILLING_ADDRESS', '請求先住所'], ['SHIPPING_COUNTRY', '配送先国'], ['SHIPPING_ADDRESS', '配送先住所'], ['NOTE', '備考'], ['PDF_LINK', 'PDFリンク'], ['CREATED_BY_ID', '作成者ID'], ['CREATED_BY_NAME', '作成者名'], ['SENT_AT', '送付日'], ['PAID_AT', '入金日'], ['UPDATED_AT', '更新日'], ['ERP_EXPORTED_AT', 'ERP出力日'], ['ERP_EXPORTED', 'ERP出力済み'], ['INTERNAL_MEMO', 'メモ']
+    ]), primaryKey: 'INVOICE_ID',
+    referenceIds: [
+      { headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' },
+      { headerKey: 'CUSTOMER_ID', targetTableKey: 'CUSTOMERS' },
+      { headerKey: 'CREATED_BY_ID', targetTableKey: 'STAFF' }
+    ]
+  },
+  INVOICE_LINES: {
+    sheetName: '請求書明細', canonicalName: '請求書明細', aliases: [], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['INVOICE_LINE_ID', '明細ID'], ['INVOICE_ID', '請求書ID'], ['PRODUCT_ID', '商品ID'], ['PRODUCT_NAME_EN', '商品名（英語）'], ['PRODUCT_NAME_JA', '商品名（日本語）'], ['CATEGORY', 'カテゴリ'], ['STATUS', '状態'], ['QUANTITY', '数量'], ['UNIT_PRICE', '単価'], ['SUBTOTAL', '小計'], ['WEIGHT_KG', '重量（kg）'], ['MARK', 'マーク'], ['RELEASE_DATE', '発売日'], ['SHIPPED', '出荷済み'], ['NOTE', '備考']
+    ]), primaryKey: 'INVOICE_LINE_ID',
+    referenceIds: [
+      { headerKey: 'INVOICE_ID', targetTableKey: 'INVOICES' },
+      { headerKey: 'PRODUCT_ID', targetTableKey: 'PRODUCTS' }
+    ]
+  },
   SHIPMENTS: {
     sheetName: '発送', canonicalName: '発送管理', aliases: ['発送'], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
     headers: createCoreSchemaV1Headers([['SHIPMENT_ID', '発送ID'], ['ORDER_ID', 'オーダーID'], ['BOX_NUMBER', '箱番号'], ['SHIPPING_METHOD', '発送方法'], ['SHIPPED_AT', '発送日'], ['TRACKING_NUMBER', '運送状番号'], ['LENGTH', '長さ'], ['WIDTH', '幅'], ['HEIGHT', '高さ'], ['WEIGHT', '重量'], ['ESTIMATED_SHIPPING_FEE', '見積もり送料'], ['INSPECTION', '検品'], ['PACKING', '梱包'], ['STORAGE', '格納'], ['PICKUP_REQUEST', '集荷依頼'], ['NOTIFICATION', '通知'], ['SHIPPING_ASSIGNEE_ID', '発送担当ID'], ['NOTE', '備考'], ['REGISTERED_AT', '登録日'], ['UPDATED_AT', '更新日']]), primaryKey: 'SHIPMENT_ID',
