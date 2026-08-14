@@ -4,6 +4,7 @@ import {
   Badge,
   Button,
   Card,
+  ConversationWorkspace,
   DataTable,
   EmptyState,
   PageHeader,
@@ -192,6 +193,20 @@ export function ComponentCatalogPage() {
               skeletonRows={3}
             />
           </div>
+        </Card>
+        <Card>
+          <h2 className="catalog-page__heading">{catalogCopy.conversationWorkspace}</h2>
+          <ConversationWorkspace
+            listLabel={catalogCopy.conversationListLabel}
+            listHeader={<strong>{catalogCopy.conversationList}</strong>}
+            list={<span>{catalogCopy.conversationListExample}</span>}
+            conversationLabel={catalogCopy.conversationLabel}
+            conversationHeader={<strong>{catalogCopy.conversation}</strong>}
+            conversation={<span>{catalogCopy.conversationExample}</span>}
+            detailsLabel={catalogCopy.conversationDetailsLabel}
+            detailsHeader={<strong>{catalogCopy.conversationDetails}</strong>}
+            details={<span>{catalogCopy.conversationDetailsExample}</span>}
+          />
         </Card>
         <Card>
           <h2 className="catalog-page__heading">{catalogCopy.badge}</h2>
