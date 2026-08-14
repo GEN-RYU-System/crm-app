@@ -91,7 +91,7 @@ function run(spreadsheet, auditOverride) {
   const lock = { released: false, tryLock: () => true, releaseLock: () => { lock.released = true; } };
   const context = vm.createContext({
     Date, Number, Object, String, Array, Set, isFinite, isNaN,
-    Utilities: { formatDate: date => date.toISOString().slice(0, 7) },
+    Utilities: { formatDate: (date, timeZone, format) => format === 'yyyy-MM-dd' ? date.toISOString().slice(0, 10) : date.toISOString().slice(0, 7) },
     getEnvironment: () => 'development',
     getSpreadsheet: () => spreadsheet,
     LockService: { getScriptLock: () => lock },
@@ -315,7 +315,7 @@ function assertPostWriteFailure(result, resultType) {
 {
   const spreadsheet = createSpreadsheet({
     dataMismatchSheet: '顧客月次分析',
-    dataMismatchEntries: [{ row: 0, column: 1, value: new Date('2026-02-28T00:00:00Z') }]
+    dataMismatchEntries: [{ row: 0, column: 1, value: new Date('2026-02-01T00:00:00Z') }]
   });
   const { context } = run(spreadsheet);
   installExpectedTablesWithMonthlyDate(context);
@@ -324,6 +324,22 @@ function assertPostWriteFailure(result, resultType) {
   const monthlyFormatEvents = spreadsheet.created[1].events.filter(event => event.type === 'setNumberFormat');
   assert.equal(monthlyFormatEvents.length, 1);
   assert.equal(monthlyFormatEvents[0].format, 'yyyy-MM');
+}
+
+{
+  const spreadsheet = createSpreadsheet({
+    dataMismatchSheet: '顧客月次分析',
+    dataMismatchEntries: [{ row: 0, column: 1, value: new Date('2026-02-28T00:00:00Z') }]
+  });
+  const { context } = run(spreadsheet);
+  installExpectedTablesWithMonthlyDate(context);
+  const result = context.initializeDevCustomerAnalytics();
+  assertPostWriteFailure(result, 'INITIALIZATION_POST_WRITE_DATA_MISMATCH');
+  assert.equal(result.verificationSheetName, '顧客月次分析');
+  assert.equal(result.mismatchCellCount, 1);
+  assert.deepEqual(Array.from(result.mismatchColumnHeaders), ['受注年月']);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.mismatchValueTypeSummary)), { DATE: 1, NUMBER: 0, TEXT: 0, BLANK: 0 });
+  assert.deepEqual(spreadsheet.deleted, ['顧客購入商品分析', '顧客月次分析', '顧客分析']);
 }
 
 {
