@@ -252,6 +252,40 @@ function resolveCustomerRegistrationCoreSchemaWriteContext_(spreadsheet) {
   return tables;
 }
 
+function snapshotCustomerRegistrationCoreSchemaWriteContext_(tables) {
+  return Object.keys(tables).reduce(function(snapshot, tableKey) {
+    var table = getCoreSchemaV1Table(tableKey);
+    var sheet = tables[tableKey].sheet;
+    var columnCount = sheet.getLastColumn();
+    var headers = columnCount > 0
+      ? sheet.getRange(table.headerRowNumber, 1, 1, columnCount).getDisplayValues()[0]
+        .map(function(header) { return String(header).trim(); })
+      : [];
+    snapshot[tableKey] = {
+      sheet: sheet,
+      columnCount: columnCount,
+      headers: headers,
+      headerRowNumber: table.headerRowNumber
+    };
+    return snapshot;
+  }, {});
+}
+
+function isCustomerRegistrationCoreSchemaSnapshotEqual_(before, after) {
+  return Object.keys(before).every(function(tableKey) {
+    var beforeTable = before[tableKey];
+    var afterTable = after[tableKey];
+    return afterTable &&
+      beforeTable.sheet === afterTable.sheet &&
+      beforeTable.columnCount === afterTable.columnCount &&
+      beforeTable.headerRowNumber === afterTable.headerRowNumber &&
+      beforeTable.headers.length === afterTable.headers.length &&
+      beforeTable.headers.every(function(header, index) {
+        return header === afterTable.headers[index];
+      });
+  });
+}
+
 // ============================================================
 // 4. メイン関数
 // ============================================================
@@ -281,9 +315,11 @@ function registerCustomerFromForm(payload) {
 
   var ss = getSpreadsheet();
   var coreSchemaTables;
+  var coreSchemaSnapshot;
   try {
     // 全4表を、以降の書込みより前に存在・全登録ヘッダー・重複まで検証する。
     coreSchemaTables = resolveCustomerRegistrationCoreSchemaWriteContext_(ss);
+    coreSchemaSnapshot = snapshotCustomerRegistrationCoreSchemaWriteContext_(coreSchemaTables);
   } catch (e) {
     var coreSchemaError = String(e && e.message || '');
     var allowedCoreSchemaErrors = [
@@ -336,6 +372,25 @@ function registerCustomerFromForm(payload) {
   }
 
   try {
+    // Lock取得後の表構造を再検証し、検証前後の差分では書込みを行わない。
+    var lockedCoreSchemaTables;
+    var lockedCoreSchemaSnapshot;
+    try {
+      lockedCoreSchemaTables = resolveCustomerRegistrationCoreSchemaWriteContext_(ss);
+      lockedCoreSchemaSnapshot = snapshotCustomerRegistrationCoreSchemaWriteContext_(lockedCoreSchemaTables);
+    } catch (e) {
+      return ng(['CORE_SCHEMA_REGISTRATION_SOURCE_CHANGED']);
+    }
+    if (!isCustomerRegistrationCoreSchemaSnapshotEqual_(coreSchemaSnapshot, lockedCoreSchemaSnapshot)) {
+      return ng(['CORE_SCHEMA_REGISTRATION_SOURCE_CHANGED']);
+    }
+    // 以降はLock取得後の最新検証結果だけを使用する。
+    coreSchemaTables = lockedCoreSchemaTables;
+    tokSh = coreSchemaTables.FORM_TOKENS.sheet;
+    tokTokIdx = coreSchemaTables.FORM_TOKENS.headerIndexes[coreSchemaTables.FORM_TOKENS.headerNames.formToken] - 1;
+    tokLidIdx = coreSchemaTables.FORM_TOKENS.headerIndexes[coreSchemaTables.FORM_TOKENS.headerNames.leadId] - 1;
+    tokUseIdx = coreSchemaTables.FORM_TOKENS.headerIndexes[coreSchemaTables.FORM_TOKENS.headerNames.usedAt] - 1;
+
     // --- 2a. ロック下で使用済み再チェック（二重送信ガード）---
     var tokDataLocked = tokSh.getDataRange().getValues();
     var usedDateLocked = String((tokDataLocked[tokRowIdx - 1] || [])[tokUseIdx] || '').trim();
