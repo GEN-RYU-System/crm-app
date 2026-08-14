@@ -9,7 +9,8 @@
 .ui-data-table__header--start .ui-data-table__header-content, .ui-data-table__header--start .ui-data-table__sort-button { justify-content: flex-start; }
 .ui-data-table__sort-button { border: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; font-weight: inherit; padding: var(--space-none); text-align: inherit; }
 .ui-data-table__sort-icon { display: flex; height: var(--icon-nav-size); width: var(--icon-nav-size); }
-.ui-data-table__cell { color: var(--data-table-body-text); text-align: left; }
+.ui-data-table__cell { color: var(--data-table-body-text); text-align: center; }
+.ui-data-table__cell--start { text-align: left; }
 .ui-data-table__cell--center { text-align: center; }
 .ui-data-table__cell--top { vertical-align: top; }
 .ui-data-table__row:last-child .ui-data-table__cell { border-bottom: 0; }
