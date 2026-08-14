@@ -1,21 +1,29 @@
 export type CustomerSummaryDto = {
   customerId: string;
   customerName: string;
-  emailAddress: string;
   country: string;
-  phone: string;
-  shippingAddressCount: number;
-  paymentProfileCount: number;
+  salesChannel: string;
+  handledTitle: string;
   salesAssigneeName: string;
-  contactTool: string;
-  registeredAt: string;
+  transactionCount: number;
+  transactionAmounts: readonly { currency: string; amount: number }[];
 };
 
-export type CustomerProfileDto = CustomerSummaryDto & {
+export type CustomerProfileDto = {
+  customerId: string;
   sourceLeadId: string;
+  customerName: string;
+  country: string;
+  emailAddress: string;
+  phone: string;
   countryCode: string;
   firstTransactionDate: string;
+  registeredAt: string;
+  salesAssigneeName: string;
+  contactTool: string;
   shippingNote: string;
+  shippingAddressCount: number;
+  paymentProfileCount: number;
 };
 
 export type ShippingAddressDto = {
