@@ -1,6 +1,6 @@
 import { NAVIGATION_BY_ID } from '../../app/navigation';
 import type { DataTableCellAlignment } from '../../components/ui';
-import type { CustomerProfileDto, CustomerStatus, CustomerSummaryDto, PaymentMethod, ShippingAddressDto, PaymentProfileDto } from '../../features/customers/contracts';
+import type { CustomerProfileDto, CustomerSummaryDto, ShippingAddressDto, PaymentProfileDto } from '../../features/customers/contracts';
 import { customersCopy } from '../../content/ja';
 
 export type CustomerListRow = {
@@ -39,7 +39,8 @@ export const CUSTOMER_LIST_COLUMNS: readonly { key: CustomerSortKey; label: stri
   { key: 'updatedAt', label: customersCopy.columns.updatedAt, cellAlignment: 'center' }
 ];
 export const CUSTOMER_LIST_SEARCH_COLUMNS: readonly CustomerSortKey[] = CUSTOMER_LIST_COLUMNS.map(({ key }) => key);
-export const CUSTOMER_PROFILE_FIELDS: readonly { key: keyof Pick<CustomerProfileDto, 'customerName' | 'customerType' | 'emailAddress' | 'country' | 'note'>; label: string }[] = [
+export const CUSTOMER_PROFILE_FIELDS: readonly { key: keyof Pick<CustomerProfileDto, 'customerId' | 'customerName' | 'customerType' | 'emailAddress' | 'country' | 'note'>; label: string }[] = [
+  { key: 'customerId', label: customersCopy.fields.customerId },
   { key: 'customerName', label: customersCopy.fields.customerName },
   { key: 'customerType', label: customersCopy.fields.customerType },
   { key: 'emailAddress', label: customersCopy.fields.emailAddress },
@@ -59,15 +60,8 @@ export const CUSTOMER_PAYMENT_COLUMNS: readonly { key: keyof Pick<PaymentProfile
 ];
 
 function formatDate(value: string): string { const date = new Date(value); return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('ja-JP'); }
-function customerType(value: CustomerProfileDto['customerType']): string { return customersCopy.customerTypes[value]; }
-function country(value: CustomerProfileDto['country']): string { return customersCopy.countries[value]; }
-function status(value: CustomerStatus): string { return customersCopy.statuses[value]; }
-function shippingLabel(value: ShippingAddressDto['label']): string { return customersCopy.shippingLabels[value]; }
-function paymentLabel(value: PaymentProfileDto['label']): string { return customersCopy.paymentLabels[value]; }
-function paymentMethod(value: PaymentMethod): string { return customersCopy.paymentMethods[value]; }
-
 export function toCustomerListRows(customers: readonly CustomerSummaryDto[], sort: CustomerSort): CustomerListRow[] {
-  const rows = customers.map((customer) => ({ customerId: customer.customerId, customerName: customer.customerName, customerType: customerType(customer.customerType), emailAddress: customer.emailAddress, country: country(customer.country), shippingAddressCount: String(customer.shippingAddressCount), paymentProfileCount: String(customer.paymentProfileCount), status: status(customer.status), updatedAt: formatDate(customer.updatedAt), updatedAtRaw: customer.updatedAt }));
+  const rows = customers.map((customer) => ({ customerId: customer.customerId, customerName: customer.customerName, customerType: customer.customerType, emailAddress: customer.emailAddress, country: customer.country, shippingAddressCount: String(customer.shippingAddressCount), paymentProfileCount: String(customer.paymentProfileCount), status: customer.status, updatedAt: formatDate(customer.updatedAt), updatedAtRaw: customer.updatedAt }));
   const direction = sort.direction === 'ascending' ? 1 : -1;
   return rows.sort((left, right) => sort.key === 'updatedAt'
     ? (new Date(left.updatedAtRaw).getTime() - new Date(right.updatedAtRaw).getTime()) * direction
@@ -81,6 +75,6 @@ export function filterCustomerListRows(rows: readonly CustomerListRow[], query: 
 
 export function customerDetailPath(customerId: string): string { return `${NAVIGATION_BY_ID.customers.hash}/${encodeURIComponent(customerId)}`; }
 export function customerListPath(): string { return NAVIGATION_BY_ID.customers.hash; }
-export function displayCustomerProfileValue(profile: CustomerProfileDto, key: (typeof CUSTOMER_PROFILE_FIELDS)[number]['key']): string { if (key === 'customerType') return customerType(profile.customerType); if (key === 'country') return country(profile.country); return profile[key]; }
-export function displayShippingValue(address: ShippingAddressDto, key: (typeof CUSTOMER_SHIPPING_COLUMNS)[number]['key']): string { if (key === 'label') return shippingLabel(address.label); if (key === 'country') return country(address.country); return address[key]; }
-export function displayPaymentValue(profile: PaymentProfileDto, key: (typeof CUSTOMER_PAYMENT_COLUMNS)[number]['key']): string { if (key === 'label') return paymentLabel(profile.label); if (key === 'method') return paymentMethod(profile.method); return status(profile.status); }
+export function displayCustomerProfileValue(profile: CustomerProfileDto, key: (typeof CUSTOMER_PROFILE_FIELDS)[number]['key']): string { return profile[key]; }
+export function displayShippingValue(address: ShippingAddressDto, key: (typeof CUSTOMER_SHIPPING_COLUMNS)[number]['key']): string { return address[key]; }
+export function displayPaymentValue(profile: PaymentProfileDto, key: (typeof CUSTOMER_PAYMENT_COLUMNS)[number]['key']): string { return profile[key]; }
