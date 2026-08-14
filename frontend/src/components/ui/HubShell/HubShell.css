@@ -1,0 +1,9 @@
+.ui-hub-shell { align-items: stretch; display: flex; min-width: 0; }
+.ui-hub-shell__navigation { background: var(--hub-subnav-bg); border-right: var(--border-width) solid var(--hub-subnav-border); flex: 0 0 var(--hub-subnav-width); overflow-x: hidden; overflow-y: auto; width: var(--hub-subnav-width); }
+.ui-hub-shell__content { flex: 1 1 auto; min-width: 0; padding-left: var(--hub-content-gap); }
+
+@media (max-width: 767px) {
+  .ui-hub-shell { flex-direction: column; }
+  .ui-hub-shell__navigation { border-bottom: var(--border-width) solid var(--hub-subnav-border); border-right: 0; flex-basis: auto; width: 100%; }
+  .ui-hub-shell__content { padding-left: var(--space-none); padding-top: var(--hub-content-gap); }
+}
