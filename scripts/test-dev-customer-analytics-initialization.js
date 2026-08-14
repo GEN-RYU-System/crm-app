@@ -49,6 +49,9 @@ function createSpreadsheet(options = {}) {
         getLastColumn: () => headers.length,
         getRange: row => ({
           getDisplayValues: () => [headers],
+          getValues: () => options.corruptAfterWrite && row === 2
+            ? dataRows.map(values => values.slice()).map((values, index) => index === 0 ? values.concat('CORRUPTED') : values)
+            : dataRows,
           setValues: values => {
             events.push({ type: 'setValues', values });
             if (row === 1) headers = values[0];
@@ -106,6 +109,26 @@ function run(spreadsheet, auditOverride) {
   assert.equal(tables.customer[1][1], '');
   assert.equal(tables.customer[1][2], '');
   assert.equal(tables.monthly.length, 2);
+  assert.equal(JSON.stringify(tables.customer[0].slice(1)), JSON.stringify([
+    new Date('2026-01-01T00:00:00Z'), new Date('2026-01-01T00:00:00Z'), 2, 30, 0, 0, 2, 30, 0, 0, 0
+  ]));
+  assert.equal(JSON.stringify(tables.customer[1].slice(1)), JSON.stringify(['', '', 1, 30, 1, 30, 0, 0, 0, 0, 1]));
+  assert.equal(JSON.stringify(tables.monthly[0].slice(1)), JSON.stringify(['2026-01', 1, 20, 0, 0, 1, 20, 0, 0]));
+  assert.equal(JSON.stringify(tables.product[0].slice(2)), JSON.stringify([2, 2, 0, 2, 0]));
+}
+
+{
+  const spreadsheet = createSpreadsheet();
+  const { context } = run(spreadsheet);
+  context.buildDevCustomerAnalyticsInitializationTables = () => ({
+    customer: Array.from({ length: 51 }, () => Array(12).fill(0)),
+    monthly: Array.from({ length: 69 }, () => Array(10).fill(0)),
+    product: Array.from({ length: 262 }, () => Array(7).fill(0))
+  });
+  const result = context.initializeDevCustomerAnalytics();
+  assert.equal(result.resultType, 'INITIALIZATION_OUTPUT_INVARIANT_MISMATCH');
+  assert.equal(result.actualDataChangeCount, 0);
+  assert.equal(spreadsheet.created.length, 0);
 }
 
 {
@@ -119,6 +142,20 @@ function run(spreadsheet, auditOverride) {
 }
 
 {
+  const spreadsheet = createSpreadsheet({ corruptAfterWrite: true });
+  const { context } = run(spreadsheet);
+  context.buildDevCustomerAnalyticsInitializationTables = () => ({
+    customer: Array.from({ length: 51 }, () => Array(12).fill('')),
+    monthly: Array.from({ length: 69 }, () => Array(10).fill('')),
+    product: Array.from({ length: 262 }, () => Array(7).fill(''))
+  });
+  context.hasDevCustomerAnalyticsInitializationOutputInvariants = () => true;
+  const result = context.initializeDevCustomerAnalytics();
+  assert.equal(result.resultType, 'INITIALIZATION_FAILED');
+  assert.deepEqual(spreadsheet.deleted, ['顧客購入商品分析', '顧客月次分析', '顧客分析']);
+}
+
+{
   const spreadsheet = createSpreadsheet();
   const { context } = run(spreadsheet);
   context.buildDevCustomerAnalyticsInitializationTables = () => ({
@@ -126,6 +163,7 @@ function run(spreadsheet, auditOverride) {
     monthly: Array.from({ length: 69 }, () => Array(10).fill('')),
     product: Array.from({ length: 262 }, () => Array(7).fill(''))
   });
+  context.hasDevCustomerAnalyticsInitializationOutputInvariants = () => true;
   const result = context.initializeDevCustomerAnalytics();
   assert.equal(result.resultType, 'INITIALIZATION_SUCCEEDED');
   assert.equal(spreadsheet.created.length, 3);
@@ -163,6 +201,7 @@ function run(spreadsheet, auditOverride) {
     monthly: Array.from({ length: 69 }, () => Array(10).fill('')),
     product: Array.from({ length: 262 }, () => Array(7).fill(''))
   });
+  context.hasDevCustomerAnalyticsInitializationOutputInvariants = () => true;
   const originalSnapshot = context.createDevCustomerAnalyticsMaterializationSourceSnapshot;
   let callCount = 0;
   context.createDevCustomerAnalyticsMaterializationSourceSnapshot = ss => {
@@ -185,6 +224,7 @@ function run(spreadsheet, auditOverride) {
     monthly: Array.from({ length: 69 }, () => Array(10).fill('')),
     product: Array.from({ length: 262 }, () => Array(7).fill(''))
   });
+  context.hasDevCustomerAnalyticsInitializationOutputInvariants = () => true;
   const result = context.initializeDevCustomerAnalytics();
   assert.equal(result.resultType, 'INITIALIZATION_FAILED');
   assert.equal(result.actualDataChangeCount, 0);
@@ -199,6 +239,7 @@ function run(spreadsheet, auditOverride) {
     monthly: Array.from({ length: 69 }, () => Array(10).fill('')),
     product: Array.from({ length: 262 }, () => Array(7).fill(''))
   });
+  context.hasDevCustomerAnalyticsInitializationOutputInvariants = () => true;
   const result = context.initializeDevCustomerAnalytics();
   assert.equal(result.resultType, 'INITIALIZATION_ROLLBACK_STATE_UNKNOWN');
   assert.equal(result.actualDataChangeCount, null);
@@ -213,6 +254,7 @@ function run(spreadsheet, auditOverride) {
     monthly: Array.from({ length: 69 }, () => Array(10).fill('')),
     product: Array.from({ length: 262 }, () => Array(7).fill(''))
   });
+  context.hasDevCustomerAnalyticsInitializationOutputInvariants = () => true;
   context.verifyDevCustomerAnalyticsInitializationSheets = () => {
     throw new Error('verification failure');
   };
