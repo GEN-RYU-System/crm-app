@@ -10,6 +10,9 @@ interface GoogleScriptRun {
   getDashboardKPIs(): void;
   getCurrentUser(): void;
   getLeadsByType(leadType: string): void;
+  getLeadDetail(leadId: string): void;
+  createLead(leadData: Record<string, string>): void;
+  updateLead(sheetName: string, leadId: string, updateData: Record<string, string>): void;
 }
 
 interface Window {

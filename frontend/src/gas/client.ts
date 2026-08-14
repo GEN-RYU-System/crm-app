@@ -19,6 +19,7 @@ export type CurrentUser = {
 
 export type LeadType = typeof leadsCopy.leadTypes[keyof typeof leadsCopy.leadTypes];
 export type LeadRecord = Record<string, unknown>;
+export type LeadCreateResult = { success: true; leadId: string; message?: string };
 
 function toError(error: unknown): Error {
   if (error instanceof Error) return error;
@@ -76,5 +77,63 @@ export function getLeadsByType(leadType: LeadType): Promise<LeadRecord[]> {
       })
       .withFailureHandler((error) => reject(toError(error)))
       .getLeadsByType(leadType);
+  });
+}
+
+export function getLeadDetail(leadId: string): Promise<LeadRecord | null> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (value === null) {
+          resolve(null);
+          return;
+        }
+        if (typeof value !== 'object' || Array.isArray(value)) {
+          reject(new Error(errorCopy.communication));
+          return;
+        }
+        resolve(value as LeadRecord);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getLeadDetail(leadId);
+  });
+}
+
+export function createLead(leadData: Record<string, string>): Promise<LeadCreateResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (typeof value !== 'object' || value === null || !('success' in value) || (value as { success?: unknown }).success !== true || typeof (value as { leadId?: unknown }).leadId !== 'string') {
+          reject(new Error(errorCopy.communication));
+          return;
+        }
+        resolve(value as LeadCreateResult);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .createLead(leadData);
+  });
+}
+
+export function updateLead(sheetName: string, leadId: string, updateData: Record<string, string>): Promise<string> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (typeof value !== 'string') {
+          reject(new Error(errorCopy.communication));
+          return;
+        }
+        resolve(value);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .updateLead(sheetName, leadId, updateData);
   });
 }
