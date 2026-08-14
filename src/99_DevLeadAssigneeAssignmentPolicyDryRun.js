@@ -2,6 +2,7 @@
  * DEVリード担当者割当ルールの影響を、書き込まず件数のみで確認する。
  */
 const DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_SHEET = 'リード管理';
+const DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_LEAD_ID_HEADER = 'リードID';
 const DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_ID_HEADER = '担当者ID';
 const DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_NAME_HEADERS = [
   'リード担当者', '営業担当者', '担当者', '担当者名'
@@ -26,6 +27,9 @@ function buildDevLeadAssigneePolicyDryRun(spreadsheet) {
   if (!sheet) throw new Error('Required policy dry-run sheet is missing');
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const headerIndexes = getDevLeadAssigneePolicyDryRunHeaderIndexes(headers);
+  const leadIdIndex = requireDevLeadAssigneePolicyDryRunHeader(
+    headerIndexes, DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_LEAD_ID_HEADER
+  );
   const assigneeIdIndex = requireDevLeadAssigneePolicyDryRunHeader(
     headerIndexes, DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_ID_HEADER
   );
@@ -34,6 +38,7 @@ function buildDevLeadAssigneePolicyDryRun(spreadsheet) {
     .map(header => headerIndexes[header]);
   const lastRow = sheet.getLastRow();
   const recordCount = Math.max(lastRow - 1, 0);
+  const leadIds = readDevLeadAssigneePolicyDryRunColumn(sheet, leadIdIndex, recordCount);
   const assigneeIds = readDevLeadAssigneePolicyDryRunColumn(
     sheet, assigneeIdIndex, recordCount
   );
@@ -46,19 +51,17 @@ function buildDevLeadAssigneePolicyDryRun(spreadsheet) {
     abeExactMatchCount: 0,
     abePartialOnlyMatchCount: 0,
     emptyAndAbeExactMatchCount: 0,
-    emp00001CandidateCount: 0,
-    emp00007CandidateCount: 0,
+    emptyRuleMatchCount: 0,
+    abeExactRuleMatchCount: 0,
     alreadyEmp00001Count: 0,
     alreadyEmp00007Count: 0,
     neitherRuleMatchCount: 0
   };
 
   for (let rowIndex = 0; rowIndex < recordCount; rowIndex += 1) {
+    if (isDevLeadAssigneePolicyDryRunEmpty(leadIds[rowIndex])) continue;
     const assigneeId = assigneeIds[rowIndex];
     const names = nameColumns.map(column => column[rowIndex]);
-    if (isDevLeadAssigneePolicyDryRunEmpty(assigneeId) && names.every(isDevLeadAssigneePolicyDryRunEmpty)) {
-      continue;
-    }
     counts.leadNonEmptyRecordCount += 1;
     const isEmpty = isDevLeadAssigneePolicyDryRunEmpty(assigneeId);
     const nameMatch = classifyDevLeadAssigneePolicyDryRunAbe(names);
@@ -66,8 +69,8 @@ function buildDevLeadAssigneePolicyDryRun(spreadsheet) {
     if (nameMatch.exact) counts.abeExactMatchCount += 1;
     if (nameMatch.partialOnly) counts.abePartialOnlyMatchCount += 1;
     if (isEmpty && nameMatch.exact) counts.emptyAndAbeExactMatchCount += 1;
-    if (isEmpty) counts.emp00001CandidateCount += 1;
-    if (nameMatch.exact) counts.emp00007CandidateCount += 1;
+    if (isEmpty) counts.emptyRuleMatchCount += 1;
+    if (nameMatch.exact) counts.abeExactRuleMatchCount += 1;
     if (String(assigneeId) === DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_EMPTY_TARGET) {
       counts.alreadyEmp00001Count += 1;
     }
