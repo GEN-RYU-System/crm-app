@@ -1,8 +1,18 @@
 import { NavLink } from 'react-router-dom';
 import { CRM_NAV_ICONS } from '../../app/icons';
-import type { NavigationItem } from '../../app/navigation';
+import type { NavigationGroup, NavigationItem } from '../../app/navigation';
 import { navigationCopy } from '../../content/ja';
 import './SidebarNav.css';
 
-type Props = { onNavClick: () => void; navigationItems: readonly NavigationItem[] };
-export function SidebarNav({ onNavClick, navigationItems }: Props) { return <nav className="shell-sidebar-nav" aria-label={navigationCopy.primaryNav}>{navigationItems.map((item) => { const Icon = CRM_NAV_ICONS[item.icon]; return <NavLink key={item.id} to={item.hash} onClick={onNavClick} className={({ isActive }) => `shell-sidebar-nav__item${isActive ? ' shell-sidebar-nav__item--active' : ''}`}><span className="shell-sidebar-nav__icon"><Icon aria-hidden="true" /></span><span className="shell-sidebar-nav__label">{item.label}</span></NavLink>; })}</nav>; }
+type Props = { onNavClick: () => void; navigationGroups: readonly NavigationGroup[] };
+
+function NavigationItemView({ item, onNavClick }: { item: NavigationItem; onNavClick: () => void }) {
+  const Icon = CRM_NAV_ICONS[item.icon];
+  const contents = <><span className="shell-sidebar-nav__icon"><Icon aria-hidden="true" /></span><span className="shell-sidebar-nav__label">{item.label}</span>{item.state === 'preview' && <span className="shell-sidebar-nav__state shell-sidebar-nav__label">{navigationCopy.preview}</span>}</>;
+  if (item.state === 'planned') return <span className="shell-sidebar-nav__item shell-sidebar-nav__item--planned" aria-disabled="true" title={navigationCopy.planned}>{contents}</span>;
+  return <NavLink to={item.hash} onClick={onNavClick} className={({ isActive }) => `shell-sidebar-nav__item${isActive ? ' shell-sidebar-nav__item--active' : ''}`}>{contents}</NavLink>;
+}
+
+export function SidebarNav({ onNavClick, navigationGroups }: Props) {
+  return <nav className="shell-sidebar-nav" aria-label={navigationCopy.primaryNav}>{navigationGroups.map((group) => <section key={group.id} className="shell-sidebar-nav__group"><h2 className="shell-sidebar-nav__group-label shell-sidebar-nav__label">{group.label}</h2>{group.items.map((item) => <NavigationItemView key={item.id} item={item} onNavClick={onNavClick} />)}</section>)}</nav>;
+}
