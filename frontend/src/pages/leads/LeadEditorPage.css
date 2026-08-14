@@ -1,0 +1,3 @@
+.lead-editor-page__actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.lead-editor-page__form { display: grid; gap: var(--space-lg); }
+.lead-editor-page__notice { margin-bottom: var(--space-lg); }
