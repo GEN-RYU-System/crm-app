@@ -53,6 +53,17 @@ export type NavigationGroup = {
   items: readonly NavigationItem[];
 };
 
+/**
+ * The hub's entry is the already-available lead route. This preserves the
+ * established #/leads, #/leads/new, and #/leads/:leadId URLs while the
+ * surrounding route renders the data-management secondary navigation.
+ */
+export const DATA_MANAGEMENT_ROOT = '/leads';
+
+export const DATA_MANAGEMENT_ITEMS: readonly NavigationItem[] = [
+  { id: 'leads', label: navigationCopy.leads, hash: DATA_MANAGEMENT_ROOT, icon: 'leads', order: 1, state: 'available', requiredPermission: 'lead_view' }
+];
+
 export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
   { id: 'overview', label: navigationCopy.groups.overview, order: 1, items: [
     { id: 'dashboard', label: navigationCopy.dashboard, hash: '/dashboard', icon: 'dashboard', order: 1, state: 'available' }
@@ -77,9 +88,7 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
     { id: 'deals', label: navigationCopy.deals, hash: '/deals', icon: 'deals', order: 1, state: 'planned', requiredPermission: 'deal_view_all' },
     { id: 'staff', label: navigationCopy.staff, hash: '/staff', icon: 'staff', order: 2, state: 'planned', requiredPermission: 'staff_manage' },
     { id: 'permissions', label: navigationCopy.permissions, hash: '/permissions', icon: 'permissions', order: 3, state: 'planned', requiredPermission: 'admin_access' },
-    { id: 'dataManagement', label: navigationCopy.dataManagement, hash: '/data-management', icon: 'database', order: 4, state: 'available', children: [
-      { id: 'leads', label: navigationCopy.leads, hash: '/leads', icon: 'leads', order: 1, state: 'available', requiredPermission: 'lead_view' }
-    ] }
+    { id: 'dataManagement', label: navigationCopy.dataManagement, hash: DATA_MANAGEMENT_ROOT, icon: 'database', order: 4, state: 'available', requiredPermission: 'lead_view', children: DATA_MANAGEMENT_ITEMS }
   ] },
   { id: 'tools', label: navigationCopy.groups.tools, order: 6, items: [
     { id: 'preferences', label: navigationCopy.preferences, hash: '/preferences', icon: 'settings', order: 1, state: 'planned' },
@@ -92,11 +101,10 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
   ] }
 ];
 
-function flattenNavigationItems(items: readonly NavigationItem[]): NavigationItem[] {
-  return items.flatMap((item) => [item, ...flattenNavigationItems(item.children ?? [])]);
-}
-
-export const NAVIGATION_ITEMS: readonly NavigationItem[] = NAVIGATION_GROUPS.flatMap((group) => flattenNavigationItems(group.items));
+export const NAVIGATION_ITEMS: readonly NavigationItem[] = [
+  ...NAVIGATION_GROUPS.flatMap((group) => group.items),
+  ...NAVIGATION_GROUPS.flatMap((group) => group.items.flatMap((item) => item.children ?? []))
+];
 export const NAVIGATION_BY_ID = Object.fromEntries(NAVIGATION_ITEMS.map((item) => [item.id, item])) as Record<NavigationItemId, NavigationItem>;
 
 /** Mirrors the existing SPA's menu-level permission checks and defaults to deny protected items. */
@@ -111,17 +119,17 @@ export function hasNavigationPermission(permissions: NavigationPermissions | nul
 }
 
 export function visibleNavigationItems(permissions: NavigationPermissions | null): readonly NavigationItem[] {
-  return visibleNavigationGroups(permissions).flatMap((group) => flattenNavigationItems(group.items));
+  return NAVIGATION_ITEMS.filter((item) => canAccessNavigationItem(item, permissions));
 }
 
-function visibleNavigationItem(item: NavigationItem, permissions: NavigationPermissions | null): NavigationItem | null {
-  if (!canAccessNavigationItem(item, permissions)) return null;
-  if (item.children == null) return item;
-  const children = item.children.map((child) => visibleNavigationItem(child, permissions)).filter((child): child is NavigationItem => child != null);
-  return children.length > 0 ? { ...item, children } : null;
+export function visibleDataManagementItems(permissions: NavigationPermissions | null): readonly NavigationItem[] {
+  return NAVIGATION_BY_ID.dataManagement.children?.filter((item) => canAccessNavigationItem(item, permissions)) ?? [];
 }
 
 export function visibleNavigationGroups(permissions: NavigationPermissions | null): readonly NavigationGroup[] {
-  return NAVIGATION_GROUPS.map((group) => ({ ...group, items: group.items.map((item) => visibleNavigationItem(item, permissions)).filter((item): item is NavigationItem => item != null) }))
+  return NAVIGATION_GROUPS.map((group) => ({ ...group, items: group.items
+    .filter((item) => canAccessNavigationItem(item, permissions))
+    .map((item) => item.children == null ? item : ({ ...item, children: item.children.filter((child) => canAccessNavigationItem(child, permissions)) }))
+    .filter((item) => item.children == null || item.children.length > 0) }))
     .filter((group) => group.items.length > 0);
 }

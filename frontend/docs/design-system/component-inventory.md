@@ -7,6 +7,8 @@
 | Tabs | 同一画面内の表示切替 | pill, underline / sm, md / icon, count, disabled | Lead list, Component catalog | 整備済み |
 | TabBar | 受信箱由来のページ・一覧上部のカテゴリ切替 | selected, disabled, horizontal overflow | Lead list, Component catalog | 整備済み |
 | PageToolbar | PageHeaderとDataTable surfaceの間に置くページ全体の操作領域 | start, end / desktop split, narrow-width wrap | Lead list, Component catalog | 整備済み |
+| HubShell | 管理ハブの副ナビゲーションと子ページを分離する二領域枠 | navigation, content / desktop row, mobile column | Data management, Component catalog | 整備済み |
+| SubMenu | 管理ハブ内のグループ付き副ナビゲーション | grouped, flat / active, disabled / link, button | Data management, Component catalog | 整備済み |
 | DataTable | 表データの表示と列見出し | standalone, embedded / central or start header / body center by default, explicit start or center / sortable or static header / row click / loading Skeleton | Lead list, Component catalog | 整備済み |
 | ConversationWorkspace | 一覧・会話・詳細の3領域を持つ業務画面枠 | list, conversation, details / desktop, tablet, mobile | Route chat preview, Component catalog | 整備済み |
 | Card | セクションの表面 | default, outlined | Component catalog, StatCard | 整備済み |
@@ -22,7 +24,6 @@
 | AppShell | React POCの画面枠と本文グラデーション | なし | Dashboard, Component catalog | 整備済み |
 | DesktopSidebar | PC幅の固定サイドバー | collapsed, expanded | Dashboard, Component catalog | 整備済み |
 | SidebarNav | navigation.tsのグループ・項目・実装状態を描画するナビ | available, preview, planned | DesktopSidebar | 整備済み |
-| SidebarAccordion | サイドバーの親項目と子ルートを開閉する階層ナビ | collapsed, expanded / active / planned child | SidebarNav | 整備済み |
 | MobileHeader | モバイル帯の最小ヘッダー | なし | Dashboard, Component catalog | 整備済み |
 
 この表には、現在存在する金型だけを記載します。
