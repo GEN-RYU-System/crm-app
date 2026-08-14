@@ -20,6 +20,8 @@ React POCは`HashRouter`内で`#/dashboard`と`#/components`を表示します�
 
 FormField、Badge、SkeletonはReact POCの純粋UI金型です。業務statusからBadge variantへの対応、選択肢の正本、保存・権限・GAS呼出しは金型に含めません。Form catalogは表示専用です。
 
+Tabsは純粋UI金型で、`pill`と`underline`、`sm`と`md`、任意のicon・count・disabledを提供します。タブの項目・選択状態・変更処理・aria-labelは呼出側の正本で管理し、Tabs自身は業務条件やCopyを持ちません。
+
 Skeletonは初回読込みの標準UIです。`table` variantは任意の`columns`を受け、指定時は`rows × columns`のバーを表示します。`columns`未指定時は既存の3列表示を維持します。aria-labelは呼出側のCopy SSOTから渡し、金型自身はCopyをimportしません。reduced-motionではshimmerを停止します。
 
 FormFieldのモバイル最小高さに使うmedia queryは`max-width: 767px`です。CSS変数をmedia query条件に使えないため、この値だけはSales Anchorの`FormField.css`と一致する固定のbreakpointとして許可し、それ以外の色・余白・文字・角丸・animation時間はtokenを使用します。
