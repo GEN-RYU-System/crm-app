@@ -8,6 +8,7 @@ export const CRM_NAV_ICONS = {
   dashboard: Squares2X2Icon,
   components: SwatchIcon,
   leads: UsersIcon,
+  customers: UserGroupIcon,
   chat: ChatBubbleLeftRightIcon,
   newLead: UserPlusIcon,
   route: MapIcon,
