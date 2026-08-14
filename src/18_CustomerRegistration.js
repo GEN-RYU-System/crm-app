@@ -262,7 +262,7 @@ function snapshotCustomerRegistrationCoreSchemaWriteContext_(tables) {
         .map(function(header) { return String(header).trim(); })
       : [];
     snapshot[tableKey] = {
-      sheet: sheet,
+      sheetId: sheet.getSheetId(),
       columnCount: columnCount,
       headers: headers,
       headerRowNumber: table.headerRowNumber
@@ -276,7 +276,7 @@ function isCustomerRegistrationCoreSchemaSnapshotEqual_(before, after) {
     var beforeTable = before[tableKey];
     var afterTable = after[tableKey];
     return afterTable &&
-      beforeTable.sheet === afterTable.sheet &&
+      beforeTable.sheetId === afterTable.sheetId &&
       beforeTable.columnCount === afterTable.columnCount &&
       beforeTable.headerRowNumber === afterTable.headerRowNumber &&
       beforeTable.headers.length === afterTable.headers.length &&
