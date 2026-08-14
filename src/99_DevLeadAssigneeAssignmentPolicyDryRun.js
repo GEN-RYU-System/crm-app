@@ -21,9 +21,17 @@ function dryRunDevLeadAssigneeAssignmentPolicy() {
     return buildDevLeadAssigneePolicyDryRun(getSpreadsheet());
   } catch (error) {
     if (error && error.message === DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_NAME_HEADER_MISSING) {
-      return { success: false, errorType: DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_NAME_HEADER_MISSING };
+      return {
+        success: false,
+        errorType: DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_NAME_HEADER_MISSING,
+        actualDataChangeCount: 0
+      };
     }
-    return { success: false, errorType: 'LEAD_ASSIGNEE_POLICY_DRY_RUN_FAILED' };
+    return {
+      success: false,
+      errorType: 'LEAD_ASSIGNEE_POLICY_DRY_RUN_FAILED',
+      actualDataChangeCount: 0
+    };
   }
 }
 
