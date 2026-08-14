@@ -14,6 +14,8 @@ App Shell本文のグラデーション背景は`--app-canvas-gradient`だけを
 
 管理系の親項目は主サイドバーの直接リンクとし、子ページを主サイドバー内へ展開しません。Sales Anchorの管理センターと同じく、遷移先で`HubShell`が主サイドバーとは独立した副ナビゲーションと子ページ領域を作り、`SubMenu variant="grouped"`が子ルートを表示します。`HubShell`はデスクトップで200pxの副ナビゲーションと可変幅の本文を横並びにし、767px以下では縦並びにします。`SubMenu`は業務権限・文言を持たず、呼出側から許可済みのgroups、activeKey、routeを受け取ります。データ管理の親子関係・権限・入口ルートは`navigation.ts`を正本とし、既存の`#/leads`、`#/leads/new`、`#/leads/:leadId`を変えずに右側の`Outlet`へ表示します。
 
+顧客Previewは既存の`PageHeader`、`PageToolbar`、`DataTable`、`Tabs`、`Card`、`Badge`、Form、状態金型だけを組み合わせます。ページは`CustomerRepository`だけを参照し、Preview adapter、GAS client、storage、物理データ定義へ直接依存しません。顧客用のCopy、列・タブ・表示変換、Previewデータ、サービス契約はそれぞれCopy SSOT、page config、adapter、contractsに分離します。
+
 React POCのApp Shell本文は最大幅を設けず全幅を使用します。左右余白はデスクトップで`--layout-page-padding-x`（24px）、モバイルで`--layout-page-padding-x-mobile`（16px）を使用します。値は`palette.css`から`tokens.css`へaliasし、ページCSSやAppShell CSSに生値を置きません。
 
 React POCは`HashRouter`内でSSOTの`available`または`preview` Routeを表示します。未実装メニューは`planned`として無効表示し、推測で空Routeを作りません。モバイル下部タブは、実ページが3〜5個揃った段階で別PRで検討します。
