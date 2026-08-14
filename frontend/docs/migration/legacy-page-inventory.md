@@ -8,7 +8,7 @@
 | Leads | `/leads-chat`, `/new-chat`, `/route-chat`, `/archive-chat` | Route chat preview; others planned | `lead_view` |
 | Sales | `/inventory`, `/quotes`, `/quote-history`, `/invoices`, `/reports` | planned | `deal_view_all` or `deal_view_own` menu access |
 | Support | `/faq` | planned | active user |
-| Management | `/deals`, `/staff`, `/permissions`, `/settings` | planned | route-specific permission |
+| Management | `/deals`, `/staff`, `/permissions`, `/settings` | Data management parent available with React `/leads` child; others planned | route-specific permission |
 | Tools | `/preferences`, `/knowledge`, `/translation-prompts`, `/templates` | planned | active user or admin/staff permission |
 
-React固有の`/leads`と`/components`は既存の利用可能画面として維持します。`/route-chat` Previewはローカルの明示的ダミーデータだけを使い、`google.script.run`、storage、シート、保存処理へ接続しません。
+React固有の`/leads`はSidebarAccordionの「データ管理 → リード管理」から開く既存の利用可能画面として維持し、`/components`も既存の利用可能画面として維持します。`/route-chat` Previewはローカルの明示的ダミーデータだけを使い、`google.script.run`、storage、シート、保存処理へ接続しません。

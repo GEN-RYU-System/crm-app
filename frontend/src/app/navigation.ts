@@ -28,7 +28,7 @@ export type NavigationItemId =
   | 'deals'
   | 'staff'
   | 'permissions'
-  | 'settings'
+  | 'dataManagement'
   | 'preferences'
   | 'knowledge'
   | 'translationPrompts'
@@ -44,6 +44,7 @@ export type NavigationItem = {
   state: NavigationItemState;
   requiredPermission?: NavigationPermission;
   anyPermissions?: readonly NavigationPermission[];
+  children?: readonly NavigationItem[];
 };
 export type NavigationGroup = {
   id: 'overview' | 'leads' | 'sales' | 'support' | 'management' | 'tools' | 'development';
@@ -57,7 +58,6 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
     { id: 'dashboard', label: navigationCopy.dashboard, hash: '/dashboard', icon: 'dashboard', order: 1, state: 'available' }
   ] },
   { id: 'leads', label: navigationCopy.groups.leads, order: 2, items: [
-    { id: 'leads', label: navigationCopy.leads, hash: '/leads', icon: 'leads', order: 1, state: 'available', requiredPermission: 'lead_view' },
     { id: 'leadsChat', label: navigationCopy.leadsChat, hash: '/leads-chat', icon: 'chat', order: 2, state: 'planned', requiredPermission: 'lead_view' },
     { id: 'newChat', label: navigationCopy.newChat, hash: '/new-chat', icon: 'newLead', order: 3, state: 'planned', requiredPermission: 'lead_view' },
     { id: 'routeChat', label: navigationCopy.routeChat, hash: '/route-chat', icon: 'route', order: 4, state: 'preview', requiredPermission: 'lead_view' },
@@ -77,7 +77,9 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
     { id: 'deals', label: navigationCopy.deals, hash: '/deals', icon: 'deals', order: 1, state: 'planned', requiredPermission: 'deal_view_all' },
     { id: 'staff', label: navigationCopy.staff, hash: '/staff', icon: 'staff', order: 2, state: 'planned', requiredPermission: 'staff_manage' },
     { id: 'permissions', label: navigationCopy.permissions, hash: '/permissions', icon: 'permissions', order: 3, state: 'planned', requiredPermission: 'admin_access' },
-    { id: 'settings', label: navigationCopy.dataManagement, hash: '/settings', icon: 'database', order: 4, state: 'planned', requiredPermission: 'settings' }
+    { id: 'dataManagement', label: navigationCopy.dataManagement, hash: '/data-management', icon: 'database', order: 4, state: 'available', children: [
+      { id: 'leads', label: navigationCopy.leads, hash: '/leads', icon: 'leads', order: 1, state: 'available', requiredPermission: 'lead_view' }
+    ] }
   ] },
   { id: 'tools', label: navigationCopy.groups.tools, order: 6, items: [
     { id: 'preferences', label: navigationCopy.preferences, hash: '/preferences', icon: 'settings', order: 1, state: 'planned' },
@@ -90,7 +92,11 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
   ] }
 ];
 
-export const NAVIGATION_ITEMS: readonly NavigationItem[] = NAVIGATION_GROUPS.flatMap((group) => group.items);
+function flattenNavigationItems(items: readonly NavigationItem[]): NavigationItem[] {
+  return items.flatMap((item) => [item, ...flattenNavigationItems(item.children ?? [])]);
+}
+
+export const NAVIGATION_ITEMS: readonly NavigationItem[] = NAVIGATION_GROUPS.flatMap((group) => flattenNavigationItems(group.items));
 export const NAVIGATION_BY_ID = Object.fromEntries(NAVIGATION_ITEMS.map((item) => [item.id, item])) as Record<NavigationItemId, NavigationItem>;
 
 /** Mirrors the existing SPA's menu-level permission checks and defaults to deny protected items. */
@@ -105,10 +111,17 @@ export function hasNavigationPermission(permissions: NavigationPermissions | nul
 }
 
 export function visibleNavigationItems(permissions: NavigationPermissions | null): readonly NavigationItem[] {
-  return NAVIGATION_ITEMS.filter((item) => canAccessNavigationItem(item, permissions));
+  return visibleNavigationGroups(permissions).flatMap((group) => flattenNavigationItems(group.items));
+}
+
+function visibleNavigationItem(item: NavigationItem, permissions: NavigationPermissions | null): NavigationItem | null {
+  if (!canAccessNavigationItem(item, permissions)) return null;
+  if (item.children == null) return item;
+  const children = item.children.map((child) => visibleNavigationItem(child, permissions)).filter((child): child is NavigationItem => child != null);
+  return children.length > 0 ? { ...item, children } : null;
 }
 
 export function visibleNavigationGroups(permissions: NavigationPermissions | null): readonly NavigationGroup[] {
-  return NAVIGATION_GROUPS.map((group) => ({ ...group, items: group.items.filter((item) => canAccessNavigationItem(item, permissions)) }))
+  return NAVIGATION_GROUPS.map((group) => ({ ...group, items: group.items.map((item) => visibleNavigationItem(item, permissions)).filter((item): item is NavigationItem => item != null) }))
     .filter((group) => group.items.length > 0);
 }
