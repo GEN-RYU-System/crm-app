@@ -62,12 +62,12 @@ export function getCurrentUser(): Promise<CurrentUser> {
   });
 }
 
-export function getLeadsByType(leadType: LeadType): Promise<LeadRecord[]> {
+export function getLeadsByType(leadType?: LeadType): Promise<LeadRecord[]> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
 
   return new Promise((resolve, reject) => {
-    runner
+    const call = runner
       .withSuccessHandler((value) => {
         if (!Array.isArray(value)) {
           reject(new Error(errorCopy.communication));
@@ -75,8 +75,10 @@ export function getLeadsByType(leadType: LeadType): Promise<LeadRecord[]> {
         }
         resolve(value as LeadRecord[]);
       })
-      .withFailureHandler((error) => reject(toError(error)))
-      .getLeadsByType(leadType);
+      .withFailureHandler((error) => reject(toError(error)));
+
+    if (leadType === undefined) (call.getLeadsByType as () => void)();
+    else call.getLeadsByType(leadType);
   });
 }
 
