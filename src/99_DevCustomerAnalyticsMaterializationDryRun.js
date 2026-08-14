@@ -36,12 +36,23 @@ function dryRunDevCustomerAnalyticsMaterialization() {
 }
 
 function buildDevCustomerAnalyticsMaterializationDryRun(spreadsheet) {
+  return buildDevCustomerAnalyticsMaterializationDryRunFromSnapshot(
+    createDevCustomerAnalyticsMaterializationSourceSnapshot(spreadsheet)
+  );
+}
+
+function createDevCustomerAnalyticsMaterializationSourceSnapshot(spreadsheet) {
   const data = {};
   Object.keys(DEV_CUSTOMER_ANALYTICS_MATERIALIZATION_SCHEMAS).forEach(key => {
     data[key] = readDevCustomerAnalyticsMaterializationSheet(
       spreadsheet, DEV_CUSTOMER_ANALYTICS_MATERIALIZATION_SCHEMAS[key]
     );
   });
+  return { spreadsheetTimeZone: spreadsheet.getSpreadsheetTimeZone(), data: data };
+}
+
+function buildDevCustomerAnalyticsMaterializationDryRunFromSnapshot(snapshot) {
+  const data = snapshot.data;
   const counts = createDevCustomerAnalyticsMaterializationCounts();
   const customers = createDevCustomerAnalyticsMaterializationParentMap(
     data.customers, '顧客ID', counts, 'customerId'
@@ -50,7 +61,12 @@ function buildDevCustomerAnalyticsMaterializationDryRun(spreadsheet) {
   const products = createDevCustomerAnalyticsMaterializationParentMap(
     data.products, 'product_id', counts, 'productId'
   );
-  const orders = inspectDevCustomerAnalyticsMaterializationOrders(data.orders, customers, counts);
+  const orders = inspectDevCustomerAnalyticsMaterializationOrders(
+    data.orders,
+    customers,
+    counts,
+    snapshot.spreadsheetTimeZone
+  );
   inspectDevCustomerAnalyticsMaterializationLines(data.lines, orders, products, counts);
   const referenceInvalid = hasDevCustomerAnalyticsMaterializationReferenceInvalid(counts);
   return Object.assign({
@@ -77,8 +93,33 @@ function readDevCustomerAnalyticsMaterializationSheet(spreadsheet, schema) {
   const indexes = getDevCustomerAnalyticsMaterializationHeaderIndexes(headers);
   schema.headers.forEach(header => requireDevCustomerAnalyticsMaterializationHeader(indexes, header));
   const lastRow = sheet.getLastRow();
-  const rows = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues() : [];
-  return { indexes: indexes, rows: rows.filter(isDevCustomerAnalyticsMaterializationRecord) };
+  const sourceRows = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues() : [];
+  return {
+    indexes: indexes,
+    headers: headers,
+    sourceDataRowCount: sourceRows.length,
+    sourceRequiredValues: sourceRows.map(row => schema.headers.map(header => row[indexes[header]])),
+    rows: sourceRows.filter(isDevCustomerAnalyticsMaterializationRecord)
+  };
+}
+
+function isDevCustomerAnalyticsMaterializationSourceSnapshotUnchanged(before, after) {
+  return Object.keys(DEV_CUSTOMER_ANALYTICS_MATERIALIZATION_SCHEMAS).every(key => {
+    const left = before.data[key];
+    const right = after.data[key];
+    return left.sourceDataRowCount === right.sourceDataRowCount &&
+      isDevCustomerAnalyticsMaterializationEqual(left.headers, right.headers) &&
+      isDevCustomerAnalyticsMaterializationEqual(left.sourceRequiredValues, right.sourceRequiredValues);
+  });
+}
+
+function isDevCustomerAnalyticsMaterializationEqual(left, right) {
+  if (left === right) return true;
+  if (left instanceof Date && right instanceof Date) return left.getTime() === right.getTime();
+  if (Array.isArray(left) && Array.isArray(right) && left.length === right.length) {
+    return left.every((value, index) => isDevCustomerAnalyticsMaterializationEqual(value, right[index]));
+  }
+  return false;
 }
 
 function getDevCustomerAnalyticsMaterializationHeaderIndexes(headers) {
@@ -128,7 +169,7 @@ function createDevCustomerAnalyticsMaterializationParentMap(data, idHeader, coun
   return map;
 }
 
-function inspectDevCustomerAnalyticsMaterializationOrders(data, customers, counts) {
+function inspectDevCustomerAnalyticsMaterializationOrders(data, customers, counts, spreadsheetTimeZone) {
   const map = {};
   const monthlyKeys = new Set();
   const validDateCustomerIds = new Set();
@@ -150,7 +191,8 @@ function inspectDevCustomerAnalyticsMaterializationOrders(data, customers, count
       getDevCustomerAnalyticsMaterializationValue(data, row, 'ステータス')
     );
     const date = getDevCustomerAnalyticsMaterializationDateState(
-      getDevCustomerAnalyticsMaterializationValue(data, row, '受注日')
+      getDevCustomerAnalyticsMaterializationValue(data, row, '受注日'),
+      spreadsheetTimeZone
     );
     const amount = getDevCustomerAnalyticsMaterializationNumberState(
       getDevCustomerAnalyticsMaterializationValue(data, row, '請求総額')
@@ -276,18 +318,16 @@ function getDevCustomerAnalyticsMaterializationClassification(status) {
   return 'unconfirmed';
 }
 
-function getDevCustomerAnalyticsMaterializationDateState(value) {
+function getDevCustomerAnalyticsMaterializationDateState(value, spreadsheetTimeZone) {
   if (isDevCustomerAnalyticsMaterializationEmpty(value)) return { state: 'empty' };
   if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
-    return { state: 'valid', yearMonth: value.getFullYear() + '-' + (value.getMonth() + 1) };
+    return {
+      state: 'valid',
+      date: value,
+      yearMonth: Utilities.formatDate(value, spreadsheetTimeZone, 'yyyy-MM')
+    };
   }
-  if (typeof value !== 'string') return { state: 'invalid' };
-  const match = value.trim().match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
-  if (!match) return { state: 'invalid' };
-  const parsed = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
-  if (parsed.getUTCFullYear() !== Number(match[1]) || parsed.getUTCMonth() !== Number(match[2]) - 1 ||
-      parsed.getUTCDate() !== Number(match[3])) return { state: 'invalid' };
-  return { state: 'valid', yearMonth: match[1] + '-' + Number(match[2]) };
+  return { state: 'invalid' };
 }
 
 function getDevCustomerAnalyticsMaterializationNumberState(value) {
