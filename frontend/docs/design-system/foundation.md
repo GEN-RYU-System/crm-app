@@ -10,7 +10,7 @@ palette.css → tokens.css → components/ui → pages
 
 ページと共通金型から、色・余白・影・角丸を直書きしてはいけません。例外が必要なら、実装前にこの設計書と台帳を更新します。設計書を先に更新しない例外の追加は禁止です。
 
-App Shell本文のグラデーション背景は`--app-canvas-gradient`だけを使用し、ページ・カード・金型で再定義しません。ナビゲーションのgroup、label、hash route、icon、順序、実装状態、既存SPA由来のメニュー権限は`src/app/navigation.ts`が正本です。`planned`は表示専用で遷移させず、`preview`と`available`だけをRouteへ接続します。UIでのメニュー表示制御は行いますが、認可そのものはGAS側の責務です。
+App Shell本文のグラデーション背景は`--app-canvas-gradient`だけを使用し、ページ・カード・金型で再定義しません。値はSales Anchorの`--inbox-bg-gradient`実装を`palette.css`へ移植し、`tokens.css`がaliasします。ナビゲーションのgroup、label、hash route、icon、順序、実装状態、既存SPA由来のメニュー権限は`src/app/navigation.ts`が正本です。`planned`は表示専用で遷移させず、`preview`と`available`だけをRouteへ接続します。UIでのメニュー表示制御は行いますが、認可そのものはGAS側の責務です。
 
 管理系の親項目は主サイドバーの直接リンクとし、子ページを主サイドバー内へ展開しません。Sales Anchorの管理センターと同じく、遷移先で`HubShell`が主サイドバーとは独立した副ナビゲーションと子ページ領域を作り、`SubMenu variant="grouped"`が子ルートを表示します。`HubShell`はデスクトップで200pxの副ナビゲーションと可変幅の本文を横並びにし、767px以下では縦並びにします。`SubMenu`は業務権限・文言を持たず、呼出側から許可済みのgroups、activeKey、routeを受け取ります。データ管理の親子関係・権限・入口ルートは`navigation.ts`を正本とし、既存の`#/leads`、`#/leads/new`、`#/leads/:leadId`を変えずに右側の`Outlet`へ表示します。
 
@@ -39,3 +39,5 @@ Skeletonは初回読込みの標準UIです。`table` variantは任意の`column
 FormFieldのモバイル最小高さに使うmedia queryは`max-width: 767px`です。CSS変数をmedia query条件に使えないため、この値だけはSales Anchorの`FormField.css`と一致する固定のbreakpointとして許可し、それ以外の色・余白・文字・角丸・animation時間はtokenを使用します。
 
 ConversationWorkspaceは、旧GASのチャット系画面に共通する一覧・会話・詳細の3領域をReact金型として分離します。業務データ、GAS呼出し、保存処理、Copyは持たず、呼出側から各領域を受け取ります。デスクトップは3列、`max-width: 1100px`は詳細を下段、`max-width: 767px`は1列にします。CSS変数をmedia query条件に使えないため、この2つは構造変更用の固定breakpointとして許可し、列幅・最小高・色・余白・角丸はtokenを使用します。
+
+Inbox Previewは`ConversationWorkspace`を再利用し、Sales Anchorの受信箱と同じく上部のステータスタブ、プラットフォーム絞り込み、検索、会話一覧、メッセージスレッド、顧客カルテを分離します。`InboxRepository`を通じてPreview adapterだけを参照し、GAS、storage、ポーリング、送信・保存へ接続しません。
