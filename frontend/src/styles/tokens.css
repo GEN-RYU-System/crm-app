@@ -18,4 +18,7 @@
   --hub-subnav-item-hover-bg: var(--palette-tab-surface-hover);
   --hub-subnav-item-active-bg: var(--palette-tab-surface-active);
   --hub-subnav-item-active-text: var(--palette-tab-text-active);
+  --inbox-list-width: var(--palette-inbox-list-width);
+  --inbox-details-width: var(--palette-inbox-details-width);
+  --inbox-row-min-height: var(--palette-inbox-row-min-height);
 }

@@ -9,4 +9,9 @@
   --palette-hub-subnav-item-padding-inline: 16px;
   --palette-hub-subnav-group-font-size: 12px;
   --palette-hub-content-gap: 24px;
+  /* Sales Anchor inbox canvas: the AppShell is the only consumer. */
+  --palette-canvas-gradient: radial-gradient(103.89% 81.75% at 95.41% 106.34%, rgb(234, 248, 239) 6%, rgb(234 248 239 / 0) 79.68%), radial-gradient(297.85% 151.83% at -21.39% 8.81%, rgb(250, 241, 241) 0%, rgb(250, 241, 241) 15.29%, rgb(243, 237, 245) 21.39%, rgb(229, 240, 250) 40.79%);
+  --palette-inbox-list-width: 443px;
+  --palette-inbox-details-width: 396px;
+  --palette-inbox-row-min-height: 92px;
 }
