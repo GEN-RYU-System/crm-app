@@ -203,6 +203,87 @@ function _nextId(sh, colName, prefix, digits) {
   return prefix + String(max + 1).padStart(digits || 5, '0');
 }
 
+/**
+ * 顧客登録で書き込む Core Schema V1 表を、書込み前にまとめて検証する。
+ * 表名・列名の解決は Registry だけを正本とし、行配列の既存順序は変えない。
+ */
+function resolveCustomerRegistrationCoreSchemaWriteContext_(spreadsheet) {
+  var tableKeys = [
+    'CUSTOMERS',
+    'SHIPPING_DESTINATIONS',
+    'PAYMENT_DESTINATIONS',
+    'FORM_TOKENS'
+  ];
+  var tables = {};
+
+  tableKeys.forEach(function(tableKey) {
+    var validation = validateCoreSchemaV1TableForWrite(spreadsheet, tableKey);
+    var sheet = validation.sheet;
+    var orderedHeaderNames = Object.keys(getCoreSchemaV1Table(tableKey).headers)
+      .map(function(headerKey) { return getCoreSchemaV1HeaderName(tableKey, headerKey); });
+    if (orderedHeaderNames.some(function(headerName, index) {
+      return validation.headerIndexes[headerName] !== index + 1;
+    })) {
+      throw new Error('CORE_SCHEMA_REGISTRATION_HEADER_ORDER_MISMATCH');
+    }
+    tables[tableKey] = {
+      sheet: sheet,
+      headerIndexes: validation.headerIndexes,
+      headerNames: {}
+    };
+  });
+
+  tables.CUSTOMERS.headerNames.customerId = getCoreSchemaV1HeaderName('CUSTOMERS', 'CUSTOMER_ID');
+  tables.CUSTOMERS.headerNames.sourceLeadId = getCoreSchemaV1HeaderName('CUSTOMERS', 'SOURCE_LEAD_ID');
+  tables.CUSTOMERS.headerNames.phone = getCoreSchemaV1HeaderName('CUSTOMERS', 'PHONE');
+  tables.CUSTOMERS.headerNames.countryCode = getCoreSchemaV1HeaderName('CUSTOMERS', 'COUNTRY_CODE');
+  tables.SHIPPING_DESTINATIONS.headerNames.shippingDestinationId = getCoreSchemaV1HeaderName('SHIPPING_DESTINATIONS', 'SHIPPING_DESTINATION_ID');
+  tables.SHIPPING_DESTINATIONS.headerNames.phone = getCoreSchemaV1HeaderName('SHIPPING_DESTINATIONS', 'PHONE');
+  tables.SHIPPING_DESTINATIONS.headerNames.countryCode = getCoreSchemaV1HeaderName('SHIPPING_DESTINATIONS', 'COUNTRY_CODE');
+  tables.SHIPPING_DESTINATIONS.headerNames.zip = getCoreSchemaV1HeaderName('SHIPPING_DESTINATIONS', 'ZIP');
+  tables.PAYMENT_DESTINATIONS.headerNames.paymentDestinationId = getCoreSchemaV1HeaderName('PAYMENT_DESTINATIONS', 'PAYMENT_DESTINATION_ID');
+  tables.PAYMENT_DESTINATIONS.headerNames.zip = getCoreSchemaV1HeaderName('PAYMENT_DESTINATIONS', 'ZIP');
+  tables.FORM_TOKENS.headerNames.formToken = getCoreSchemaV1HeaderName('FORM_TOKENS', 'FORM_TOKEN');
+  tables.FORM_TOKENS.headerNames.leadId = getCoreSchemaV1HeaderName('FORM_TOKENS', 'LEAD_ID');
+  tables.FORM_TOKENS.headerNames.usedAt = getCoreSchemaV1HeaderName('FORM_TOKENS', 'USED_AT');
+
+  return tables;
+}
+
+function snapshotCustomerRegistrationCoreSchemaWriteContext_(tables) {
+  return Object.keys(tables).reduce(function(snapshot, tableKey) {
+    var table = getCoreSchemaV1Table(tableKey);
+    var sheet = tables[tableKey].sheet;
+    var columnCount = sheet.getLastColumn();
+    var headers = columnCount > 0
+      ? sheet.getRange(table.headerRowNumber, 1, 1, columnCount).getDisplayValues()[0]
+        .map(function(header) { return String(header).trim(); })
+      : [];
+    snapshot[tableKey] = {
+      sheetId: sheet.getSheetId(),
+      columnCount: columnCount,
+      headers: headers,
+      headerRowNumber: table.headerRowNumber
+    };
+    return snapshot;
+  }, {});
+}
+
+function isCustomerRegistrationCoreSchemaSnapshotEqual_(before, after) {
+  return Object.keys(before).every(function(tableKey) {
+    var beforeTable = before[tableKey];
+    var afterTable = after[tableKey];
+    return afterTable &&
+      beforeTable.sheetId === afterTable.sheetId &&
+      beforeTable.columnCount === afterTable.columnCount &&
+      beforeTable.headerRowNumber === afterTable.headerRowNumber &&
+      beforeTable.headers.length === afterTable.headers.length &&
+      beforeTable.headers.every(function(header, index) {
+        return header === afterTable.headers[index];
+      });
+  });
+}
+
 // ============================================================
 // 4. メイン関数
 // ============================================================
@@ -231,16 +312,34 @@ function registerCustomerFromForm(payload) {
   if (!token) return ng(['Token is missing']);
 
   var ss = getSpreadsheet();
+  var coreSchemaTables;
+  var coreSchemaSnapshot;
+  try {
+    // 全4表を、以降の書込みより前に存在・全登録ヘッダー・重複まで検証する。
+    coreSchemaTables = resolveCustomerRegistrationCoreSchemaWriteContext_(ss);
+    coreSchemaSnapshot = snapshotCustomerRegistrationCoreSchemaWriteContext_(coreSchemaTables);
+  } catch (e) {
+    var coreSchemaError = String(e && e.message || '');
+    var allowedCoreSchemaErrors = [
+      'CORE_SCHEMA_REQUIRED_TAB_MISSING',
+      'CORE_SCHEMA_NON_EMPTY_HEADER_DUPLICATE',
+      'CORE_SCHEMA_REQUIRED_HEADER_MISSING',
+      'CORE_SCHEMA_WRITE_NOT_ALLOWED',
+      'CORE_SCHEMA_REGISTRATION_HEADER_ORDER_MISMATCH'
+    ];
+    return ng([allowedCoreSchemaErrors.indexOf(coreSchemaError) >= 0
+      ? coreSchemaError
+      : 'CORE_SCHEMA_REGISTRATION_TABLE_VALIDATION_FAILED']);
+  }
 
   // --- 1. Token validation (pre-lock check) ---
-  var tokSh = ss.getSheetByName(FORM_TOKEN_SHEET);
-  if (!tokSh) return ng(['Form token sheet not found. Run seedFormTokenTab() first.']);
+  var tokSh = coreSchemaTables.FORM_TOKENS.sheet;
 
   var tokData   = tokSh.getDataRange().getValues();
   var tokH      = tokData[0];
-  var tokTokIdx = tokH.indexOf('トークン');
-  var tokLidIdx = tokH.indexOf('リードID');
-  var tokUseIdx = tokH.indexOf('使用日');
+  var tokTokIdx = tokH.indexOf(coreSchemaTables.FORM_TOKENS.headerNames.formToken);
+  var tokLidIdx = tokH.indexOf(coreSchemaTables.FORM_TOKENS.headerNames.leadId);
+  var tokUseIdx = tokH.indexOf(coreSchemaTables.FORM_TOKENS.headerNames.usedAt);
   if (tokTokIdx < 0 || tokLidIdx < 0 || tokUseIdx < 0) {
     return ng(['Form token sheet header is invalid']);
   }
@@ -270,6 +369,25 @@ function registerCustomerFromForm(payload) {
   }
 
   try {
+    // Lock取得後の表構造を再検証し、検証前後の差分では書込みを行わない。
+    var lockedCoreSchemaTables;
+    var lockedCoreSchemaSnapshot;
+    try {
+      lockedCoreSchemaTables = resolveCustomerRegistrationCoreSchemaWriteContext_(ss);
+      lockedCoreSchemaSnapshot = snapshotCustomerRegistrationCoreSchemaWriteContext_(lockedCoreSchemaTables);
+    } catch (e) {
+      return ng(['CORE_SCHEMA_REGISTRATION_SOURCE_CHANGED']);
+    }
+    if (!isCustomerRegistrationCoreSchemaSnapshotEqual_(coreSchemaSnapshot, lockedCoreSchemaSnapshot)) {
+      return ng(['CORE_SCHEMA_REGISTRATION_SOURCE_CHANGED']);
+    }
+    // 以降はLock取得後の最新検証結果だけを使用する。
+    coreSchemaTables = lockedCoreSchemaTables;
+    tokSh = coreSchemaTables.FORM_TOKENS.sheet;
+    tokTokIdx = coreSchemaTables.FORM_TOKENS.headerIndexes[coreSchemaTables.FORM_TOKENS.headerNames.formToken] - 1;
+    tokLidIdx = coreSchemaTables.FORM_TOKENS.headerIndexes[coreSchemaTables.FORM_TOKENS.headerNames.leadId] - 1;
+    tokUseIdx = coreSchemaTables.FORM_TOKENS.headerIndexes[coreSchemaTables.FORM_TOKENS.headerNames.usedAt] - 1;
+
     // --- 2a. ロック下で使用済み再チェック（二重送信ガード）---
     var tokDataLocked = tokSh.getDataRange().getValues();
     var usedDateLocked = String((tokDataLocked[tokRowIdx - 1] || [])[tokUseIdx] || '').trim();
@@ -297,16 +415,15 @@ function registerCustomerFromForm(payload) {
     }
 
     // --- 5. シート取得 ---
-    var custSh = ss.getSheetByName(CONFIG.SHEETS.CRM_CUSTOMERS);
-    var adSh   = ss.getSheetByName(CONFIG.SHEETS.CRM_SHIPPING);
-    var pySh   = ss.getSheetByName(CONFIG.SHEETS.CRM_PAYMENT);
-    if (!custSh || !adSh || !pySh) return ng(['必須シートが存在しません: ' + CONFIG.SHEETS.CRM_CUSTOMERS]);
+    var custSh = coreSchemaTables.CUSTOMERS.sheet;
+    var adSh   = coreSchemaTables.SHIPPING_DESTINATIONS.sheet;
+    var pySh   = coreSchemaTables.PAYMENT_DESTINATIONS.sheet;
 
     // --- 6. 重複ガード（同一源流リードIDの顧客が既存か）---
     var custData  = custSh.getDataRange().getValues();
     var custH     = custData[0];
-    var custCidIdx = custH.indexOf('顧客ID');
-    var custSrcIdx = custH.indexOf('源流リードID');
+    var custCidIdx = custH.indexOf(coreSchemaTables.CUSTOMERS.headerNames.customerId);
+    var custSrcIdx = custH.indexOf(coreSchemaTables.CUSTOMERS.headerNames.sourceLeadId);
     var existingCustId = null;
 
     for (var c = 1; c < custData.length; c++) {
@@ -321,9 +438,9 @@ function registerCustomerFromForm(payload) {
     var isNew = !existingCustId;
 
     // --- 7. 採番 ---
-    customerId = isNew ? _nextId(custSh, '顧客ID',   'CT-', 5) : existingCustId;
-    var addrId = _nextId(adSh,  '配送先ID', 'AD-', 5);
-    var payId  = _nextId(pySh,  '支払先ID', 'PY-', 5);
+    customerId = isNew ? _nextId(custSh, coreSchemaTables.CUSTOMERS.headerNames.customerId, 'CT-', 5) : existingCustId;
+    var addrId = _nextId(adSh, coreSchemaTables.SHIPPING_DESTINATIONS.headerNames.shippingDestinationId, 'AD-', 5);
+    var payId  = _nextId(pySh, coreSchemaTables.PAYMENT_DESTINATIONS.headerNames.paymentDestinationId, 'PY-', 5);
 
     // --- 8. 書き込み ---
     var defaultFlag = isNew ? 'TRUE' : 'FALSE';  // 2枚目以降は FALSE
@@ -352,8 +469,8 @@ function registerCustomerFromForm(payload) {
         ''                       // Shippment webhook
       ];
       // 電話番号・国番号列はテキスト書式で格納（数字がSheetsで数値変換されるのを防ぐ）
-      var custPhoneIdx   = HEADERS.CRM_CUSTOMERS.indexOf('電話番号');
-      var custDialIdx    = HEADERS.CRM_CUSTOMERS.indexOf('国番号');
+      var custPhoneIdx   = coreSchemaTables.CUSTOMERS.headerIndexes[coreSchemaTables.CUSTOMERS.headerNames.phone] - 1;
+      var custDialIdx    = coreSchemaTables.CUSTOMERS.headerIndexes[coreSchemaTables.CUSTOMERS.headerNames.countryCode] - 1;
       var custFmts = custRow.map(function(_, i) {
         return (i === custPhoneIdx || i === custDialIdx) ? '@' : '';
       });
@@ -384,9 +501,9 @@ function registerCustomerFromForm(payload) {
       'TRUE'                           // 有効
     ];
     // 電話・国番号・Zip列はテキスト書式で格納
-    var shipPhoneIdx = HEADERS.CRM_SHIPPING.indexOf('電話');
-    var shipDialIdx  = HEADERS.CRM_SHIPPING.indexOf('国番号');
-    var shipZipIdx   = HEADERS.CRM_SHIPPING.indexOf('Zip');
+    var shipPhoneIdx = coreSchemaTables.SHIPPING_DESTINATIONS.headerIndexes[coreSchemaTables.SHIPPING_DESTINATIONS.headerNames.phone] - 1;
+    var shipDialIdx  = coreSchemaTables.SHIPPING_DESTINATIONS.headerIndexes[coreSchemaTables.SHIPPING_DESTINATIONS.headerNames.countryCode] - 1;
+    var shipZipIdx   = coreSchemaTables.SHIPPING_DESTINATIONS.headerIndexes[coreSchemaTables.SHIPPING_DESTINATIONS.headerNames.zip] - 1;
     var shipFmts = shipRow.map(function(_, i) {
       return (i === shipPhoneIdx || i === shipDialIdx || i === shipZipIdx) ? '@' : '';
     });
@@ -415,7 +532,7 @@ function registerCustomerFromForm(payload) {
       'TRUE'                          // 有効
     ];
     // Zip列はテキスト書式で格納
-    var payZipIdx = HEADERS.CRM_PAYMENT.indexOf('Zip');
+    var payZipIdx = coreSchemaTables.PAYMENT_DESTINATIONS.headerIndexes[coreSchemaTables.PAYMENT_DESTINATIONS.headerNames.zip] - 1;
     var payFmts = payRow.map(function(_, i) { return i === payZipIdx ? '@' : ''; });
     var payNextRow = pySh.getLastRow() + 1;
     pySh.getRange(payNextRow, 1, 1, payRow.length)
