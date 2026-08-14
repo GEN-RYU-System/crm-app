@@ -49,9 +49,20 @@ function createSpreadsheet(options = {}) {
         getLastColumn: () => headers.length + (options.columnCountMismatch ? 1 : 0),
         getRange: row => ({
           getDisplayValues: () => [options.headerMismatch ? headers.concat('MISMATCH') : headers],
-          getValues: () => options.corruptAfterWrite && row === 2
-            ? dataRows.map(values => values.slice()).map((values, index) => index === 0 ? values.concat('CORRUPTED') : values)
-            : dataRows,
+          getValues: () => {
+            if (options.corruptAfterWrite && row === 2) {
+              return dataRows.map(values => values.slice()).map((values, index) => {
+                if (index === 0) values[0] = 'CORRUPTED';
+                return values;
+              });
+            }
+            if (options.dataMismatchEntries && row === 2) {
+              const copy = dataRows.map(values => values.slice());
+              options.dataMismatchEntries.forEach(entry => { copy[entry.row][entry.column] = entry.value; });
+              return copy;
+            }
+            return dataRows;
+          },
           setValues: values => {
             if ((row === 1 && options.failHeaderWrite) || (row === 2 && options.failDataWrite)) throw new Error('write failure');
             events.push({ type: 'setValues', values });
@@ -253,6 +264,38 @@ function assertPostWriteFailure(result, resultType) {
   installExpectedTables(context);
   const result = context.initializeDevCustomerAnalytics();
   assertPostWriteFailure(result, 'INITIALIZATION_POST_WRITE_DATA_MISMATCH');
+  assert.deepEqual(spreadsheet.deleted, ['顧客購入商品分析', '顧客月次分析', '顧客分析']);
+}
+
+{
+  const spreadsheet = createSpreadsheet({
+    dataMismatchEntries: [
+      { row: 0, column: 0, value: new Date('2026-03-01T00:00:00Z') },
+      { row: 0, column: 1, value: 999 },
+      { row: 0, column: 2, value: 'ACTUAL_TEXT' },
+      { row: 0, column: 3, value: '' }
+    ]
+  });
+  const { context } = run(spreadsheet);
+  const customer = Array.from({ length: 51 }, () => Array(12).fill(''));
+  customer[0][0] = new Date('2026-02-01T00:00:00Z');
+  customer[0][1] = 100;
+  customer[0][2] = 'EXPECTED_TEXT';
+  customer[0][3] = 'EXPECTED_NONBLANK';
+  context.buildDevCustomerAnalyticsInitializationTables = () => ({
+    customer,
+    monthly: Array.from({ length: 69 }, () => Array(10).fill('')),
+    product: Array.from({ length: 262 }, () => Array(7).fill(''))
+  });
+  context.hasDevCustomerAnalyticsInitializationOutputInvariants = () => true;
+  const result = context.initializeDevCustomerAnalytics();
+  assertPostWriteFailure(result, 'INITIALIZATION_POST_WRITE_DATA_MISMATCH');
+  assert.equal(result.verificationSheetName, '顧客分析');
+  assert.equal(result.mismatchCellCount, 4);
+  assert.deepEqual(Array.from(result.mismatchColumnHeaders), ['顧客ID', '初回受注日', '初回取引完了日', '累計総受注数']);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.mismatchValueTypeSummary)), { DATE: 1, NUMBER: 1, TEXT: 1, BLANK: 1 });
+  assert.equal(JSON.stringify(result).includes('ACTUAL_TEXT'), false);
+  assert.equal(JSON.stringify(result).includes('EXPECTED_TEXT'), false);
   assert.deepEqual(spreadsheet.deleted, ['顧客購入商品分析', '顧客月次分析', '顧客分析']);
 }
 
