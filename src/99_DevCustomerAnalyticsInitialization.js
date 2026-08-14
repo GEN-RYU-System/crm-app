@@ -6,6 +6,12 @@ const DEV_CUSTOMER_ANALYTICS_INITIALIZATION_EXPECTED = {
 };
 const DEV_CUSTOMER_ANALYTICS_INITIALIZATION_DATA_ROW_WRITE_COUNT = 382;
 const DEV_CUSTOMER_ANALYTICS_INITIALIZATION_HEADER_ROW_WRITE_COUNT = 3;
+const DEV_CUSTOMER_ANALYTICS_INITIALIZATION_OUTPUT_EXPECTED = {
+  totalOrderCount: 172, cancelledOrderCount: 52, completedOrderCount: 115, unconfirmedOrderCount: 5,
+  totalOrderAmount: 80139404.5, cancelledOrderAmount: 28776519,
+  completedOrderAmount: 47155185.5, unconfirmedOrderAmount: 4207700,
+  monthlyOrderCount: 164, productLineCount: 575
+};
 
 function initializeDevCustomerAnalytics() {
   if (getEnvironment() !== 'development') throw new Error('initializeDevCustomerAnalytics is available only in development');
@@ -28,6 +34,9 @@ function initializeDevCustomerAnalytics() {
     const tables = buildDevCustomerAnalyticsInitializationTables(sourceSnapshot);
     if (tables.customer.length !== 51 || tables.monthly.length !== 69 || tables.product.length !== 262) {
       return { success: false, resultType: 'INITIALIZATION_TABLE_COUNT_MISMATCH', actualDataChangeCount: 0 };
+    }
+    if (!hasDevCustomerAnalyticsInitializationOutputInvariants(tables)) {
+      return { success: false, resultType: 'INITIALIZATION_OUTPUT_INVARIANT_MISMATCH', actualDataChangeCount: 0 };
     }
 
     // Re-read immediately before the first insert. Any source change means zero analytics writes.
@@ -93,7 +102,31 @@ function verifyDevCustomerAnalyticsInitializationSheets(ss, specifications) {
     if (!isDevCustomerAnalyticsMaterializationEqual(actualHeaders, spec.headers)) {
       throw new Error('INITIALIZATION_WRITE_VERIFICATION_FAILED');
     }
+    const actualRows = spec.rows.length > 0
+      ? sheet.getRange(2, 1, spec.rows.length, spec.headers.length).getValues()
+      : [];
+    if (!isDevCustomerAnalyticsMaterializationEqual(actualRows, spec.rows)) {
+      throw new Error('INITIALIZATION_WRITE_VERIFICATION_FAILED');
+    }
   });
+}
+
+function hasDevCustomerAnalyticsInitializationOutputInvariants(tables) {
+  const customer = sumDevCustomerAnalyticsInitializationColumns(tables.customer, [3, 4, 5, 6, 7, 8, 9, 10]);
+  const monthlyOrderCount = sumDevCustomerAnalyticsInitializationColumns(tables.monthly, [2])[0];
+  const product = sumDevCustomerAnalyticsInitializationColumns(tables.product, [2, 4, 5, 6]);
+  const expected = DEV_CUSTOMER_ANALYTICS_INITIALIZATION_OUTPUT_EXPECTED;
+  return customer[0] === expected.totalOrderCount && customer[1] === expected.totalOrderAmount &&
+    customer[2] === expected.cancelledOrderCount && customer[3] === expected.cancelledOrderAmount &&
+    customer[4] === expected.completedOrderCount && customer[5] === expected.completedOrderAmount &&
+    customer[6] === expected.unconfirmedOrderCount && customer[7] === expected.unconfirmedOrderAmount &&
+    monthlyOrderCount === expected.monthlyOrderCount &&
+    product[0] === expected.productLineCount &&
+    product[0] === product[1] + product[2] + product[3];
+}
+
+function sumDevCustomerAnalyticsInitializationColumns(rows, columns) {
+  return columns.map(column => rows.reduce((sum, row) => sum + Number(row[column] || 0), 0));
 }
 
 function buildDevCustomerAnalyticsInitializationTables(sourceSnapshot) {
