@@ -8,27 +8,31 @@ function getCoreCustomersForFrontend() {
 
   const spreadsheet = getSpreadsheet();
   const customers = coreCustomerFrontendReadTable(spreadsheet, 'CUSTOMERS', [
-    'CUSTOMER_ID', 'CUSTOMER_NAME', 'COUNTRY', 'EMAIL', 'PHONE',
-    'REGISTERED_AT', 'SALES_ASSIGNEE_NAME', 'CONTACT_TOOL'
+    'CUSTOMER_ID', 'SOURCE_LEAD_ID', 'CUSTOMER_NAME', 'COUNTRY', 'SALES_ASSIGNEE_NAME'
   ]);
-  const shipping = coreCustomerFrontendReadTable(spreadsheet, 'SHIPPING_DESTINATIONS', ['CUSTOMER_ID']);
-  const payments = coreCustomerFrontendReadTable(spreadsheet, 'PAYMENT_DESTINATIONS', ['CUSTOMER_ID']);
-  const shippingCounts = coreCustomerFrontendCountByCustomer(shipping, 'CUSTOMER_ID');
-  const paymentCounts = coreCustomerFrontendCountByCustomer(payments, 'CUSTOMER_ID');
+  const leads = coreCustomerFrontendReadTable(spreadsheet, 'LEADS', [
+    'LEAD_ID', 'SALES_CHANNEL', 'HANDLED_TITLE'
+  ]);
+  const orders = coreCustomerFrontendReadTable(spreadsheet, 'ORDERS', [
+    'ORDER_ID', 'CUSTOMER_ID', 'CURRENCY', 'INVOICE_TOTAL'
+  ]);
+  const leadsById = coreCustomerFrontendIndexBy(leads, 'LEAD_ID');
+  const transactionsByCustomer = coreCustomerFrontendAggregateTransactions(orders);
 
   return customers.rows.map(function(row) {
     const customerId = coreCustomerFrontendValue(row[customers.indexes.CUSTOMER_ID]);
+    const sourceLeadId = coreCustomerFrontendValue(row[customers.indexes.SOURCE_LEAD_ID]);
+    const sourceLead = leadsById[sourceLeadId];
+    const transactions = transactionsByCustomer[customerId] || { count: 0, amounts: [] };
     return {
       customerId: customerId,
       customerName: coreCustomerFrontendValue(row[customers.indexes.CUSTOMER_NAME]),
-      emailAddress: coreCustomerFrontendValue(row[customers.indexes.EMAIL]),
       country: coreCustomerFrontendValue(row[customers.indexes.COUNTRY]),
-      phone: coreCustomerFrontendValue(row[customers.indexes.PHONE]),
-      shippingAddressCount: shippingCounts[customerId] || 0,
-      paymentProfileCount: paymentCounts[customerId] || 0,
+      salesChannel: sourceLead ? coreCustomerFrontendValue(sourceLead[leads.indexes.SALES_CHANNEL]) : '',
+      handledTitle: sourceLead ? coreCustomerFrontendValue(sourceLead[leads.indexes.HANDLED_TITLE]) : '',
       salesAssigneeName: coreCustomerFrontendValue(row[customers.indexes.SALES_ASSIGNEE_NAME]),
-      contactTool: coreCustomerFrontendValue(row[customers.indexes.CONTACT_TOOL]),
-      registeredAt: coreCustomerFrontendValue(row[customers.indexes.REGISTERED_AT])
+      transactionCount: transactions.count,
+      transactionAmounts: transactions.amounts
     };
   });
 }
@@ -135,12 +139,46 @@ function coreCustomerFrontendReadTable(spreadsheet, tableKey, requiredHeaderKeys
   return { indexes: indexes, rows: rows };
 }
 
-function coreCustomerFrontendCountByCustomer(tableData, customerIdHeaderKey) {
-  return tableData.rows.reduce(function(counts, row) {
-    const customerId = coreCustomerFrontendValue(row[tableData.indexes[customerIdHeaderKey]]);
-    if (customerId) counts[customerId] = (counts[customerId] || 0) + 1;
-    return counts;
+function coreCustomerFrontendIndexBy(tableData, idHeaderKey) {
+  return tableData.rows.reduce(function(index, row) {
+    const id = coreCustomerFrontendValue(row[tableData.indexes[idHeaderKey]]);
+    if (id) index[id] = row;
+    return index;
   }, {});
+}
+
+function coreCustomerFrontendAggregateTransactions(orders) {
+  const aggregates = orders.rows.reduce(function(index, row) {
+    const orderId = coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]);
+    const customerId = coreCustomerFrontendValue(row[orders.indexes.CUSTOMER_ID]);
+    if (!orderId || !customerId) return index;
+    if (!index[customerId]) index[customerId] = { count: 0, amountsByCurrency: {} };
+    index[customerId].count += 1;
+    const amount = coreCustomerFrontendNumber(row[orders.indexes.INVOICE_TOTAL]);
+    if (amount !== null) {
+      const currency = coreCustomerFrontendValue(row[orders.indexes.CURRENCY]).toUpperCase();
+      index[customerId].amountsByCurrency[currency] = (index[customerId].amountsByCurrency[currency] || 0) + amount;
+    }
+    return index;
+  }, {});
+  return Object.keys(aggregates).reduce(function(result, customerId) {
+    const aggregate = aggregates[customerId];
+    result[customerId] = {
+      count: aggregate.count,
+      amounts: Object.keys(aggregate.amountsByCurrency).sort().map(function(currency) {
+        return { currency: currency, amount: aggregate.amountsByCurrency[currency] };
+      })
+    };
+    return result;
+  }, {});
+}
+
+function coreCustomerFrontendNumber(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const normalized = coreCustomerFrontendValue(value).replace(/,/g, '');
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function coreCustomerFrontendJoinAddress(row, indexes) {
