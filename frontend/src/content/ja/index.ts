@@ -1,1 +1,1 @@
-export { commonCopy } from './common'; export { navigationCopy } from './navigation'; export { dashboardCopy } from './dashboard'; export { catalogCopy } from './catalog'; export { errorCopy } from './errors';
+export { commonCopy } from './common'; export { navigationCopy } from './navigation'; export { dashboardCopy } from './dashboard'; export { catalogCopy } from './catalog'; export { errorCopy } from './errors'; export { leadsCopy } from './leads';
