@@ -1,0 +1,9 @@
+.shell-sidebar-accordion__button { appearance: none; background: transparent; cursor: pointer; font: inherit; }
+.shell-sidebar-accordion__caret { display: flex; align-items: center; flex-shrink: 0; width: var(--sidebar-caret-size); height: var(--sidebar-caret-size); margin-left: auto; transition: transform var(--sidebar-accordion-transition); }
+.shell-sidebar-accordion__caret > svg { width: var(--sidebar-caret-size); height: var(--sidebar-caret-size); }
+.shell-sidebar-accordion__caret--open { transform: rotate(var(--sidebar-caret-open-rotation)); }
+.shell-sidebar-accordion__menu { background: var(--sidebar-submenu-bg); border-bottom: var(--border-width) solid var(--sidebar-border); }
+.shell-sidebar-accordion__child { display: block; padding: var(--space-sm) var(--space-lg) var(--space-sm) var(--sidebar-subitem-indent); color: var(--sidebar-text); font-size: var(--font-sm); text-decoration: none; white-space: nowrap; transition: background var(--sidebar-item-transition), color var(--sidebar-item-transition); }
+.shell-sidebar-accordion__child:hover { background: var(--sidebar-item-hover-bg); color: var(--sidebar-item-active-color); }
+.shell-sidebar-accordion__child--active { background: var(--sidebar-item-active-bg); color: var(--sidebar-item-active-color); font-weight: var(--sidebar-active-font-weight); }
+.shell-sidebar-accordion__child--planned { cursor: not-allowed; opacity: var(--opacity-disabled); }

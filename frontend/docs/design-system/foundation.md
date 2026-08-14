@@ -12,6 +12,8 @@ palette.css → tokens.css → components/ui → pages
 
 App Shell本文のグラデーション背景は`--app-canvas-gradient`だけを使用し、ページ・カード・金型で再定義しません。ナビゲーションのgroup、label、hash route、icon、順序、実装状態、既存SPA由来のメニュー権限は`src/app/navigation.ts`が正本です。`planned`は表示専用で遷移させず、`preview`と`available`だけをRouteへ接続します。UIでのメニュー表示制御は行いますが、認可そのものはGAS側の責務です。
 
+SidebarAccordionはSales Anchorの親子型サイドメニューをCRMへ移植したApp Shell金型です。親項目と`children`は`navigation.ts`だけで定義し、親クリックで子メニューを開閉、子ルートクリックで既存のサイドバー折畳み・hover抑止を実行します。親は権限を満たす子が1件以上ある場合だけ表示し、子ルートの権限を親表示の条件としても利用します。子項目の背景、インデント、caretサイズ・回転・animationは`palette.css`から`tokens.css`へaliasし、Shell CSSに生値を置きません。モバイルでは親名と許可済みの子項目を同じグループとして常時表示し、子ページへの到達経路を失わせません。
+
 React POCのApp Shell本文は最大幅を設けず全幅を使用します。左右余白はデスクトップで`--layout-page-padding-x`（24px）、モバイルで`--layout-page-padding-x-mobile`（16px）を使用します。値は`palette.css`から`tokens.css`へaliasし、ページCSSやAppShell CSSに生値を置きません。
 
 React POCは`HashRouter`内でSSOTの`available`または`preview` Routeを表示します。未実装メニューは`planned`として無効表示し、推測で空Routeを作りません。モバイル下部タブは、実ページが3〜5個揃った段階で別PRで検討します。
