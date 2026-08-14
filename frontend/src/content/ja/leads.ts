@@ -6,6 +6,7 @@ export const leadsCopy = {
   outbound: 'アウトバウンド',
   leadTypes: { inbound: 'インバウンド', outbound: 'アウトバウンド' },
   loading: 'リードを読み込んでいます。',
+  permissionsChecking: 'リードの表示権限を確認しています。',
   loadErrorPrefix: 'リードの読み込みに失敗しました:',
   retry: '再試行',
   emptyTitle: '表示できるリードはありません',
