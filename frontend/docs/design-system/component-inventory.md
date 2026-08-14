@@ -3,7 +3,8 @@
 | 金型 | 用途 | variant | 利用ページ | 状態 |
 |---|---|---|---|---|
 | PageHeader | ページ見出しと操作領域 | なし | Dashboard, Component catalog | 整備済み |
-| Button | 主・補助・危険操作 | primary, secondary, danger | Dashboard, Component catalog | 整備済み |
+| Button | 主・補助・危険操作 | primary, secondary, danger, ghost, outline / sm, md, lg / loading, disabled, fullWidth, iconOnly | Dashboard, Lead list, Component catalog | 整備済み |
+| Tabs | 同一画面内の表示切替 | pill, underline / sm, md / icon, count, disabled | Lead list, Component catalog | 整備済み |
 | Card | セクションの表面 | default, outlined | Component catalog, StatCard | 整備済み |
 | StatCard | KPIの表示 | なし | Dashboard, Component catalog | 整備済み |
 | StatusMessage | loading / error / empty | loading, error, empty | Dashboard, Component catalog | 整備済み |
