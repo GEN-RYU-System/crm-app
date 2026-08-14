@@ -21,10 +21,10 @@ export const LEAD_LIST_TABS: readonly { type: LeadListTabType; label: string }[]
 ];
 
 export const LEAD_LIST_COLUMNS: readonly { key: LeadSortKey; label: string; cellAlignment: DataTableCellAlignment }[] = [
-  { key: 'customerName', label: leadsCopy.columns.customerName, cellAlignment: 'start' },
+  { key: 'customerName', label: leadsCopy.columns.customerName, cellAlignment: 'center' },
   { key: 'responseSpeed', label: leadsCopy.columns.responseSpeed, cellAlignment: 'center' },
   { key: 'updatedAt', label: leadsCopy.columns.updatedAt, cellAlignment: 'center' },
-  { key: 'csMemo', label: leadsCopy.columns.csMemo, cellAlignment: 'start' },
+  { key: 'csMemo', label: leadsCopy.columns.csMemo, cellAlignment: 'center' },
   { key: 'source', label: leadsCopy.columns.source, cellAlignment: 'center' },
   { key: 'country', label: leadsCopy.columns.country, cellAlignment: 'center' },
   { key: 'productTitle', label: leadsCopy.columns.productTitle, cellAlignment: 'center' }
