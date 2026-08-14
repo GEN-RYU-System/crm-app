@@ -10,6 +10,8 @@ const DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_NAME_HEADERS = [
 const DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_EMPTY_TARGET = 'EMP-00001';
 const DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_ABE_TARGET = 'EMP-00007';
 const DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_ABE_NAME = '阿部';
+const DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_NAME_HEADER_MISSING =
+  'LEAD_ASSIGNEE_POLICY_NAME_HEADER_MISSING';
 
 function dryRunDevLeadAssigneeAssignmentPolicy() {
   if (getEnvironment() !== 'development') {
@@ -18,6 +20,9 @@ function dryRunDevLeadAssigneeAssignmentPolicy() {
   try {
     return buildDevLeadAssigneePolicyDryRun(getSpreadsheet());
   } catch (error) {
+    if (error && error.message === DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_NAME_HEADER_MISSING) {
+      return { success: false, errorType: DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_NAME_HEADER_MISSING };
+    }
     return { success: false, errorType: 'LEAD_ASSIGNEE_POLICY_DRY_RUN_FAILED' };
   }
 }
@@ -36,6 +41,9 @@ function buildDevLeadAssigneePolicyDryRun(spreadsheet) {
   const nameIndexes = DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_NAME_HEADERS
     .filter(header => Object.prototype.hasOwnProperty.call(headerIndexes, header))
     .map(header => headerIndexes[header]);
+  if (nameIndexes.length === 0) {
+    throw new Error(DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_NAME_HEADER_MISSING);
+  }
   const lastRow = sheet.getLastRow();
   const recordCount = Math.max(lastRow - 1, 0);
   const leadIds = readDevLeadAssigneePolicyDryRunColumn(sheet, leadIdIndex, recordCount);
@@ -53,6 +61,8 @@ function buildDevLeadAssigneePolicyDryRun(spreadsheet) {
     emptyAndAbeExactMatchCount: 0,
     emptyRuleMatchCount: 0,
     abeExactRuleMatchCount: 0,
+    abeExactAlreadyEmp00007Count: 0,
+    abeExactNeedsEmp00007Count: 0,
     alreadyEmp00001Count: 0,
     alreadyEmp00007Count: 0,
     neitherRuleMatchCount: 0
@@ -70,7 +80,14 @@ function buildDevLeadAssigneePolicyDryRun(spreadsheet) {
     if (nameMatch.partialOnly) counts.abePartialOnlyMatchCount += 1;
     if (isEmpty && nameMatch.exact) counts.emptyAndAbeExactMatchCount += 1;
     if (isEmpty) counts.emptyRuleMatchCount += 1;
-    if (nameMatch.exact) counts.abeExactRuleMatchCount += 1;
+    if (nameMatch.exact) {
+      counts.abeExactRuleMatchCount += 1;
+      if (String(assigneeId) === DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_ABE_TARGET) {
+        counts.abeExactAlreadyEmp00007Count += 1;
+      } else {
+        counts.abeExactNeedsEmp00007Count += 1;
+      }
+    }
     if (String(assigneeId) === DEV_LEAD_ASSIGNEE_POLICY_DRY_RUN_EMPTY_TARGET) {
       counts.alreadyEmp00001Count += 1;
     }
