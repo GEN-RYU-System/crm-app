@@ -18,8 +18,12 @@ function createSheet(headers, expectedHeaderRow) {
   };
 }
 
+function createContext() {
+  return vm.createContext({ Object, String, Array, Set, Boolean });
+}
+
 function run() {
-  const context = vm.createContext({ Object, String, Array, Set, Boolean });
+  const context = createContext();
   vm.runInContext(source, context, { filename: '00_CoreSchemaRegistry.js' });
   return context;
 }
@@ -55,11 +59,27 @@ function run() {
     { headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' },
     { headerKey: 'PRODUCT_ID', targetTableKey: 'PRODUCTS' }
   ]);
+  assert.deepEqual(JSON.parse(JSON.stringify(context.getCoreSchemaV1Table('LEADS').referenceIds)), [
+    { headerKey: 'ASSIGNEE_ID', targetTableKey: 'STAFF' },
+    { headerKey: 'LAST_RESPONDER_ID', targetTableKey: 'STAFF' },
+    { headerKey: 'DUPLICATE_SOURCE_LEAD_ID', targetTableKey: 'LEADS' }
+  ]);
+  assert.deepEqual(JSON.parse(JSON.stringify(context.getCoreSchemaV1Table('PRODUCTS').unmanagedReferenceIds)), [
+    { headerKey: 'MAJOR_CATEGORY_ID', reason: 'PARENT_TABLE_OUTSIDE_CORE_SCHEMA_V1' },
+    { headerKey: 'WORK_ID', reason: 'PARENT_TABLE_OUTSIDE_CORE_SCHEMA_V1' },
+    { headerKey: 'MANUFACTURER_ID', reason: 'PARENT_TABLE_OUTSIDE_CORE_SCHEMA_V1' },
+    { headerKey: 'PRODUCT_CATEGORY_ID', reason: 'PARENT_TABLE_OUTSIDE_CORE_SCHEMA_V1' }
+  ]);
+  assert.deepEqual(JSON.parse(JSON.stringify(context.getCoreSchemaV1Table('STAFF').unmanagedReferenceIds)), [
+    { headerKey: 'SOURCE_CANDIDATE_ID', reason: 'PARENT_TABLE_OUTSIDE_CORE_SCHEMA_V1' }
+  ]);
 }
 
 {
-  const context = run();
+  const context = createContext();
   vm.runInContext(configSource, context, { filename: '08_Config.js' });
+  assert.equal(vm.runInContext('Object.keys(CONFIG.SHEETS).length > 0', context), true);
+  vm.runInContext(source, context, { filename: '00_CoreSchemaRegistry.js' });
   const configSheets = vm.runInContext('JSON.parse(JSON.stringify(CONFIG.SHEETS))', context);
   assert.equal(configSheets.LEADS, 'リード管理');
   assert.equal(configSheets.CRM_PAYMENT, '支払先マスタ');
