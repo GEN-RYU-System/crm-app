@@ -63,7 +63,7 @@ function initializeDevCustomerAnalytics() {
       return createDevCustomerAnalyticsInitializationFailure('INITIALIZATION_SOURCE_CHANGED', failurePhase);
     }
 
-    const specifications = getDevCustomerAnalyticsInitializationSpecifications(tables);
+    const specifications = getDevCustomerAnalyticsInitializationSpecifications(tables, sourceSnapshot.spreadsheetTimeZone);
     specifications.forEach(spec => {
       failurePhase = DEV_CUSTOMER_ANALYTICS_INITIALIZATION_PHASE_SHEET_CREATE;
       const sh = ss.insertSheet(spec.name);
@@ -73,7 +73,7 @@ function initializeDevCustomerAnalytics() {
       failurePhase = DEV_CUSTOMER_ANALYTICS_INITIALIZATION_PHASE_DATA_WRITE;
       sh.getRange(2, 1, spec.rows.length, spec.headers.length).setValues(spec.rows);
       failurePhase = DEV_CUSTOMER_ANALYTICS_INITIALIZATION_PHASE_FORMAT;
-      spec.dateColumns.forEach(column => sh.getRange(2, column, spec.rows.length, 1).setNumberFormat('yyyy-MM-dd'));
+      spec.dateColumns.forEach(column => sh.getRange(2, column, spec.rows.length, 1).setNumberFormat(spec.dateFormat || 'yyyy-MM-dd'));
     });
     failurePhase = DEV_CUSTOMER_ANALYTICS_INITIALIZATION_PHASE_POST_WRITE_VERIFY;
     const postWriteResult = verifyDevCustomerAnalyticsInitializationAfterFlush(ss, specifications);
@@ -143,10 +143,10 @@ function createDevCustomerAnalyticsInitializationFailure(resultType, failurePhas
   return result;
 }
 
-function getDevCustomerAnalyticsInitializationSpecifications(tables) {
+function getDevCustomerAnalyticsInitializationSpecifications(tables, spreadsheetTimeZone) {
   return [
     { name: DEV_CUSTOMER_ANALYTICS_INITIALIZATION_SHEETS[0], headers: ['顧客ID','初回受注日','初回取引完了日','累計総受注数','累計総受注額','累計キャンセル数','累計キャンセル額','累計完了数','累計完了額','累計未確定数','累計未確定額','受注日未設定注文数'], rows: tables.customer, dateColumns: [2, 3] },
-    { name: DEV_CUSTOMER_ANALYTICS_INITIALIZATION_SHEETS[1], headers: ['顧客ID','受注年月','総受注数','総受注額','キャンセル数','キャンセル額','完了数','完了額','未確定数','未確定額'], rows: tables.monthly, dateColumns: [] },
+    { name: DEV_CUSTOMER_ANALYTICS_INITIALIZATION_SHEETS[1], headers: ['顧客ID','受注年月','総受注数','総受注額','キャンセル数','キャンセル額','完了数','完了額','未確定数','未確定額'], rows: tables.monthly, dateColumns: [2], dateFormat: 'yyyy-MM', yearMonthColumn: 2, spreadsheetTimeZone: spreadsheetTimeZone },
     { name: DEV_CUSTOMER_ANALYTICS_INITIALIZATION_SHEETS[2], headers: ['顧客ID','商品ID','購入明細行数','購入注文数','キャンセル明細行数','完了明細行数','未確定明細行数'], rows: tables.product, dateColumns: [] }
   ];
 }
@@ -164,8 +164,9 @@ function verifyDevCustomerAnalyticsInitializationSheets(ss, specifications) {
     const actualRows = spec.rows.length > 0
       ? sheet.getRange(2, 1, spec.rows.length, spec.headers.length).getValues()
       : [];
-    if (!isDevCustomerAnalyticsMaterializationEqual(actualRows, spec.rows)) {
-      throw createDevCustomerAnalyticsInitializationPostWriteError(buildDevCustomerAnalyticsInitializationDataMismatchResult(spec, actualRows));
+    const mismatch = buildDevCustomerAnalyticsInitializationDataMismatchResult(spec, actualRows);
+    if (mismatch.mismatchCellCount > 0) {
+      throw createDevCustomerAnalyticsInitializationPostWriteError(mismatch);
     }
   });
   return null;
@@ -178,7 +179,7 @@ function buildDevCustomerAnalyticsInitializationDataMismatchResult(spec, actualR
   spec.rows.forEach((expectedRow, rowIndex) => {
     const actualRow = actualRows[rowIndex] || [];
     spec.headers.forEach((header, columnIndex) => {
-      if (isDevCustomerAnalyticsMaterializationEqual(expectedRow[columnIndex], actualRow[columnIndex])) return;
+      if (isDevCustomerAnalyticsInitializationWrittenValueEqual(spec, rowIndex, columnIndex, expectedRow[columnIndex], actualRow[columnIndex])) return;
       mismatchCellCount++;
       if (mismatchColumnHeaders.indexOf(header) === -1) mismatchColumnHeaders.push(header);
       mismatchValueTypeSummary[getDevCustomerAnalyticsInitializationValueType(actualRow[columnIndex])]++;
@@ -191,6 +192,15 @@ function buildDevCustomerAnalyticsInitializationDataMismatchResult(spec, actualR
     mismatchColumnHeaders: mismatchColumnHeaders,
     mismatchValueTypeSummary: mismatchValueTypeSummary
   };
+}
+
+function isDevCustomerAnalyticsInitializationWrittenValueEqual(spec, rowIndex, columnIndex, expectedValue, actualValue) {
+  if (spec.yearMonthColumn === columnIndex + 1 && expectedValue instanceof Date && !isNaN(expectedValue.getTime())) {
+    return actualValue instanceof Date && !isNaN(actualValue.getTime()) &&
+      Utilities.formatDate(expectedValue, spec.spreadsheetTimeZone, 'yyyy-MM') ===
+      Utilities.formatDate(actualValue, spec.spreadsheetTimeZone, 'yyyy-MM');
+  }
+  return isDevCustomerAnalyticsMaterializationEqual(expectedValue, actualValue);
 }
 
 function getDevCustomerAnalyticsInitializationValueType(value) {
@@ -241,7 +251,7 @@ function buildDevCustomerAnalyticsInitializationTables(sourceSnapshot) {
     if (date.state === 'empty') customer.empty++;
     if (date.state === 'valid') {
       const key = customerId + '|' + date.yearMonth;
-      const month = monthly[key] || (monthly[key] = { customerId: customerId, yearMonth: date.yearMonth, cancelled: [0, 0], completed: [0, 0], unconfirmed: [0, 0] });
+      const month = monthly[key] || (monthly[key] = { customerId: customerId, yearMonth: date.yearMonth, date: date.date, cancelled: [0, 0], completed: [0, 0], unconfirmed: [0, 0] });
       month[classification][0]++;
       month[classification][1] += value;
       if (!customer.first || date.date.getTime() < customer.first.getTime()) customer.first = date.date;
@@ -268,7 +278,7 @@ function buildDevCustomerAnalyticsInitializationTables(sourceSnapshot) {
     }),
     monthly: Object.keys(monthly).sort().map(key => {
       const month = monthly[key];
-      return [month.customerId, month.yearMonth, month.cancelled[0] + month.completed[0] + month.unconfirmed[0], month.cancelled[1] + month.completed[1] + month.unconfirmed[1], month.cancelled[0], month.cancelled[1], month.completed[0], month.completed[1], month.unconfirmed[0], month.unconfirmed[1]];
+      return [month.customerId, month.date, month.cancelled[0] + month.completed[0] + month.unconfirmed[0], month.cancelled[1] + month.completed[1] + month.unconfirmed[1], month.cancelled[0], month.cancelled[1], month.completed[0], month.completed[1], month.unconfirmed[0], month.unconfirmed[1]];
     }),
     product: Object.keys(product).sort().map(key => {
       const item = product[key];
