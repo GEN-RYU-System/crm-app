@@ -5,6 +5,10 @@ import { AppShell } from './components/shell';
 import { Spinner, StatusMessage } from './components/ui';
 import { getCurrentUser, getDashboardKpis, type DashboardKpis } from './gas/client';
 import { ComponentCatalogPage } from './pages/catalog/ComponentCatalogPage';
+import { customerPreviewRepository } from './features/customers/previewAdapter';
+import { CustomerDetailPage } from './pages/customers/CustomerDetailPage';
+import { CustomerListPage } from './pages/customers/CustomerListPage';
+import { CUSTOMER_ROUTE_SEGMENTS } from './pages/customers/customerConfig';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { DataManagementPage } from './pages/data-management/DataManagementPage';
 import { LeadListCacheProvider } from './pages/leads/LeadListCacheContext';
@@ -12,7 +16,7 @@ import { LeadEditorPage } from './pages/leads/LeadEditorPage';
 import { LEAD_EDITOR_SEGMENTS } from './pages/leads/leadEditorConfig';
 import { LeadListPage } from './pages/leads/LeadListPage';
 import { RouteChatPreviewPage } from './pages/route-chat/RouteChatPreviewPage';
-import { errorCopy, leadsCopy } from './content/ja';
+import { customersCopy, errorCopy, leadsCopy } from './content/ja';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type PermissionState =
@@ -22,6 +26,10 @@ type PermissionState =
 
 function LeadPermissionLoading() {
   return <StatusMessage variant="loading"><Spinner size="sm" aria-label={leadsCopy.permissionsChecking} />{leadsCopy.permissionsChecking}</StatusMessage>;
+}
+
+function CustomerPermissionLoading() {
+  return <StatusMessage variant="loading"><Spinner size="sm" aria-label={customersCopy.loading} />{customersCopy.loading}</StatusMessage>;
 }
 
 export default function App() {
@@ -55,6 +63,7 @@ export default function App() {
   const navigationGroups = visibleNavigationGroups(permissions);
   const dataManagementItems = visibleDataManagementItems(permissions);
   const canAccessLeads = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.leads, permissions);
+  const canAccessCustomers = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.customers, permissions);
   const canAccessRouteChat = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.routeChat, permissions);
   const canAddLeads = hasNavigationPermission(permissions, 'lead_add');
   const canEditLeads = hasNavigationPermission(permissions, 'lead_edit');
@@ -62,6 +71,8 @@ export default function App() {
   const routeChatRoute = permissionState.status === 'checking' ? <LeadPermissionLoading /> : canAccessRouteChat ? <RouteChatPreviewPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const createRoute = canAccessLeads && canAddLeads ? <LeadEditorPage mode="create" canEdit={false} /> : <Navigate to={canAccessLeads ? NAVIGATION_BY_ID.leads.hash : NAVIGATION_BY_ID.dashboard.hash} replace />;
   const detailRoute = canAccessLeads ? <LeadEditorPage mode="detail" canEdit={canEditLeads} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+  const customersRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerListPage repository={customerPreviewRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+  const customerDetailRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerDetailPage repository={customerPreviewRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const dataManagementRoute = permissionState.status === 'checking'
     ? <LeadPermissionLoading />
     : canAccessLeads
@@ -74,6 +85,10 @@ export default function App() {
       <Route index element={leadsRoute} />
       <Route path={LEAD_EDITOR_SEGMENTS.create} element={createRoute} />
       <Route path={LEAD_EDITOR_SEGMENTS.detail} element={detailRoute} />
+    </Route>
+    <Route path={NAVIGATION_BY_ID.customers.hash} element={dataManagementRoute}>
+      <Route index element={customersRoute} />
+      <Route path={CUSTOMER_ROUTE_SEGMENTS.detail} element={customerDetailRoute} />
     </Route>
     <Route path={NAVIGATION_BY_ID.routeChat.hash} element={routeChatRoute} />
     <Route path={NAVIGATION_BY_ID.components.hash} element={<ComponentCatalogPage />} />
