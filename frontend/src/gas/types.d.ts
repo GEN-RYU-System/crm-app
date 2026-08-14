@@ -13,6 +13,8 @@ interface GoogleScriptRun {
   getLeadDetail(leadId: string): void;
   createLead(leadData: Record<string, string>): void;
   updateLead(sheetName: string, leadId: string, updateData: Record<string, string>): void;
+  getCoreCustomersForFrontend(): void;
+  getCoreCustomerForFrontend(customerId: string): void;
 }
 
 interface Window {

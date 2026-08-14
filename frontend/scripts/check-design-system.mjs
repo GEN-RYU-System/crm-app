@@ -16,11 +16,11 @@ const uiIndexSource = await readFile(resolve(srcDir, 'components/ui/index.ts'), 
 const sidebarNavSource = await readFile(resolve(srcDir, 'components/shell/SidebarNav.tsx'), 'utf8'); if (sidebarNavSource.includes('SidebarAccordion')) violations.push('SidebarNav still uses the removed inline SidebarAccordion pattern');
 const dataManagementSource = await readFile(resolve(srcDir, 'pages/data-management/DataManagementPage.tsx'), 'utf8'); if (!dataManagementSource.includes('<HubShell') || !dataManagementSource.includes('<SubMenu')) violations.push('Data management hub does not use HubShell and SubMenu');
 const customerContractsSource = await readFile(resolve(srcDir, 'features/customers/contracts.ts'), 'utf8');
-const customerPreviewSource = await readFile(resolve(srcDir, 'features/customers/previewAdapter.ts'), 'utf8');
+const customerGasAdapterSource = await readFile(resolve(srcDir, 'features/customers/gasAdapter.ts'), 'utf8');
 const customerPageSources = await Promise.all(['pages/customers/CustomerListPage.tsx', 'pages/customers/CustomerDetailPage.tsx'].map((file) => readFile(resolve(srcDir, file), 'utf8')));
 if (!customerContractsSource.includes('CustomerRepository')) violations.push('customers feature does not declare CustomerRepository');
-if (!customerPreviewSource.includes('customerPreviewRepository')) violations.push('customers feature does not provide preview repository');
-if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(customerPreviewSource)) violations.push('customers preview adapter connects to a forbidden runtime dependency');
+if (!customerGasAdapterSource.includes('customerGasRepository')) violations.push('customers feature does not provide GAS repository');
+if (!customerGasAdapterSource.includes("from '../../gas/client'")) violations.push('customers GAS repository bypasses the typed GAS client');
 for (const source of customerPageSources) if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(source) || !source.includes('CustomerRepository')) violations.push('customers page bypasses the CustomerRepository boundary');
 const inboxContractsSource = await readFile(resolve(srcDir, 'features/inbox/contracts.ts'), 'utf8');
 const inboxPreviewSource = await readFile(resolve(srcDir, 'features/inbox/previewAdapter.ts'), 'utf8');
