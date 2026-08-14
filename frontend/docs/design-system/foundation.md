@@ -24,7 +24,7 @@ Tabsは純粋UI金型で、`pill`と`underline`、`sm`と`md`、任意のicon・
 
 TabBarは受信箱由来の、ページまたは一覧上部に置くカテゴリ切替バーです。`key`、`label`、`disabled`だけを扱い、iconやcountを必要とする領域内切替にはTabsを使用します。
 
-DataTableToolbarはPageHeaderとDataTableの間に置く一覧操作領域です。`start`にはTabBar・検索・絞り込み、`end`には更新・新規追加・将来のエクスポートを呼出側が渡します。Toolbar自身は業務文言・検索・絞り込み・固定ボタンを持ちません。Sales Anchorの一覧`.filter-bar`の下余白16pxと`.page-header-actions`のgap 12pxをtokenで採用し、デスクトップでは左右配置、`max-width: 767px`では折り返します。Toolbar自身は横スクロールを発生させません。
+PageToolbarはPageHeaderとDataTable surfaceの間に置く、ページ全体の操作領域です。`start`には検索・絞り込み、`end`には更新・新規追加・将来のエクスポートを呼出側が渡します。Toolbar自身は業務文言・検索・絞り込み・固定ボタンを持ちません。Sales Anchorの一覧`.filter-bar`の下余白16pxと`.page-header-actions`のgap 12pxをtokenで採用し、デスクトップでは左右配置、`max-width: 767px`では折り返します。Toolbar自身は横スクロールを発生させません。TabBarはPageToolbarではなくDataTable surfaceの先頭に置き、一覧データのカテゴリ切替を担います。
 
 PageHeaderは`eyebrow → title row（titleと右側action）→ subtitle`の順に描画します。title rowは最小高40px、gap 12px、actionは右寄せです。titleは24px／600／line-height 1.25、subtitleは13.6px／line-height 1.4／primary textで、subtitleの最小高は1.4em、下余白は12pxです。CRM固有のeyebrowは互換性のため維持し、PageHeader tokenだけを使用します。モバイルの`max-width: 767px`ではtitleとactionの折返しを許容します。CSS変数をmedia query条件に使えないため、このbreakpointだけはSales AnchorのPageLayoutと一致する固定値として許可し、それ以外の文字・色・余白はtokenを使用します。
 
