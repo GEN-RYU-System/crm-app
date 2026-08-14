@@ -1,5 +1,5 @@
 import type { ComponentType, SVGProps } from 'react';
-import { ArrowDownIcon, ArrowUpIcon, ArrowsUpDownIcon, Squares2X2Icon, SwatchIcon, UsersIcon } from '@heroicons/react/24/outline';
+import { ArchiveBoxIcon, ArrowDownIcon, ArrowUpIcon, ArrowsUpDownIcon, BookOpenIcon, BriefcaseIcon, ChartBarIcon, ChatBubbleLeftRightIcon, CircleStackIcon, ClipboardDocumentListIcon, Cog6ToothIcon, CubeIcon, DocumentTextIcon, LanguageIcon, MapIcon, QuestionMarkCircleIcon, ReceiptPercentIcon, RectangleStackIcon, ShieldCheckIcon, Squares2X2Icon, SwatchIcon, UserGroupIcon, UserPlusIcon, UsersIcon } from '@heroicons/react/24/outline';
 
 export type CrmNavIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -7,7 +7,25 @@ export type CrmNavIcon = ComponentType<SVGProps<SVGSVGElement>>;
 export const CRM_NAV_ICONS = {
   dashboard: Squares2X2Icon,
   components: SwatchIcon,
-  leads: UsersIcon
+  leads: UsersIcon,
+  chat: ChatBubbleLeftRightIcon,
+  newLead: UserPlusIcon,
+  route: MapIcon,
+  archive: ArchiveBoxIcon,
+  inventory: CubeIcon,
+  document: DocumentTextIcon,
+  history: ClipboardDocumentListIcon,
+  invoice: ReceiptPercentIcon,
+  reports: ChartBarIcon,
+  faq: QuestionMarkCircleIcon,
+  deals: BriefcaseIcon,
+  staff: UserGroupIcon,
+  permissions: ShieldCheckIcon,
+  database: CircleStackIcon,
+  settings: Cog6ToothIcon,
+  knowledge: BookOpenIcon,
+  translation: LanguageIcon,
+  templates: RectangleStackIcon
 } satisfies Record<string, CrmNavIcon>;
 
 /** React POC sort icons. Pages must not import Heroicons directly. */
