@@ -1,1 +1,1 @@
-export { AppShell } from './AppShell'; export { DesktopSidebar } from './DesktopSidebar'; export { SidebarNav } from './SidebarNav'; export { SidebarAccordion } from './SidebarAccordion'; export { MobileHeader } from './MobileHeader';
+export { AppShell } from './AppShell'; export { DesktopSidebar } from './DesktopSidebar'; export { SidebarNav } from './SidebarNav'; export { MobileHeader } from './MobileHeader';
