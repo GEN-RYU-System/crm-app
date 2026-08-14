@@ -1,0 +1,7 @@
+.lead-list-page__tabs { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-bottom: var(--space-xl); }
+.lead-list-page__table-wrap { overflow-x: auto; }
+.lead-list-page__table { width: 100%; border-collapse: collapse; color: var(--color-text-primary); font-size: var(--font-sm); text-align: left; }
+.lead-list-page__table th, .lead-list-page__table td { border-bottom: var(--border-width) solid var(--color-border); padding: var(--space-md); vertical-align: top; }
+.lead-list-page__table th { background: var(--color-accent-subtle); color: var(--color-accent); font-weight: var(--font-weight-semibold); white-space: nowrap; }
+.lead-list-page__table td { color: var(--color-text-muted); }
+.lead-list-page__table tr:last-child td { border-bottom: 0; }
