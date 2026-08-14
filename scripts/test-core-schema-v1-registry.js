@@ -5,10 +5,16 @@ const vm = require('node:vm');
 const source = fs.readFileSync('src/00_CoreSchemaRegistry.js', 'utf8');
 const configSource = fs.readFileSync('src/08_Config.js', 'utf8');
 
-function createSheet(headers) {
+function createSheet(headers, expectedHeaderRow) {
   return {
     getLastColumn: () => headers.length,
-    getRange: () => ({ getDisplayValues: () => [headers] })
+    getRange: (row, column, rows, columns) => {
+      if (expectedHeaderRow !== undefined) assert.equal(row, expectedHeaderRow);
+      assert.equal(column, 1);
+      assert.equal(rows, 1);
+      assert.equal(columns, headers.length);
+      return { getDisplayValues: () => [headers] };
+    }
   };
 }
 
@@ -20,26 +26,24 @@ function run() {
 
 {
   const context = run();
-  const expectedTables = {
-    LEADS: ['リードID', '担当者ID'],
-    CUSTOMERS: ['顧客ID', '源流リードID'],
-    SHIPPING_DESTINATIONS: ['配送先ID', '顧客ID'],
-    PAYMENT_DESTINATIONS: ['支払先ID', '顧客ID'],
-    ORDERS: ['オーダーID', '顧客ID', '配送先ID', '支払先ID', '源流リードID', '受注担当ID', '営業担当ID', '発送担当ID'],
-    ORDER_LINES: ['明細ID', 'オーダーID', '商品ID'],
-    SHIPMENTS: ['発送ID', 'オーダーID', '発送担当ID'],
-    PURCHASES: ['仕入れID', 'オーダーID', '仕入れ担当ID'],
-    FORM_TOKENS: ['トークン', 'リードID'],
-    PRODUCTS: ['product_id'],
-    STAFF: ['担当者ID']
+  const expectedHeaderCounts = {
+    LEADS: 62, CUSTOMERS: 19, SHIPPING_DESTINATIONS: 16, PAYMENT_DESTINATIONS: 15,
+    ORDERS: 38, ORDER_LINES: 11, SHIPMENTS: 20, PURCHASES: 17, FORM_TOKENS: 4,
+    PRODUCTS: 24, STAFF: 20
   };
   const tableKeys = vm.runInContext('Object.keys(CORE_SCHEMA_V1_TABLES)', context);
-  assert.deepEqual(Array.from(tableKeys).slice(0, 11), Object.keys(expectedTables));
-  Object.keys(expectedTables).forEach(tableKey => {
+  assert.deepEqual(Array.from(tableKeys).slice(0, 11), Object.keys(expectedHeaderCounts));
+  Object.keys(expectedHeaderCounts).forEach(tableKey => {
     const table = context.getCoreSchemaV1Table(tableKey);
-    assert.deepEqual(Array.from(Object.keys(table.headers).map(key => table.headers[key])), expectedTables[tableKey]);
+    assert.equal(Object.keys(table.headers).length, expectedHeaderCounts[tableKey]);
+    assert.equal(table.headerRowNumber, 1);
     assert.equal(Boolean(table.primaryKey), true);
+    Object.keys(table.headers).forEach(headerKey => {
+      assert.equal(context.getCoreSchemaV1HeaderName(tableKey, headerKey), table.headers[headerKey]);
+    });
   });
+  assert.equal(context.getCoreSchemaV1Table('LEGACY_INPUT').headerRowNumber, 1);
+  assert.equal(context.getCoreSchemaV1Table('LEGACY_SALES').headerRowNumber, 4);
   assert.equal(context.getCoreSchemaV1TableName('PAYMENT_DESTINATIONS'), '支払先マスタ');
   assert.equal(context.getCoreSchemaV1TableName('発送'), '発送');
   assert.equal(context.getCoreSchemaV1TableName('発送管理'), '発送');
@@ -66,14 +70,29 @@ function run() {
 
 {
   const context = run();
-  const spreadsheet = { getSheetByName: name => name === '発送' ? createSheet(['発送ID', 'オーダーID', '発送担当ID']) : null };
+  const shipmentHeaders = Object.keys(context.getCoreSchemaV1Table('SHIPMENTS').headers)
+    .map(headerKey => context.getCoreSchemaV1HeaderName('SHIPMENTS', headerKey));
+  const spreadsheet = { getSheetByName: name => name === '発送' ? createSheet(shipmentHeaders, 1) : null };
   const result = context.validateCoreSchemaV1TableForWrite(spreadsheet, 'SHIPMENTS');
   assert.equal(result.tableKey, 'SHIPMENTS');
-  assert.deepEqual(JSON.parse(JSON.stringify(result.headerIndexes)), { '発送ID': 1, 'オーダーID': 2, '発送担当ID': 3 });
+  const headerIndexes = JSON.parse(JSON.stringify(result.headerIndexes));
+  assert.equal(headerIndexes['発送ID'], 1);
+  assert.equal(headerIndexes['オーダーID'], 2);
+  assert.equal(headerIndexes['発送担当ID'], 17);
   assert.throws(() => context.validateCoreSchemaV1TableForWrite({ getSheetByName: () => null }, 'LEADS'), /CORE_SCHEMA_REQUIRED_TAB_MISSING/);
-  assert.throws(() => context.validateCoreSchemaV1TableForWrite({ getSheetByName: () => createSheet(['リードID', 'リードID', '担当者ID']) }, 'LEADS'), /CORE_SCHEMA_NON_EMPTY_HEADER_DUPLICATE/);
-  assert.throws(() => context.validateCoreSchemaV1TableForWrite({ getSheetByName: () => createSheet(['リードID']) }, 'LEADS'), /CORE_SCHEMA_REQUIRED_HEADER_MISSING/);
+  assert.throws(() => context.validateCoreSchemaV1TableForWrite({ getSheetByName: () => createSheet(['リードID', 'リードID', '担当者ID'], 1) }, 'LEADS'), /CORE_SCHEMA_NON_EMPTY_HEADER_DUPLICATE/);
+  assert.throws(() => context.validateCoreSchemaV1TableForWrite({ getSheetByName: () => createSheet(['リードID'], 1) }, 'LEADS'), /CORE_SCHEMA_REQUIRED_HEADER_MISSING/);
   assert.throws(() => context.validateCoreSchemaV1TableForWrite({ getSheetByName: () => createSheet(['product_id']) }, 'PRODUCTS'), /CORE_SCHEMA_WRITE_NOT_ALLOWED/);
+}
+
+{
+  const context = run();
+  const leads = context.getCoreSchemaV1Table('LEADS');
+  leads.headerRowNumber = 3;
+  const leadHeaders = Object.keys(leads.headers).map(headerKey => leads.headers[headerKey]);
+  const spreadsheet = { getSheetByName: name => name === 'リード管理' ? createSheet(leadHeaders, 3) : null };
+  const result = context.validateCoreSchemaV1TableForWrite(spreadsheet, 'LEADS');
+  assert.equal(result.tableKey, 'LEADS');
 }
 
 assert.equal(/setValue|setValues|appendRow|clear|deleteSheet|insertSheet|PropertiesService|UrlFetchApp/.test(source), false);
