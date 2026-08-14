@@ -1,4 +1,4 @@
-export type InboxStatus = 'all' | 'leads' | 'newCustomers' | 'routeCustomers' | 'archive';
+export type InboxStatus = 'all' | 'lead' | 'deal' | 'existing' | 'followup' | 'archive';
 export type InboxPlatform = 'all' | 'messenger' | 'instagram' | 'discord';
 export type InboxConversationDto = { id: string; customerName: string; platform: Exclude<InboxPlatform, 'all'>; status: Exclude<InboxStatus, 'all'>; summary: string; updatedAt: string; unread: boolean };
 export type InboxMessageDto = { id: string; sender: 'customer' | 'operator'; body: string; sentAt: string };
