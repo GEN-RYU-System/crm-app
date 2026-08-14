@@ -15,8 +15,9 @@ import { LeadListCacheProvider } from './pages/leads/LeadListCacheContext';
 import { LeadEditorPage } from './pages/leads/LeadEditorPage';
 import { LEAD_EDITOR_SEGMENTS } from './pages/leads/leadEditorConfig';
 import { LeadListPage } from './pages/leads/LeadListPage';
-import { RouteChatPreviewPage } from './pages/route-chat/RouteChatPreviewPage';
-import { customersCopy, errorCopy, leadsCopy } from './content/ja';
+import { InboxPreviewPage } from './pages/inbox/InboxPreviewPage';
+import { inboxPreviewRepository } from './features/inbox/previewAdapter';
+import { customersCopy, errorCopy, inboxCopy, leadsCopy } from './content/ja';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type PermissionState =
@@ -64,11 +65,11 @@ export default function App() {
   const dataManagementItems = visibleDataManagementItems(permissions);
   const canAccessLeads = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.leads, permissions);
   const canAccessCustomers = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.customers, permissions);
-  const canAccessRouteChat = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.routeChat, permissions);
+  const canAccessInbox = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.inbox, permissions);
   const canAddLeads = hasNavigationPermission(permissions, 'lead_add');
   const canEditLeads = hasNavigationPermission(permissions, 'lead_edit');
   const leadsRoute = permissionState.status === 'checking' ? <LeadPermissionLoading /> : canAccessLeads ? <LeadListPage canAdd={canAddLeads} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
-  const routeChatRoute = permissionState.status === 'checking' ? <LeadPermissionLoading /> : canAccessRouteChat ? <RouteChatPreviewPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+  const inboxRoute = permissionState.status === 'checking' ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={inboxCopy.loading} />{inboxCopy.loading}</StatusMessage> : canAccessInbox ? <InboxPreviewPage repository={inboxPreviewRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const createRoute = canAccessLeads && canAddLeads ? <LeadEditorPage mode="create" canEdit={false} /> : <Navigate to={canAccessLeads ? NAVIGATION_BY_ID.leads.hash : NAVIGATION_BY_ID.dashboard.hash} replace />;
   const detailRoute = canAccessLeads ? <LeadEditorPage mode="detail" canEdit={canEditLeads} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const customersRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerListPage repository={customerPreviewRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
@@ -90,7 +91,11 @@ export default function App() {
       <Route index element={customersRoute} />
       <Route path={CUSTOMER_ROUTE_SEGMENTS.detail} element={customerDetailRoute} />
     </Route>
-    <Route path={NAVIGATION_BY_ID.routeChat.hash} element={routeChatRoute} />
+    <Route path={NAVIGATION_BY_ID.inbox.hash} element={inboxRoute} />
+    <Route path="/leads-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
+    <Route path="/new-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
+    <Route path="/route-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
+    <Route path="/archive-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
     <Route path={NAVIGATION_BY_ID.components.hash} element={<ComponentCatalogPage />} />
     <Route path="*" element={<Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />} />
   </Routes></AppShell></LeadListCacheProvider></HashRouter>;
