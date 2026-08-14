@@ -51,6 +51,8 @@ function run(overrides) {
   assert.equal(result.emptyAndAbeExactMatchCount, 1);
   assert.equal(result.emptyRuleMatchCount, 3);
   assert.equal(result.abeExactRuleMatchCount, 3);
+  assert.equal(result.abeExactAlreadyEmp00007Count, 1);
+  assert.equal(result.abeExactNeedsEmp00007Count, 2);
   assert.equal(result.alreadyEmp00001Count, 1);
   assert.equal(result.alreadyEmp00007Count, 1);
   assert.equal(result.neitherRuleMatchCount, 1);
@@ -59,6 +61,24 @@ function run(overrides) {
   ['LEAD-001', '阿部', '山田阿部', 'EMP-00001', 'EMP-00007', 'OTHER', 'unread'].forEach((value, index) => {
     assert.equal(serialized.includes(value), false, 'sensitive fixture ' + index);
   });
+}
+
+{
+  const context = run({
+    getEnvironment: () => 'development',
+    getSpreadsheet: () => createSpreadsheet([
+      ['リードID', '担当者ID'],
+      ['LEAD-001', 'EMP-00001']
+    ])
+  });
+  const result = JSON.parse(JSON.stringify(context.dryRunDevLeadAssigneeAssignmentPolicy()));
+  assert.deepEqual(result, {
+    success: false,
+    errorType: 'LEAD_ASSIGNEE_POLICY_NAME_HEADER_MISSING'
+  });
+  assert.equal(result.actualDataChangeCount, undefined);
+  const serialized = JSON.stringify(result);
+  ['LEAD-001', 'EMP-00001'].forEach(value => assert.equal(serialized.includes(value), false));
 }
 
 {
