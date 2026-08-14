@@ -50,7 +50,12 @@ function buildDevCustomerAnalyticsMaterializationDryRun(spreadsheet) {
   const products = createDevCustomerAnalyticsMaterializationParentMap(
     data.products, 'product_id', counts, 'productId'
   );
-  const orders = inspectDevCustomerAnalyticsMaterializationOrders(data.orders, customers, counts);
+  const orders = inspectDevCustomerAnalyticsMaterializationOrders(
+    data.orders,
+    customers,
+    counts,
+    spreadsheet.getSpreadsheetTimeZone()
+  );
   inspectDevCustomerAnalyticsMaterializationLines(data.lines, orders, products, counts);
   const referenceInvalid = hasDevCustomerAnalyticsMaterializationReferenceInvalid(counts);
   return Object.assign({
@@ -128,7 +133,7 @@ function createDevCustomerAnalyticsMaterializationParentMap(data, idHeader, coun
   return map;
 }
 
-function inspectDevCustomerAnalyticsMaterializationOrders(data, customers, counts) {
+function inspectDevCustomerAnalyticsMaterializationOrders(data, customers, counts, spreadsheetTimeZone) {
   const map = {};
   const monthlyKeys = new Set();
   const validDateCustomerIds = new Set();
@@ -150,7 +155,8 @@ function inspectDevCustomerAnalyticsMaterializationOrders(data, customers, count
       getDevCustomerAnalyticsMaterializationValue(data, row, 'ステータス')
     );
     const date = getDevCustomerAnalyticsMaterializationDateState(
-      getDevCustomerAnalyticsMaterializationValue(data, row, '受注日')
+      getDevCustomerAnalyticsMaterializationValue(data, row, '受注日'),
+      spreadsheetTimeZone
     );
     const amount = getDevCustomerAnalyticsMaterializationNumberState(
       getDevCustomerAnalyticsMaterializationValue(data, row, '請求総額')
@@ -276,18 +282,16 @@ function getDevCustomerAnalyticsMaterializationClassification(status) {
   return 'unconfirmed';
 }
 
-function getDevCustomerAnalyticsMaterializationDateState(value) {
+function getDevCustomerAnalyticsMaterializationDateState(value, spreadsheetTimeZone) {
   if (isDevCustomerAnalyticsMaterializationEmpty(value)) return { state: 'empty' };
   if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
-    return { state: 'valid', yearMonth: value.getFullYear() + '-' + (value.getMonth() + 1) };
+    return {
+      state: 'valid',
+      date: value,
+      yearMonth: Utilities.formatDate(value, spreadsheetTimeZone, 'yyyy-MM')
+    };
   }
-  if (typeof value !== 'string') return { state: 'invalid' };
-  const match = value.trim().match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
-  if (!match) return { state: 'invalid' };
-  const parsed = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
-  if (parsed.getUTCFullYear() !== Number(match[1]) || parsed.getUTCMonth() !== Number(match[2]) - 1 ||
-      parsed.getUTCDate() !== Number(match[3])) return { state: 'invalid' };
-  return { state: 'valid', yearMonth: match[1] + '-' + Number(match[2]) };
+  return { state: 'invalid' };
 }
 
 function getDevCustomerAnalyticsMaterializationNumberState(value) {
