@@ -14,7 +14,10 @@ function createSheet(headers, rows) {
 }
 
 function run(overrides) {
-  const context = vm.createContext(Object.assign({ Date, Number, Object, Set, String, isFinite, isNaN }, overrides));
+  const context = vm.createContext(Object.assign({
+    Date, Number, Object, Set, String, isFinite, isNaN,
+    Utilities: { formatDate: date => date.toISOString().slice(0, 7) }
+  }, overrides));
   vm.runInContext(source, context, { filename: '99_DevCustomerAnalyticsMaterializationDryRun.js' });
   return context;
 }
@@ -26,13 +29,16 @@ function spreadsheet(lineRows) {
       ['オーダーID', '顧客ID', 'ステータス', '受注日', '請求総額'], [
         ['ORDER-A', 'CUSTOMER-A', '完了', new Date('2026-01-01'), 100],
         ['ORDER-B', 'CUSTOMER-A', 'キャンセル', '', 50],
-        ['ORDER-C', 'CUSTOMER-B', 'UNKNOWN_STATUS', '2026/02/01', '200']
+        ['ORDER-C', 'CUSTOMER-B', 'UNKNOWN_STATUS', new Date('2026-02-01'), '200']
       ]
     ),
     'オーダー明細': createSheet(['オーダーID', '商品ID'], lineRows),
     '商品マスタ同期': createSheet(['product_id'], [['PRODUCT-A'], ['PRODUCT-B']])
   };
-  return { getSheetByName: name => sheets[name] || null };
+  return {
+    getSheetByName: name => sheets[name] || null,
+    getSpreadsheetTimeZone: () => 'Asia/Tokyo'
+  };
 }
 
 {
