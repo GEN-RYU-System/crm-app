@@ -10,7 +10,7 @@
 | HubShell | 管理ハブの副ナビゲーションと子ページを分離する二領域枠 | navigation, content / desktop row, mobile column | Data management, Component catalog | 整備済み |
 | SubMenu | 管理ハブ内のグループ付き副ナビゲーション | grouped, flat / active, disabled / link, button | Data management, Component catalog | 整備済み |
 | DataTable | 表データの表示と列見出し | standalone, embedded / central or start header / body center by default, explicit start or center / sortable or static header / row click / loading Skeleton | Lead list, Customer list, Customer detail, Component catalog | 整備済み |
-| ConversationWorkspace | 一覧・会話・詳細の3領域を持つ業務画面枠 | list, conversation, details / desktop, tablet, mobile | Route chat preview, Component catalog | 整備済み |
+| ConversationWorkspace | 一覧・会話・詳細の3領域を持つ業務画面枠 | list, conversation, details / desktop, tablet, mobile | Inbox preview, Component catalog | 整備済み |
 | Card | セクションの表面 | default, outlined | Lead list, Customer list, Customer detail, Component catalog, StatCard | 整備済み |
 | StatCard | KPIの表示 | なし | Dashboard, Component catalog | 整備済み |
 | StatusMessage | loading / error / empty | loading, error, empty | Dashboard, Customer list, Customer detail, Component catalog | 整備済み |
