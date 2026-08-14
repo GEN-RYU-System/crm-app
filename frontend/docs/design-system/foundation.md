@@ -24,6 +24,8 @@ Tabsは純粋UI金型で、`pill`と`underline`、`sm`と`md`、任意のicon・
 
 TabBarは受信箱由来の、ページまたは一覧上部に置くカテゴリ切替バーです。`key`、`label`、`disabled`だけを扱い、iconやcountを必要とする領域内切替にはTabsを使用します。
 
+DataTableは表面、border、角丸、overflow、横スクロール、table inset、列見出しの配置を管理します。見出しは既定で中央配置とし、sortable／staticを問わず同じ配置責務を持ちます。本文セルは既定で左寄せです。ソート状態・行データ・セルの業務表示・行クリック後の遷移は呼出側の正本で管理します。TabBarと同じCardへ埋め込む場合は`embedded`を使い、二重のborder・角丸を作りません。
+
 Skeletonは初回読込みの標準UIです。`table` variantは任意の`columns`を受け、指定時は`rows × columns`のバーを表示します。`columns`未指定時は既存の3列表示を維持します。aria-labelは呼出側のCopy SSOTから渡し、金型自身はCopyをimportしません。reduced-motionではshimmerを停止します。
 
 FormFieldのモバイル最小高さに使うmedia queryは`max-width: 767px`です。CSS変数をmedia query条件に使えないため、この値だけはSales Anchorの`FormField.css`と一致する固定のbreakpointとして許可し、それ以外の色・余白・文字・角丸・animation時間はtokenを使用します。
