@@ -7,11 +7,13 @@ import {
   ConversationWorkspace,
   DataTable,
   EmptyState,
+  HubShell,
   PageHeader,
   PageToolbar,
   Select,
   Skeleton,
   Spinner,
+  SubMenu,
   TabBar,
   Tabs,
   Textarea,
@@ -25,6 +27,7 @@ export function ComponentCatalogPage() {
   const Icon = CRM_NAV_ICONS.components;
   const [activeTab, setActiveTab] = useState("active");
   const [activeTabBar, setActiveTabBar] = useState("active");
+  const [activeSubMenu, setActiveSubMenu] = useState("leads");
   const [dataTableSort, setDataTableSort] = useState<
     "ascending" | "descending"
   >("ascending");
@@ -171,6 +174,26 @@ export function ComponentCatalogPage() {
               </div>
             }
           />
+        </Card>
+        <Card>
+          <h2 className="catalog-page__heading">{catalogCopy.hubShellSubMenu}</h2>
+          <HubShell
+            navigationLabel={catalogCopy.subMenuLabel}
+            navigation={
+              <SubMenu
+                variant="grouped"
+                groups={[{ title: catalogCopy.subMenuGroup, items: [
+                  { key: "leads", label: catalogCopy.subMenuLeads, icon: <CRM_NAV_ICONS.leads aria-hidden="true" /> },
+                  { key: "disabled", label: catalogCopy.tabDisabled, disabled: true },
+                ] }]}
+                activeKey={activeSubMenu}
+                onChange={setActiveSubMenu}
+                ariaLabel={catalogCopy.subMenuLabel}
+              />
+            }
+          >
+            <Card variant="outlined">{catalogCopy.hubContentExample}</Card>
+          </HubShell>
         </Card>
         <Card>
           <h2 className="catalog-page__heading">

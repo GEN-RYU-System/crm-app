@@ -11,6 +11,11 @@ export const LEAD_EDITOR_PATHS = {
   detailFor: (leadId: string) => `${NAVIGATION_BY_ID.leads.hash}/${encodeURIComponent(leadId)}`
 } as const;
 
+export const LEAD_EDITOR_SEGMENTS = {
+  create: 'new',
+  detail: ':leadId'
+} as const;
+
 function value(record: LeadRecord, field: keyof typeof leadsCopy.fields): string {
   const source = record[leadsCopy.fields[field]];
   return source == null ? '' : String(source);
