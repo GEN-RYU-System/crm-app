@@ -41,18 +41,26 @@ function run(environment, sheets, getSpreadsheet) {
   const serialized = JSON.stringify(result);
   assert.equal(serialized.includes('[Array]'), false);
   assert.equal(result.actualDataChangeCount, 0);
-  assert.equal(result.coreSheets.length, 11);
-  const lead = result.coreSheets.find(sheet => sheet.sheetName === 'リード管理');
-  assert.equal(lead.headerColumns, '1:リードID | 2:担当者ID');
-  assert.equal(lead.requiredIdHeaderStatus, 'リードID:存在 | 担当者ID:存在');
-  const orders = result.coreSheets.find(sheet => sheet.sheetName === 'オーダー管理');
-  assert.equal(orders.exists, false);
-  assert.equal(orders.requiredIdHeaderStatus.includes('オーダーID:不在'), true);
-  const legacy = result.legacySalesSheet;
-  assert.equal(legacy.headerRowNumber, 4);
-  assert.equal(legacy.headerColumns, '1:unused | 2:取引状況KEY | 3:取引状況商品名');
-  assert.equal(legacy.currentInvoiceHeaderStatus.includes('取引状況KEY:存在'), true);
-  assert.equal(legacy.currentInvoiceHeaderStatus.includes('取引状況数量:不在'), true);
+  assert.equal(Array.isArray(result.schemaReportText), false);
+  const reportLines = result.schemaReportText.split('\n');
+  assert.equal(reportLines.length, 13);
+  const lead = reportLines.find(line => line.includes('sheetName=リード管理'));
+  assert.equal(lead.includes('headerColumns=1:リードID | 2:担当者ID'), true);
+  assert.equal(lead.includes('requiredIdHeaderStatus=リードID:存在 | 担当者ID:存在'), true);
+  const orders = reportLines.find(line => line.includes('sheetName=オーダー管理'));
+  assert.equal(orders.includes('exists=false'), true);
+  assert.equal(orders.includes('オーダーID:不在'), true);
+  const shipment = reportLines.find(line => line.includes('sheetName=発送'));
+  assert.equal(shipment.includes('発送ID:不在 | オーダーID:不在 | 発送担当ID:不在'), true);
+  const legacyInput = reportLines.find(line => line.includes('LEGACY_INPUT'));
+  assert.equal(legacyInput.includes('sheetName=請求書作成'), true);
+  assert.equal(legacyInput.includes('説明:1,3'), true);
+  assert.equal(legacyInput.includes('カテゴリ:不在'), true);
+  const legacySales = reportLines.find(line => line.includes('LEGACY_SALES'));
+  assert.equal(legacySales.includes('headerRowNumber=4'), true);
+  assert.equal(legacySales.includes('headerColumns=1:unused | 2:取引状況KEY | 3:取引状況商品名'), true);
+  assert.equal(legacySales.includes('取引状況KEY:存在'), true);
+  assert.equal(legacySales.includes('取引状況数量:不在'), true);
   assert.equal(serialized.includes('CUSTOMER-'), false);
 }
 

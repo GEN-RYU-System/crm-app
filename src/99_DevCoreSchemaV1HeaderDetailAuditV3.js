@@ -6,12 +6,17 @@ const DEV_CORE_SCHEMA_V1_HEADER_DETAIL_AUDIT_V3_SHEETS = [
   { name: '支払先マスタ', headerRowNumber: 1, requiredIdHeaders: ['支払先ID', '顧客ID'] },
   { name: 'オーダー管理', headerRowNumber: 1, requiredIdHeaders: ['オーダーID', '顧客ID', '配送先ID', '支払先ID', '源流リードID', '受注担当ID', '営業担当ID', '発送担当ID'] },
   { name: 'オーダー明細', headerRowNumber: 1, requiredIdHeaders: ['明細ID', 'オーダーID', '商品ID'] },
-  { name: '発送', headerRowNumber: 1, requiredIdHeaders: ['オーダーID', '発送担当ID'] },
-  { name: '仕入れ', headerRowNumber: 1, requiredIdHeaders: ['オーダーID', '仕入れ担当ID'] },
+  { name: '発送', headerRowNumber: 1, requiredIdHeaders: ['発送ID', 'オーダーID', '発送担当ID'] },
+  { name: '仕入れ', headerRowNumber: 1, requiredIdHeaders: ['仕入れID', 'オーダーID', '仕入れ担当ID'] },
   { name: 'フォームトークン', headerRowNumber: 1, requiredIdHeaders: ['トークン', 'リードID'] },
   { name: '商品マスタ同期', headerRowNumber: 1, requiredIdHeaders: ['product_id'] },
   { name: '担当者マスタ', headerRowNumber: 1, requiredIdHeaders: ['担当者ID'] }
 ];
+const DEV_CORE_SCHEMA_V1_HEADER_DETAIL_AUDIT_V3_LEGACY_INPUT = {
+  name: '請求書作成',
+  headerRowNumber: 1,
+  currentInvoiceHeaders: ['カテゴリ', '状態', '商品名', '個数', '請求書項目', '価格', '合計']
+};
 const DEV_CORE_SCHEMA_V1_HEADER_DETAIL_AUDIT_V3_LEGACY_SALES = {
   name: '📊売上データ',
   headerRowNumber: 4,
@@ -40,55 +45,81 @@ function auditDevCoreSchemaV1HeaderDetailV3() {
     resultType: 'DEV_CORE_SCHEMA_V1_HEADER_DETAIL_AUDIT_V3_SUCCEEDED',
     auditVersion: DEV_CORE_SCHEMA_V1_HEADER_DETAIL_AUDIT_V3_VERSION,
     actualDataChangeCount: 0,
-    coreSheets: DEV_CORE_SCHEMA_V1_HEADER_DETAIL_AUDIT_V3_SHEETS.map(specification =>
-      buildDevCoreSchemaV1HeaderDetailAuditV3SheetResult(spreadsheet, specification)
-    ),
-    legacySalesSheet: buildDevCoreSchemaV1HeaderDetailAuditV3LegacyResult(spreadsheet)
+    schemaReportText: buildDevCoreSchemaV1HeaderDetailAuditV3SchemaReportText(spreadsheet)
   };
 }
 
-function buildDevCoreSchemaV1HeaderDetailAuditV3SheetResult(spreadsheet, specification) {
-  const sheet = spreadsheet.getSheetByName(specification.name);
-  return buildDevCoreSchemaV1HeaderDetailAuditV3Result(sheet, specification, 'requiredIdHeaderStatus', specification.requiredIdHeaders);
+function buildDevCoreSchemaV1HeaderDetailAuditV3SchemaReportText(spreadsheet) {
+  const coreReports = DEV_CORE_SCHEMA_V1_HEADER_DETAIL_AUDIT_V3_SHEETS.map(specification =>
+    buildDevCoreSchemaV1HeaderDetailAuditV3CoreReportLine(spreadsheet, specification)
+  );
+  return coreReports.concat([
+    buildDevCoreSchemaV1HeaderDetailAuditV3LegacyReportLine(
+      spreadsheet,
+      DEV_CORE_SCHEMA_V1_HEADER_DETAIL_AUDIT_V3_LEGACY_INPUT,
+      'LEGACY_INPUT'
+    ),
+    buildDevCoreSchemaV1HeaderDetailAuditV3LegacyReportLine(
+      spreadsheet,
+      DEV_CORE_SCHEMA_V1_HEADER_DETAIL_AUDIT_V3_LEGACY_SALES,
+      'LEGACY_SALES'
+    )
+  ]).join('\n');
 }
 
-function buildDevCoreSchemaV1HeaderDetailAuditV3LegacyResult(spreadsheet) {
-  const specification = DEV_CORE_SCHEMA_V1_HEADER_DETAIL_AUDIT_V3_LEGACY_SALES;
-  return buildDevCoreSchemaV1HeaderDetailAuditV3Result(
+function buildDevCoreSchemaV1HeaderDetailAuditV3CoreReportLine(spreadsheet, specification) {
+  const sheet = spreadsheet.getSheetByName(specification.name);
+  return buildDevCoreSchemaV1HeaderDetailAuditV3ReportLine(
+    'CORE_SCHEMA',
+    sheet,
+    specification,
+    'requiredIdHeaderStatus',
+    specification.requiredIdHeaders
+  );
+}
+
+function buildDevCoreSchemaV1HeaderDetailAuditV3LegacyReportLine(spreadsheet, specification, sectionName) {
+  return buildDevCoreSchemaV1HeaderDetailAuditV3ReportLine(
+    sectionName,
     spreadsheet.getSheetByName(specification.name),
     specification,
-    'currentInvoiceHeaderStatus',
+    'currentInvoiceRequiredHeaderStatus',
     specification.currentInvoiceHeaders
   );
 }
 
-function buildDevCoreSchemaV1HeaderDetailAuditV3Result(sheet, specification, statusProperty, requiredHeaders) {
+function buildDevCoreSchemaV1HeaderDetailAuditV3ReportLine(sectionName, sheet, specification, statusProperty, requiredHeaders) {
   if (!sheet) {
-    const missingResult = {
-      sheetName: specification.name,
-      exists: false,
-      headerRowNumber: specification.headerRowNumber,
-      columnCount: 0,
-      headerColumns: '',
-      nonEmptyHeaderDuplicates: ''
-    };
-    missingResult[statusProperty] = formatDevCoreSchemaV1HeaderDetailAuditV3HeaderStatus(requiredHeaders, []);
-    return missingResult;
+    return formatDevCoreSchemaV1HeaderDetailAuditV3ReportLine(
+      sectionName, specification, false, 0, '', '', statusProperty,
+      formatDevCoreSchemaV1HeaderDetailAuditV3HeaderStatus(requiredHeaders, [])
+    );
   }
   const columnCount = sheet.getLastColumn();
   const headers = columnCount > 0
     ? sheet.getRange(specification.headerRowNumber, 1, 1, columnCount).getDisplayValues()[0].map(header => String(header).trim())
     : [];
-  const result = {
-    sheetName: specification.name,
-    exists: true,
-    headerRowNumber: specification.headerRowNumber,
-    columnCount: columnCount,
-    headerColumns: headers.map((header, index) => (index + 1) + ':' + header).join(' | '),
-    nonEmptyHeaderDuplicates: formatDevCoreSchemaV1HeaderDetailAuditV3Duplicates(headers)
-  };
-  result[statusProperty] = formatDevCoreSchemaV1HeaderDetailAuditV3HeaderStatus(requiredHeaders, headers);
-  return result;
+  return formatDevCoreSchemaV1HeaderDetailAuditV3ReportLine(
+    sectionName,
+    specification,
+    true,
+    columnCount,
+    headers.map((header, index) => (index + 1) + ':' + header).join(' | '),
+    formatDevCoreSchemaV1HeaderDetailAuditV3Duplicates(headers),
+    statusProperty,
+    formatDevCoreSchemaV1HeaderDetailAuditV3HeaderStatus(requiredHeaders, headers)
+  );
+}
+
+function formatDevCoreSchemaV1HeaderDetailAuditV3ReportLine(sectionName, specification, exists, columnCount, headerColumns, duplicates, statusProperty, status) {
+  return sectionName +
+    ' | sheetName=' + specification.name +
+    ' | headerRowNumber=' + specification.headerRowNumber +
+    ' | exists=' + exists +
+    ' | columnCount=' + columnCount +
+    ' | headerColumns=' + headerColumns +
+    ' | nonEmptyHeaderDuplicates=' + duplicates +
+    ' | ' + statusProperty + '=' + status;
 }
 
 function formatDevCoreSchemaV1HeaderDetailAuditV3Duplicates(headers) {
