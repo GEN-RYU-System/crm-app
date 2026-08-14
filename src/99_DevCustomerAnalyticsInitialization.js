@@ -76,7 +76,8 @@ function initializeDevCustomerAnalytics() {
       spec.dateColumns.forEach(column => sh.getRange(2, column, spec.rows.length, 1).setNumberFormat('yyyy-MM-dd'));
     });
     failurePhase = DEV_CUSTOMER_ANALYTICS_INITIALIZATION_PHASE_POST_WRITE_VERIFY;
-    verifyDevCustomerAnalyticsInitializationSheets(ss, specifications);
+    const postWriteResultType = verifyDevCustomerAnalyticsInitializationAfterFlush(ss, specifications);
+    if (postWriteResultType) throw createDevCustomerAnalyticsInitializationPostWriteError(postWriteResultType);
 
     // actualDataChangeCount means analytics output row writes only (header + data), never source CRM changes.
     return {
@@ -93,18 +94,34 @@ function initializeDevCustomerAnalytics() {
     };
   } catch (e) {
     const originalFailurePhase = failurePhase;
+    const fixedResultType = e && e.devCustomerAnalyticsInitializationResultType;
     let rollbackFailed = false;
     failurePhase = DEV_CUSTOMER_ANALYTICS_INITIALIZATION_PHASE_ROLLBACK;
     created.reverse().forEach(sh => {
       try { ss.deleteSheet(sh); } catch (ignored) { rollbackFailed = true; }
     });
     return createDevCustomerAnalyticsInitializationFailure(
-      rollbackFailed ? 'INITIALIZATION_ROLLBACK_STATE_UNKNOWN' : 'INITIALIZATION_FAILED',
+      rollbackFailed ? 'INITIALIZATION_ROLLBACK_STATE_UNKNOWN' : (fixedResultType || 'INITIALIZATION_FAILED'),
       rollbackFailed ? failurePhase : originalFailurePhase,
       rollbackFailed ? null : 0,
       rollbackFailed ? 'UNKNOWN' : 'UNCHANGED'
     );
   } finally { lock.releaseLock(); }
+}
+
+function createDevCustomerAnalyticsInitializationPostWriteError(resultType) {
+  return { devCustomerAnalyticsInitializationResultType: resultType };
+}
+
+function verifyDevCustomerAnalyticsInitializationAfterFlush(ss, specifications) {
+  try {
+    SpreadsheetApp.flush();
+    return verifyDevCustomerAnalyticsInitializationSheets(ss, specifications);
+  } catch (e) {
+    return e && e.devCustomerAnalyticsInitializationResultType
+      ? e.devCustomerAnalyticsInitializationResultType
+      : 'INITIALIZATION_POST_WRITE_VERIFY_EXCEPTION';
+  }
 }
 
 function createDevCustomerAnalyticsInitializationFailure(resultType, failurePhase, actualDataChangeCount, dataChangeState) {
@@ -129,20 +146,21 @@ function getDevCustomerAnalyticsInitializationSpecifications(tables) {
 function verifyDevCustomerAnalyticsInitializationSheets(ss, specifications) {
   specifications.forEach(spec => {
     const sheet = ss.getSheetByName(spec.name);
-    if (!sheet || sheet.getLastRow() !== spec.rows.length + 1 || sheet.getLastColumn() !== spec.headers.length) {
-      throw new Error('INITIALIZATION_WRITE_VERIFICATION_FAILED');
-    }
+    if (!sheet) throw createDevCustomerAnalyticsInitializationPostWriteError('INITIALIZATION_POST_WRITE_SHEET_MISSING');
+    if (sheet.getLastRow() !== spec.rows.length + 1) throw createDevCustomerAnalyticsInitializationPostWriteError('INITIALIZATION_POST_WRITE_ROW_COUNT_MISMATCH');
+    if (sheet.getLastColumn() !== spec.headers.length) throw createDevCustomerAnalyticsInitializationPostWriteError('INITIALIZATION_POST_WRITE_COLUMN_COUNT_MISMATCH');
     const actualHeaders = sheet.getRange(1, 1, 1, spec.headers.length).getDisplayValues()[0];
     if (!isDevCustomerAnalyticsMaterializationEqual(actualHeaders, spec.headers)) {
-      throw new Error('INITIALIZATION_WRITE_VERIFICATION_FAILED');
+      throw createDevCustomerAnalyticsInitializationPostWriteError('INITIALIZATION_POST_WRITE_HEADER_MISMATCH');
     }
     const actualRows = spec.rows.length > 0
       ? sheet.getRange(2, 1, spec.rows.length, spec.headers.length).getValues()
       : [];
     if (!isDevCustomerAnalyticsMaterializationEqual(actualRows, spec.rows)) {
-      throw new Error('INITIALIZATION_WRITE_VERIFICATION_FAILED');
+      throw createDevCustomerAnalyticsInitializationPostWriteError('INITIALIZATION_POST_WRITE_DATA_MISMATCH');
     }
   });
+  return null;
 }
 
 function hasDevCustomerAnalyticsInitializationOutputInvariants(tables) {
