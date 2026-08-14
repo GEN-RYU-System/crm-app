@@ -1,7 +1,7 @@
 import type { CRM_NAV_ICONS } from './icons';
 import { navigationCopy } from '../content/ja';
 
-export type NavigationPermission = 'lead_view';
+export type NavigationPermission = 'lead_view' | 'lead_add' | 'lead_edit';
 export type NavigationPermissions = Partial<Record<NavigationPermission, boolean>>;
 export type NavigationItem = { id: 'dashboard' | 'components' | 'leads'; label: string; hash: string; icon: keyof typeof CRM_NAV_ICONS; order: number; state: 'available'; requiredPermission?: NavigationPermission };
 
@@ -15,7 +15,11 @@ export const NAVIGATION_BY_ID = Object.fromEntries(NAVIGATION_ITEMS.map((item) =
 
 /** Mirrors the existing SPA's menu-level permission check and defaults to deny. */
 export function canAccessNavigationItem(item: NavigationItem, permissions: NavigationPermissions | null): boolean {
-  return item.requiredPermission == null || permissions?.[item.requiredPermission] === true;
+  return item.requiredPermission == null || hasNavigationPermission(permissions, item.requiredPermission);
+}
+
+export function hasNavigationPermission(permissions: NavigationPermissions | null, permission: NavigationPermission): boolean {
+  return permissions?.[permission] === true;
 }
 
 export function visibleNavigationItems(permissions: NavigationPermissions | null): readonly NavigationItem[] {
