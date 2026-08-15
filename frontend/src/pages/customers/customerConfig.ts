@@ -12,10 +12,11 @@ export type CustomerListRow = {
   salesAssigneeName: string;
   transactionCount: string;
   transactionAmount: string;
+  transactionAmounts: CustomerSummaryDto['transactionAmounts'];
 };
 
-export type CustomerListColumnKey = Exclude<keyof CustomerListRow, 'customerId'>;
-export type CustomerSortKey = Exclude<CustomerListColumnKey, 'transactionAmount'>;
+export type CustomerListColumnKey = Exclude<keyof CustomerListRow, 'customerId' | 'transactionAmounts'>;
+export type CustomerSortKey = CustomerListColumnKey;
 export type CustomerSortDirection = 'ascending' | 'descending';
 export type CustomerSort = { key: CustomerSortKey; direction: CustomerSortDirection };
 export type CustomerDetailTab = 'basic' | 'shipping' | 'payment';
@@ -34,7 +35,7 @@ export const CUSTOMER_LIST_COLUMNS: readonly { key: CustomerListColumnKey; label
   { key: 'handledTitle', label: customersCopy.columns.handledTitle, cellAlignment: 'center', sortable: true },
   { key: 'salesAssigneeName', label: customersCopy.columns.salesAssigneeName, cellAlignment: 'center', sortable: true },
   { key: 'transactionCount', label: customersCopy.columns.transactionCount, cellAlignment: 'center', sortable: true },
-  { key: 'transactionAmount', label: customersCopy.columns.transactionAmount, cellAlignment: 'center', sortable: false }
+  { key: 'transactionAmount', label: customersCopy.columns.transactionAmount, cellAlignment: 'center', sortable: true }
 ];
 export const CUSTOMER_LIST_SEARCH_COLUMNS: readonly CustomerListColumnKey[] = CUSTOMER_LIST_COLUMNS.map(({ key }) => key);
 export const CUSTOMER_PROFILE_FIELDS: readonly { key: keyof Pick<CustomerProfileDto, 'customerId' | 'customerName' | 'emailAddress' | 'country' | 'phone' | 'countryCode' | 'firstTransactionDate' | 'registeredAt' | 'salesAssigneeName' | 'contactTool' | 'shippingNote'>; label: string }[] = [
@@ -73,10 +74,31 @@ function formatTransactionAmounts(amounts: CustomerSummaryDto['transactionAmount
   if (amounts.length === 0) return customersCopy.emptyValue;
   return amounts.map(({ currency, amount }) => `${currency ? `${currency} ` : ''}${amount.toLocaleString('ja-JP')}`).join(' / ');
 }
+
+function compareTransactionAmounts(left: CustomerSummaryDto['transactionAmounts'], right: CustomerSummaryDto['transactionAmounts']): number {
+  const length = Math.max(left.length, right.length);
+  for (let index = 0; index < length; index += 1) {
+    const leftAmount = left[index];
+    const rightAmount = right[index];
+    if (!leftAmount) return -1;
+    if (!rightAmount) return 1;
+    const currencyComparison = leftAmount.currency.localeCompare(rightAmount.currency, 'ja-JP', { sensitivity: 'base' });
+    if (currencyComparison !== 0) return currencyComparison;
+    const amountComparison = leftAmount.amount - rightAmount.amount;
+    if (amountComparison !== 0) return amountComparison;
+  }
+  return 0;
+}
+
 export function toCustomerListRows(customers: readonly CustomerSummaryDto[], sort: CustomerSort): CustomerListRow[] {
-  const rows = customers.map((customer) => ({ customerId: customer.customerId, customerName: customer.customerName, country: customer.country, salesChannel: customer.salesChannel, handledTitle: customer.handledTitle, salesAssigneeName: customer.salesAssigneeName, transactionCount: String(customer.transactionCount), transactionAmount: formatTransactionAmounts(customer.transactionAmounts) }));
+  const rows = customers.map((customer) => ({ customerId: customer.customerId, customerName: customer.customerName, country: customer.country, salesChannel: customer.salesChannel, handledTitle: customer.handledTitle, salesAssigneeName: customer.salesAssigneeName, transactionCount: String(customer.transactionCount), transactionAmount: formatTransactionAmounts(customer.transactionAmounts), transactionAmounts: customer.transactionAmounts }));
   const direction = sort.direction === 'ascending' ? 1 : -1;
-  return rows.sort((left, right) => left[sort.key].localeCompare(right[sort.key], 'ja-JP', { numeric: true, sensitivity: 'base' }) * direction);
+  return rows.sort((left, right) => {
+    const comparison = sort.key === 'transactionAmount'
+      ? compareTransactionAmounts(left.transactionAmounts, right.transactionAmounts)
+      : left[sort.key].localeCompare(right[sort.key], 'ja-JP', { numeric: true, sensitivity: 'base' });
+    return (comparison || left.customerName.localeCompare(right.customerName, 'ja-JP', { numeric: true, sensitivity: 'base' })) * direction;
+  });
 }
 
 export function filterCustomerListRows(rows: readonly CustomerListRow[], query: string): readonly CustomerListRow[] {
