@@ -14,7 +14,7 @@ function getCoreCustomersForFrontend() {
     'LEAD_ID', 'SALES_CHANNEL', 'HANDLED_TITLE'
   ]);
   const orders = coreCustomerFrontendReadTable(spreadsheet, 'ORDERS', [
-    'ORDER_ID', 'CUSTOMER_ID', 'CURRENCY', 'INVOICE_TOTAL'
+    'ORDER_ID', 'CUSTOMER_ID', 'STATUS', 'CURRENCY', 'INVOICE_TOTAL'
   ]);
   const leadsById = coreCustomerFrontendIndexBy(leads, 'LEAD_ID');
   const transactionsByCustomer = coreCustomerFrontendAggregateTransactions(orders);
@@ -148,10 +148,13 @@ function coreCustomerFrontendIndexBy(tableData, idHeaderKey) {
 }
 
 function coreCustomerFrontendAggregateTransactions(orders) {
+  const completedStatus = getCoreSchemaV1Value('ORDERS', 'STATUS', 'COMPLETED');
   const aggregates = orders.rows.reduce(function(index, row) {
     const orderId = coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]);
     const customerId = coreCustomerFrontendValue(row[orders.indexes.CUSTOMER_ID]);
     if (!orderId || !customerId) return index;
+    const status = coreCustomerFrontendValue(row[orders.indexes.STATUS]);
+    if (status !== completedStatus) return index;
     if (!index[customerId]) index[customerId] = { count: 0, amountsByCurrency: {} };
     index[customerId].count += 1;
     const amount = coreCustomerFrontendNumber(row[orders.indexes.INVOICE_TOTAL]);

@@ -35,6 +35,10 @@ const shippingSheetName = context.getCoreSchemaV1Table('SHIPPING_DESTINATIONS').
 const paymentSheetName = context.getCoreSchemaV1Table('PAYMENT_DESTINATIONS').sheetName;
 const leadSheetName = context.getCoreSchemaV1Table('LEADS').sheetName;
 const orderSheetName = context.getCoreSchemaV1Table('ORDERS').sheetName;
+const completedOrderStatus = context.getCoreSchemaV1Value('ORDERS', 'STATUS', 'COMPLETED');
+const cancelledOrderStatus = context.getCoreSchemaV1Value('ORDERS', 'STATUS', 'CANCELLED');
+assert.strictEqual(completedOrderStatus, '完了');
+assert.throws(() => context.getCoreSchemaV1Value('ORDERS', 'STATUS', 'UNKNOWN'), /CORE_SCHEMA_VALUE_KEY_NOT_FOUND/);
 
 sheets[customerSheetName] = createSheet('CUSTOMERS', [{
   CUSTOMER_ID: 'customer-a', CUSTOMER_NAME: 'Customer A', COUNTRY: 'JP', EMAIL: 'customer@example.invalid',
@@ -53,10 +57,12 @@ sheets[leadSheetName] = createSheet('LEADS', [{
   LEAD_ID: 'lead-a', SALES_CHANNEL: 'Wholesale', HANDLED_TITLE: 'Product A'
 }]);
 sheets[orderSheetName] = createSheet('ORDERS', [
-  { ORDER_ID: 'order-a', CUSTOMER_ID: 'customer-a', CURRENCY: 'JPY', INVOICE_TOTAL: 1200 },
-  { ORDER_ID: 'order-b', CUSTOMER_ID: 'customer-a', CURRENCY: 'JPY', INVOICE_TOTAL: '2,300' },
-  { ORDER_ID: 'order-c', CUSTOMER_ID: 'customer-a', CURRENCY: 'USD', INVOICE_TOTAL: 45 },
-  { ORDER_ID: '', CUSTOMER_ID: 'customer-a', CURRENCY: 'JPY', INVOICE_TOTAL: 9999 }
+  { ORDER_ID: 'order-a', CUSTOMER_ID: 'customer-a', STATUS: completedOrderStatus, CURRENCY: 'JPY', INVOICE_TOTAL: 1200 },
+  { ORDER_ID: 'order-b', CUSTOMER_ID: 'customer-a', STATUS: completedOrderStatus, CURRENCY: 'JPY', INVOICE_TOTAL: '2,300' },
+  { ORDER_ID: 'order-c', CUSTOMER_ID: 'customer-a', STATUS: completedOrderStatus, CURRENCY: 'USD', INVOICE_TOTAL: 45 },
+  { ORDER_ID: 'order-d', CUSTOMER_ID: 'customer-a', STATUS: cancelledOrderStatus, CURRENCY: 'JPY', INVOICE_TOTAL: 9999 },
+  { ORDER_ID: 'order-e', CUSTOMER_ID: 'customer-a', STATUS: '未確定', CURRENCY: 'JPY', INVOICE_TOTAL: 8888 },
+  { ORDER_ID: '', CUSTOMER_ID: 'customer-a', STATUS: completedOrderStatus, CURRENCY: 'JPY', INVOICE_TOTAL: 7777 }
 ]);
 
 vm.runInContext(apiSource, context);
