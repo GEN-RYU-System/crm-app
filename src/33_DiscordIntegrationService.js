@@ -443,7 +443,7 @@ function syncDiscordToConversationLog(channelId, leadId = null, maxMessages = 10
         '原文': msg.content || '',
         '原文言語': originalLanguage,
         '翻訳文': '',  // 翻訳なし
-        '記録者ID': Session.getActiveUser().getEmail(),
+        '記録者ID': resolveCurrentUserEmail(),
         '記録日時': new Date()
       };
 

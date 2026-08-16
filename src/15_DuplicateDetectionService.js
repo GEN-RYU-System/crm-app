@@ -308,7 +308,7 @@ function clearDuplicateFlag(leadId) {
       sheet.getRange(rowNum, dupSourceCol + 1).setValue('');
 
       // 確認日時と確認者を記録
-      const currentUser = Session.getActiveUser().getEmail();
+      const currentUser = resolveCurrentUserEmail();
       sheet.getRange(rowNum, dupDateCol + 1).setValue(new Date());
       sheet.getRange(rowNum, dupConfirmerCol + 1).setValue(currentUser);
 

@@ -6443,7 +6443,7 @@ function syncQuoteHeaderToCreationSheet(headerData) {
  */
 function saveQuoteFromCreationSheet() {
   try {
-    const userEmail = Session.getActiveUser().getEmail();
+    const userEmail = resolveCurrentUserEmail();
     const sheet = getQuoteCreationSheet();
 
     // 1. ヘッダー情報をJ列・K列から読み取り
@@ -6542,7 +6542,7 @@ function saveQuoteFromCreationSheet() {
  */
 function getStaffFullName() {
   try {
-    const userEmail = Session.getActiveUser().getEmail();
+    const userEmail = resolveCurrentUserEmail() || '';
     const ss = getSpreadsheet();
     const staffSheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
 
@@ -6579,7 +6579,7 @@ function getStaffFullName() {
 
   } catch (error) {
     Logger.log('[getStaffFullName] エラー: ' + error.message);
-    return Session.getActiveUser().getEmail(); // フォールバック
+    return resolveCurrentUserEmail() || ''; // フォールバック
   }
 }
 
@@ -6748,7 +6748,7 @@ function syncQuoteHeaderToSheet(headerData) {
  */
 function saveQuoteFromWorkSheet() {
   try {
-    const userEmail = Session.getActiveUser().getEmail();
+    const userEmail = resolveCurrentUserEmail();
     const sheet = getUserQuoteWorkSheet();
 
     Logger.log('[saveQuoteFromWorkSheet] 保存開始 - ユーザー: ' + userEmail);
