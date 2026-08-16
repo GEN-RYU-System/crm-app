@@ -2300,6 +2300,8 @@ function addStaff(staffData) {
  * 担当者を更新
  */
 function updateStaff(staffId, staffData) {
+  checkPermission('staff_manage');
+
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
 
@@ -2343,6 +2345,8 @@ function updateStaff(staffId, staffData) {
  * 担当者を削除
  */
 function deleteStaff(staffId) {
+  checkPermission('staff_manage');
+
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
 
