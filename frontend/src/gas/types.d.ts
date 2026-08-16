@@ -15,6 +15,8 @@ interface GoogleScriptRun {
   updateLead(sheetName: string, leadId: string, updateData: Record<string, string>): void;
   getCoreCustomersForFrontend(): void;
   getCoreCustomerForFrontend(customerId: string): void;
+  getCoreStaffForFrontend(): void;
+  getCoreStaffMemberForFrontend(staffId: string): void;
 }
 
 interface Window {
