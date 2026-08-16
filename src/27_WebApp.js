@@ -2557,6 +2557,10 @@ function deleteGoal(goalId) {
 function getCurrentUserRole() {
   const email = Session.getActiveUser().getEmail();
 
+  if (!email) {
+    return { role: null, staffId: null, staffName: null, email: '', error: 'ログインが必要です' };
+  }
+
   // 担当者マスタからメールアドレスで検索
   const ss = getSpreadsheet();
   const staffSheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
