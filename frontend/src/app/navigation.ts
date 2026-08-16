@@ -58,7 +58,7 @@ export type NavigationGroup = {
 export const STAFF_MANAGEMENT_ROOT = '/staff';
 
 export const STAFF_MANAGEMENT_ITEMS: readonly NavigationItem[] = [
-  { id: 'staff', label: navigationCopy.staff, hash: STAFF_MANAGEMENT_ROOT, icon: 'staff', order: 1, state: 'planned', requiredPermission: 'staff_manage' },
+  { id: 'staff', label: navigationCopy.staff, hash: STAFF_MANAGEMENT_ROOT, icon: 'staff', order: 1, state: 'preview', requiredPermission: 'staff_manage' },
   { id: 'roles', label: navigationCopy.roles, hash: '/roles', icon: 'permissions', order: 2, state: 'planned', requiredPermission: 'staff_manage' },
   { id: 'compensationSettings', label: navigationCopy.compensationSettings, hash: '/compensation-settings', icon: 'settings', order: 3, state: 'planned', requiredPermission: 'staff_manage' },
   { id: 'compensationRecords', label: navigationCopy.compensationRecords, hash: '/compensation-records', icon: 'history', order: 4, state: 'planned', requiredPermission: 'staff_manage' }
