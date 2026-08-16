@@ -6,9 +6,10 @@
  * - 担当者マスタに登録されているメールアドレスのみアクセス可能
  * - gmail.comを含む任意のドメインのメールアドレスで認証可能
  *
- * 特殊クエリパラメータ:
- * - ?action=insertTestData&key=badge2026 : テストデータ投入
- * - ?action=removeTestData&key=badge2026 : テストデータ削除
+ * 特殊クエリパラメータ（認証・force_reset権限チェック後）:
+ * - ?action=insertTestData&key=<TEST_DATA_KEY> : テストデータ投入
+ * - ?action=removeTestData&key=<TEST_DATA_KEY> : テストデータ削除
+ *   TEST_DATA_KEY はスクリプトプロパティで設定。未設定時は実行不可。
  *
  * Phase 4: 追加ルート
  * - ?page=quotes : 見積書管理画面
@@ -16,24 +17,7 @@
  * - ?page=stock : 在庫閲覧画面
  */
 function doGet(e) {
-  // テストデータ操作のクエリパラメータをチェック
   const params = e.parameter || {};
-
-  if (params.action && params.key === 'badge2026') {
-    let result;
-
-    if (params.action === 'insertTestData') {
-      result = insertBadgeTestData();
-      return ContentService.createTextOutput(JSON.stringify(result, null, 2))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    if (params.action === 'removeTestData') {
-      result = removeTestData();
-      return ContentService.createTextOutput(JSON.stringify(result, null, 2))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-  }
 
   // 顧客登録フォーム（認証不要・token 必須）← 認証チェックより前に配置
   if (params.page === 'order-form') {
@@ -74,6 +58,31 @@ function doGet(e) {
       '管理者にお問い合わせください。',
       userEmail
     );
+  }
+
+  // テストデータ操作（認証・force_reset権限チェック後）
+  if (params.action) {
+    const testDataKey = PropertiesService.getScriptProperties().getProperty('TEST_DATA_KEY');
+    if (testDataKey && params.key === testDataKey) {
+      try {
+        checkPermission('force_reset');
+      } catch (authError) {
+        return ContentService.createTextOutput(
+          JSON.stringify({ success: false, error: authError.message }, null, 2)
+        ).setMimeType(ContentService.MimeType.JSON);
+      }
+      let result;
+      if (params.action === 'insertTestData') {
+        result = insertBadgeTestData();
+        return ContentService.createTextOutput(JSON.stringify(result, null, 2))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+      if (params.action === 'removeTestData') {
+        result = removeTestData();
+        return ContentService.createTextOutput(JSON.stringify(result, null, 2))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+    }
   }
 
   // ★Phase 4: ページルーティング追加★

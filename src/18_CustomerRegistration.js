@@ -20,8 +20,9 @@
  * }
  */
 
-var FORM_TOKEN_SHEET   = 'フォームトークン';
-var FORM_TOKEN_HEADERS = ['トークン', 'リードID', '発行日', '使用日'];
+var FORM_TOKEN_SHEET       = 'フォームトークン';
+var FORM_TOKEN_HEADERS     = ['トークン', 'リードID', '発行日', '使用日'];
+var FORM_TOKEN_EXPIRY_DAYS = 7;
 
 // ============================================================
 // 1. フォームトークンタブ管理
@@ -936,14 +937,25 @@ function validateFormToken(token) {
   if (!sh) return { valid: false, error: 'Form token sheet not found.' };
   var data = sh.getDataRange().getValues();
   var h = data[0];
-  var tokIdx = h.indexOf('トークン');
-  var useIdx = h.indexOf('使用日');
+  var tokIdx   = h.indexOf('トークン');
+  var issueIdx = h.indexOf('発行日');
+  var useIdx   = h.indexOf('使用日');
   if (tokIdx < 0) return { valid: false, error: 'Token column not found in sheet.' };
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][tokIdx]).trim() === String(token).trim()) {
       var usedDate = String(data[i][useIdx] || '').trim();
       if (usedDate !== '') {
         return { valid: false, error: 'This URL has already been used (used on: ' + usedDate + ').' };
+      }
+      if (issueIdx >= 0) {
+        var issueDate = data[i][issueIdx];
+        if (issueDate instanceof Date) {
+          var msPerDay = 24 * 60 * 60 * 1000;
+          var elapsedDays = Math.floor((Date.now() - issueDate.getTime()) / msPerDay);
+          if (elapsedDays > FORM_TOKEN_EXPIRY_DAYS) {
+            return { valid: false, error: 'This URL has expired. Please contact your sales representative to issue a new one.' };
+          }
+        }
       }
       return { valid: true };
     }
