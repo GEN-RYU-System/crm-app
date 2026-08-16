@@ -2271,6 +2271,8 @@ function generateNextStaffId() {
  * 担当者を追加
  */
 function addStaff(staffData) {
+  checkPermission('staff_manage');
+
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
 
