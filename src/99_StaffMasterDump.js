@@ -497,3 +497,110 @@ function convertLeadStatusShinkikuToShinkiLead() {
   Logger.log(out.join('\n'));
   return out.join('\n');
 }
+
+/**
+ * 【読み取り専用】リード管理 col62 の入力規則状況 + 選択肢マスタのリードステータス列の実値
+ * 書き込みは一切行わない
+ */
+function inspectLeadStatusValidation() {
+  var TARGET_VALUES = [
+    '新規リード', 'リード対応中', 'アサイン確定', 'リード対象外',
+    '商談中', '商談対象外', '追客(短期)', '追客(長期)', '成約', '失注'
+  ];
+
+  var ss = getSpreadsheet();
+  var out = [];
+
+  // === 1. リード管理 col62 の入力規則 ===
+  out.push('=== 1. リード管理 col62 の入力規則 ===');
+  var leadSh = ss.getSheetByName('リード管理');
+  if (!leadSh) {
+    out.push('[NOT FOUND] リード管理');
+  } else {
+    var leadLastCol = leadSh.getLastColumn();
+    var leadHeaders = leadSh.getRange(1, 1, 1, leadLastCol).getValues()[0];
+    var leadColIdx = leadHeaders.indexOf('リードステータス');
+    out.push('リードステータス列: ' + (leadColIdx >= 0 ? 'col' + (leadColIdx + 1) : '[NOT FOUND]'));
+
+    if (leadColIdx >= 0) {
+      var leadLastRow = leadSh.getLastRow();
+      var rules = leadSh.getRange(2, leadColIdx + 1, Math.max(leadLastRow - 1, 1), 1).getDataValidations();
+      var firstRule = null;
+      for (var k = 0; k < rules.length; k++) {
+        if (rules[k][0] !== null) { firstRule = rules[k][0]; break; }
+      }
+      if (!firstRule) {
+        out.push('入力規則: なし');
+      } else {
+        try {
+          var cv = firstRule.getCriteriaValues()[0];
+          if (Array.isArray(cv)) {
+            out.push('入力規則: プルダウン（' + cv.length + '件）');
+            cv.forEach(function(v, i) { out.push('  ' + (i + 1) + '. ' + v); });
+          } else {
+            out.push('入力規則: 範囲参照型');
+          }
+        } catch (e) {
+          out.push('入力規則: 取得エラー (' + e.message + ')');
+        }
+      }
+    }
+  }
+  out.push('');
+
+  // === 2. 選択肢マスタのリードステータス列の実値 ===
+  out.push('=== 2. 選択肢マスタ「リードステータス」列の実値 ===');
+  var optSh = ss.getSheetByName(CONFIG.SHEETS.SETTINGS);
+  if (!optSh) {
+    out.push('[NOT FOUND] 選択肢マスタ');
+  } else {
+    var optData = optSh.getDataRange().getValues();
+    var optHeaders = optData[0];
+    var optColIdx = -1;
+    for (var h = 0; h < optHeaders.length; h++) {
+      if (String(optHeaders[h]).trim() === 'リードステータス') { optColIdx = h; break; }
+    }
+    if (optColIdx < 0) {
+      out.push('リードステータス列: [NOT FOUND]（シートに列が存在しません）');
+      out.push('シートヘッダー列数: ' + optHeaders.length);
+    } else {
+      out.push('リードステータス列: col' + (optColIdx + 1) + ' (' + String.fromCharCode(65 + optColIdx) + '列)');
+      var optValues = [];
+      for (var r = 1; r < optData.length; r++) {
+        var v = String(optData[r][optColIdx] || '').trim();
+        if (v !== '') optValues.push({ row: r + 1, value: v });
+      }
+      out.push('値の件数: ' + optValues.length);
+      optValues.forEach(function(item) {
+        out.push('  行' + item.row + ': ' + item.value);
+      });
+    }
+  }
+  out.push('');
+
+  // === 3. DEFAULT_DROPDOWN_OPTIONS 10値との照合 ===
+  out.push('=== 3. DEFAULT_DROPDOWN_OPTIONS 10値との照合 ===');
+  if (optColIdx < 0) {
+    out.push('選択肢マスタに列が存在しないため照合不可');
+  } else {
+    var sheetSet = {};
+    optValues.forEach(function(item) { sheetSet[item.value] = true; });
+    var missing = TARGET_VALUES.filter(function(v) { return !sheetSet[v]; });
+    var extra   = Object.keys(sheetSet).filter(function(v) { return TARGET_VALUES.indexOf(v) < 0; });
+    if (missing.length === 0 && extra.length === 0) {
+      out.push('判定: 完全一致');
+    } else {
+      if (missing.length > 0) {
+        out.push('DEFAULT_OPTIONS にあってシートに無い値 (' + missing.length + '件):');
+        missing.forEach(function(v) { out.push('  - ' + v); });
+      }
+      if (extra.length > 0) {
+        out.push('シートにあって DEFAULT_OPTIONS に無い値 (' + extra.length + '件):');
+        extra.forEach(function(v) { out.push('  - ' + v); });
+      }
+    }
+  }
+
+  Logger.log(out.join('\n'));
+  return out.join('\n');
+}
