@@ -1,4 +1,54 @@
 /**
+ * 【読み取り専用】オーダー管理の「ステータス」列のプルダウン選択肢を返す
+ * セル値・個人データは出力しない
+ */
+function checkOrderStatusDropdown() {
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName('オーダー管理');
+  if (!sh) { Logger.log('[NOT FOUND] オーダー管理'); return '[NOT FOUND]'; }
+
+  var lastCol = sh.getLastColumn();
+  if (lastCol < 1) { Logger.log('[EMPTY] オーダー管理'); return '[EMPTY]'; }
+
+  var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var statusCol = headers.indexOf('ステータス');
+  if (statusCol < 0) { Logger.log('[NOT FOUND] ステータス列'); return '[NOT FOUND] ステータス列'; }
+
+  var lastRow = sh.getLastRow();
+  var rules = sh.getRange(2, statusCol + 1, Math.max(lastRow - 1, 1), 1).getDataValidations();
+
+  var firstRule = null;
+  for (var k = 0; k < rules.length; k++) {
+    if (rules[k][0] !== null) { firstRule = rules[k][0]; break; }
+  }
+
+  var out = [
+    'シート: オーダー管理',
+    'ステータス列: col' + (statusCol + 1),
+    ''
+  ];
+
+  if (!firstRule) {
+    out.push('プルダウン設定: なし');
+  } else {
+    try {
+      var cv = firstRule.getCriteriaValues()[0];
+      if (Array.isArray(cv)) {
+        out.push('プルダウン選択肢 (' + cv.length + '件):');
+        cv.forEach(function(v, i) { out.push('  ' + (i + 1) + '. ' + v); });
+      } else {
+        out.push('プルダウン: 範囲参照 (直接読み取り不可)');
+      }
+    } catch (e) {
+      out.push('プルダウン: 取得エラー (' + e.message + ')');
+    }
+  }
+
+  Logger.log(out.join('\n'));
+  return out.join('\n');
+}
+
+/**
  * 【読み取り専用】担当者マスタの1行目とプルダウン設定を読む
  * 氏名・メールなどのデータ行は出力しない
  */
