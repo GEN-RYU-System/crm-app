@@ -36,7 +36,7 @@ function doGet(e) {
   }
 
   // アクセス制御: 担当者マスタに登録されているユーザーのみアクセス可能
-  const userEmail = Session.getActiveUser().getEmail();
+  const userEmail = resolveCurrentUserEmail();
 
   if (!userEmail) {
     return createAccessDeniedPage('ログインが必要です', 'Googleアカウントでログインしてください。');
@@ -637,7 +637,7 @@ function getMyLeads() {
     return [];
   }
 
-  const userEmail = Session.getActiveUser().getEmail();
+  const userEmail = resolveCurrentUserEmail();
   console.log('getMyLeads: userEmail=' + userEmail);
 
   const ss = getSpreadsheet();
@@ -746,7 +746,7 @@ function createLead(leadData) {
   const leadId = generateNextLeadId(leadType);
 
   // 現在のユーザー情報を取得
-  const userEmail = Session.getActiveUser().getEmail();
+  const userEmail = resolveCurrentUserEmail();
   const userInfo = getUserInfoByEmail(userEmail);
   const currentUserName = userInfo ? userInfo.staffName : '';
 
@@ -1006,7 +1006,7 @@ function assignLeadToSales(leadId) {
   }
 
   // 現在のユーザー情報を取得
-  const currentUser = Session.getActiveUser().getEmail();
+  const currentUser = resolveCurrentUserEmail();
 
   // 各列を更新
   if (progressIndex !== -1) {
@@ -1020,7 +1020,7 @@ function assignLeadToSales(leadId) {
   }
   if (assigneeIdIndex !== -1) {
     // 担当者IDは簡易的にメールアドレスの@前を使用
-    const userId = currentUser.split('@')[0];
+    const userId = currentUser ? currentUser.split('@')[0] : '';
     sheet.getRange(targetRow, assigneeIdIndex + 1).setValue(userId);
   }
   if (dealProgressIndex !== -1) {
@@ -1220,7 +1220,7 @@ function debugGetStaffMasterData() {
  */
 function getCurrentUser() {
   try {
-    const email = Session.getActiveUser().getEmail();
+    const email = resolveCurrentUserEmail();
     Logger.log('getCurrentUser: email = ' + email);
 
     const userInfo = getCurrentUserPermissions(email);
@@ -1757,7 +1757,7 @@ function getNewAssigns() {
     }
 
     // 現在のユーザー情報を取得
-    const userEmail = Session.getActiveUser().getEmail();
+    const userEmail = resolveCurrentUserEmail();
     const userInfo = getUserInfoByEmail(userEmail);
 
     if (!userInfo || !userInfo.staffId) {
@@ -2570,7 +2570,7 @@ function deleteGoal(goalId) {
  * 現在のユーザーの役割を取得
  */
 function getCurrentUserRole() {
-  const email = Session.getActiveUser().getEmail();
+  const email = resolveCurrentUserEmail();
 
   if (!email) {
     return { role: null, staffId: null, staffName: null, email: '', error: 'ログインが必要です' };
