@@ -6,21 +6,30 @@
 function getCoreStaffForFrontend() {
   checkPermission('staff_manage');
 
+  var activeStatus = getCoreSchemaV1Value('STAFF', 'STATUS', 'ACTIVE');
+
   const spreadsheet = getSpreadsheet();
   const staff = coreCustomerFrontendReadTable(spreadsheet, 'STAFF', [
-    'STAFF_ID', 'FULL_NAME_JA', 'ROLE', 'STATUS', 'EMAIL', 'DISCORD_ID'
+    'STAFF_ID', 'LAST_NAME_JA', 'FIRST_NAME_JA', 'ROLE', 'STATUS', 'EMAIL', 'DISCORD_ID'
   ]);
 
-  return staff.rows.map(function(row) {
-    return {
-      staffId:    coreCustomerFrontendValue(row[staff.indexes.STAFF_ID]),
-      fullNameJa: coreCustomerFrontendValue(row[staff.indexes.FULL_NAME_JA]),
-      role:       coreCustomerFrontendValue(row[staff.indexes.ROLE]),
-      status:     coreCustomerFrontendValue(row[staff.indexes.STATUS]),
-      email:      coreCustomerFrontendValue(row[staff.indexes.EMAIL]),
-      discordId:  coreCustomerFrontendValue(row[staff.indexes.DISCORD_ID])
-    };
-  });
+  return staff.rows
+    .filter(function(row) {
+      return coreCustomerFrontendValue(row[staff.indexes.STATUS]) === activeStatus;
+    })
+    .map(function(row) {
+      return {
+        staffId:    coreCustomerFrontendValue(row[staff.indexes.STAFF_ID]),
+        fullNameJa: [
+          coreCustomerFrontendValue(row[staff.indexes.LAST_NAME_JA]),
+          coreCustomerFrontendValue(row[staff.indexes.FIRST_NAME_JA])
+        ].filter(Boolean).join(' '),
+        role:       coreCustomerFrontendValue(row[staff.indexes.ROLE]),
+        status:     coreCustomerFrontendValue(row[staff.indexes.STATUS]),
+        email:      coreCustomerFrontendValue(row[staff.indexes.EMAIL]),
+        discordId:  coreCustomerFrontendValue(row[staff.indexes.DISCORD_ID])
+      };
+    });
 }
 
 function getCoreStaffMemberForFrontend(staffId) {
@@ -31,7 +40,7 @@ function getCoreStaffMemberForFrontend(staffId) {
 
   const spreadsheet = getSpreadsheet();
   const staff = coreCustomerFrontendReadTable(spreadsheet, 'STAFF', [
-    'STAFF_ID', 'LAST_NAME_JA', 'FIRST_NAME_JA', 'FULL_NAME_JA',
+    'STAFF_ID', 'LAST_NAME_JA', 'FIRST_NAME_JA',
     'LAST_NAME_KANA', 'FIRST_NAME_KANA', 'LAST_NAME_EN', 'FIRST_NAME_EN',
     'EMAIL', 'DISCORD_ID', 'ROLE', 'STATUS'
   ]);
@@ -45,7 +54,10 @@ function getCoreStaffMemberForFrontend(staffId) {
     staffId:       coreCustomerFrontendValue(staffRow[staff.indexes.STAFF_ID]),
     lastNameJa:    coreCustomerFrontendValue(staffRow[staff.indexes.LAST_NAME_JA]),
     firstNameJa:   coreCustomerFrontendValue(staffRow[staff.indexes.FIRST_NAME_JA]),
-    fullNameJa:    coreCustomerFrontendValue(staffRow[staff.indexes.FULL_NAME_JA]),
+    fullNameJa:    [
+      coreCustomerFrontendValue(staffRow[staff.indexes.LAST_NAME_JA]),
+      coreCustomerFrontendValue(staffRow[staff.indexes.FIRST_NAME_JA])
+    ].filter(Boolean).join(' '),
     lastNameKana:  coreCustomerFrontendValue(staffRow[staff.indexes.LAST_NAME_KANA]),
     firstNameKana: coreCustomerFrontendValue(staffRow[staff.indexes.FIRST_NAME_KANA]),
     lastNameEn:    coreCustomerFrontendValue(staffRow[staff.indexes.LAST_NAME_EN]),
