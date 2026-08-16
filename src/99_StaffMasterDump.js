@@ -147,3 +147,106 @@ function checkStaffNameColumns() {
   Logger.log(out.join('\n'));
   return out.join('\n');
 }
+
+/**
+ * 【読み取り専用】選択肢マスタの構造を調査する
+ * 1. 1行目ヘッダー行を列番号つきで全列出力
+ * 2. 各列の値の個数（空欄を除く）
+ * 3. 空ヘッダー列・重複ヘッダー列の検出
+ * 4. DROPDOWN_COLUMNS（08_Config.js 定義の22列）との差分
+ */
+function inspectOptionsMasterStructure() {
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName(CONFIG.SHEETS.SETTINGS);
+  if (!sh) { Logger.log('[NOT FOUND] 選択肢マスタ'); return '[NOT FOUND] 選択肢マスタ'; }
+
+  var data = sh.getDataRange().getValues();
+  var headers = data[0];
+  var totalCols = headers.length;
+  var totalRows = data.length;
+  var out = [];
+
+  out.push('=== 選択肢マスタ 基本情報 ===');
+  out.push('シートID (gid): ' + sh.getSheetId());
+  out.push('全行数: ' + totalRows + ' (ヘッダー含む)');
+  out.push('全列数: ' + totalCols);
+  out.push('');
+
+  // 1. ヘッダー行（列番号付き全列）
+  out.push('=== 1. ヘッダー行（全' + totalCols + '列）===');
+  headers.forEach(function(h, i) {
+    out.push('col' + (i + 1) + ': ' + JSON.stringify(String(h)));
+  });
+  out.push('');
+
+  // 2. 各列の値の個数（空欄除く）
+  out.push('=== 2. 各列の値の個数（空欄除く）===');
+  headers.forEach(function(h, i) {
+    var count = 0;
+    for (var r = 1; r < data.length; r++) {
+      var v = data[r][i];
+      if (v !== '' && v !== null && v !== undefined) count++;
+    }
+    out.push('col' + (i + 1) + ' ' + JSON.stringify(String(h)) + ': ' + count + '件');
+  });
+  out.push('');
+
+  // 3. 空ヘッダー列・重複ヘッダー列の検出
+  out.push('=== 3. 空ヘッダー列・重複ヘッダー列 ===');
+  var emptyHeaders = [];
+  var seen = {};
+  var duplicates = [];
+  headers.forEach(function(h, i) {
+    var s = String(h).trim();
+    if (s === '') {
+      emptyHeaders.push('col' + (i + 1));
+    } else {
+      if (seen[s] !== undefined) {
+        duplicates.push('col' + (i + 1) + ' "' + s + '" (初出: col' + (seen[s] + 1) + ')');
+      } else {
+        seen[s] = i;
+      }
+    }
+  });
+  out.push('空ヘッダー列: ' + (emptyHeaders.length === 0 ? 'なし' : emptyHeaders.join(', ')));
+  out.push('重複ヘッダー列: ' + (duplicates.length === 0 ? 'なし' : duplicates.join(', ')));
+  out.push('');
+
+  // 4. DROPDOWN_COLUMNS（08_Config.js 定義）との差分
+  var DEFINED = [
+    '流入経路（IN）', '流入経路（OUT）', '国', '温度感', '想定規模', '顧客タイプ', '返信速度', '連絡手段',
+    'リードステータス', '次回アクション日', '取り扱いタイトル', '販売形態', '競合比較中', '購入頻度',
+    '商談結果', '商談の手応え', 'アーカイブ理由', '対象外理由', '失注理由', '役割', 'ステータス', '期間タイプ'
+  ];
+  var sheetHeaderSet = {};
+  headers.forEach(function(h) {
+    var s = String(h).trim();
+    if (s) sheetHeaderSet[s] = true;
+  });
+
+  var onlyInDefined = DEFINED.filter(function(k) { return !sheetHeaderSet[k]; });
+  var onlyInSheet = Object.keys(sheetHeaderSet).filter(function(k) { return DEFINED.indexOf(k) < 0; });
+
+  out.push('=== 4. DROPDOWN_COLUMNS（定義22列）vs 実物 ===');
+  out.push('[定義にあってシートに無い列] (' + onlyInDefined.length + '件)');
+  if (onlyInDefined.length === 0) {
+    out.push('  なし');
+  } else {
+    onlyInDefined.forEach(function(k) { out.push('  - ' + JSON.stringify(k)); });
+  }
+  out.push('');
+  out.push('[シートにあって定義に無い列] (' + onlyInSheet.length + '件)');
+  if (onlyInSheet.length === 0) {
+    out.push('  なし');
+  } else {
+    headers.forEach(function(h, i) {
+      var s = String(h).trim();
+      if (s && DEFINED.indexOf(s) < 0) {
+        out.push('  col' + (i + 1) + ': ' + JSON.stringify(s));
+      }
+    });
+  }
+
+  Logger.log(out.join('\n'));
+  return out.join('\n');
+}
