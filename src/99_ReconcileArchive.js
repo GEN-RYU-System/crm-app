@@ -550,6 +550,80 @@ function inspectArchiveDetail() {
 }
 
 /**
+ * 【読み取り専用】アーカイブ系3タブの削除可否を判定する
+ * ID値・セル値は出力せず、件数と列名のみ返す
+ */
+function checkArchiveContainment() {
+  var ss = getSpreadsheet();
+  var out = [];
+
+  var main = ss.getSheetByName('リード管理');
+  if (!main) { Logger.log('[NOT FOUND] リード管理'); return '[NOT FOUND] リード管理'; }
+  var mv = main.getDataRange().getValues();
+  var mi = mv[0].indexOf('リードID');
+  if (mi < 0) { Logger.log('[ERROR] リード管理にリードID列なし'); return '[ERROR]'; }
+
+  var mainIds = {};
+  mv.slice(1).forEach(function(r) {
+    var id = String(r[mi] || '').trim();
+    if (id) mainIds[id] = true;
+  });
+  var mainHeaders = {};
+  mv[0].forEach(function(x) {
+    var s = String(x || '').trim();
+    if (s) mainHeaders[s] = true;
+  });
+
+  out.push('リード管理: ' + (mv.length - 1) + '行 / ' + mv[0].length + '列 / ユニークID ' +
+           Object.keys(mainIds).length);
+  out.push('');
+
+  ['リード_アーカイブ', 'リード_成約', 'リード_失注'].forEach(function(name) {
+    var sh = ss.getSheetByName(name);
+    if (!sh) { out.push(name + ': [NOT FOUND]'); return; }
+    if (sh.getLastRow() < 2 || sh.getLastColumn() < 1) {
+      out.push(name + ': データ0行 → 条件1・2ともに自動的に成立');
+      out.push('');
+      return;
+    }
+
+    var v = sh.getDataRange().getValues();
+    var i = v[0].indexOf('リードID');
+
+    // 条件1: ID
+    var missingId = 0, uniqCount = 0;
+    if (i < 0) {
+      out.push(name + ': リードID列なし → ★停止');
+    } else {
+      var uniq = {};
+      v.slice(1).forEach(function(r) {
+        var id = String(r[i] || '').trim();
+        if (id) uniq[id] = true;
+      });
+      uniqCount = Object.keys(uniq).length;
+      Object.keys(uniq).forEach(function(id) { if (!mainIds[id]) missingId++; });
+    }
+
+    // 条件2: 列
+    var onlyInArchive = v[0].filter(function(x) {
+      var s = String(x || '').trim();
+      return s && !mainHeaders[s];
+    });
+
+    out.push(name + ': ' + (v.length - 1) + '行 / ' + v[0].length + '列 / ユニークID ' + uniqCount);
+    out.push('  条件1 リード管理に無いID: ' + missingId + '件');
+    out.push('  条件2 リード管理に無い列: ' + onlyInArchive.length + '件' +
+             (onlyInArchive.length ? ' → ' + onlyInArchive.join(' / ') : ''));
+    out.push('  判定: ' + ((missingId === 0 && onlyInArchive.length === 0 && i >= 0)
+             ? '削除可' : '★停止'));
+    out.push('');
+  });
+
+  Logger.log(out.join('\n'));
+  return out.join('\n');
+}
+
+/**
  * アーカイブタブ照合（一時検証用・検証後に削除すること）
  * リード管理シートと「リード_アーカイブ」タブのリードIDを比較し、
  * アーカイブタブにのみ存在するIDを返す。
