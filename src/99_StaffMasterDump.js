@@ -352,3 +352,148 @@ function dryRunLeadStatusConversion() {
   Logger.log(out.join('\n'));
   return out.join('\n');
 }
+
+/**
+ * 【書き込みあり / DEV専用】リード管理「リードステータス」列の「新規」を「新規リード」に変換する
+ *
+ * 制約:
+ * - 列は indexOf('リードステータス') で動的に特定（列番号直書き禁止）
+ * - 「新規」のセルのみを個別に上書き（行全体・列全体の一括上書きは行わない）
+ * - 実行前に対象行数=107を確認。107以外は中断して報告
+ *
+ * 実行後の検証:
+ * - 62列目の分布を再取得して期待値と照合
+ * - 「新規」が0行、合計379行が変わっていないことを確認
+ */
+function convertLeadStatusShinkikuToShinkiLead() {
+  var EXPECTED_COUNT = 107;
+  var FROM_VALUE = '新規';
+  var TO_VALUE = '新規リード';
+  var EXPECTED_DIST = {
+    '新規リード': 107,
+    '失注': 117,
+    '成約': 51,
+    'アサイン確定': 41,
+    '商談中': 37,
+    '商談対象外': 25,
+    'リード対象外': 1
+  };
+  var EXPECTED_TOTAL = 379;
+
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName('リード管理');
+  if (!sh) { Logger.log('[NOT FOUND] リード管理'); return '[NOT FOUND] リード管理'; }
+
+  var lastCol = sh.getLastColumn();
+  var lastRow = sh.getLastRow();
+  var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var colIdx = headers.indexOf('リードステータス');
+
+  if (colIdx < 0) {
+    var notFound = '[NOT FOUND] リードステータス列 (全' + lastCol + '列を検索)';
+    Logger.log(notFound);
+    return notFound;
+  }
+
+  var dataRows = lastRow - 1;
+  var rawValues = sh.getRange(2, colIdx + 1, dataRows, 1).getValues();
+
+  // 変換対象行を収集（行番号はシート上の実際の行番号 = index + 2）
+  var targetRows = [];
+  rawValues.forEach(function(row, i) {
+    var v = String(row[0] || '').trim();
+    if (v === FROM_VALUE) {
+      targetRows.push(i + 2); // 1-indexed, header=row1
+    }
+  });
+
+  // 事前チェック: 対象行数が107でなければ中断
+  if (targetRows.length !== EXPECTED_COUNT) {
+    var abortMsg = '[ABORT] 対象行数が想定と異なります。想定=' + EXPECTED_COUNT + ', 実測=' + targetRows.length + '。書き込みを中断しました。';
+    Logger.log(abortMsg);
+    return abortMsg;
+  }
+
+  var out = [
+    '=== convertLeadStatusShinkikuToShinkiLead 実行 ===',
+    'リードステータス列: col' + (colIdx + 1),
+    '変換: "' + FROM_VALUE + '" → "' + TO_VALUE + '"',
+    '対象行数（事前確認済み）: ' + targetRows.length,
+    ''
+  ];
+
+  // 対象セルのみを個別に書き換え
+  targetRows.forEach(function(rowNum) {
+    sh.getRange(rowNum, colIdx + 1).setValue(TO_VALUE);
+  });
+
+  out.push('[書き込み完了] ' + targetRows.length + '件を "' + TO_VALUE + '" に変換しました。');
+  out.push('');
+
+  // 実行後の検証: 分布を再取得
+  var afterValues = sh.getRange(2, colIdx + 1, dataRows, 1).getValues();
+  var afterDist = {};
+  var afterEmpty = 0;
+  afterValues.forEach(function(row) {
+    var v = String(row[0] || '').trim();
+    if (v === '') {
+      afterEmpty++;
+    } else {
+      afterDist[v] = (afterDist[v] || 0) + 1;
+    }
+  });
+
+  var afterTotal = 0;
+  Object.keys(afterDist).forEach(function(k) { afterTotal += afterDist[k]; });
+
+  out.push('=== 実行後の分布（実測） ===');
+  var sortedAfter = Object.keys(afterDist).sort(function(a, b) { return afterDist[b] - afterDist[a]; });
+  sortedAfter.forEach(function(k) { out.push('  ' + k + ': ' + afterDist[k] + '行'); });
+  out.push('  （空欄）: ' + afterEmpty + '行');
+  out.push('  合計（空欄除く）: ' + afterTotal + '行');
+  out.push('');
+
+  // 検証
+  out.push('=== 検証 ===');
+  var allOk = true;
+
+  // 1. 「新規」が0行
+  var shinkikuAfter = afterDist[FROM_VALUE] || 0;
+  var check1 = shinkikuAfter === 0;
+  out.push('  [' + (check1 ? 'OK' : 'NG') + '] "新規"が0行: 実測=' + shinkikuAfter);
+  if (!check1) allOk = false;
+
+  // 2. 合計379行が変わっていない
+  var totalWithEmpty = afterTotal + afterEmpty;
+  var check2 = totalWithEmpty === EXPECTED_TOTAL;
+  out.push('  [' + (check2 ? 'OK' : 'NG') + '] 合計379行: 実測=' + totalWithEmpty);
+  if (!check2) allOk = false;
+
+  // 3. 分布が期待値と一致
+  var distOk = true;
+  Object.keys(EXPECTED_DIST).forEach(function(k) {
+    var exp = EXPECTED_DIST[k];
+    var act = afterDist[k] || 0;
+    if (exp !== act) {
+      out.push('  [NG] ' + k + ' 期待=' + exp + ' 実測=' + act);
+      distOk = false;
+      allOk = false;
+    }
+  });
+  // 期待値に無いキーが出現していないか
+  Object.keys(afterDist).forEach(function(k) {
+    if (EXPECTED_DIST[k] === undefined) {
+      out.push('  [NG] 想定外の値: "' + k + '" (' + afterDist[k] + '行)');
+      distOk = false;
+      allOk = false;
+    }
+  });
+  if (distOk) {
+    out.push('  [OK] 分布が期待値と一致');
+  }
+
+  out.push('');
+  out.push('=== 最終判定: ' + (allOk ? '全項目OK ✓' : '異常あり ✗（上記NGを確認してください）') + ' ===');
+  Logger.log(out.join('\n'));
+  return out.join('\n');
+}
