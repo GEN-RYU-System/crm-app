@@ -250,3 +250,105 @@ function inspectOptionsMasterStructure() {
   Logger.log(out.join('\n'));
   return out.join('\n');
 }
+
+/**
+ * 【DRY RUN / 読み取り専用】リード管理「リードステータス」列の実測値調査
+ * - 値の分布（行数つき）
+ * - 「新規」→「新規リード」の変換対象件数
+ * - 変換後に全行が10値に収まるかチェック（合格条件: 全件適合）
+ * - 空欄行数
+ * 書き込みは一切行わない
+ */
+function dryRunLeadStatusConversion() {
+  var TARGET_VALUES = [
+    '新規リード', 'リード対応中', 'アサイン確定', 'リード対象外',
+    '商談中', '商談対象外', '追客(短期)', '追客(長期)', '成約', '失注'
+  ];
+  var CONVERSION_MAP = { '新規': '新規リード' };
+
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName('リード管理');
+  if (!sh) { Logger.log('[NOT FOUND] リード管理'); return '[NOT FOUND] リード管理'; }
+
+  var lastCol = sh.getLastColumn();
+  var lastRow = sh.getLastRow();
+  var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var colIdx = headers.indexOf('リードステータス');
+
+  if (colIdx < 0) {
+    var msg = '[NOT FOUND] リードステータス列 (全' + lastCol + '列を検索)';
+    Logger.log(msg);
+    return msg;
+  }
+
+  var out = [
+    '=== DRY RUN: リードステータス実測 ===',
+    'シート: リード管理',
+    'リードステータス列: col' + (colIdx + 1),
+    '総行数（ヘッダー除く）: ' + (lastRow - 1),
+    ''
+  ];
+
+  var rawValues = sh.getRange(2, colIdx + 1, lastRow - 1, 1).getValues();
+  var distribution = {};
+  var emptyCount = 0;
+
+  rawValues.forEach(function(row) {
+    var v = String(row[0] || '').trim();
+    if (v === '') {
+      emptyCount++;
+    } else {
+      distribution[v] = (distribution[v] || 0) + 1;
+    }
+  });
+
+  // 1. 実測値の分布
+  out.push('=== 1. 実測値の分布 ===');
+  var sortedKeys = Object.keys(distribution).sort(function(a, b) {
+    return distribution[b] - distribution[a];
+  });
+  sortedKeys.forEach(function(k) { out.push('  ' + k + ': ' + distribution[k] + '行'); });
+  out.push('  （空欄）: ' + emptyCount + '行');
+  out.push('');
+
+  // 2. 変換対象件数（新規 → 新規リード）
+  out.push('=== 2. 変換対象件数 ===');
+  var conversionTotal = 0;
+  Object.keys(CONVERSION_MAP).forEach(function(from) {
+    var to = CONVERSION_MAP[from];
+    var count = distribution[from] || 0;
+    out.push('  "' + from + '" → "' + to + '": ' + count + '行');
+    conversionTotal += count;
+  });
+  out.push('  変換対象合計: ' + conversionTotal + '行');
+  out.push('');
+
+  // 3. 変換後に全件が10値に収まるか
+  out.push('=== 3. 変換後の適合チェック ===');
+  var targetSet = {};
+  TARGET_VALUES.forEach(function(v) { targetSet[v] = true; });
+  var nonConforming = [];
+  sortedKeys.forEach(function(k) {
+    var converted = CONVERSION_MAP[k] || k;
+    if (!targetSet[converted]) {
+      nonConforming.push('"' + k + '" → "' + converted + '" (' + distribution[k] + '行)');
+    }
+  });
+  if (nonConforming.length === 0) {
+    out.push('  判定: 全件適合');
+    out.push('  （変換後、全' + (lastRow - 1 - emptyCount) + '行が10値のいずれかに収まる）');
+  } else {
+    out.push('  判定: 不適合あり');
+    nonConforming.forEach(function(s) { out.push('  不適合: ' + s); });
+  }
+  out.push('');
+
+  // 4. 空欄行数
+  out.push('=== 4. 空欄行数 ===');
+  out.push('  空欄: ' + emptyCount + '行');
+  out.push('');
+
+  out.push('--- DRY RUN 完了（書き込みなし）---');
+  Logger.log(out.join('\n'));
+  return out.join('\n');
+}
