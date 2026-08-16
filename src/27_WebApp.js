@@ -2264,7 +2264,7 @@ function generateNextStaffId() {
   }
 
   const nextNum = maxNum + 1;
-  return CONFIG.STAFF_ID_PREFIX + String(nextNum).padStart(3, '0');
+  return CONFIG.STAFF_ID_PREFIX + String(nextNum).padStart(5, '0');
 }
 
 /**
