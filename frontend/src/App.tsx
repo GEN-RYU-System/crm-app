@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { canAccessNavigationItem, DATA_MANAGEMENT_ROOT, hasNavigationPermission, NAVIGATION_BY_ID, visibleDataManagementItems, visibleNavigationGroups, type NavigationPermissions } from './app/navigation';
+import { canAccessNavigationItem, DATA_MANAGEMENT_ROOT, hasNavigationPermission, NAVIGATION_BY_ID, STAFF_MANAGEMENT_ROOT, visibleDataManagementItems, visibleNavigationGroups, type NavigationPermissions } from './app/navigation';
 import { AppShell } from './components/shell';
 import { Spinner, StatusMessage } from './components/ui';
 import { getCurrentUser, getDashboardKpis, type DashboardKpis } from './gas/client';
 import { ComponentCatalogPage } from './pages/catalog/ComponentCatalogPage';
 import { customerGasRepository } from './features/customers/gasAdapter';
+import { staffGasRepository } from './features/staff/gasAdapter';
 import { CustomerDetailPage } from './pages/customers/CustomerDetailPage';
 import { CustomerListPage } from './pages/customers/CustomerListPage';
 import { CUSTOMER_ROUTE_SEGMENTS } from './pages/customers/customerConfig';
@@ -16,8 +17,9 @@ import { LeadEditorPage } from './pages/leads/LeadEditorPage';
 import { LEAD_EDITOR_SEGMENTS } from './pages/leads/leadEditorConfig';
 import { LeadListPage } from './pages/leads/LeadListPage';
 import { InboxPreviewPage } from './pages/inbox/InboxPreviewPage';
+import { StaffListPage } from './pages/staff/StaffListPage';
 import { inboxPreviewRepository } from './features/inbox/previewAdapter';
-import { customersCopy, errorCopy, inboxCopy, leadsCopy } from './content/ja';
+import { customersCopy, errorCopy, inboxCopy, leadsCopy, staffCopy } from './content/ja';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type PermissionState =
@@ -31,6 +33,10 @@ function LeadPermissionLoading() {
 
 function CustomerPermissionLoading() {
   return <StatusMessage variant="loading"><Spinner size="sm" aria-label={customersCopy.loading} />{customersCopy.loading}</StatusMessage>;
+}
+
+function StaffPermissionLoading() {
+  return <StatusMessage variant="loading"><Spinner size="sm" aria-label={staffCopy.loading} />{staffCopy.loading}</StatusMessage>;
 }
 
 export default function App() {
@@ -66,6 +72,7 @@ export default function App() {
   const canAccessLeads = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.leads, permissions);
   const canAccessCustomers = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.customers, permissions);
   const canAccessInbox = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.inbox, permissions);
+  const canAccessStaff = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.staff, permissions);
   const canAddLeads = hasNavigationPermission(permissions, 'lead_add');
   const canEditLeads = hasNavigationPermission(permissions, 'lead_edit');
   const leadsRoute = permissionState.status === 'checking' ? <LeadPermissionLoading /> : canAccessLeads ? <LeadListPage canAdd={canAddLeads} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
@@ -73,6 +80,7 @@ export default function App() {
   const createRoute = canAccessLeads && canAddLeads ? <LeadEditorPage mode="create" canEdit={false} /> : <Navigate to={canAccessLeads ? NAVIGATION_BY_ID.leads.hash : NAVIGATION_BY_ID.dashboard.hash} replace />;
   const detailRoute = canAccessLeads ? <LeadEditorPage mode="detail" canEdit={canEditLeads} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const customersRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerListPage repository={customerGasRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+  const staffRoute = permissionState.status === 'checking' ? <StaffPermissionLoading /> : canAccessStaff ? <StaffListPage repository={staffGasRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const customerDetailRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerDetailPage repository={customerGasRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const dataManagementRoute = permissionState.status === 'checking'
     ? <LeadPermissionLoading />
@@ -91,6 +99,7 @@ export default function App() {
       <Route index element={customersRoute} />
       <Route path={CUSTOMER_ROUTE_SEGMENTS.detail} element={customerDetailRoute} />
     </Route>
+    <Route path={STAFF_MANAGEMENT_ROOT} element={staffRoute} />
     <Route path={NAVIGATION_BY_ID.inbox.hash} element={inboxRoute} />
     <Route path="/leads-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
     <Route path="/new-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
