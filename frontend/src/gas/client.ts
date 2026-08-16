@@ -1,5 +1,6 @@
 import { errorCopy, leadsCopy } from '../content/ja';
 import type { CustomerAggregateDto, CustomerSummaryDto } from '../features/customers/contracts';
+import type { StaffProfileDto, StaffSummaryDto } from '../features/staff/contracts';
 
 export type DashboardKpis = {
   leadsIn: number;
@@ -178,5 +179,45 @@ export function getCoreCustomer(customerId: string): Promise<CustomerAggregateDt
       })
       .withFailureHandler((error) => reject(toError(error)))
       .getCoreCustomerForFrontend(customerId);
+  });
+}
+
+export function getCoreStaff(): Promise<readonly StaffSummaryDto[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (!Array.isArray(value)) {
+          reject(new Error(errorCopy.communication));
+          return;
+        }
+        resolve(value as StaffSummaryDto[]);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getCoreStaffForFrontend();
+  });
+}
+
+export function getCoreStaffMember(staffId: string): Promise<StaffProfileDto | null> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (value === null) {
+          resolve(null);
+          return;
+        }
+        if (typeof value !== 'object' || Array.isArray(value)) {
+          reject(new Error(errorCopy.communication));
+          return;
+        }
+        resolve(value as StaffProfileDto);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getCoreStaffMemberForFrontend(staffId);
   });
 }
