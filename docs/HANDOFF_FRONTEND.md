@@ -9,11 +9,13 @@
 ## 1. React アプリの配信構造
 
 ```
-Vite build（frontend/）
-  ↓ npm run build
-dist/（JS・CSS バンドル）
-  ↓ インライン化スクリプト（【推測】別途 build スクリプトが存在するはず）
+npm run build:gas（frontend/ で実行）
+  ↓ tsc --noEmit（型チェック）
+  ↓ vite build（vite-plugin-singlefile が JS・CSS をインライン化）
+frontend/dist/index.html
+  ↓ scripts/emit-gas-html.mjs（dist/index.html を src/ReactPoc.html へコピー）
 src/ReactPoc.html（82行 / 287KB）
+  ↓ scripts/check-design-system.mjs（dist と ReactPoc.html の内容一致を検証）
   ↓ clasp push
 GAS プロジェクト
   ↓ doGet()（src/27_WebApp.js 経由）
@@ -254,9 +256,10 @@ GAS 側の作業（React 外）:
     ・permissions 画面は「スタッフを選んで権限を設定する」UI になるはず【推測】
     ・staff が画面として存在していないと UX が破綻する
 
-  quotes → invoices
-    ・GAS スキーマで invoice が quote_id を参照している可能性が高い【推測】
-    ・少なくとも「見積を請求書に変換する」操作が必要ならば quotes が先
+  invoices の親は ORDERS（スキーマ実測）
+    ・src/00_CoreSchemaRegistry.js L60 で確認: INVOICES の referenceIds は ORDERS を指す
+    ・QUOTES テーブルはスキーマに存在しない
+    ・業務上「見積を請求書に変換する」操作が必要なら quotes が invoices の前提になりうる【推測】
 
   quotes → quoteHistory
     ・quoteHistory は quotes の履歴ビューであるため quotes が先
