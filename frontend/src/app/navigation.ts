@@ -25,6 +25,10 @@ export type NavigationItemId =
   | 'faq'
   | 'deals'
   | 'staff'
+  | 'staffManagement'
+  | 'roles'
+  | 'compensationSettings'
+  | 'compensationRecords'
   | 'permissions'
   | 'dataManagement'
   | 'preferences'
@@ -50,6 +54,15 @@ export type NavigationGroup = {
   order: number;
   items: readonly NavigationItem[];
 };
+
+export const STAFF_MANAGEMENT_ROOT = '/staff';
+
+export const STAFF_MANAGEMENT_ITEMS: readonly NavigationItem[] = [
+  { id: 'staff', label: navigationCopy.staff, hash: STAFF_MANAGEMENT_ROOT, icon: 'staff', order: 1, state: 'planned', requiredPermission: 'staff_manage' },
+  { id: 'roles', label: navigationCopy.roles, hash: '/roles', icon: 'permissions', order: 2, state: 'planned', requiredPermission: 'staff_manage' },
+  { id: 'compensationSettings', label: navigationCopy.compensationSettings, hash: '/compensation-settings', icon: 'settings', order: 3, state: 'planned', requiredPermission: 'staff_manage' },
+  { id: 'compensationRecords', label: navigationCopy.compensationRecords, hash: '/compensation-records', icon: 'history', order: 4, state: 'planned', requiredPermission: 'staff_manage' }
+];
 
 /**
  * The hub's entry is the already-available lead route. This preserves the
@@ -82,7 +95,7 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
   ] },
   { id: 'management', label: navigationCopy.groups.management, order: 5, items: [
     { id: 'deals', label: navigationCopy.deals, hash: '/deals', icon: 'deals', order: 1, state: 'planned', requiredPermission: 'deal_view_all' },
-    { id: 'staff', label: navigationCopy.staff, hash: '/staff', icon: 'staff', order: 2, state: 'planned', requiredPermission: 'staff_manage' },
+    { id: 'staffManagement', label: navigationCopy.staffManagement, hash: STAFF_MANAGEMENT_ROOT, icon: 'staff', order: 2, state: 'planned', requiredPermission: 'staff_manage', children: STAFF_MANAGEMENT_ITEMS },
     { id: 'permissions', label: navigationCopy.permissions, hash: '/permissions', icon: 'permissions', order: 3, state: 'planned', requiredPermission: 'admin_access' },
     { id: 'dataManagement', label: navigationCopy.dataManagement, hash: DATA_MANAGEMENT_ROOT, icon: 'database', order: 4, state: 'available', requiredPermission: 'lead_view', children: DATA_MANAGEMENT_ITEMS }
   ] },
