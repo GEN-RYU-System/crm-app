@@ -51,6 +51,43 @@ function checkPermissionSheet() {
 }
 
 /**
+ * 【読み取り専用】フォームトークンの発行状況を件数で返す
+ * トークンの値そのものは出力しない
+ */
+function checkFormTokenStatus() {
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName('フォームトークン');
+  if (!sh) { Logger.log('[NOT FOUND]'); return '[NOT FOUND]'; }
+  if (sh.getLastRow() < 2) { Logger.log('発行済み0件'); return '発行済み0件'; }
+
+  var v = sh.getDataRange().getValues();
+  var h = v[0];
+  var issuedIdx = h.indexOf('発行日');
+  var usedIdx   = h.indexOf('使用日');
+  var now = new Date();
+
+  var total = 0, used = 0, expired = 0, active = 0;
+  v.slice(1).forEach(function(r) {
+    if (!String(r[0] || '').trim()) return;
+    total++;
+    if (String(r[usedIdx] || '').trim()) { used++; return; }
+    var issued = r[issuedIdx];
+    if (!(issued instanceof Date)) { active++; return; }
+    var days = (now - issued) / (1000 * 60 * 60 * 24);
+    if (days > 7) expired++; else active++;
+  });
+
+  var out = [
+    '発行済み合計: ' + total,
+    '  使用済み  : ' + used,
+    '  期限切れ  : ' + expired,
+    '  現在有効  : ' + active
+  ];
+  Logger.log(out.join('\n'));
+  return out.join('\n');
+}
+
+/**
  * 【読み取り専用】ORDERS の為替レート充填状況（件数のみ）
  */
 function checkExchangeRate() {
