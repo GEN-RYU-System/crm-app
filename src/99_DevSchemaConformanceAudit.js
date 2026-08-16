@@ -11,6 +11,7 @@
  *      （定義→実データ 超過は可。実データ→定義 超過は不一致）
  *
  * headers が {} の LEGACY テーブルは項目 2・3 をスキップする。
+ * notImplemented: true のテーブルは全項目をスキップし [未実装] と表示する。
  */
 function runCoreSchemaConformanceAudit() {
   if (getEnvironment() !== 'development') {
@@ -23,6 +24,11 @@ function runCoreSchemaConformanceAudit() {
 
   Object.keys(CORE_SCHEMA_V1_TABLES).forEach(tableKey => {
     const table = CORE_SCHEMA_V1_TABLES[tableKey];
+    if (table.notImplemented) {
+      lines.push('[' + tableKey + ' / ' + table.sheetName + '] [未実装] — シート未作成のためスキップ');
+      lines.push('');
+      return;
+    }
     const result = auditCoreSchemaConformanceTable(spreadsheet, tableKey, table);
     totalMismatches += result.mismatchCount;
     result.lines.forEach(line => lines.push(line));
