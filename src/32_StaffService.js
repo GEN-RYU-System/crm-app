@@ -329,7 +329,7 @@ function deleteStaff(staffId) {
  */
 function getUserDarkMode() {
   try {
-    const userEmail = Session.getActiveUser().getEmail();
+    const userEmail = resolveCurrentUserEmail();
     const ss = getSpreadsheet();
     const staffSheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
 
@@ -397,7 +397,7 @@ function getUserDarkMode() {
  */
 function updateUserDarkMode(darkMode) {
   try {
-    const userEmail = Session.getActiveUser().getEmail();
+    const userEmail = resolveCurrentUserEmail();
     const ss = getSpreadsheet();
     const staffSheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
 
@@ -462,7 +462,7 @@ function updateUserDarkMode(darkMode) {
  */
 function getUserMenuPreferences() {
   try {
-    const userEmail = Session.getActiveUser().getEmail();
+    const userEmail = resolveCurrentUserEmail();
     const ss = getSpreadsheet();
     const staffSheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
 
@@ -550,7 +550,7 @@ function getUserMenuPreferences() {
  */
 function updateUserMenuPreferences(menuPreferences) {
   try {
-    const userEmail = Session.getActiveUser().getEmail();
+    const userEmail = resolveCurrentUserEmail();
     const ss = getSpreadsheet();
     const staffSheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
 
