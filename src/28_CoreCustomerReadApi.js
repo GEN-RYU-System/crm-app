@@ -3,7 +3,8 @@
  * 物理シート名・物理ヘッダー名は00_CoreSchemaRegistry.jsから解決する。
  */
 
-function getCoreCustomersForFrontend() {
+function getCoreCustomersForFrontend(sessionId) {
+  setEmailFromSession(sessionId);
   checkPermission('lead_view');
 
   const spreadsheet = getSpreadsheet();
@@ -37,7 +38,8 @@ function getCoreCustomersForFrontend() {
   });
 }
 
-function getCoreCustomerForFrontend(customerId) {
+function getCoreCustomerForFrontend(sessionId, customerId) {
+  setEmailFromSession(sessionId);
   checkPermission('lead_view');
   const normalizedCustomerId = coreCustomerFrontendValue(customerId);
   if (!normalizedCustomerId) throw new Error('CUSTOMER_ID_REQUIRED');

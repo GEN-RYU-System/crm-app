@@ -7,20 +7,20 @@ interface GoogleScriptRunFailure {
 interface GoogleScriptRun {
   withSuccessHandler(handler: (value: unknown) => void): GoogleScriptRun;
   withFailureHandler(handler: (error: GoogleScriptRunFailure) => void): GoogleScriptRun;
-  getDashboardKPIs(): void;
-  getCurrentUser(): void;
-  getLeadsByType(leadType: string): void;
-  getLeadDetail(leadId: string): void;
-  createLead(leadData: Record<string, string>): void;
-  updateLead(sheetName: string, leadId: string, updateData: Record<string, string>): void;
-  getCoreCustomersForFrontend(): void;
-  getCoreCustomerForFrontend(customerId: string): void;
-  getCoreStaffForFrontend(): void;
-  getCoreStaffMemberForFrontend(staffId: string): void;
+  getDashboardKPIs(sessionId: string | null): void;
+  getCurrentUser(sessionId: string | null): void;
+  getLeadsByType(sessionId: string | null, leadType?: string): void;
+  getLeadDetail(sessionId: string | null, leadId: string): void;
+  createLead(sessionId: string | null, leadData: Record<string, string>): void;
+  updateLead(sessionId: string | null, sheetName: string, leadId: string, updateData: Record<string, string>): void;
+  getCoreCustomersForFrontend(sessionId: string | null): void;
+  getCoreCustomerForFrontend(sessionId: string | null, customerId: string): void;
+  getCoreStaffForFrontend(sessionId: string | null): void;
+  getCoreStaffMemberForFrontend(sessionId: string | null, staffId: string): void;
   loginWithPassword(staffId: string, password: string): void;
   logout(sessionId: string): void;
   getSessionUser(sessionId: string): void;
-  changeOwnPasswordForFrontend(currentPassword: string, newPassword: string): void;
+  changeOwnPasswordForFrontend(sessionId: string | null, currentPassword: string, newPassword: string): void;
 }
 
 interface Window {
