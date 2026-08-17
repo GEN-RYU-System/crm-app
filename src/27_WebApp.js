@@ -1559,11 +1559,10 @@ function assignLeadToStaff(leadId, staffId) {
     const leadsData = leadsSheet.getDataRange().getValues();
     const leadsHeaders = leadsData[0];
     const leadIdIdx = leadsHeaders.indexOf('リードID');
-    const leadProgressIdx = leadsHeaders.indexOf('リード進捗');
+    const leadStatusIdx = leadsHeaders.indexOf('リードステータス');
     const staffNameIdx = leadsHeaders.indexOf('営業担当者');
     const staffIdColIdx = leadsHeaders.indexOf('担当者ID');
     const assignDateIdx = leadsHeaders.indexOf('アサイン日');
-    const dealProgressIdx = leadsHeaders.indexOf('商談進捗');
     const updateDateIdx = leadsHeaders.indexOf('シート更新日');
     const customerNameIdx = leadsHeaders.indexOf('顧客名');
 
@@ -1584,11 +1583,10 @@ function assignLeadToStaff(leadId, staffId) {
 
     // リードシートを更新
     const now = new Date();
-    if (leadProgressIdx >= 0) leadsSheet.getRange(leadRowNum, leadProgressIdx + 1).setValue('アサイン確定');
+    if (leadStatusIdx >= 0) leadsSheet.getRange(leadRowNum, leadStatusIdx + 1).setValue('アサイン確定');
     if (staffNameIdx >= 0) leadsSheet.getRange(leadRowNum, staffNameIdx + 1).setValue(staffName);
     if (staffIdColIdx >= 0) leadsSheet.getRange(leadRowNum, staffIdColIdx + 1).setValue(staffId);
     if (assignDateIdx >= 0) leadsSheet.getRange(leadRowNum, assignDateIdx + 1).setValue(now);
-    if (dealProgressIdx >= 0) leadsSheet.getRange(leadRowNum, dealProgressIdx + 1).setValue('アサイン確定');
     if (updateDateIdx >= 0) leadsSheet.getRange(leadRowNum, updateDateIdx + 1).setValue(now);
 
     // 3. Discord通知を送信
@@ -1817,7 +1815,7 @@ function startDeal(leadId) {
     const headers = data[0];
 
     const leadIdIdx = headers.indexOf('リードID');
-    const statusIdx = headers.indexOf('商談進捗'); // 実際のシートでは「商談進捗」
+    const leadStatusIdx = headers.indexOf('リードステータス');
     const updateDateIdx = headers.indexOf('シート更新日');
 
     let leadRowNum = -1;
@@ -1835,7 +1833,7 @@ function startDeal(leadId) {
 
     // ステータスを更新
     const now = new Date();
-    if (statusIdx >= 0) sheet.getRange(leadRowNum, statusIdx + 1).setValue('対応中');
+    if (leadStatusIdx >= 0) sheet.getRange(leadRowNum, leadStatusIdx + 1).setValue('商談中');
     if (updateDateIdx >= 0) sheet.getRange(leadRowNum, updateDateIdx + 1).setValue(now);
 
     return {
