@@ -103,7 +103,7 @@ function saveQuote(quoteData) {
     const quoteId = generateQuoteId();
 
     // 現在のユーザー情報取得
-    const userEmail = Session.getActiveUser().getEmail();
+    const userEmail = resolveCurrentUserEmail();
 
     // 作成日・有効期限
     const createdDate = new Date();

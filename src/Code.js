@@ -31,7 +31,7 @@ function getInitialAppPayload() {
     crm: {
       customers: customerMaster
     },
-    user: Session.getActiveUser().getEmail()
+    user: resolveCurrentUserEmail()
   };
 }
 
