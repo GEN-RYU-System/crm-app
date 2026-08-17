@@ -163,6 +163,15 @@ function testLoginServiceAll() {
   var capturedSessionId = null;
   var r = {};
 
+  // ── (0) 前処理: STATUS=無効・残存セッション失効（冪等化）─────────────────
+  try {
+    updateCoreStaffForFrontend(TEST_STAFF_ID, { status: statusInactive });
+    revokeAllSessionsForStaff(TEST_STAFF_ID);
+    r.r0_pass = true;
+  } catch (e) {
+    return { stoppedAt: '(0)', reason: '前処理失敗: ' + e.message };
+  }
+
   // ── (1) loginWithPassword (STATUS=無効) → LOGIN_FAILED ─────────────────
   try {
     loginWithPassword(TEST_STAFF_ID, TEST_PW);
