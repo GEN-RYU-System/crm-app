@@ -23,6 +23,10 @@ export type LeadType = typeof leadsCopy.leadTypes[keyof typeof leadsCopy.leadTyp
 export type LeadRecord = Record<string, unknown>;
 export type LeadCreateResult = { success: true; leadId: string; message?: string };
 
+function getStoredSessionId(): string | null {
+  return sessionStorage.getItem('crm_session_id') ?? localStorage.getItem('crm_session_id');
+}
+
 function toError(error: unknown): Error {
   if (error instanceof Error) return error;
   if (typeof error === 'object' && error !== null && 'message' in error) {
@@ -41,7 +45,7 @@ export function getDashboardKpis(): Promise<DashboardKpis> {
     runner
       .withSuccessHandler((value) => resolve(value as DashboardKpis))
       .withFailureHandler((error) => reject(toError(error)))
-      .getDashboardKPIs();
+      .getDashboardKPIs(getStoredSessionId());
   });
 }
 
@@ -60,7 +64,7 @@ export function getCurrentUser(): Promise<CurrentUser> {
         resolve({ success: user.success === true, permissions: user.permissions });
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .getCurrentUser();
+      .getCurrentUser(getStoredSessionId());
   });
 }
 
@@ -79,8 +83,7 @@ export function getLeadsByType(leadType?: LeadType): Promise<LeadRecord[]> {
       })
       .withFailureHandler((error) => reject(toError(error)));
 
-    if (leadType === undefined) (call.getLeadsByType as () => void)();
-    else call.getLeadsByType(leadType);
+    call.getLeadsByType(getStoredSessionId(), leadType);
   });
 }
 
@@ -102,7 +105,7 @@ export function getLeadDetail(leadId: string): Promise<LeadRecord | null> {
         resolve(value as LeadRecord);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .getLeadDetail(leadId);
+      .getLeadDetail(getStoredSessionId(), leadId);
   });
 }
 
@@ -120,7 +123,7 @@ export function createLead(leadData: Record<string, string>): Promise<LeadCreate
         resolve(value as LeadCreateResult);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .createLead(leadData);
+      .createLead(getStoredSessionId(), leadData);
   });
 }
 
@@ -138,7 +141,7 @@ export function updateLead(sheetName: string, leadId: string, updateData: Record
         resolve(value);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .updateLead(sheetName, leadId, updateData);
+      .updateLead(getStoredSessionId(), sheetName, leadId, updateData);
   });
 }
 
@@ -156,7 +159,7 @@ export function getCoreCustomers(): Promise<readonly CustomerSummaryDto[]> {
         resolve(value as CustomerSummaryDto[]);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .getCoreCustomersForFrontend();
+      .getCoreCustomersForFrontend(getStoredSessionId());
   });
 }
 
@@ -178,7 +181,7 @@ export function getCoreCustomer(customerId: string): Promise<CustomerAggregateDt
         resolve(value as CustomerAggregateDto);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .getCoreCustomerForFrontend(customerId);
+      .getCoreCustomerForFrontend(getStoredSessionId(), customerId);
   });
 }
 
@@ -196,7 +199,7 @@ export function getCoreStaff(): Promise<readonly StaffSummaryDto[]> {
         resolve(value as StaffSummaryDto[]);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .getCoreStaffForFrontend();
+      .getCoreStaffForFrontend(getStoredSessionId());
   });
 }
 
@@ -218,7 +221,7 @@ export function getCoreStaffMember(staffId: string): Promise<StaffProfileDto | n
         resolve(value as StaffProfileDto);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .getCoreStaffMemberForFrontend(staffId);
+      .getCoreStaffMemberForFrontend(getStoredSessionId(), staffId);
   });
 }
 
@@ -280,6 +283,6 @@ export function changeOwnPasswordForFrontend(currentPassword: string, newPasswor
     runner
       .withSuccessHandler(() => resolve())
       .withFailureHandler((error) => reject(toError(error)))
-      .changeOwnPasswordForFrontend(currentPassword, newPassword);
+      .changeOwnPasswordForFrontend(getStoredSessionId(), currentPassword, newPassword);
   });
 }
