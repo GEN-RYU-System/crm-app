@@ -42,3 +42,56 @@ function hashPassword(password, salt) {
 function verifyPassword(password, salt, storedHash) {
   return hashPassword(password, salt) === storedHash;
 }
+
+// ─────────────────────────────────────────────
+// DEV専用テストラッパー
+// ─────────────────────────────────────────────
+
+/**
+ * hashPassword / verifyPassword の動作確認（DEV専用）。
+ * テストパラメータ: password='test1234', salt='fixed-salt-for-test'
+ *
+ * @returns {{
+ *   hash1: string, hash2: string, hashesMatch: boolean,
+ *   elapsed1Ms: number, elapsed2Ms: number,
+ *   verifyCorrect: boolean, verifyWrong: boolean
+ * }}
+ */
+function testHashPasswordAndVerify() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('testHashPasswordAndVerify は development 環境でのみ実行可能');
+  }
+  var password = 'test1234';
+  var salt = 'fixed-salt-for-test';
+
+  var t1 = Date.now();
+  var hash1 = hashPassword(password, salt);
+  var elapsed1 = Date.now() - t1;
+
+  var t2 = Date.now();
+  var hash2 = hashPassword(password, salt);
+  var elapsed2 = Date.now() - t2;
+
+  return {
+    hash1: hash1,
+    hash2: hash2,
+    hashesMatch: hash1 === hash2,
+    elapsed1Ms: elapsed1,
+    elapsed2Ms: elapsed2,
+    verifyCorrect: verifyPassword(password, salt, hash1),
+    verifyWrong: verifyPassword('wrong', salt, hash1)
+  };
+}
+
+/**
+ * generatePasswordSalt の動作確認（DEV専用）。
+ * @returns {{ salt1: string, salt2: string, different: boolean }}
+ */
+function testGeneratePasswordSalt() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('testGeneratePasswordSalt は development 環境でのみ実行可能');
+  }
+  var salt1 = generatePasswordSalt();
+  var salt2 = generatePasswordSalt();
+  return { salt1: salt1, salt2: salt2, different: salt1 !== salt2 };
+}
