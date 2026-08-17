@@ -17,6 +17,10 @@ interface GoogleScriptRun {
   getCoreCustomerForFrontend(customerId: string): void;
   getCoreStaffForFrontend(): void;
   getCoreStaffMemberForFrontend(staffId: string): void;
+  loginWithPassword(staffId: string, password: string): void;
+  logout(sessionId: string): void;
+  getSessionUser(sessionId: string): void;
+  changeOwnPasswordForFrontend(currentPassword: string, newPassword: string): void;
 }
 
 interface Window {
