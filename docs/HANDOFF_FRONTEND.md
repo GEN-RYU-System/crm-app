@@ -323,3 +323,38 @@ React側で機能を実装
 - **inbox の `previewAdapter` は意図的なモック**。GAS 接続の実装前に UI を先行確認するための仮実装。本番にするには `gasAdapter.ts` を新規作成し、App.tsx の `inboxPreviewRepository` を差し替える。
 - **新しい permission を追加するには 2 か所を変更する**: `navigation.ts` の `NavigationPermission` 型 + `27_WebApp.js` の `getPermissionsByRole()` のマッピング。型だけ追加しても GAS が返さなければ常に false になる。
 - **`state: 'planned'` のページはサイドバーで表示されない**（`visibleNavigationGroups` がフィルタリングする）。開発中に表示したければ `'preview'` に変える。`'preview'` は表示されるが UI 上で Preview バッジが付く。
+
+---
+
+## 11. ロール管理の構想（未着手）
+
+- ロールにIDを付与し、ロールマスタで管理する構想がある
+- 権限を「編集 / 閲覧 / 非表示」の3値にする
+- フロントのロール管理ページで追加・編集・削除し、
+  スタッフページのプルダウンで各担当者に割り当てる
+- 着手時期: planned ページが揃い、必要な権限が確定してから。
+  ページが出揃う前に作ると、ページ追加のたびにマスタ変更が必要になる
+
+---
+
+## 12. 権限まわりの現状（実測・2026-08-17）
+
+- 権限設定シート（`CONFIG.SHEETS.PERMISSIONS = '権限設定'`）が実在。
+  ヘッダー = 役割名 + 16権限キー
+- 同じ構造が `08_Config.js` の `DEFAULT_ROLES` にも定数として存在（二重管理）
+  - `getPermissionsList()` はシートを読む
+  - `getPermissionsByStaffId()` / `getRolePermissions()` は `DEFAULT_ROLES` を読む
+  - どちらが正かは未確定
+- `getRolePermissions()` のフォールバック（未定義ロール時の戻り値）の
+  キー名が `DEFAULT_ROLES` と不一致
+  （`lead_view_all` / `dashboard_personal` 等、存在しないキーを返す）
+  → 未定義ロールが指定されると全権限が無効になる。要修正
+- 権限キー16種:
+  `dashboard_view` / `dashboard_cs` / `dashboard_sales` / `dashboard_leader` /
+  `lead_view` / `lead_add` / `lead_edit` / `lead_delete` /
+  `deal_view_all` / `deal_view_own` / `deal_edit` / `team_stats` /
+  `staff_manage` / `settings` / `admin_access` / `force_reset`
+- 認証は2系統が並存
+  - `AuthContext`: `role`（文字列）のみ保持
+  - `App.tsx`: `getCurrentUser()` で `NavigationPermissions` を別途取得
+  → 将来的に統合を検討
