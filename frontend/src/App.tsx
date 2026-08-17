@@ -13,6 +13,7 @@ import { CustomerListPage } from './pages/customers/CustomerListPage';
 import { CUSTOMER_ROUTE_SEGMENTS } from './pages/customers/customerConfig';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { DataManagementPage } from './pages/data-management/DataManagementPage';
+import { CustomerListCacheProvider } from './pages/customers/CustomerListCacheContext';
 import { LeadListCacheProvider } from './pages/leads/LeadListCacheContext';
 import { LeadEditorPage } from './pages/leads/LeadEditorPage';
 import { LEAD_EDITOR_SEGMENTS } from './pages/leads/leadEditorConfig';
@@ -101,7 +102,7 @@ function AppRouter() {
   const inboxRoute = permissionState.status === 'checking' ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={inboxCopy.loading} />{inboxCopy.loading}</StatusMessage> : canAccessInbox ? <InboxPreviewPage repository={inboxPreviewRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const createRoute = canAccessLeads && canAddLeads ? <LeadEditorPage mode="create" canEdit={false} /> : <Navigate to={canAccessLeads ? NAVIGATION_BY_ID.leads.hash : NAVIGATION_BY_ID.dashboard.hash} replace />;
   const detailRoute = canAccessLeads ? <LeadEditorPage mode="detail" canEdit={canEditLeads} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
-  const customersRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerListPage repository={customerGasRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+  const customersRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerListPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const staffRoute = permissionState.status === 'checking' ? <StaffPermissionLoading /> : canAccessStaff ? <StaffListPage repository={staffGasRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const customerDetailRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerDetailPage repository={customerGasRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const dataManagementRoute = permissionState.status === 'checking'
@@ -110,7 +111,7 @@ function AppRouter() {
       ? <DataManagementPage navigationItems={dataManagementItems} />
       : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
 
-  return <HashRouter><LeadListCacheProvider><AppShell navigationGroups={navigationGroups}><Routes>
+  return <HashRouter><LeadListCacheProvider><CustomerListCacheProvider repository={customerGasRepository}><AppShell navigationGroups={navigationGroups}><Routes>
     <Route path={NAVIGATION_BY_ID.dashboard.hash} element={<DashboardPage kpis={kpis} state={state} error={error} onRefresh={() => void load()} />} />
     <Route path={DATA_MANAGEMENT_ROOT} element={dataManagementRoute}>
       <Route index element={leadsRoute} />
@@ -130,5 +131,5 @@ function AppRouter() {
     <Route path={NAVIGATION_BY_ID.components.hash} element={<ComponentCatalogPage />} />
     <Route path="/change-password" element={<ChangePasswordPage />} />
     <Route path="*" element={<Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />} />
-  </Routes></AppShell></LeadListCacheProvider></HashRouter>;
+  </Routes></AppShell></CustomerListCacheProvider></LeadListCacheProvider></HashRouter>;
 }
