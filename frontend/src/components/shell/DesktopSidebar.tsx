@@ -8,9 +8,16 @@ import './DesktopSidebar.css';
 type Props = { expanded: boolean; hoverSuppressed: boolean; onMouseEnter: () => void; onMouseLeave: () => void; onNavClick: () => void; navigationGroups: readonly NavigationGroup[] };
 
 function SidebarFooter() {
-  const { logout } = useAuth();
+  const { state, logout } = useAuth();
+  const user = state.status === 'authenticated' ? state.user : null;
   return (
     <div className="shell-desktop-sidebar__footer">
+      {user && (
+        <div className="shell-desktop-sidebar__user-info" aria-label={authCopy.userInfoAriaLabel}>
+          <span className="shell-sidebar-nav__label shell-desktop-sidebar__user-name">{user.fullNameJa}</span>
+          <span className="shell-sidebar-nav__label shell-desktop-sidebar__user-meta">{user.role}{authCopy.userInfoSeparator}{user.staffId}</span>
+        </div>
+      )}
       <NavLink to="/change-password" className="shell-sidebar-nav__item shell-desktop-sidebar__footer-link">
         <span className="shell-sidebar-nav__label">{authCopy.changePasswordLink}</span>
       </NavLink>
