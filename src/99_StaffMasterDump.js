@@ -924,3 +924,53 @@ function surveyProgressColumnDetail() {
   Logger.log(out.join("\n"));
   return out.join("\n");
 }
+
+/**
+ * トリガー一覧を返す（clasp run 用 - UI 呼び出しなし）
+ * ScriptApp.getProjectTriggers() で全件列挙し、
+ * ハンドラ関数名・イベント種別・実行頻度・ID を返す
+ */
+function listTriggersForClasp() {
+  var out = [];
+  var targets = [
+    'onEditTrigger', 'archiveOnStatusChange',
+    'checkAndRemind', 'checkDealRemind', 'checkActionDateRemind'
+  ];
+
+  try {
+    var triggers = ScriptApp.getProjectTriggers();
+    out.push('=== トリガー一覧 (' + triggers.length + '件) ===');
+
+    if (triggers.length === 0) {
+      out.push('  （登録なし）');
+    }
+
+    triggers.forEach(function(t, i) {
+      var fn   = t.getHandlerFunction();
+      var et   = String(t.getEventType());
+      var src  = String(t.getTriggerSource());
+      var uid  = t.getUniqueId();
+      out.push('');
+      out.push('--- [' + (i + 1) + '] ---');
+      out.push('  ハンドラ関数: ' + fn);
+      out.push('  イベント種別: ' + et);
+      out.push('  トリガーソース: ' + src);
+      out.push('  ID: ' + uid);
+    });
+
+    out.push('');
+    out.push('=== 調査対象関数の登録状況 ===');
+    var registeredFns = triggers.map(function(t) { return t.getHandlerFunction(); });
+    targets.forEach(function(fn) {
+      var found = registeredFns.indexOf(fn) >= 0;
+      out.push('  ' + fn + ': ' + (found ? '[登録あり]' : '未登録'));
+    });
+
+  } catch (e) {
+    out.push('ERROR: ' + e.message);
+  }
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
