@@ -103,13 +103,11 @@ function manualArchive() {
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const archiveDateColIndex = headers.indexOf('アーカイブ日');
   const archiveReasonColIndex = headers.indexOf('アーカイブ理由');
-  const statusColIndex = headers.indexOf('商談進捗');
-  if (statusColIndex < 0) throw new Error('列が見つかりません: 商談進捗');
   const updateDateColIndex = headers.indexOf('シート更新日');
 
   const now = new Date();
 
-  // 各行にアーカイブ情報を設定
+  // 各行にアーカイブ情報を設定（商談進捗への書き込みを廃止。アーカイブ日・理由で管理）
   for (let i = startRow; i < startRow + numRows; i++) {
     if (archiveDateColIndex !== -1) {
       sheet.getRange(i, archiveDateColIndex + 1).setValue(now);
@@ -117,7 +115,6 @@ function manualArchive() {
     if (archiveReasonColIndex !== -1) {
       sheet.getRange(i, archiveReasonColIndex + 1).setValue('手動アーカイブ');
     }
-    sheet.getRange(i, statusColIndex + 1).setValue('アーカイブ');
     if (updateDateColIndex !== -1) {
       sheet.getRange(i, updateDateColIndex + 1).setValue(now);
     }
@@ -183,14 +180,13 @@ function restoreFromArchive() {
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const archiveDateColIndex = headers.indexOf('アーカイブ日');
   const archiveReasonColIndex = headers.indexOf('アーカイブ理由');
-  const statusColIndex = headers.indexOf('商談進捗');
-  if (statusColIndex < 0) throw new Error('列が見つかりません: 商談進捗');
+  const leadStatusColIndex = headers.indexOf('リードステータス');
   const reapproachDateColIndex = headers.indexOf('次回アクション日');
   const updateDateColIndex = headers.indexOf('シート更新日');
 
   const now = new Date();
 
-  // 各行のアーカイブ情報をクリアし、ステータスを復元
+  // 各行のアーカイブ情報をクリアし、リードステータスを復元
   for (let i = startRow; i < startRow + numRows; i++) {
     if (archiveDateColIndex !== -1) {
       sheet.getRange(i, archiveDateColIndex + 1).setValue('');
@@ -198,7 +194,9 @@ function restoreFromArchive() {
     if (archiveReasonColIndex !== -1) {
       sheet.getRange(i, archiveReasonColIndex + 1).setValue('');
     }
-    sheet.getRange(i, statusColIndex + 1).setValue('対応中');
+    if (leadStatusColIndex !== -1) {
+      sheet.getRange(i, leadStatusColIndex + 1).setValue('リード対応中');
+    }
     if (reapproachDateColIndex !== -1) {
       sheet.getRange(i, reapproachDateColIndex + 1).setValue(now);
     }
@@ -239,8 +237,6 @@ function archiveToDroppedLead(leadId, archiveReason, csMemo) {
   const idIdx = headers.indexOf('リードID');
   const archiveDateIdx = headers.indexOf('アーカイブ日');
   const archiveReasonIdx = headers.indexOf('アーカイブ理由');
-  const statusIdx = headers.indexOf('商談進捗');
-  if (statusIdx < 0) throw new Error('列が見つかりません: 商談進捗');
   const lastHandlerIdx = headers.indexOf('最終対応者ID');
   const csMemoIdx = headers.indexOf('CSメモ');
   const updateDateIdx = headers.indexOf('シート更新日');
@@ -269,14 +265,13 @@ function archiveToDroppedLead(leadId, archiveReason, csMemo) {
     Logger.log('ユーザー情報取得エラー: ' + e.message);
   }
 
-  // アーカイブ情報を設定
+  // アーカイブ情報を設定（商談進捗への書き込みを廃止。アーカイブ日・理由で管理）
   if (archiveDateIdx >= 0) {
     leadsSheet.getRange(targetRowIndex, archiveDateIdx + 1).setValue(now);
   }
   if (archiveReasonIdx >= 0) {
     leadsSheet.getRange(targetRowIndex, archiveReasonIdx + 1).setValue(archiveReason || '対象外');
   }
-  leadsSheet.getRange(targetRowIndex, statusIdx + 1).setValue('アーカイブ');
   if (lastHandlerIdx >= 0 && currentUserId) {
     leadsSheet.getRange(targetRowIndex, lastHandlerIdx + 1).setValue(currentUserId);
   }
