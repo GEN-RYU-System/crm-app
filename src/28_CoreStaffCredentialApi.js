@@ -50,7 +50,8 @@ function issueTemporaryPasswordForFrontend(staffId) {
  * @param {string} newPassword      新しいパスワード（平文・ログ出力禁止）
  * @returns {{ success: true }}
  */
-function changeOwnPasswordForFrontend(currentPassword, newPassword) {
+function changeOwnPasswordForFrontend(sessionId, currentPassword, newPassword) {
+  setEmailFromSession(sessionId);
   var email = resolveCurrentUserEmail();
   if (!email) throw new Error('認証されていません');
 

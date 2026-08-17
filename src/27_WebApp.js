@@ -397,7 +397,9 @@ function include(filename) {
 /**
  * ダッシュボード用のKPIデータを取得（統合シート版）
  */
-function getDashboardKPIs() {
+function getDashboardKPIs(sessionId) {
+  setEmailFromSession(sessionId);
+  checkPermission('dashboard_view');
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
 
@@ -560,7 +562,8 @@ function getLeads(filter, leadType) {
 /**
  * リード種別でフィルタリングしたリードを取得
  */
-function getLeadsByType(leadType) {
+function getLeadsByType(sessionId, leadType) {
+  setEmailFromSession(sessionId);
   return getLeads('lead', leadType);
 }
 
@@ -569,7 +572,8 @@ function getLeadsByType(leadType) {
  * @param {string} leadId - リードID
  * @returns {Object|null} リード情報オブジェクト、見つからない場合はnull
  */
-function getLeadDetail(leadId) {
+function getLeadDetail(sessionId, leadId) {
+  setEmailFromSession(sessionId);
   console.log('getLeadDetail START: leadId=' + leadId);
 
   try {
@@ -731,7 +735,8 @@ function addNewLead(leadType, leadData) {
 /**
  * 新規リードを作成
  */
-function createLead(leadData) {
+function createLead(sessionId, leadData) {
+  setEmailFromSession(sessionId);
   checkPermission('lead_add');
 
   const ss = getSpreadsheet();
@@ -792,7 +797,8 @@ function createLead(leadData) {
 /**
  * リードを更新
  */
-function updateLead(sheetName, leadId, updateData) {
+function updateLead(sessionId, sheetName, leadId, updateData) {
+  setEmailFromSession(sessionId);
   checkPermission('lead_edit');
 
   const ss = getSpreadsheet();
@@ -1220,7 +1226,8 @@ function debugGetStaffMasterData() {
  * 現在ログイン中のユーザー情報と権限を取得
  * @returns {Object} {success: boolean, name: string, role: string, email: string, permissions: Object}
  */
-function getCurrentUser() {
+function getCurrentUser(sessionId) {
+  setEmailFromSession(sessionId);
   try {
     const email = resolveCurrentUserEmail();
     Logger.log('getCurrentUser: email = ' + email);
