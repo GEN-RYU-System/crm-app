@@ -18,23 +18,16 @@ export type NavigationItemId =
   | 'customers'
   | 'inbox'
   | 'inventory'
-  | 'quotes'
-  | 'quoteHistory'
-  | 'invoices'
-  | 'reports'
-  | 'faq'
-  | 'deals'
   | 'staff'
   | 'staffManagement'
   | 'roles'
   | 'compensationSettings'
   | 'compensationRecords'
-  | 'permissions'
   | 'dataManagement'
-  | 'preferences'
-  | 'knowledge'
-  | 'translationPrompts'
-  | 'templates'
+  | 'sales'
+  | 'productMaster'
+  | 'googleDrive'
+  | 'discord'
   | 'components';
 export type NavigationItemState = 'available' | 'preview' | 'planned';
 export type NavigationItem = {
@@ -49,11 +42,12 @@ export type NavigationItem = {
   children?: readonly NavigationItem[];
 };
 export type NavigationGroup = {
-  id: 'overview' | 'leads' | 'sales' | 'support' | 'management' | 'tools' | 'development';
+  id: 'overview' | 'leads' | 'management' | 'development';
   label: string;
   order: number;
   items: readonly NavigationItem[];
 };
+export type DataManagementGroupDef = { title: string; items: readonly NavigationItem[] };
 
 export const STAFF_MANAGEMENT_ROOT = '/staff';
 
@@ -71,9 +65,34 @@ export const STAFF_MANAGEMENT_ITEMS: readonly NavigationItem[] = [
  */
 export const DATA_MANAGEMENT_ROOT = '/leads';
 
-export const DATA_MANAGEMENT_ITEMS: readonly NavigationItem[] = [
+const DATA_MGMT_SUB_ITEMS: readonly NavigationItem[] = [
   { id: 'leads', label: dataManagementCopy.leads, hash: DATA_MANAGEMENT_ROOT, icon: 'leads', order: 1, state: 'available', requiredPermission: 'lead_view' },
-  { id: 'customers', label: dataManagementCopy.customers, hash: '/customers', icon: 'customers', order: 2, state: 'preview', requiredPermission: 'lead_view' }
+  { id: 'customers', label: dataManagementCopy.customers, hash: '/customers', icon: 'customers', order: 2, state: 'preview', requiredPermission: 'lead_view' },
+  { id: 'sales', label: dataManagementCopy.sales, hash: '/sales', icon: 'invoice', order: 3, state: 'planned', requiredPermission: 'lead_view' }
+];
+
+const PRODUCT_MGMT_SUB_ITEMS: readonly NavigationItem[] = [
+  { id: 'inventory', label: dataManagementCopy.inventory, hash: '/inventory', icon: 'inventory', order: 1, state: 'planned', anyPermissions: ['deal_view_all', 'deal_view_own'] },
+  { id: 'productMaster', label: dataManagementCopy.productMaster, hash: '/product-master', icon: 'inventory', order: 2, state: 'planned', requiredPermission: 'staff_manage' }
+];
+
+const EXTERNAL_LINK_SUB_ITEMS: readonly NavigationItem[] = [
+  { id: 'googleDrive', label: dataManagementCopy.googleDrive, hash: '/google-drive', icon: 'document', order: 1, state: 'planned', requiredPermission: 'admin_access' },
+  { id: 'discord', label: dataManagementCopy.discord, hash: '/discord', icon: 'chat', order: 2, state: 'planned', requiredPermission: 'admin_access' }
+];
+
+export const DATA_MANAGEMENT_ITEMS: readonly NavigationItem[] = [
+  ...STAFF_MANAGEMENT_ITEMS,
+  ...DATA_MGMT_SUB_ITEMS,
+  ...PRODUCT_MGMT_SUB_ITEMS,
+  ...EXTERNAL_LINK_SUB_ITEMS
+];
+
+export const DATA_MANAGEMENT_GROUP_DEFS: readonly DataManagementGroupDef[] = [
+  { title: dataManagementCopy.groupStaffManagement, items: STAFF_MANAGEMENT_ITEMS },
+  { title: dataManagementCopy.groupDataManagement, items: DATA_MGMT_SUB_ITEMS },
+  { title: dataManagementCopy.groupProductManagement, items: PRODUCT_MGMT_SUB_ITEMS },
+  { title: dataManagementCopy.groupExternalLinks, items: EXTERNAL_LINK_SUB_ITEMS }
 ];
 
 export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
@@ -81,31 +100,12 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
     { id: 'dashboard', label: navigationCopy.dashboard, hash: '/dashboard', icon: 'dashboard', order: 1, state: 'available' }
   ] },
   { id: 'leads', label: navigationCopy.groups.leads, order: 2, items: [
-    { id: 'inbox', label: navigationCopy.inbox, hash: '/inbox', icon: 'chat', order: 2, state: 'preview', requiredPermission: 'lead_view' }
+    { id: 'inbox', label: navigationCopy.inbox, hash: '/inbox', icon: 'chat', order: 1, state: 'preview', requiredPermission: 'lead_view' }
   ] },
-  { id: 'sales', label: navigationCopy.groups.sales, order: 3, items: [
-    { id: 'inventory', label: navigationCopy.inventory, hash: '/inventory', icon: 'inventory', order: 1, state: 'planned', anyPermissions: ['deal_view_all', 'deal_view_own'] },
-    { id: 'quotes', label: navigationCopy.quotes, hash: '/quotes', icon: 'document', order: 2, state: 'planned', anyPermissions: ['deal_view_all', 'deal_view_own'] },
-    { id: 'quoteHistory', label: navigationCopy.quoteHistory, hash: '/quote-history', icon: 'history', order: 3, state: 'planned', anyPermissions: ['deal_view_all', 'deal_view_own'] },
-    { id: 'invoices', label: navigationCopy.invoices, hash: '/invoices', icon: 'invoice', order: 4, state: 'planned', anyPermissions: ['deal_view_all', 'deal_view_own'] },
-    { id: 'reports', label: navigationCopy.reports, hash: '/reports', icon: 'reports', order: 5, state: 'planned', anyPermissions: ['deal_view_all', 'deal_view_own'] }
+  { id: 'management', label: navigationCopy.groups.management, order: 3, items: [
+    { id: 'dataManagement', label: navigationCopy.managementCenter, hash: DATA_MANAGEMENT_ROOT, icon: 'database', order: 1, state: 'available', requiredPermission: 'lead_view', children: DATA_MANAGEMENT_ITEMS }
   ] },
-  { id: 'support', label: navigationCopy.groups.support, order: 4, items: [
-    { id: 'faq', label: navigationCopy.faq, hash: '/faq', icon: 'faq', order: 1, state: 'planned' }
-  ] },
-  { id: 'management', label: navigationCopy.groups.management, order: 5, items: [
-    { id: 'deals', label: navigationCopy.deals, hash: '/deals', icon: 'deals', order: 1, state: 'planned', requiredPermission: 'deal_view_all' },
-    { id: 'staffManagement', label: navigationCopy.staffManagement, hash: STAFF_MANAGEMENT_ROOT, icon: 'staff', order: 2, state: 'preview', requiredPermission: 'staff_manage', children: STAFF_MANAGEMENT_ITEMS },
-    { id: 'permissions', label: navigationCopy.permissions, hash: '/permissions', icon: 'permissions', order: 3, state: 'planned', requiredPermission: 'admin_access' },
-    { id: 'dataManagement', label: navigationCopy.dataManagement, hash: DATA_MANAGEMENT_ROOT, icon: 'database', order: 4, state: 'available', requiredPermission: 'lead_view', children: DATA_MANAGEMENT_ITEMS }
-  ] },
-  { id: 'tools', label: navigationCopy.groups.tools, order: 6, items: [
-    { id: 'preferences', label: navigationCopy.preferences, hash: '/preferences', icon: 'settings', order: 1, state: 'planned' },
-    { id: 'knowledge', label: navigationCopy.knowledge, hash: '/knowledge', icon: 'knowledge', order: 2, state: 'planned', anyPermissions: ['admin_access', 'staff_manage'] },
-    { id: 'translationPrompts', label: navigationCopy.translationPrompts, hash: '/translation-prompts', icon: 'translation', order: 3, state: 'planned', anyPermissions: ['admin_access', 'staff_manage'] },
-    { id: 'templates', label: navigationCopy.templates, hash: '/templates', icon: 'templates', order: 4, state: 'planned', requiredPermission: 'admin_access' }
-  ] },
-  { id: 'development', label: navigationCopy.groups.development, order: 7, items: [
+  { id: 'development', label: navigationCopy.groups.development, order: 4, items: [
     { id: 'components', label: navigationCopy.components, hash: '/components', icon: 'components', order: 1, state: 'available' }
   ] }
 ];
@@ -132,7 +132,13 @@ export function visibleNavigationItems(permissions: NavigationPermissions | null
 }
 
 export function visibleDataManagementItems(permissions: NavigationPermissions | null): readonly NavigationItem[] {
-  return NAVIGATION_BY_ID.dataManagement.children?.filter((item) => canAccessNavigationItem(item, permissions)) ?? [];
+  return DATA_MANAGEMENT_ITEMS.filter((item) => canAccessNavigationItem(item, permissions));
+}
+
+export function visibleDataManagementGroups(permissions: NavigationPermissions | null): readonly DataManagementGroupDef[] {
+  return DATA_MANAGEMENT_GROUP_DEFS
+    .map(({ title, items }) => ({ title, items: items.filter((item) => canAccessNavigationItem(item, permissions)) }))
+    .filter(({ items }) => items.length > 0);
 }
 
 export function visibleNavigationGroups(permissions: NavigationPermissions | null): readonly NavigationGroup[] {
