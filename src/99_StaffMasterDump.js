@@ -974,3 +974,36 @@ function listTriggersForClasp() {
   Logger.log(result);
   return result;
 }
+
+
+/**
+ * リード管理シートの全ヘッダーを返す（clasp run 用）
+ * 進捗ステータス列の実在確認を目的とする
+ */
+function checkProgressStatusColumn() {
+  var sh = getSpreadsheet().getSheetByName(CONFIG.SHEETS.LEADS);
+  if (!sh) return '[NOT FOUND] ' + CONFIG.SHEETS.LEADS;
+
+  var lastCol = sh.getLastColumn();
+  var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+
+  var targets = ['進捗ステータス', 'リード進捗', '商談進捗', 'リードステータス'];
+  var out = ['=== リード管理シート ヘッダー確認 ===',
+             '総列数: ' + lastCol, ''];
+
+  out.push('=== 調査対象列の実在確認 ===');
+  targets.forEach(function(name) {
+    var idx = headers.indexOf(name);
+    out.push('  ' + name + ': ' + (idx >= 0 ? 'col' + (idx + 1) : '[存在しない]'));
+  });
+
+  out.push('');
+  out.push('=== 全ヘッダー一覧 ===');
+  headers.forEach(function(h, i) {
+    out.push('  col' + (i + 1) + ': ' + h);
+  });
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
