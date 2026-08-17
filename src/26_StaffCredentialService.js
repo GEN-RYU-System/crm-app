@@ -4,6 +4,7 @@
  * - 物理ヘッダー名の直書き禁止 → getCoreSchemaV1HeaderName 経由
  * - Logger.log でパスワード変数を出力禁止
  * - シートへの書き込みはすべて LockService で保護する
+ * - 行検索は coreStaffFindRowByStaffId (28_CoreStaffWriteApi.js) を使用
  */
 
 var MIN_PASSWORD_LENGTH   = 12;
@@ -31,7 +32,7 @@ function setStaffPassword(staffId, newPassword) {
   var sheet  = result.sheet;
   var hi     = result.headerIndexes;
 
-  var rowNum = _staffFindRowByStaffId(sheet, hi, staffId);
+  var rowNum = coreStaffFindRowByStaffId(sheet, hi, staffId);
   if (rowNum === -1) throw new Error('STAFF_NOT_FOUND: ' + staffId);
 
   var lock = LockService.getScriptLock();
@@ -62,7 +63,7 @@ function changeOwnPassword(staffId, currentPassword, newPassword) {
   var sheet  = result.sheet;
   var hi     = result.headerIndexes;
 
-  var rowNum = _staffFindRowByStaffId(sheet, hi, staffId);
+  var rowNum = coreStaffFindRowByStaffId(sheet, hi, staffId);
   if (rowNum === -1) throw new Error('STAFF_NOT_FOUND: ' + staffId);
 
   var data       = sheet.getDataRange().getValues();
@@ -140,7 +141,7 @@ function isStaffLocked(staffId) {
   var sheet  = result.sheet;
   var hi     = result.headerIndexes;
 
-  var rowNum = _staffFindRowByStaffId(sheet, hi, staffId);
+  var rowNum = coreStaffFindRowByStaffId(sheet, hi, staffId);
   if (rowNum === -1) return false;
 
   var data        = sheet.getDataRange().getValues();
@@ -162,7 +163,7 @@ function recordLoginFailure(staffId) {
   var sheet  = result.sheet;
   var hi     = result.headerIndexes;
 
-  var rowNum = _staffFindRowByStaffId(sheet, hi, staffId);
+  var rowNum = coreStaffFindRowByStaffId(sheet, hi, staffId);
   if (rowNum === -1) return; // 外部に理由を漏らさない
 
   var data         = sheet.getDataRange().getValues();
@@ -194,7 +195,7 @@ function recordLoginSuccess(staffId) {
   var sheet  = result.sheet;
   var hi     = result.headerIndexes;
 
-  var rowNum = _staffFindRowByStaffId(sheet, hi, staffId);
+  var rowNum = coreStaffFindRowByStaffId(sheet, hi, staffId);
   if (rowNum === -1) return;
 
   var lock = LockService.getScriptLock();
@@ -210,6 +211,51 @@ function recordLoginSuccess(staffId) {
 // ─────────────────────────────────────────────
 // DEV専用テストラッパー
 // ─────────────────────────────────────────────
+
+/**
+ * EMP-00008 がシートから読み取れるかを確認する（DEV専用・デバッグ用）。
+ * @returns {Object}
+ */
+function testReadEmp00008() {
+  if (getEnvironment() !== 'development') throw new Error('DEV only');
+
+  var result = validateCoreSchemaV1TableForWrite(getSpreadsheet(), 'STAFF');
+  var sheet  = result.sheet;
+  var hi     = result.headerIndexes;
+
+  var staffIdHeader  = getCoreSchemaV1HeaderName('STAFF', 'STAFF_ID');
+  var staffIdColNum  = hi[staffIdHeader]; // 1-based
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { found: false, reason: 'sheet has no data rows', lastRow: lastRow };
+
+  var data    = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+  var rowNum  = coreStaffFindRowByStaffId(sheet, hi, 'EMP-00008');
+
+  // 先頭5行のSTAFF_IDをサンプル表示（存在確認のみ）
+  var sampleIds = data.slice(0, 5).map(function(r) {
+    return String(r[staffIdColNum - 1]).trim();
+  });
+
+  if (rowNum === -1) {
+    return { found: false, staffIdColNum: staffIdColNum, totalDataRows: data.length, sampleIds: sampleIds };
+  }
+
+  var row = sheet.getDataRange().getValues()[rowNum - 1];
+  var lu  = row[_staffColIdx(hi, 'LOCKED_UNTIL')];
+  return {
+    found:       true,
+    rowNum:      rowNum,
+    staffId:     String(row[_staffColIdx(hi, 'STAFF_ID')]).trim(),
+    hasHash:     !!String(row[_staffColIdx(hi, 'PASSWORD_HASH')]).trim(),
+    hasSalt:     !!String(row[_staffColIdx(hi, 'PASSWORD_SALT')]).trim(),
+    failCount:   Number(row[_staffColIdx(hi, 'LOGIN_FAIL_COUNT')]) || 0,
+    lockedUntil: (lu instanceof Date) ? lu.toISOString() : String(lu),
+    staffIdColNum: staffIdColNum,
+    totalDataRows: data.length,
+    sampleIds:   sampleIds
+  };
+}
 
 /**
  * StaffCredentialService の一貫テスト（DEV専用）。
@@ -229,7 +275,7 @@ function testCredentialServiceAll() {
     var r  = validateCoreSchemaV1TableForWrite(getSpreadsheet(), 'STAFF');
     var sh = r.sheet;
     var hi = r.headerIndexes;
-    var rn = _staffFindRowByStaffId(sh, hi, TEST_STAFF_ID);
+    var rn = coreStaffFindRowByStaffId(sh, hi, TEST_STAFF_ID);
     if (rn === -1) return null;
     var row = sh.getDataRange().getValues()[rn - 1];
     var lu  = row[_staffColIdx(hi, 'LOCKED_UNTIL')];
@@ -330,6 +376,15 @@ function testCredentialServiceAll() {
   for (var fi = 1; fi <= 5; fi++) {
     recordLoginFailure(TEST_STAFF_ID);
     var sf = getCredState();
+    if (!sf) {
+      results.push({
+        test:   '(8) recordLoginFailure x5',
+        pass:   false,
+        detail: 'EMP-00008 not found in sheet at attempt ' + fi
+      });
+      var allPass0 = results.every(function (r) { return r.pass; });
+      return { allPass: allPass0, results: results };
+    }
     failAttempts.push({ attempt: fi, failCount: sf.failCount, lockedUntil: sf.lockedUntil });
   }
   var pass8 =
@@ -378,21 +433,6 @@ function _validatePasswordLength(password) {
   if (!password || password.length < MIN_PASSWORD_LENGTH) {
     throw new Error('PASSWORD_TOO_SHORT: minimum ' + MIN_PASSWORD_LENGTH + ' characters required');
   }
-}
-
-/**
- * STAFF_ID で担当者行を検索し、1-based 行番号を返す。
- * 見つからない場合は -1。
- */
-function _staffFindRowByStaffId(sheet, headerIndexes, staffId) {
-  var data          = sheet.getDataRange().getValues();
-  var staffIdColIdx = _staffColIdx(headerIndexes, 'STAFF_ID');
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][staffIdColIdx]).trim() === staffId) {
-      return i + 1; // 1-based
-    }
-  }
-  return -1;
 }
 
 /**
