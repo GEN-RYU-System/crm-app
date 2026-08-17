@@ -761,9 +761,9 @@ function createLead(leadData) {
       newRow.push(new Date());
     } else if (header === 'リード種別') {
       newRow.push(leadType);
-    } else if (header === 'リード進捗') {
-      // 新規リード作成時は必ず「新規」を設定
-      newRow.push('新規');
+    } else if (header === 'リードステータス') {
+      // 新規リード作成時は必ず「新規リード」を設定
+      newRow.push('新規リード');
     } else if (header === 'リード担当者') {
       // 新規リード作成時は現在のユーザー名を設定
       newRow.push(leadData[header] || currentUserName);
@@ -1009,8 +1009,9 @@ function assignLeadToSales(leadId) {
   const currentUser = resolveCurrentUserEmail();
 
   // 各列を更新
-  if (progressIndex !== -1) {
-    sheet.getRange(targetRow, progressIndex + 1).setValue('アサイン確定');
+  const leadStatusIndex = headers.indexOf('リードステータス');
+  if (leadStatusIndex !== -1) {
+    sheet.getRange(targetRow, leadStatusIndex + 1).setValue('アサイン確定');
   }
   if (assignDateIndex !== -1) {
     sheet.getRange(targetRow, assignDateIndex + 1).setValue(new Date());
@@ -1022,9 +1023,6 @@ function assignLeadToSales(leadId) {
     // 担当者IDは簡易的にメールアドレスの@前を使用
     const userId = currentUser ? currentUser.split('@')[0] : '';
     sheet.getRange(targetRow, assigneeIdIndex + 1).setValue(userId);
-  }
-  if (dealProgressIndex !== -1) {
-    sheet.getRange(targetRow, dealProgressIndex + 1).setValue('アサイン確定');
   }
   if (updateDateIndex !== -1) {
     sheet.getRange(targetRow, updateDateIndex + 1).setValue(new Date());
@@ -1706,12 +1704,7 @@ function archiveLeadWithReason(leadId, archiveReason) {
     // リードシートを更新
     const now = new Date();
 
-    if (leadProgressIdx >= 0) {
-      leadsSheet.getRange(leadRowNum, leadProgressIdx + 1).setValue('アーカイブ');
-      Logger.log('✅ リード進捗を更新: アーカイブ (行' + leadRowNum + ', 列' + (leadProgressIdx + 1) + ')');
-    } else {
-      Logger.log('⚠️ リード進捗列が見つかりません（leadProgressIdx=' + leadProgressIdx + '）');
-    }
+    // リード進捗への書き込みを廃止。アーカイブ日・アーカイブ理由で管理する
 
     if (archiveReasonIdx >= 0) {
       leadsSheet.getRange(leadRowNum, archiveReasonIdx + 1).setValue(archiveReason);
@@ -3864,11 +3857,11 @@ function restoreLeadFromArchive(leadId, newStatus) {
         Logger.log('🔄 Clearing archiveReason at row=' + leadRowIndex + ', col=' + (archiveReasonCol + 1));
         sheet.getRange(leadRowIndex, archiveReasonCol + 1).clearContent();
       }
-      if (leadProgressCol >= 0) {
-        const newProgressValue = newStatus || '新規';
-        Logger.log('🔄 Setting leadProgress to "' + newProgressValue + '" at row=' + leadRowIndex + ', col=' + (leadProgressCol + 1));
-        sheet.getRange(leadRowIndex, leadProgressCol + 1).setValue(newProgressValue);
-        Logger.log('✅ leadProgress updated successfully');
+      const leadStatusCol = headers.indexOf('リードステータス');
+      if (leadStatusCol >= 0) {
+        Logger.log('🔄 Setting leadStatus to "リード対応中" at row=' + leadRowIndex + ', col=' + (leadStatusCol + 1));
+        sheet.getRange(leadRowIndex, leadStatusCol + 1).setValue('リード対応中');
+        Logger.log('✅ leadStatus updated successfully');
       }
       // リード担当者をクリア（新規状態に戻すため）
       if (leadStaffCol >= 0) {
