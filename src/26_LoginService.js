@@ -133,3 +133,148 @@ function _lsColIdx(headerIndexes, logicalKey) {
   var physicalName = getCoreSchemaV1HeaderName('STAFF', logicalKey);
   return headerIndexes[physicalName] - 1;
 }
+
+// ─────────────────────────────────────────────
+// DEV専用テストラッパー
+// ─────────────────────────────────────────────
+
+/**
+ * LoginService の一貫テスト（DEV専用）。
+ * テスト対象: EMP-00008（テスト用・status=無効）のみ。
+ * (1)〜(9) を順番に実行し、失敗したら即座に停止して報告する。
+ * パスワードの平文はログ出力しない。
+ * @returns {Object}
+ */
+function testLoginServiceAll() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('testLoginServiceAll は development 環境でのみ実行可能');
+  }
+
+  var TEST_STAFF_ID  = 'EMP-00008';
+  var TEST_PW        = 'NewPassword2026';
+  var statusActive   = getCoreSchemaV1Value('STAFF', 'STATUS', 'ACTIVE');
+  var statusInactive = getCoreSchemaV1Value('STAFF', 'STATUS', 'INACTIVE');
+  var capturedSessionId = null;
+  var r = {};
+
+  // ── (1) loginWithPassword (STATUS=無効) → LOGIN_FAILED ─────────────────
+  try {
+    loginWithPassword(TEST_STAFF_ID, TEST_PW);
+    return { stoppedAt: '(1)', reason: '例外が発生しなかった' };
+  } catch (e) {
+    r.r1_exception = e.message;
+    if (e.message !== 'LOGIN_FAILED') {
+      return { stoppedAt: '(1)', reason: 'LOGIN_FAILED を期待したが: ' + e.message };
+    }
+  }
+  r.r1_pass = true;
+
+  // ── (2) STATUS を '有効' に変更 ──────────────────────────────────────────
+  try {
+    updateCoreStaffForFrontend(TEST_STAFF_ID, { status: statusActive });
+    r.r2_pass = true;
+  } catch (e) {
+    return { stoppedAt: '(2)', reason: e.message };
+  }
+
+  // ── (3) loginWithPassword → success ──────────────────────────────────────
+  try {
+    var login3         = loginWithPassword(TEST_STAFF_ID, TEST_PW);
+    capturedSessionId  = login3.sessionId;
+    var noHashSalt3    = !login3.hash && !login3.salt &&
+                         !login3.passwordHash && !login3.passwordSalt &&
+                         !login3.storedHash   && !login3.storedSalt;
+    r.r3_sessionIdLen  = login3.sessionId.length;
+    r.r3_staffId       = login3.staffId;
+    r.r3_fullNameJa    = login3.fullNameJa;
+    r.r3_role          = login3.role;
+    r.r3_hasNoHashSalt = noHashSalt3;
+    r.r3_pass          = login3.sessionId.length === 72
+                         && login3.staffId === TEST_STAFF_ID
+                         && !!login3.fullNameJa
+                         && !!login3.role
+                         && noHashSalt3;
+    if (!r.r3_pass) {
+      return { stoppedAt: '(3)', reason: 'loginWithPassword の戻り値が期待外', r3: r };
+    }
+  } catch (e) {
+    return { stoppedAt: '(3)', reason: e.message };
+  }
+
+  // ── (4) getSessionUser ────────────────────────────────────────────────────
+  var user4 = getSessionUser(capturedSessionId);
+  if (!user4) {
+    return { stoppedAt: '(4)', reason: 'getSessionUser が null を返した' };
+  }
+  r.r4_staffId    = user4.staffId;
+  r.r4_fullNameJa = user4.fullNameJa;
+  r.r4_role       = user4.role;
+  r.r4_email      = user4.email;
+  r.r4_pass       = !!user4.staffId && !!user4.fullNameJa && !!user4.role && !!user4.email;
+  if (!r.r4_pass) {
+    return { stoppedAt: '(4)', reason: '期待フィールドが欠けている', r4: r };
+  }
+
+  // ── (5) loginWithPassword 存在しないID → LOGIN_FAILED ─────────────────
+  try {
+    loginWithPassword('EMP-99999', 'anything');
+    return { stoppedAt: '(5)', reason: '例外が発生しなかった' };
+  } catch (e) {
+    r.r5_exception = e.message;
+    r.r5_sameAsR1  = e.message === r.r1_exception;
+    r.r5_pass      = e.message === 'LOGIN_FAILED' && r.r5_sameAsR1;
+    if (!r.r5_pass) {
+      return { stoppedAt: '(5)', reason: '期待と異なる: ' + e.message };
+    }
+  }
+
+  // ── (6) loginWithPassword x5 wrongpassword ───────────────────────────────
+  var r6detail = [];
+  for (var i = 1; i <= 5; i++) {
+    try {
+      loginWithPassword(TEST_STAFF_ID, 'wrongpassword');
+      return { stoppedAt: '(6)', reason: '試行 ' + i + ' 回目: 例外が発生しなかった' };
+    } catch (e) {
+      r6detail.push(i + '回目: ' + e.message);
+      if (e.message !== 'LOGIN_FAILED') {
+        return { stoppedAt: '(6)', reason: '試行 ' + i + ' 回目: 期待外: ' + e.message };
+      }
+    }
+  }
+  r.r6_pass    = true;
+  r.r6_detail  = r6detail.join(' | ');
+
+  // ── (7) loginWithPassword ロック中 → LOGIN_LOCKED ────────────────────────
+  try {
+    loginWithPassword(TEST_STAFF_ID, TEST_PW);
+    return { stoppedAt: '(7)', reason: '例外が発生しなかった' };
+  } catch (e) {
+    r.r7_exception = e.message;
+    r.r7_pass      = e.message.indexOf('LOGIN_LOCKED') === 0 && /\d/.test(e.message);
+    if (!r.r7_pass) {
+      return { stoppedAt: '(7)', reason: '期待外: ' + e.message };
+    }
+  }
+
+  // ── (8) logout → getSessionUser → null ───────────────────────────────────
+  var lo8 = logout(capturedSessionId);
+  var u8  = getSessionUser(capturedSessionId);
+  r.r8_logoutSuccess  = lo8.success === true;
+  r.r8_userAfterLogout = (u8 === null) ? 'null' : String(u8);
+  r.r8_pass = r.r8_logoutSuccess && u8 === null;
+  if (!r.r8_pass) {
+    return { stoppedAt: '(8)', reason: 'ログアウト後にセッションが残っている: ' + r.r8_userAfterLogout };
+  }
+
+  // ── (9) EMP-00008 を '無効' に戻す + ロック・カウントリセット ──────────
+  try {
+    updateCoreStaffForFrontend(TEST_STAFF_ID, { status: statusInactive });
+    setStaffPassword(TEST_STAFF_ID, 'ResetTestPass26');  // ロック・カウントもリセット
+    r.r9_pass = true;
+  } catch (e) {
+    return { stoppedAt: '(9)', reason: e.message };
+  }
+
+  r.allPass = true;
+  return r;
+}
