@@ -293,3 +293,30 @@ function testLoginServiceAll() {
   r.allPass = true;
   return r;
 }
+
+// ─────────────────────────────────────────────
+// google.script.run グローバル変数の実行間独立性検証
+// ─────────────────────────────────────────────
+// 目的: 各 google.script.run 呼び出しが独立した V8 実行コンテキストを
+//       持ち、グローバル変数が呼び出し間でリセットされることを実証する。
+//
+// 手順:
+//   1. clasp run testSetGasGlobalState --params '["abc"]'
+//      期待: { setTo: 'abc', readBack: 'abc' }
+//   2. clasp run testGetGasGlobalState
+//      期待: { value: null }
+//
+// 合格条件: 手順2で { value: null } が返ること。
+// 注意: 99_TestFunctions.js は .claspignore で除外されているため
+//       デプロイ対象のこのファイルに定義する。
+
+var _gasGlobalStateTest = null;
+
+function testSetGasGlobalState(val) {
+  _gasGlobalStateTest = val;
+  return { setTo: val, readBack: _gasGlobalStateTest };
+}
+
+function testGetGasGlobalState() {
+  return { value: _gasGlobalStateTest };
+}
