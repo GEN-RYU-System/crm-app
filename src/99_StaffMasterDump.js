@@ -252,6 +252,197 @@ function inspectOptionsMasterStructure() {
 }
 
 /**
+ * 【書き込みあり / DEV専用】リード管理「リードステータス」列に入力規則（範囲参照型）を設定する
+ *
+ * 設定内容: 選択肢マスタ「リードステータス」列（headers.indexOf で動的に特定）の
+ *           値が入っている行範囲を参照するプルダウン。値の直書きは行わない。
+ * 無効値の入力時は「警告を表示」（setAllowInvalid(true)）とし、拒否しない。
+ *
+ * 事前確認（どちらか不合格なら中断）:
+ *   1. 選択肢マスタ「リードステータス」列の値が10件であること
+ *   2. リード管理「リードステータス」列の全データ行がその10値のいずれかであること
+ *
+ * 実行後の検証:
+ *   - 入力規則が設定されたこと（getCriteriaType = VALUE_IN_RANGE）
+ *   - setAllowInvalid(true) であること（警告のみ・拒否なし）
+ *   - セルの値が変化していないこと（設定前後の分布比較）
+ */
+function setLeadStatusValidation() {
+  var EXPECTED_OPTION_COUNT = 10;
+
+  var ss = getSpreadsheet();
+  var out = [];
+
+  // =====================================================
+  // 1. 事前確認: 選択肢マスタ「リードステータス」列
+  // =====================================================
+  out.push('=== 1. 事前確認: 選択肢マスタ ===');
+  var optSh = ss.getSheetByName(CONFIG.SHEETS.SETTINGS);
+  if (!optSh) {
+    var m1 = '[ABORT] 選択肢マスタが見つかりません。';
+    Logger.log(m1); return m1;
+  }
+
+  var optLastCol = optSh.getLastColumn();
+  var optLastRow = optSh.getLastRow();
+  var optHeaders = optSh.getRange(1, 1, 1, optLastCol).getValues()[0];
+  var optColIdx = optHeaders.indexOf('リードステータス');
+  if (optColIdx < 0) {
+    var m2 = '[ABORT] 選択肢マスタに「リードステータス」列が見つかりません。';
+    Logger.log(m2); return m2;
+  }
+
+  out.push('選択肢マスタ シートID: ' + optSh.getSheetId());
+  out.push('リードステータス列: col' + (optColIdx + 1) + ' (' + String.fromCharCode(65 + optColIdx) + '列)');
+
+  var optRaw = optSh.getRange(2, optColIdx + 1, optLastRow - 1, 1).getValues();
+  var optValues = [];
+  var optStartRow = -1;
+  var optEndRow   = -1;
+  for (var r = 0; r < optRaw.length; r++) {
+    var v = String(optRaw[r][0] || '').trim();
+    if (v !== '') {
+      if (optStartRow < 0) optStartRow = r + 2; // 1-indexed シート行番号
+      optEndRow = r + 2;
+      optValues.push(v);
+    }
+  }
+
+  out.push('選択肢件数: ' + optValues.length + '件 (期待値: ' + EXPECTED_OPTION_COUNT + ')');
+  if (optValues.length !== EXPECTED_OPTION_COUNT) {
+    out.push('[ABORT] 件数不一致のため中断します。');
+    Logger.log(out.join('\n')); return out.join('\n');
+  }
+
+  out.push('選択肢の行範囲: 行' + optStartRow + '〜行' + optEndRow);
+  optValues.forEach(function(v, i) { out.push('  ' + (i + 1) + '. ' + v); });
+  out.push('[OK] 選択肢マスタ確認完了');
+  out.push('');
+
+  // =====================================================
+  // 2. 事前確認: リード管理「リードステータス」列
+  // =====================================================
+  out.push('=== 2. 事前確認: リード管理 ===');
+  var leadSh = ss.getSheetByName('リード管理');
+  if (!leadSh) {
+    var m3 = '[ABORT] リード管理シートが見つかりません。';
+    Logger.log(m3); return m3;
+  }
+
+  var leadLastCol = leadSh.getLastColumn();
+  var leadLastRow = leadSh.getLastRow();
+  var leadHeaders = leadSh.getRange(1, 1, 1, leadLastCol).getValues()[0];
+  var leadColIdx  = leadHeaders.indexOf('リードステータス');
+  if (leadColIdx < 0) {
+    var m4 = '[ABORT] リード管理に「リードステータス」列が見つかりません。';
+    Logger.log(m4); return m4;
+  }
+
+  var dataRows = leadLastRow - 1;
+  out.push('リードステータス列: col' + (leadColIdx + 1));
+  out.push('データ行数: ' + dataRows + '行');
+
+  var leadRaw = leadSh.getRange(2, leadColIdx + 1, dataRows, 1).getValues();
+  var optSet = {};
+  optValues.forEach(function(v) { optSet[v] = true; });
+
+  var beforeDist = {};
+  var nonConforming = [];
+  var emptyCount = 0;
+  leadRaw.forEach(function(row, i) {
+    var v = String(row[0] || '').trim();
+    if (v === '') {
+      emptyCount++;
+    } else {
+      beforeDist[v] = (beforeDist[v] || 0) + 1;
+      if (!optSet[v]) {
+        nonConforming.push('行' + (i + 2) + ': "' + v + '"');
+      }
+    }
+  });
+
+  out.push('空欄行数: ' + emptyCount + '行');
+  out.push('非適合行数: ' + nonConforming.length + '行');
+
+  if (nonConforming.length > 0) {
+    out.push('[ABORT] 非適合値が存在します。中断します。');
+    nonConforming.slice(0, 20).forEach(function(s) { out.push('  ' + s); });
+    if (nonConforming.length > 20) out.push('  ...省略 (' + (nonConforming.length - 20) + '件)');
+    Logger.log(out.join('\n')); return out.join('\n');
+  }
+
+  out.push('[OK] 全データ行が10値のいずれかに適合');
+  out.push('');
+
+  // =====================================================
+  // 3. 入力規則の設定
+  // =====================================================
+  out.push('=== 3. 入力規則の設定 ===');
+  var validationSrcRange = optSh.getRange(optStartRow, optColIdx + 1, optValues.length, 1);
+  out.push('参照範囲: 選択肢マスタ '
+    + String.fromCharCode(65 + optColIdx) + optStartRow + ':'
+    + String.fromCharCode(65 + optColIdx) + optEndRow);
+
+  var rule = SpreadsheetApp.newDataValidation()
+    .requireValueInRange(validationSrcRange, true)
+    .setAllowInvalid(true)   // 無効値は警告のみ（拒否しない）
+    .build();
+
+  leadSh.getRange(2, leadColIdx + 1, dataRows, 1).setDataValidation(rule);
+  out.push('[設定完了] リード管理 col' + (leadColIdx + 1) + ' 行2〜行' + leadLastRow + ' に入力規則を設定しました。');
+  out.push('');
+
+  // =====================================================
+  // 4. 実行後の検証
+  // =====================================================
+  out.push('=== 4. 実行後の検証 ===');
+
+  var setRules = leadSh.getRange(2, leadColIdx + 1, dataRows, 1).getDataValidations();
+  var firstSetRule = null;
+  for (var k = 0; k < setRules.length; k++) {
+    if (setRules[k][0] !== null) { firstSetRule = setRules[k][0]; break; }
+  }
+
+  var ruleExists = firstSetRule !== null;
+  out.push('[' + (ruleExists ? 'OK' : 'NG') + '] 入力規則が設定されているか: ' + (ruleExists ? 'あり' : 'なし'));
+
+  if (firstSetRule) {
+    var criteriaType = firstSetRule.getCriteriaType();
+    var isRange = criteriaType === SpreadsheetApp.DataValidationCriteria.VALUE_IN_RANGE;
+    out.push('[' + (isRange ? 'OK' : 'NG') + '] 規則タイプ: ' + criteriaType);
+    var allowInvalid = firstSetRule.getAllowInvalid();
+    out.push('[' + (allowInvalid ? 'OK' : 'NG') + '] setAllowInvalid（警告のみ・拒否なし）: ' + allowInvalid);
+  }
+
+  var afterRaw = leadSh.getRange(2, leadColIdx + 1, dataRows, 1).getValues();
+  var afterDist = {};
+  var afterEmpty = 0;
+  afterRaw.forEach(function(row) {
+    var v = String(row[0] || '').trim();
+    if (v === '') { afterEmpty++; } else { afterDist[v] = (afterDist[v] || 0) + 1; }
+  });
+
+  var valuesUnchanged = true;
+  Object.keys(beforeDist).forEach(function(k) {
+    if (beforeDist[k] !== (afterDist[k] || 0)) valuesUnchanged = false;
+  });
+  Object.keys(afterDist).forEach(function(k) {
+    if ((beforeDist[k] || 0) !== afterDist[k]) valuesUnchanged = false;
+  });
+  out.push('[' + (valuesUnchanged ? 'OK' : 'NG') + '] セルの値が変化していないか: ' + (valuesUnchanged ? '変化なし' : '変化あり（要確認）'));
+
+  out.push('');
+  out.push('=== 実行後の値分布 ===');
+  Object.keys(afterDist).sort(function(a, b) { return afterDist[b] - afterDist[a]; }).forEach(function(k) {
+    out.push('  ' + k + ': ' + afterDist[k] + '行');
+  });
+  out.push('  （空欄）: ' + afterEmpty + '行');
+
+  Logger.log(out.join('\n'));
+  return out.join('\n');
+}
+
+/**
  * 【DRY RUN / 読み取り専用】リード管理「リードステータス」列の実測値調査
  * - 値の分布（行数つき）
  * - 「新規」→「新規リード」の変換対象件数
