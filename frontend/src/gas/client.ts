@@ -221,3 +221,65 @@ export function getCoreStaffMember(staffId: string): Promise<StaffProfileDto | n
       .getCoreStaffMemberForFrontend(staffId);
   });
 }
+
+export type LoginResult = {
+  sessionId: string;
+  staffId: string;
+  fullNameJa: string;
+  role: string;
+};
+
+export type SessionUser = {
+  staffId: string;
+  fullNameJa: string;
+  role: string;
+  email: string;
+};
+
+export function loginWithPassword(staffId: string, password: string): Promise<LoginResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => resolve(value as LoginResult))
+      .withFailureHandler((error) => reject(toError(error)))
+      .loginWithPassword(staffId, password);
+  });
+}
+
+export function gasLogout(sessionId: string): Promise<void> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler(() => resolve())
+      .withFailureHandler((error) => reject(toError(error)))
+      .logout(sessionId);
+  });
+}
+
+export function getSessionUser(sessionId: string): Promise<SessionUser | null> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => resolve(value as SessionUser | null))
+      .withFailureHandler((error) => reject(toError(error)))
+      .getSessionUser(sessionId);
+  });
+}
+
+export function changeOwnPasswordForFrontend(currentPassword: string, newPassword: string): Promise<void> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler(() => resolve())
+      .withFailureHandler((error) => reject(toError(error)))
+      .changeOwnPasswordForFrontend(currentPassword, newPassword);
+  });
+}
