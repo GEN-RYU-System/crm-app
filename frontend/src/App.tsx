@@ -3,6 +3,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { canAccessNavigationItem, DATA_MANAGEMENT_ROOT, hasNavigationPermission, NAVIGATION_BY_ID, STAFF_MANAGEMENT_ROOT, visibleDataManagementItems, visibleNavigationGroups, type NavigationPermissions } from './app/navigation';
 import { AppShell } from './components/shell';
 import { Spinner, StatusMessage } from './components/ui';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { getCurrentUser, getDashboardKpis, type DashboardKpis } from './gas/client';
 import { ComponentCatalogPage } from './pages/catalog/ComponentCatalogPage';
 import { customerGasRepository } from './features/customers/gasAdapter';
@@ -19,7 +20,10 @@ import { LeadListPage } from './pages/leads/LeadListPage';
 import { InboxPreviewPage } from './pages/inbox/InboxPreviewPage';
 import { StaffListPage } from './pages/staff/StaffListPage';
 import { inboxPreviewRepository } from './features/inbox/previewAdapter';
+import { ChangePasswordPage } from './pages/auth/ChangePasswordPage';
+import { LoginPage } from './pages/auth/LoginPage';
 import { customersCopy, errorCopy, inboxCopy, leadsCopy, staffCopy } from './content/ja';
+import { authCopy } from './content/ja/auth';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type PermissionState =
@@ -39,7 +43,25 @@ function StaffPermissionLoading() {
   return <StatusMessage variant="loading"><Spinner size="sm" aria-label={staffCopy.loading} />{staffCopy.loading}</StatusMessage>;
 }
 
+function AppContent() {
+  const { state: authState } = useAuth();
+
+  if (authState.status === 'checking') {
+    return <StatusMessage variant="loading"><Spinner size="sm" aria-label={authCopy.sessionChecking} />{authCopy.sessionChecking}</StatusMessage>;
+  }
+  if (authState.status === 'unauthenticated') {
+    return <LoginPage />;
+  }
+
+  // authState.status === 'authenticated'
+  return <AppRouter />;
+}
+
 export default function App() {
+  return <AuthProvider><AppContent /></AuthProvider>;
+}
+
+function AppRouter() {
   const [state, setState] = useState<LoadState>('loading');
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
   const [error, setError] = useState('');
@@ -106,6 +128,7 @@ export default function App() {
     <Route path="/route-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
     <Route path="/archive-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
     <Route path={NAVIGATION_BY_ID.components.hash} element={<ComponentCatalogPage />} />
+    <Route path="/change-password" element={<ChangePasswordPage />} />
     <Route path="*" element={<Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />} />
   </Routes></AppShell></LeadListCacheProvider></HashRouter>;
 }
