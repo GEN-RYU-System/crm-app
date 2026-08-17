@@ -72,10 +72,13 @@ function loginWithPassword(staffId, password) {
   recordLoginSuccess(staffId);
   var sessionId = createSession(staffId);
 
+  var lastNameJa  = String(row[_lsColIdx(hi, 'LAST_NAME_JA')]).trim();
+  var firstNameJa = String(row[_lsColIdx(hi, 'FIRST_NAME_JA')]).trim();
+
   return {
     sessionId:  sessionId,
     staffId:    staffId,
-    fullNameJa: String(row[_lsColIdx(hi, 'FULL_NAME_JA')]).trim(),
+    fullNameJa: [lastNameJa, firstNameJa].filter(Boolean).join(' '),
     role:       String(row[_lsColIdx(hi, 'ROLE')]).trim()
   };
 }
@@ -113,9 +116,12 @@ function getSessionUser(sessionId) {
   var statusActive = getCoreSchemaV1Value('STAFF', 'STATUS', 'ACTIVE');
   if (String(row[_lsColIdx(hi, 'STATUS')]).trim() !== statusActive) return null;
 
+  var lastNameJa  = String(row[_lsColIdx(hi, 'LAST_NAME_JA')]).trim();
+  var firstNameJa = String(row[_lsColIdx(hi, 'FIRST_NAME_JA')]).trim();
+
   return {
     staffId:    staffId,
-    fullNameJa: String(row[_lsColIdx(hi, 'FULL_NAME_JA')]).trim(),
+    fullNameJa: [lastNameJa, firstNameJa].filter(Boolean).join(' '),
     role:       String(row[_lsColIdx(hi, 'ROLE')]).trim(),
     email:      String(row[_lsColIdx(hi, 'EMAIL')]).trim()
   };
