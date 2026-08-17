@@ -411,7 +411,7 @@ function getDashboardKPIs() {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const typeIdx = headers.indexOf('リード種別');
-  const statusIdx = headers.indexOf('リード進捗');
+  const statusIdx = headers.indexOf('リードステータス');
   const revenueIdx = headers.indexOf('初回取引金額');
 
   let leadsIn = 0, leadsOut = 0, activeDeals = 0, wonDeals = 0, lostDeals = 0, totalRevenue = 0;
@@ -487,7 +487,8 @@ function getLeads(filter, leadType) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const typeIdx = headers.indexOf('リード種別');
-  const statusIdx = headers.indexOf('リード進捗');
+  const statusIdx = headers.indexOf('リードステータス');
+  const archivedAtIdx = headers.indexOf('アーカイブ日');
 
   console.log('getLeads: typeIdx=' + typeIdx + ', statusIdx=' + statusIdx);
   console.log('getLeads: LEAD_STATUSES=' + JSON.stringify(CONFIG.LEAD_STATUSES));
@@ -534,7 +535,10 @@ function getLeads(filter, leadType) {
       continue;
     }
     if (filter === 'deal' && !CONFIG.DEAL_STATUSES.includes(status)) continue;
-    if (filter === 'closed' && !CONFIG.CLOSED_STATUSES.includes(status)) continue;
+    if (filter === 'closed') {
+      const isArchived = archivedAtIdx >= 0 && row[archivedAtIdx];
+      if (!CONFIG.CLOSED_STATUSES.includes(status) && !isArchived) continue;
+    }
 
     const lead = {};
     headers.forEach((header, index) => {
@@ -1932,7 +1936,7 @@ function getDeals() {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const statusIdx = headers.indexOf('リード進捗');
+  const statusIdx = headers.indexOf('リードステータス');
   const staffIdx = headers.indexOf('担当者');
   const deals = [];
 
@@ -2710,7 +2714,7 @@ function getLeadsKPI(leadType) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const typeIdx = headers.indexOf('リード種別');
-  const statusIdx = headers.indexOf('リード進捗');
+  const statusIdx = headers.indexOf('リードステータス');
   const assignIdx = headers.indexOf('担当者');
   const regDateIdx = headers.indexOf('登録日');
 
@@ -2744,7 +2748,7 @@ function getLeadsKPI(leadType) {
     if (!assignee || assignee === '') unassigned++;
 
     // 対応中
-    if (status === '対応中') inProgress++;
+    if (status === 'リード対応中') inProgress++;
   }
 
   return { total, todayNew, unassigned, inProgress };
@@ -2769,7 +2773,7 @@ function getCSMetrics() {
   const regDateIdx = headers.indexOf('登録日');
   const assignIdx = headers.indexOf('担当者');
   const assignDateIdx = headers.indexOf('アサイン日');
-  const statusIdx = headers.indexOf('リード進捗');
+  const statusIdx = headers.indexOf('リードステータス');
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -3089,7 +3093,7 @@ function getLeaderMetrics() {
   const headers = data[0];
   const regDateIdx = headers.indexOf('登録日');
   const assignIdx = headers.indexOf('担当者');
-  const statusIdx = headers.indexOf('リード進捗');
+  const statusIdx = headers.indexOf('リードステータス');
   const amountIdx = headers.indexOf('月間見込み金額');
 
   const now = new Date();
@@ -5285,7 +5289,7 @@ function getSalesStats() {
     const headers = data[0];
 
     const staffIdx = headers.indexOf('担当者');
-    const statusIdx = headers.indexOf('リード進捗');
+    const statusIdx = headers.indexOf('リードステータス');
     const tradeDateIdx = headers.indexOf('初回取引日');
     const tradeAmountIdx = headers.indexOf('初回取引金額');
     const cumulativeAmountIdx = headers.indexOf('累計取引金額');
@@ -5390,7 +5394,7 @@ function getReminders() {
     const headers = data[0];
 
     const staffIdx = headers.indexOf('担当者');
-    const statusIdx = headers.indexOf('リード進捗');
+    const statusIdx = headers.indexOf('リードステータス');
     const nextActionDateIdx = headers.indexOf('次回アクション日');
 
     const now = new Date();
@@ -5501,7 +5505,7 @@ function getNewCustomers() {
     const headers = data[0];
 
     const staffIdx = headers.indexOf('担当者');
-    const statusIdx = headers.indexOf('リード進捗');
+    const statusIdx = headers.indexOf('リードステータス');
 
     const newCustomers = [];
 
@@ -5548,7 +5552,7 @@ function getRouteCustomers() {
     const headers = data[0];
 
     const staffIdx = headers.indexOf('担当者');
-    const statusIdx = headers.indexOf('リード進捗');
+    const statusIdx = headers.indexOf('リードステータス');
     const tradeDateIdx = headers.indexOf('初回取引日');
 
     const routeCustomers = [];
@@ -5612,7 +5616,7 @@ function getAllDealsStats() {
     const data = leadSheet.getDataRange().getValues();
     const headers = data[0];
 
-    const statusIdx = headers.indexOf('リード進捗');
+    const statusIdx = headers.indexOf('リードステータス');
     const tradeDateIdx = headers.indexOf('初回取引日');
     const cumulativeAmountIdx = headers.indexOf('累計取引金額');
     const updateDateIdx = headers.indexOf('シート更新日');
@@ -5711,7 +5715,7 @@ function getStaffSummary() {
     const headers = data[0];
 
     const staffIdx = headers.indexOf('担当者');
-    const statusIdx = headers.indexOf('リード進捗');
+    const statusIdx = headers.indexOf('リードステータス');
     const tradeDateIdx = headers.indexOf('初回取引日');
     const tradeAmountIdx = headers.indexOf('初回取引金額');
     const updateDateIdx = headers.indexOf('シート更新日');
@@ -5808,7 +5812,7 @@ function getAllNewCustomers() {
     const data = leadSheet.getDataRange().getValues();
     const headers = data[0];
 
-    const statusIdx = headers.indexOf('リード進捗');
+    const statusIdx = headers.indexOf('リードステータス');
 
     const allNewCustomers = [];
 
@@ -5851,7 +5855,7 @@ function getAllRouteCustomers() {
     const data = leadSheet.getDataRange().getValues();
     const headers = data[0];
 
-    const statusIdx = headers.indexOf('リード進捗');
+    const statusIdx = headers.indexOf('リードステータス');
     const tradeDateIdx = headers.indexOf('初回取引日');
 
     const allRouteCustomers = [];
