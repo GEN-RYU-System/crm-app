@@ -3,7 +3,8 @@
  * 物理シート名・物理ヘッダー名は 00_CoreSchemaRegistry.js から解決する。
  */
 
-function getCoreStaffForFrontend() {
+function getCoreStaffForFrontend(sessionId) {
+  setEmailFromSession(sessionId);
   checkPermission('staff_manage');
 
   var activeStatus = getCoreSchemaV1Value('STAFF', 'STATUS', 'ACTIVE');
@@ -32,7 +33,8 @@ function getCoreStaffForFrontend() {
     });
 }
 
-function getCoreStaffMemberForFrontend(staffId) {
+function getCoreStaffMemberForFrontend(sessionId, staffId) {
+  setEmailFromSession(sessionId);
   checkPermission('staff_manage');
 
   var normalizedStaffId = coreCustomerFrontendValue(staffId);
