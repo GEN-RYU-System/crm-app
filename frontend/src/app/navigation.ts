@@ -95,7 +95,7 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
   ] },
   { id: 'management', label: navigationCopy.groups.management, order: 5, items: [
     { id: 'deals', label: navigationCopy.deals, hash: '/deals', icon: 'deals', order: 1, state: 'planned', requiredPermission: 'deal_view_all' },
-    { id: 'staffManagement', label: navigationCopy.staffManagement, hash: STAFF_MANAGEMENT_ROOT, icon: 'staff', order: 2, state: 'planned', requiredPermission: 'staff_manage', children: STAFF_MANAGEMENT_ITEMS },
+    { id: 'staffManagement', label: navigationCopy.staffManagement, hash: STAFF_MANAGEMENT_ROOT, icon: 'staff', order: 2, state: 'preview', requiredPermission: 'staff_manage', children: STAFF_MANAGEMENT_ITEMS },
     { id: 'permissions', label: navigationCopy.permissions, hash: '/permissions', icon: 'permissions', order: 3, state: 'planned', requiredPermission: 'admin_access' },
     { id: 'dataManagement', label: navigationCopy.dataManagement, hash: DATA_MANAGEMENT_ROOT, icon: 'database', order: 4, state: 'available', requiredPermission: 'lead_view', children: DATA_MANAGEMENT_ITEMS }
   ] },
