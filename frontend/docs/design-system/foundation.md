@@ -36,6 +36,15 @@ DataTableは表面、border、角丸、overflow、横スクロール、セル余
 
 Skeletonは初回読込みの標準UIです。`table` variantは任意の`columns`を受け、指定時は`rows × columns`のバーを表示します。`columns`未指定時は既存の3列表示を維持します。aria-labelは呼出側のCopy SSOTから渡し、金型自身はCopyをimportしません。reduced-motionではshimmerを停止します。
 
+入力欄の幅は`width`propで指定します。幅の値をCSSに直書きせず、必ずトークン経由にします。`fullWidth`が指定されている場合は`width`propより`fullWidth`が優先されます。未指定の場合は従来通り親要素の100%（後方互換）になります。
+
+| width | トークン | 実寸 | 用途例 |
+|-------|---------|------|------|
+| `sm` | `--field-width-sm` | 240px | 検索欄・短いプルダウン |
+| `md` | `--field-width-md` | 400px | 氏名・メールアドレス |
+| `lg` | `--field-width-lg` | 640px | メモ・備考 |
+| 未指定 | — | 親要素の100% | 既定・後方互換 |
+
 FormFieldのモバイル最小高さに使うmedia queryは`max-width: 767px`です。CSS変数をmedia query条件に使えないため、この値だけはSales Anchorの`FormField.css`と一致する固定のbreakpointとして許可し、それ以外の色・余白・文字・角丸・animation時間はtokenを使用します。
 
 ConversationWorkspaceは、旧GASのチャット系画面に共通する一覧・会話・詳細の3領域をReact金型として分離します。業務データ、GAS呼出し、保存処理、Copyは持たず、呼出側から各領域を受け取ります。デスクトップは3列、`max-width: 1100px`は詳細を下段、`max-width: 767px`は1列にします。CSS変数をmedia query条件に使えないため、この2つは構造変更用の固定breakpointとして許可し、列幅・最小高・色・余白・角丸はtokenを使用します。
