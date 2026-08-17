@@ -422,7 +422,7 @@ function handleERPError(error, context, invoiceId) {
       invoiceId: invoiceId || '',
       errorMessage: error.message || '',
       errorStack: error.stack || '',
-      user: Session.getActiveUser().getEmail()
+      user: resolveCurrentUserEmail()
     };
 
     _logError(errorLog);

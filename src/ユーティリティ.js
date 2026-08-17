@@ -12,7 +12,7 @@ function getSheetById(gid) {
  */
 function checkIsAdmin() {
   const adminEmails = ["admin@example.com"]; 
-  const currentUserEmail = Session.getActiveUser().getEmail();
+  const currentUserEmail = resolveCurrentUserEmail();
   return {
     email: currentUserEmail,
     role: adminEmails.indexOf(currentUserEmail) !== -1 ? "admin" : "staff"

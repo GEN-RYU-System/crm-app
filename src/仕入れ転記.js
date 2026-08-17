@@ -171,6 +171,6 @@ function showDetailedErrors(ui, errors) {
 function logTransaction(ss, action, data) {
   try {
     let logSheet = ss.getSheetByName('ImportLog') || ss.insertSheet('ImportLog');
-    logSheet.appendRow([new Date(), Session.getActiveUser().getEmail(), action, JSON.stringify(data)]);
+    logSheet.appendRow([new Date(), resolveCurrentUserEmail(), action, JSON.stringify(data)]);
   } catch (e) {}
 }
