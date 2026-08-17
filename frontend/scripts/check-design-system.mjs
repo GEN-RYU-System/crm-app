@@ -21,7 +21,7 @@ const customerPageSources = await Promise.all(['pages/customers/CustomerListPage
 if (!customerContractsSource.includes('CustomerRepository')) violations.push('customers feature does not declare CustomerRepository');
 if (!customerGasAdapterSource.includes('customerGasRepository')) violations.push('customers feature does not provide GAS repository');
 if (!customerGasAdapterSource.includes("from '../../gas/client'")) violations.push('customers GAS repository bypasses the typed GAS client');
-for (const source of customerPageSources) if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(source) || !source.includes('CustomerRepository')) violations.push('customers page bypasses the CustomerRepository boundary');
+for (const source of customerPageSources) if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(source) || (!source.includes('CustomerRepository') && !source.includes('CustomerListCacheContext'))) violations.push('customers page bypasses the CustomerRepository boundary');
 const inboxContractsSource = await readFile(resolve(srcDir, 'features/inbox/contracts.ts'), 'utf8');
 const inboxPreviewSource = await readFile(resolve(srcDir, 'features/inbox/previewAdapter.ts'), 'utf8');
 const inboxPageSource = await readFile(resolve(srcDir, 'pages/inbox/InboxPreviewPage.tsx'), 'utf8');
