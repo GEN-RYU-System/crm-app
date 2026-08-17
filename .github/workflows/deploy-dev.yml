@@ -62,6 +62,12 @@ jobs:
       - name: Install clasp
         run: npm install -g @google/clasp
 
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Build GAS artifact
+        run: cd frontend && npm run build:gas
+
       - name: Restore .clasprc.json
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
