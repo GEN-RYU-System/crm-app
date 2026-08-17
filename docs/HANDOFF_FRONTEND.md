@@ -276,7 +276,47 @@ GAS 側の作業（React 外）:
 
 ---
 
-## 9. 落とし穴・注意点
+## 9. 旧SPA（src/index.html）の扱い
+
+### 現状
+
+`?page=` なし（または未知の値）のアクセスで `index.html`（旧SPA）が既定表示される。  
+React画面（`ReactPoc.html`）は `?page=frontend-poc` でのみ開く。  
+旧SPAは React への移行完了後に削除する。
+
+### 移行以前から機能していない関数（放置）
+
+以下5関数は存在しない `進捗ステータス` 列を `headers.indexOf('進捗ステータス')` で参照しており、
+indexOf が -1 を返して全行スキップされる。React側で配線し直すため修復せず放置する。
+
+| 関数 | 行番号 | 症状 |
+|------|--------|------|
+| `getSalesMetrics` | `27_WebApp.js:2832` | 全行スキップ（statusCol=-1） |
+| `getTeamStats` | `27_WebApp.js:3031` | 全行スキップ（dStatusCol=-1） |
+| `getBuddyData` | `27_WebApp.js:3204` | 全行スキップ（statusCol=-1） |
+| `checkNextActionAlerts` | `27_WebApp.js:3575` | 全行スキップ（statusCol=-1） |
+| `checkStagnantDeals` | `27_WebApp.js:3632` | 全行スキップ（statusCol=-1） |
+
+### 呼び出し元が存在しない関数（放置）
+
+| 関数 | 行番号 |
+|------|--------|
+| `assignLeadToSales` | `27_WebApp.js:968` |
+| `archiveLeadToArchive` | `27_WebApp.js:1084` |
+| `archiveLeadToDropped` | `27_WebApp.js:1859` |
+
+### 削除の順序
+
+```
+React側で機能を実装
+  → doGet の既定表示を ReactPoc に切替（page パラメータなしで ReactPoc を返す）
+  → 併存期間を置いて動作確認
+  → index.html と上記放置関数を削除
+```
+
+---
+
+## 10. 落とし穴・注意点
 
 - **ReactPoc.html は Vite ビルド出力のインライン版**。ソースを直接編集してもビルド時に上書きされる。変更は `frontend/src/` 配下を編集 → ビルド → インライン化の順で行う。
 - **`google.script.run` は `window.google?.script?.run` で書く**。GAS 環境外（ローカル開発）では `window.google` が undefined になるため、この optional chaining がないとクラッシュする。
