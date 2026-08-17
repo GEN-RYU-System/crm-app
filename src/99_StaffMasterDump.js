@@ -795,3 +795,132 @@ function inspectLeadStatusValidation() {
   Logger.log(out.join('\n'));
   return out.join('\n');
 }
+
+
+/**
+ * リード進捗・商談進捗の実データ分布調査（読み取りのみ）
+ * 調査項目:
+ *   1. リード進捗 値分布
+ *   2. 商談進捗 値分布
+ *   3. 特定値の件数（見積もり提示 / アーカイブ）
+ *   4. 該当行のリードステータス値
+ *   5. アーカイブ日・アーカイブ理由の有値行数
+ *   6. col4・col5 の入力規則有無
+ */
+function surveyProgressColumnDetail() {
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  if (!sh) { Logger.log("[NOT FOUND] リード管理"); return "[NOT FOUND] リード管理"; }
+
+  var lastCol = sh.getLastColumn();
+  var lastRow = sh.getLastRow();
+  var allData = sh.getRange(1, 1, lastRow, lastCol).getValues();
+  var headers = allData[0];
+
+  var liIdx = headers.indexOf("リード進捗");
+  var diIdx = headers.indexOf("商談進捗");
+  var lsIdx = headers.indexOf("リードステータス");
+  var aaIdx = headers.indexOf("アーカイブ日");
+  var arIdx = headers.indexOf("アーカイブ理由");
+
+  var out = [];
+  out.push("=== surveyProgressColumnDetail ===");
+  out.push("シート: " + CONFIG.SHEETS.LEADS);
+  out.push("総データ行: " + (lastRow - 1));
+  out.push("リード進捗 col: " + (liIdx >= 0 ? liIdx + 1 : "[NOT FOUND]"));
+  out.push("商談進捗 col: " + (diIdx >= 0 ? diIdx + 1 : "[NOT FOUND]"));
+  out.push("リードステータス col: " + (lsIdx >= 0 ? lsIdx + 1 : "[NOT FOUND]"));
+  out.push("アーカイブ日 col: " + (aaIdx >= 0 ? aaIdx + 1 : "[NOT FOUND]"));
+  out.push("アーカイブ理由 col: " + (arIdx >= 0 ? arIdx + 1 : "[NOT FOUND]"));
+  out.push("");
+
+  var lpDist = {};
+  var dpDist = {};
+  var mitsumoris = [];
+  var lpArchives = [];
+  var dpArchives = [];
+  var archiveDateCount = 0;
+  var archiveReasonCount = 0;
+
+  for (var i = 1; i < allData.length; i++) {
+    var r = allData[i];
+    var lp = (liIdx >= 0) ? String(r[liIdx] || "").trim() : "";
+    var dp = (diIdx >= 0) ? String(r[diIdx] || "").trim() : "";
+    var ls = (lsIdx >= 0) ? String(r[lsIdx] || "").trim() : "";
+
+    var lpKey = lp === "" ? "(空)" : lp;
+    var dpKey = dp === "" ? "(空)" : dp;
+    lpDist[lpKey] = (lpDist[lpKey] || 0) + 1;
+    dpDist[dpKey] = (dpDist[dpKey] || 0) + 1;
+
+    if (dp === "見積もり提示") mitsumoris.push({ row: i + 1, ls: ls || "(空)" });
+    if (lp === "アーカイブ")  lpArchives.push({ row: i + 1, ls: ls || "(空)" });
+    if (dp === "アーカイブ")  dpArchives.push({ row: i + 1, ls: ls || "(空)" });
+
+    if (aaIdx >= 0) {
+      var av = r[aaIdx];
+      if (av !== "" && av !== null && av !== undefined) archiveDateCount++;
+    }
+    if (arIdx >= 0) {
+      var rv = r[arIdx];
+      if (rv !== "" && rv !== null && rv !== undefined) archiveReasonCount++;
+    }
+  }
+
+  out.push("=== 1. リード進捗 分布 ===");
+  Object.keys(lpDist).sort(function(a, b) { return lpDist[b] - lpDist[a]; })
+    .forEach(function(k) { out.push("  " + k + ": " + lpDist[k] + "件"); });
+
+  out.push("");
+  out.push("=== 2. 商談進捗 分布 ===");
+  Object.keys(dpDist).sort(function(a, b) { return dpDist[b] - dpDist[a]; })
+    .forEach(function(k) { out.push("  " + k + ": " + dpDist[k] + "件"); });
+
+  out.push("");
+  out.push("=== 3. 特定値の件数 ===");
+  out.push("  商談進捗 = 見積もり提示: " + mitsumoris.length + "件");
+  out.push("  リード進捗 = アーカイブ: " + lpArchives.length + "件");
+  out.push("  商談進捗 = アーカイブ: " + dpArchives.length + "件");
+
+  out.push("");
+  out.push("=== 4. 該当行のリードステータス ===");
+  var hasTarget = mitsumoris.length + lpArchives.length + dpArchives.length > 0;
+  if (!hasTarget) {
+    out.push("  （全3項目とも該当行なし）");
+  }
+  if (mitsumoris.length > 0) {
+    out.push("  [商談進捗=見積もり提示]");
+    mitsumoris.forEach(function(x) { out.push("    行" + x.row + " → リードステータス: " + x.ls); });
+  }
+  if (lpArchives.length > 0) {
+    out.push("  [リード進捗=アーカイブ]");
+    lpArchives.forEach(function(x) { out.push("    行" + x.row + " → リードステータス: " + x.ls); });
+  }
+  if (dpArchives.length > 0) {
+    out.push("  [商談進捗=アーカイブ]");
+    dpArchives.forEach(function(x) { out.push("    行" + x.row + " → リードステータス: " + x.ls); });
+  }
+
+  out.push("");
+  out.push("=== 5. アーカイブ日・アーカイブ理由 有値行数 ===");
+  out.push("  アーカイブ日 に値あり: " + archiveDateCount + "行");
+  out.push("  アーカイブ理由 に値あり: " + archiveReasonCount + "行");
+
+  out.push("");
+  out.push("=== 6. col4・col5 入力規則 ===");
+  if (liIdx >= 0) {
+    var lpRule = sh.getRange(2, liIdx + 1).getDataValidation();
+    out.push("  リード進捗 (col" + (liIdx + 1) + "): " + (lpRule ? String(lpRule.getCriteriaType()) : "なし"));
+  } else {
+    out.push("  リード進捗: [列が存在しない]");
+  }
+  if (diIdx >= 0) {
+    var dpRule = sh.getRange(2, diIdx + 1).getDataValidation();
+    out.push("  商談進捗 (col" + (diIdx + 1) + "): " + (dpRule ? String(dpRule.getCriteriaType()) : "なし"));
+  } else {
+    out.push("  商談進捗: [列が存在しない]");
+  }
+
+  Logger.log(out.join("\n"));
+  return out.join("\n");
+}
