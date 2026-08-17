@@ -1945,3 +1945,28 @@ function testCreateOrder() {
   Logger.log(lines.join('\n'));
   return lines.join('\n');
 }
+
+// ─────────────────────────────────────────────────────────────────
+// google.script.run グローバル変数の実行間独立性検証
+// ─────────────────────────────────────────────────────────────────
+// 目的: 各 google.script.run 呼び出しが独立した V8 実行コンテキストを
+//       持ち、グローバル変数が呼び出し間でリセットされることを実証する。
+//
+// 手順:
+//   1. clasp run _testSetGasState --params '["abc"]'
+//      → 同一実行内で setTo と readBack が一致することを確認
+//   2. clasp run _testGetGasState
+//      → 別実行では null に戻っていることを確認
+//
+// 合格条件: 手順2で { value: null } が返ること。
+
+var _gasGlobalStateTest = null;
+
+function _testSetGasState(val) {
+  _gasGlobalStateTest = val;
+  return { setTo: val, readBack: _gasGlobalStateTest };
+}
+
+function _testGetGasState() {
+  return { value: _gasGlobalStateTest };
+}
