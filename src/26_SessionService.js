@@ -192,6 +192,141 @@ function cleanupExpiredSessions() {
 }
 
 // ─────────────────────────────────────────────
+// シートセットアップ
+// ─────────────────────────────────────────────
+
+/**
+ * ログインセッションシートを作成する（初回セットアップ用）。
+ * 既存タブがある場合は何もせず 'ALREADY_EXISTS' を返す。
+ * @returns {string} 'CREATED' or 'ALREADY_EXISTS'
+ */
+function setupLoginSessionSheet() {
+  var sheetName = getCoreSchemaV1TableName('LOGIN_SESSIONS');
+  var ss = getSpreadsheet();
+
+  if (ss.getSheetByName(sheetName)) {
+    return 'ALREADY_EXISTS';
+  }
+
+  var headers = [
+    getCoreSchemaV1HeaderName('LOGIN_SESSIONS', 'SESSION_ID'),
+    getCoreSchemaV1HeaderName('LOGIN_SESSIONS', 'STAFF_ID'),
+    getCoreSchemaV1HeaderName('LOGIN_SESSIONS', 'ISSUED_AT'),
+    getCoreSchemaV1HeaderName('LOGIN_SESSIONS', 'LAST_USED_AT'),
+    getCoreSchemaV1HeaderName('LOGIN_SESSIONS', 'EXPIRES_AT'),
+    getCoreSchemaV1HeaderName('LOGIN_SESSIONS', 'STATUS')
+  ];
+
+  var sheet;
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    if (ss.getSheetByName(sheetName)) {
+      return 'ALREADY_EXISTS';
+    }
+    sheet = ss.insertSheet(sheetName);
+  } finally {
+    lock.releaseLock();
+  }
+
+  var headerRange = sheet.getRange(1, 1, 1, headers.length);
+  headerRange.setValues([headers]);
+  headerRange.setFontWeight('bold');
+  headerRange.setBackground('#4a5568');
+  headerRange.setFontColor('#ffffff');
+
+  return 'CREATED: ' + sheetName;
+}
+
+// ─────────────────────────────────────────────
+// DEV専用テストラッパー
+// ─────────────────────────────────────────────
+
+/**
+ * セッション機能の一貫テスト（DEV専用）。
+ * 5つのシナリオを順に実行し、各ステップの合否と
+ * シートの行数・状態一覧を返す。
+ * セッションIDの値そのものは返さない。
+ *
+ * @returns {Object}
+ */
+function testSessionServiceAll() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('testSessionServiceAll は development 環境でのみ実行可能');
+  }
+
+  var results = [];
+
+  function sheetSnapshot() {
+    var ss = getSpreadsheet();
+    var result = validateCoreSchemaV1TableForWrite(ss, 'LOGIN_SESSIONS');
+    var sheet = result.sheet;
+    var hi = result.headerIndexes;
+    var statusColIdx = _sessionColIdx(hi, 'STATUS');
+    var staffIdColIdx = _sessionColIdx(hi, 'STAFF_ID');
+    var data = sheet.getDataRange().getValues();
+    var rows = data.slice(1).filter(function(r) { return String(r[0]).trim(); });
+    return {
+      rowCount: rows.length,
+      statuses: rows.map(function(r) {
+        return { staffId: String(r[staffIdColIdx]).trim(), status: String(r[statusColIdx]).trim() };
+      })
+    };
+  }
+
+  // (1) createSession('EMP-00001') → セッションIDが返る
+  var sid1 = createSession('EMP-00001');
+  results.push({
+    test: '(1) createSession',
+    pass: typeof sid1 === 'string' && sid1.length > 30,
+    detail: 'sessionId length=' + sid1.length,
+    sheet: sheetSnapshot()
+  });
+
+  // (2) validateSession(sid1) → 'EMP-00001' が返る
+  var v2 = validateSession(sid1);
+  results.push({
+    test: '(2) validateSession(有効ID)',
+    pass: v2 === 'EMP-00001',
+    detail: 'returned=' + v2,
+    sheet: sheetSnapshot()
+  });
+
+  // (3) validateSession('存在しないID') → null
+  var v3 = validateSession('nonexistent-id');
+  results.push({
+    test: '(3) validateSession(存在しないID)',
+    pass: v3 === null,
+    detail: 'returned=' + v3,
+    sheet: sheetSnapshot()
+  });
+
+  // (4) revokeSession(sid1) → validateSession → null
+  revokeSession(sid1);
+  var v4 = validateSession(sid1);
+  results.push({
+    test: '(4) revokeSession → validateSession',
+    pass: v4 === null,
+    detail: 'returned=' + v4,
+    sheet: sheetSnapshot()
+  });
+
+  // (5) createSession → revokeAllSessionsForStaff → validateSession → null
+  var sid5 = createSession('EMP-00001');
+  revokeAllSessionsForStaff('EMP-00001');
+  var v5 = validateSession(sid5);
+  results.push({
+    test: '(5) revokeAllSessionsForStaff → validateSession',
+    pass: v5 === null,
+    detail: 'returned=' + v5,
+    sheet: sheetSnapshot()
+  });
+
+  var allPass = results.every(function(r) { return r.pass; });
+  return { allPass: allPass, results: results };
+}
+
+// ─────────────────────────────────────────────
 // 内部ユーティリティ
 // ─────────────────────────────────────────────
 
