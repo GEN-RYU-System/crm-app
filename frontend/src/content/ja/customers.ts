@@ -11,6 +11,8 @@ export const customersCopy = {
   loadErrorPrefix: '顧客一覧の読み込みに失敗しました:',
   detailLoadErrorPrefix: '顧客詳細の読み込みに失敗しました:',
   retry: '再試行',
+  refresh: '更新',
+  refreshing: '顧客情報を更新しています。',
   backToList: '一覧へ戻る',
   emptyTitle: '表示できる顧客はありません',
   emptyDescription: '現在の条件に該当する顧客はありません。',
