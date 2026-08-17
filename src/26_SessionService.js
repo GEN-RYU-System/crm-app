@@ -326,6 +326,29 @@ function testSessionServiceAll() {
   return { allPass: allPass, results: results };
 }
 
+/**
+ * ログインセッションシートの現在状態を返す（DEV専用）。
+ * @returns {{ rowCount: number, rows: Array<{staffId:string, status:string}> }}
+ */
+function testGetLoginSessionSheetState() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('DEV only');
+  }
+  var result = validateCoreSchemaV1TableForWrite(getSpreadsheet(), 'LOGIN_SESSIONS');
+  var sheet = result.sheet;
+  var hi = result.headerIndexes;
+  var statusColIdx  = _sessionColIdx(hi, 'STATUS');
+  var staffIdColIdx = _sessionColIdx(hi, 'STAFF_ID');
+  var data = sheet.getDataRange().getValues();
+  var rows = data.slice(1).filter(function(r) { return String(r[0]).trim(); });
+  return {
+    rowCount: rows.length,
+    rows: rows.map(function(r) {
+      return { staffId: String(r[staffIdColIdx]).trim(), status: String(r[statusColIdx]).trim() };
+    })
+  };
+}
+
 // ─────────────────────────────────────────────
 // 内部ユーティリティ
 // ─────────────────────────────────────────────
