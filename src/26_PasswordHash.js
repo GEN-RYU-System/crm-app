@@ -6,7 +6,7 @@
  * ソルト: 担当者ごとにランダム生成（generatePasswordSalt）
  */
 
-var HASH_ITERATIONS = 1000;
+var HASH_ITERATIONS = 500;
 
 /**
  * ランダムなソルト文字列を生成する。
