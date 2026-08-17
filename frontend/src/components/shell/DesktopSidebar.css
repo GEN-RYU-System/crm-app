@@ -10,6 +10,9 @@
 .shell-desktop-sidebar--expanded .shell-desktop-sidebar__name, .shell-desktop-sidebar--expanded .shell-sidebar-nav__label, .shell-desktop-sidebar:hover .shell-desktop-sidebar__name, .shell-desktop-sidebar:hover .shell-sidebar-nav__label { opacity: 1; }
 .shell-desktop-sidebar.shell-desktop-sidebar--hover-suppressed:hover .shell-desktop-sidebar__name, .shell-desktop-sidebar.shell-desktop-sidebar--hover-suppressed:hover .shell-sidebar-nav__label { opacity: 0; }
 .shell-desktop-sidebar__footer { border-top: var(--border-width) solid var(--sidebar-border); padding: var(--space-sm) 0; flex-shrink: 0; }
+.shell-desktop-sidebar__user-info { padding: var(--space-sm) var(--sidebar-item-padding-inline-expanded); overflow: hidden; white-space: nowrap; }
+.shell-desktop-sidebar__user-name { display: block; font-size: var(--font-sm); font-weight: var(--sidebar-active-font-weight); color: var(--sidebar-item-active-color); }
+.shell-desktop-sidebar__user-meta { display: block; font-size: var(--font-xs); color: var(--sidebar-text); }
 .shell-desktop-sidebar__footer-link, .shell-desktop-sidebar__footer-btn { background: none; border: none; cursor: pointer; text-align: left; font: inherit; }
 .shell-desktop-sidebar__footer-btn { width: 100%; color: var(--color-danger-text); }
 .shell-desktop-sidebar__footer-btn:hover { background: var(--sidebar-item-hover-bg); }

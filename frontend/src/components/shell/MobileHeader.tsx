@@ -16,21 +16,25 @@ function MobileNavigationItem({ item }: { item: NavigationItem }) {
 
 export function MobileHeader({ navigationGroups }: { navigationGroups: readonly NavigationGroup[] }) {
   const items = navigationGroups.flatMap((group) => group.items);
-  const { logout } = useAuth();
+  const { state, logout } = useAuth();
+  const user = state.status === 'authenticated' ? state.user : null;
   return (
     <header className="shell-mobile-header">
       <span className="shell-mobile-header__brand">{commonCopy.brand}</span>
       <nav className="shell-mobile-header__nav" aria-label={navigationCopy.primaryNav}>
         {items.map((item) => <MobileNavigationItem key={item.id} item={item} />)}
       </nav>
-      <button
-        type="button"
-        className="shell-mobile-header__logout"
-        onClick={() => void logout()}
-        aria-label={authCopy.logoutButton}
-      >
-        {authCopy.logoutButton}
-      </button>
+      <div className="shell-mobile-header__actions">
+        {user && <span className="shell-mobile-header__user-name" aria-label={authCopy.userInfoAriaLabel}>{user.fullNameJa}</span>}
+        <button
+          type="button"
+          className="shell-mobile-header__logout"
+          onClick={() => void logout()}
+          aria-label={authCopy.logoutButton}
+        >
+          {authCopy.logoutButton}
+        </button>
+      </div>
     </header>
   );
 }
