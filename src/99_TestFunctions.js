@@ -1953,20 +1953,24 @@ function testCreateOrder() {
 //       持ち、グローバル変数が呼び出し間でリセットされることを実証する。
 //
 // 手順:
-//   1. clasp run _testSetGasState --params '["abc"]'
+//   1. clasp run testSetGasGlobalState --params '["abc"]'
 //      → 同一実行内で setTo と readBack が一致することを確認
-//   2. clasp run _testGetGasState
+//   2. clasp run testGetGasGlobalState
 //      → 別実行では null に戻っていることを確認
 //
 // 合格条件: 手順2で { value: null } が返ること。
+//
+// 注意: GAS では underscore 先頭の関数は private 扱いとなり
+//       clasp run（Apps Script API）から呼び出せないため、
+//       公開可能な名前で定義する。
 
 var _gasGlobalStateTest = null;
 
-function _testSetGasState(val) {
+function testSetGasGlobalState(val) {
   _gasGlobalStateTest = val;
   return { setTo: val, readBack: _gasGlobalStateTest };
 }
 
-function _testGetGasState() {
+function testGetGasGlobalState() {
   return { value: _gasGlobalStateTest };
 }
