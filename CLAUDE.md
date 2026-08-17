@@ -109,3 +109,31 @@ git pull origin develop
    gh pr view <番号> --json commits
    ```
    → 自分が作ったコミット以外が含まれていたら報告して止まる
+
+## マージ完了の報告
+
+「マージしてよい」と判断を得た後、以下を必ず報告してから次の作業に移る。
+
+1. `mergedAt` の実測値（`gh pr view <番号> --json mergedAt` の出力）
+2. 作業ブランチの削除結果
+3. Deploy to DEV の conclusion（`develop` へのマージ時のみ）
+   ```bash
+   gh run list --workflow deploy-dev.yml --limit 1
+   ```
+
+報告せずに次の作業に着手しない。  
+マージ漏れが実際に発生している（PR #189 / PR #203）。
+
+## HANDOFF_FRONTEND.md の更新基準
+
+以下に該当する変更をマージした場合のみ、
+`docs/HANDOFF_FRONTEND.md` の該当セクションを更新する。
+
+- 新しいページの追加、または state の昇格（planned → preview → available）
+- 画面構成・ナビゲーション構造の変更
+- 方針の決定・変更（設計判断、廃止方針など）
+- 未確認事項の解消、または新たに判明した制約
+
+該当しないもの（バグ修正、文言変更、小さな調整）では更新しない。  
+HANDOFF は「今どうなっているか」を書く文書であり、
+作業履歴は GitHub の PR 一覧で追跡する。
