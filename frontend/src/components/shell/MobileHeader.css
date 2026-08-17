@@ -5,3 +5,5 @@
 .shell-mobile-header__item--active { color: var(--color-accent); font-weight: 700; }
 .shell-mobile-header__item--planned { opacity: var(--opacity-disabled); }
 .shell-mobile-header__item > svg { width: var(--icon-nav-size); height: var(--icon-nav-size); }
+.shell-mobile-header__actions { display: flex; align-items: center; gap: var(--space-xs); flex-shrink: 0; }
+.shell-mobile-header__user-name { font-size: var(--font-xs); color: var(--sidebar-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 7rem; }

@@ -21,4 +21,6 @@ export const authCopy = {
   passwordMismatch: '現在のパスワードが違います',
   backToDashboard: 'ダッシュボードへ戻る',
   sessionChecking: '認証情報を確認中...',
+  userInfoAriaLabel: 'ログイン中のユーザー',
+  userInfoSeparator: ' / ',
 } as const;
