@@ -327,6 +327,7 @@ export type QuoteRecord = {
   quoteId: string;
   leadId: string;
   customerId: string;
+  customerName: string;
   orderId: string;
   staffId: string;
   issuedDate: string;
