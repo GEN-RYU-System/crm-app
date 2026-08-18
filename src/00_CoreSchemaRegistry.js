@@ -50,11 +50,7 @@ const CORE_SCHEMA_V1_TABLES = {
         COMPLETED: '完了',
         TROUBLE: 'トラブル',
         CANCELLED: 'キャンセル',
-        UNKNOWN: '不明',
-        LEGACY_ORDERED: '受注',
-        LEGACY_PICKUP_REQUESTED: '集荷依頼',
-        LEGACY_IN_TRANSIT: '配送中',
-        LEGACY_SHIPMENT_NOTIFIED: '発送通知'
+        UNKNOWN: '不明'
       }
     },
     referenceIds: [
