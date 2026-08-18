@@ -253,3 +253,26 @@ function hasDevReferenceIntegrityAuditLogHeaders(sheet) {
     header === DEV_REFERENCE_INTEGRITY_AUDIT_LOG_HEADERS[index]
   );
 }
+
+/**
+ * DEV参照整合性監査ログの最終N行を読み取って返す（読み取り専用）。
+ *
+ * @param {number} [n=25] - 取得する末尾の行数
+ * @returns {{ headers: string[], rows: Array<Array<string>> }}
+ */
+function readLastDevReferenceIntegrityAuditLogRows(n) {
+  if (getEnvironment() !== 'development') {
+    throw new Error('readLastDevReferenceIntegrityAuditLogRows is available only in development');
+  }
+  var count = (typeof n === 'number' && n > 0) ? n : 25;
+  var sheet = getSpreadsheet().getSheetByName(DEV_REFERENCE_INTEGRITY_AUDIT_LOG_SHEET_NAME);
+  if (!sheet) return { headers: DEV_REFERENCE_INTEGRITY_AUDIT_LOG_HEADERS, rows: [] };
+  var lastRow = sheet.getLastRow();
+  var dataRowCount = lastRow - 1;
+  if (dataRowCount <= 0) return { headers: DEV_REFERENCE_INTEGRITY_AUDIT_LOG_HEADERS, rows: [] };
+  var startRow = Math.max(2, lastRow - count + 1);
+  var numRows = lastRow - startRow + 1;
+  var values = sheet.getRange(startRow, 1, numRows, DEV_REFERENCE_INTEGRITY_AUDIT_LOG_HEADERS.length)
+    .getDisplayValues();
+  return { headers: DEV_REFERENCE_INTEGRITY_AUDIT_LOG_HEADERS, rows: values };
+}
