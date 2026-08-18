@@ -114,3 +114,67 @@ function investigatePaymentStatusClassification() {
   Logger.log(result);
   return result;
 }
+
+/**
+ * ORDERS.PAYMENT_METHOD（決済手段）の値の種類と件数を調査する。
+ * 書き込みなし。顧客名・オーダーIDは出力しない。
+ * @returns {string}
+ */
+function investigatePaymentMethod() {
+  var tableKey = 'ORDERS';
+  var table    = getCoreSchemaV1Table(tableKey);
+  var ss       = getSpreadsheet();
+  var sheet    = getCoreSchemaV1Sheet(ss, tableKey);
+  var lastCol  = sheet.getLastColumn();
+  var lastRow  = sheet.getLastRow();
+
+  var rawHeaders = sheet.getRange(table.headerRowNumber, 1, 1, lastCol).getDisplayValues()[0].map(function(h) {
+    return String(h).trim();
+  });
+
+  var idxOrderId       = rawHeaders.indexOf(getCoreSchemaV1HeaderName(tableKey, 'ORDER_ID'));
+  var idxPaymentMethod = rawHeaders.indexOf(getCoreSchemaV1HeaderName(tableKey, 'PAYMENT_METHOD'));
+
+  if (idxPaymentMethod === -1) throw new Error('PAYMENT_METHOD ヘッダーが見つかりません');
+
+  var dataRowCount = lastRow - table.headerRowNumber;
+  if (dataRowCount <= 0) return '対象データなし';
+
+  var data = sheet.getRange(table.headerRowNumber + 1, 1, dataRowCount, lastCol).getValues();
+
+  var totalCount = 0;
+  var blankCount = 0;
+  var valueCounts = {};
+
+  data.forEach(function(row) {
+    var orderId = String(row[idxOrderId] || '').trim();
+    if (!orderId) return;
+    totalCount++;
+
+    var method = String(row[idxPaymentMethod] || '').trim();
+    if (method === '') {
+      blankCount++;
+    } else {
+      valueCounts[method] = (valueCounts[method] || 0) + 1;
+    }
+  });
+
+  var out = [
+    '=== investigatePaymentMethod ===',
+    '総件数:   ' + totalCount + '件',
+    '空欄件数: ' + blankCount + '件',
+    '',
+    '[値の種類と件数]'
+  ];
+
+  Object.keys(valueCounts).sort().forEach(function(method) {
+    out.push('  「' + method + '」: ' + valueCounts[method] + '件');
+  });
+
+  out.push('');
+  out.push('--- 調査完了（書き込みなし）---');
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
