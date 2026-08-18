@@ -19,7 +19,7 @@ export const ordersCopy = {
   retry: '再試行',
   loadErrorPrefix: '請求書の読み込みに失敗しました:',
   searchLabel: '請求書を検索',
-  searchPlaceholder: '8項目から検索',
+  searchPlaceholder: '検索',
   emptyTitle: '請求書はありません',
   emptyDescription: '受注データが見つかりませんでした。',
   searchEmptyTitle: '検索条件に一致する請求書はありません',

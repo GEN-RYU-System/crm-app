@@ -5,7 +5,7 @@ export const customersCopy = {
   detailTitle: '顧客詳細',
   detailSubtitle: '顧客マスタと顧客IDで紐づく情報を読取り専用で確認できます。',
   searchLabel: '顧客を検索',
-  searchPlaceholder: '表示中の7項目から検索',
+  searchPlaceholder: '検索',
   loading: '顧客一覧を読み込んでいます。',
   detailLoading: '顧客詳細を読み込んでいます。',
   loadErrorPrefix: '顧客一覧の読み込みに失敗しました:',

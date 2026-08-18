@@ -10,7 +10,7 @@ export const leadsCopy = {
   refreshing: 'リードを更新しています。',
   refresh: '更新',
   searchLabel: 'リードを検索',
-  searchPlaceholder: '7項目から検索',
+  searchPlaceholder: '検索',
   searchEmptyTitle: '検索条件に一致するリードはありません',
   searchEmptyDescription: '検索語を変更またはクリアしてください。',
   permissionsChecking: 'リードの表示権限を確認しています。',
