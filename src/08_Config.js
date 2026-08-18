@@ -229,8 +229,6 @@ Object.defineProperties(CONFIG.SHEETS, {
   CRM_CUSTOMERS: { enumerable: true, get: function() { return getCoreSchemaV1TableName('CUSTOMERS'); } },
   CRM_SHIPPING: { enumerable: true, get: function() { return getCoreSchemaV1TableName('SHIPPING_DESTINATIONS'); } },
   CRM_PAYMENT: { enumerable: true, get: function() { return getCoreSchemaV1TableName('PAYMENT_DESTINATIONS'); } },
-  INVOICES: { enumerable: true, get: function() { return getCoreSchemaV1TableName('INVOICES'); } },
-  INVOICE_ITEMS: { enumerable: true, get: function() { return getCoreSchemaV1TableName('INVOICE_LINES'); } },
   ORDER_MASTER: { enumerable: true, get: function() { return getCoreSchemaV1TableName('ORDERS'); } },
   ORDER_LINES: { enumerable: true, get: function() { return getCoreSchemaV1TableName('ORDER_LINES'); } },
   SHIPMENT: { enumerable: true, get: function() { return getCoreSchemaV1TableName('SHIPMENTS'); } },
