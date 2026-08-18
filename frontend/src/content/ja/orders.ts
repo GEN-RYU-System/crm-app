@@ -9,6 +9,13 @@ export const PAYMENT_STATUS_BADGE_VARIANT: Record<string, BadgeVariant> = {
   '保留':     'info',
 } as const;
 
+/** 通貨コード → 通貨記号の変換表。未定義コードはコードをそのまま前置する。 */
+export const CURRENCY_SYMBOL: Record<string, string> = {
+  JPY: '¥',
+  USD: '$',
+  EUR: '€',
+} as const;
+
 export const ordersCopy = {
   eyebrow: 'Order management',
   title: '請求書一覧',
@@ -19,7 +26,7 @@ export const ordersCopy = {
   retry: '再試行',
   loadErrorPrefix: '請求書の読み込みに失敗しました:',
   searchLabel: '請求書を検索',
-  searchPlaceholder: '9項目から検索',
+  searchPlaceholder: '8項目から検索',
   emptyTitle: '請求書はありません',
   emptyDescription: '受注データが見つかりませんでした。',
   searchEmptyTitle: '検索条件に一致する請求書はありません',
@@ -37,7 +44,6 @@ export const ordersCopy = {
     invoiceIssuedAt: '請求書発行日',
     paymentMethod:   '支払い方法',
     invoiceTotal:    '請求金額',
-    currency:        '通貨',
     paymentDueAt:    '支払期日',
     paymentStatus:   '支払いステータス',
   },
