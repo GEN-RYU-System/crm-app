@@ -36,7 +36,7 @@ function getSharedInventoryForFrontend(sessionId) {
     }
   }
 
-  // ── 作品マスタ_共用在庫: ip_id → 作品名 ─────────────────────────────
+  // ── 作品マスタ_共用在庫: ip_id → 表示名（別名優先、空の場合は作品名）──
   const ipMap = {};
   const ipSheet = ss.getSheetByName('作品マスタ_共用在庫');
   if (ipSheet && ipSheet.getLastRow() > 1) {
@@ -44,11 +44,15 @@ function getSharedInventoryForFrontend(sessionId) {
     const ipH       = ipData[0].map(String);
     const ipIdIdx   = ipH.indexOf('ip_id');
     const ipNameIdx = ipH.indexOf('作品名');
+    const ipAltIdx  = ipH.indexOf('別名');
     if (ipIdIdx !== -1 && ipNameIdx !== -1) {
       for (let i = 1; i < ipData.length; i++) {
-        const r  = ipData[i];
-        const id = String(r[ipIdIdx] ?? '').trim();
-        if (id) ipMap[id] = String(r[ipNameIdx] ?? '');
+        const r       = ipData[i];
+        const id      = String(r[ipIdIdx] ?? '').trim();
+        if (!id) continue;
+        const name    = String(r[ipNameIdx] ?? '').trim();
+        const altName = ipAltIdx !== -1 ? String(r[ipAltIdx] ?? '').trim() : '';
+        ipMap[id] = altName || name;
       }
     }
   }
