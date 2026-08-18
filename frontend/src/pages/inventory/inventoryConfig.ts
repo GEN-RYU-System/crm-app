@@ -36,12 +36,16 @@ export const INVENTORY_LIST_COLUMNS: readonly { key: InventoryColumnKey; label: 
 
 export const INVENTORY_LIST_SEARCH_COLUMNS: readonly InventoryColumnKey[] = INVENTORY_LIST_COLUMNS.map(({ key }) => key);
 
-/** Build dynamic tabs from real data. "All" tab is always first. */
+/** Build dynamic tabs from real data sorted by ipId ascending. "All" tab is always first. */
 export function buildInventoryTabs(items: readonly SharedInventoryItem[]): readonly { key: string; label: string }[] {
-  const names = [...new Set(items.map((item) => item.ipName).filter(Boolean))].sort((a, b) =>
-    a.localeCompare(b, 'ja-JP')
-  );
-  return [{ key: 'all', label: inventoryCopy.tabAll }, ...names.map((name) => ({ key: name, label: name }))];
+  const seen = new Map<string, string>(); // ipId -> ipName (display label)
+  for (const item of items) {
+    if (item.ipId && !seen.has(item.ipId)) {
+      seen.set(item.ipId, item.ipName);
+    }
+  }
+  const sorted = [...seen.entries()].sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true }));
+  return [{ key: 'all', label: inventoryCopy.tabAll }, ...sorted.map(([, name]) => ({ key: name, label: name }))];
 }
 
 /**
