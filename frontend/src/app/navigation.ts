@@ -72,7 +72,7 @@ const DATA_MGMT_SUB_ITEMS: readonly NavigationItem[] = [
 ];
 
 const PRODUCT_MGMT_SUB_ITEMS: readonly NavigationItem[] = [
-  { id: 'inventory', label: dataManagementCopy.inventory, hash: '/inventory', icon: 'inventory', order: 1, state: 'planned', anyPermissions: ['deal_view_all', 'deal_view_own'] },
+  { id: 'inventory', label: dataManagementCopy.inventory, hash: '/inventory', icon: 'inventory', order: 1, state: 'preview', anyPermissions: ['deal_view_all', 'deal_view_own'] },
   { id: 'productMaster', label: dataManagementCopy.productMaster, hash: '/product-master', icon: 'inventory', order: 2, state: 'planned', requiredPermission: 'staff_manage' }
 ];
 
