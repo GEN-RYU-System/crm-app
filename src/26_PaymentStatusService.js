@@ -185,6 +185,108 @@ function applyPaymentStatusBackfill() {
   }
 }
 
+/**
+ * PAYMENT_STATUS 列を実際に読み、書き込み結果を検証する。
+ * 書き込みは一切しない。オーダーID・顧客名は出力しない。
+ *
+ * 報告内容:
+ *   総件数 / 空欄件数 / 値ごとの件数 / 未定義値件数
+ *   calculatePaymentStatus との一致件数・不一致件数
+ *
+ * @returns {string}
+ */
+function verifyPaymentStatusBackfill() {
+  var tableKey = 'ORDERS';
+
+  // 定義済み値の一覧を Schema から取得する
+  var definedValues = {};
+  ['UNPAID', 'PARTIAL', 'PAID', 'OVERDUE', 'ON_HOLD', 'CANCELLED'].forEach(function(key) {
+    definedValues[getCoreSchemaV1Value(tableKey, 'PAYMENT_STATUS', key)] = true;
+  });
+
+  var ordersMeta = readPaymentStatusServiceSheet_(getSpreadsheet(), [
+    'ORDER_ID', 'CANCELLATION_REASON', 'PAYMENT_CONFIRMED_AT', 'PAYMENT_DUE_AT', 'PAYMENT_STATUS'
+  ]);
+
+  var totalCount     = 0;
+  var blankCount     = 0;
+  var undefinedCount = 0;
+  var valueCounts    = {};
+  var matchCount     = 0;
+  var mismatchCount  = 0;
+
+  ordersMeta.rows.forEach(function(row) {
+    var orderId = String(row.ORDER_ID || '').trim();
+    if (!orderId) return;
+    totalCount++;
+
+    var actual = String(row.PAYMENT_STATUS || '').trim();
+
+    // 空欄チェック
+    if (actual === '') {
+      blankCount++;
+    }
+
+    // 値ごとの件数
+    if (actual !== '') {
+      valueCounts[actual] = (valueCounts[actual] || 0) + 1;
+    }
+
+    // 未定義値チェック（空欄は除く）
+    if (actual !== '' && !definedValues[actual]) {
+      undefinedCount++;
+    }
+
+    // calculatePaymentStatus との比較
+    var expected = calculatePaymentStatus({
+      cancellationReason: row.CANCELLATION_REASON,
+      paymentConfirmedAt: row.PAYMENT_CONFIRMED_AT,
+      paymentDueAt:       row.PAYMENT_DUE_AT
+    });
+
+    if (actual === expected) {
+      matchCount++;
+    } else {
+      mismatchCount++;
+    }
+  });
+
+  var out = [
+    '=== verifyPaymentStatusBackfill ===',
+    '',
+    '[実データ集計]',
+    '総件数:     ' + totalCount + '件',
+    '空欄件数:   ' + blankCount + '件',
+    '未定義値:   ' + undefinedCount + '件',
+    '',
+    '[値ごとの件数]'
+  ];
+
+  Object.keys(valueCounts).sort().forEach(function(v) {
+    out.push('  ' + v + ': ' + valueCounts[v] + '件');
+  });
+  if (Object.keys(valueCounts).length === 0) {
+    out.push('  （値なし）');
+  }
+
+  out = out.concat([
+    '',
+    '[calculatePaymentStatus との比較]',
+    '  一致:   ' + matchCount + '件',
+    '  不一致: ' + mismatchCount + '件',
+    '',
+    blankCount === 0 && undefinedCount === 0 && mismatchCount === 0
+      ? '✅ 全合格条件クリア'
+      : '❌ 要確認項目あり',
+    '',
+    '--- 検証完了（書き込みなし）---'
+  ]);
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
+
 // ─── private helpers ─────────────────────────────────────────────────────────
 
 /**
