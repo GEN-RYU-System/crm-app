@@ -150,6 +150,17 @@ const CORE_SCHEMA_V1_TABLES = {
     },
     referenceIds: [{ headerKey: 'STAFF_ID', targetTableKey: 'STAFF' }]
   },
+  SHARED_INVENTORY: {
+    // product_id が重複する（同一商品を複数の提供者が出す場合がある）ため primaryKey は null
+    sheetName: '共用在庫', canonicalName: '共用在庫', aliases: [], headerRowNumber: 1, sheetType: 'SYNC_MASTER', writeAllowed: false,
+    headers: createCoreSchemaV1Headers([
+      ['SERIES', 'Series'], ['QUANTITY', 'Quantity'], ['UNIT_PRICE', 'Unit Price'],
+      ['CONDITION', 'Condition'], ['STATUS', 'Status'], ['NOTE_JA', 'Note_JA'],
+      ['NOTE_EN', 'Note_EN'], ['SUPPLIER', '提供者'], ['PRODUCT_ID', 'product_id'],
+      ['RAW_NAME', 'raw_name'], ['EXCLUSION_REASON', '除外理由']
+    ]), primaryKey: null,
+    referenceIds: [{ headerKey: 'PRODUCT_ID', targetTableKey: 'PRODUCTS' }]
+  },
   LEGACY_INPUT: {
     sheetName: '請求書作成', canonicalName: '請求書作成', aliases: [], headerRowNumber: 1, sheetType: 'LEGACY_INPUT', writeAllowed: false,
     headers: {}, primaryKey: null, referenceIds: []
