@@ -8,6 +8,8 @@ export const inventoryCopy = {
   loading: '共用在庫を読み込んでいます。',
   loadErrorPrefix: '共用在庫の読み込みに失敗しました:',
   retry: '再試行',
+  refresh: '更新',
+  refreshing: '更新中…',
   emptyTitle: '表示できる在庫はありません',
   emptyDescription: '現在の条件に該当する在庫はありません。',
   searchEmptyTitle: '検索条件に一致する在庫はありません',

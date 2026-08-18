@@ -1,37 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CRM_SEARCH_ICON, CRM_SORT_ICONS } from '../../app/icons';
 import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMessage, TabBar, TextField, type DataTableColumn } from '../../components/ui';
 import { inventoryCopy } from '../../content/ja';
-import type { InventoryRepository, SharedInventoryDto } from '../../features/inventory/contracts';
 import { buildInventoryTabs, filterInventoryByTab, filterInventoryRows, INVENTORY_LIST_COLUMNS, INVENTORY_LIST_INITIAL_SORT, toInventoryRows, type InventoryRow, type InventorySort } from './inventoryConfig';
+import { useInventoryListCache } from './InventoryListCacheContext';
 import './InventoryListPage.css';
 
-type LoadState = 'loading' | 'ready' | 'error';
-
-export function InventoryListPage({ repository }: { repository: InventoryRepository }) {
-  const [state, setState] = useState<LoadState>('loading');
-  const [items, setItems] = useState<readonly SharedInventoryDto[]>([]);
-  const [error, setError] = useState('');
+export function InventoryListPage() {
+  const { items, error, loading, refreshing, ensureLoaded, refresh, retry } = useInventoryListCache();
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<InventorySort>(INVENTORY_LIST_INITIAL_SORT);
   const [activeTab, setActiveTab] = useState<string>('all');
 
-  const load = useCallback(async () => {
-    setState('loading');
-    setError('');
-    try {
-      setItems(await repository.listSharedInventory());
-      setState('ready');
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '');
-      setState('error');
-    }
-  }, [repository]);
+  useEffect(() => { void ensureLoaded(); }, [ensureLoaded]);
 
-  useEffect(() => { void load(); }, [load]);
-
-  const tabs = useMemo(() => buildInventoryTabs(items), [items]);
-  const tabFilteredItems = useMemo(() => filterInventoryByTab(items, activeTab), [items, activeTab]);
+  const displayItems = items ?? [];
+  const tabs = useMemo(() => buildInventoryTabs(displayItems), [displayItems]);
+  const tabFilteredItems = useMemo(() => filterInventoryByTab(displayItems, activeTab), [displayItems, activeTab]);
   const rows = useMemo(() => toInventoryRows(tabFilteredItems, sort), [tabFilteredItems, sort]);
   const filteredRows = useMemo(() => filterInventoryRows(rows, query), [rows, query]);
 
@@ -67,7 +52,10 @@ export function InventoryListPage({ repository }: { repository: InventoryReposit
     };
   });
 
-  const isEmpty = state === 'ready' && filteredRows.length === 0;
+  const isInitialLoading = loading && items === undefined;
+  const hasError = error !== undefined && items === undefined;
+  const isReady = items !== undefined;
+  const isEmpty = isReady && filteredRows.length === 0;
 
   return (
     <>
@@ -83,6 +71,11 @@ export function InventoryListPage({ repository }: { repository: InventoryReposit
             startIcon={<CRM_SEARCH_ICON aria-hidden="true" />}
           />
         }
+        end={
+          <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading || refreshing}>
+            {refreshing ? inventoryCopy.refreshing : inventoryCopy.refresh}
+          </Button>
+        }
       />
       <Card className="inventory-list-page__data-card">
         <TabBar
@@ -91,7 +84,7 @@ export function InventoryListPage({ repository }: { repository: InventoryReposit
           activeKey={activeTab}
           onChange={(key) => { setActiveTab(key); }}
         />
-        {state === 'loading' && (
+        {isInitialLoading && (
           <DataTable
             ariaLabel={inventoryCopy.tableLabel}
             columns={columns}
@@ -103,11 +96,11 @@ export function InventoryListPage({ repository }: { repository: InventoryReposit
             surface="embedded"
           />
         )}
-        {state === 'error' && (
+        {hasError && (
           <div className="inventory-list-page__data-state">
             <StatusMessage variant="error">
               {inventoryCopy.loadErrorPrefix} {error}
-              <Button variant="outline" size="sm" onClick={() => void load()}>{inventoryCopy.retry}</Button>
+              <Button variant="outline" size="sm" onClick={() => void retry()}>{inventoryCopy.retry}</Button>
             </StatusMessage>
           </div>
         )}
@@ -119,7 +112,7 @@ export function InventoryListPage({ repository }: { repository: InventoryReposit
             />
           </div>
         )}
-        {state === 'ready' && filteredRows.length > 0 && (
+        {isReady && filteredRows.length > 0 && (
           <DataTable
             ariaLabel={inventoryCopy.tableLabel}
             columns={columns}
