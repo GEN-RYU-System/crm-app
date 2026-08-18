@@ -5,7 +5,7 @@ export const staffCopy = {
   detailTitle: 'スタッフ詳細',
   detailSubtitle: 'スタッフの詳細情報を読取り専用で確認できます。',
   searchLabel: 'スタッフを検索',
-  searchPlaceholder: '表示中の項目から検索',
+  searchPlaceholder: '検索',
   loading: 'スタッフ一覧を読み込んでいます。',
   detailLoading: 'スタッフ詳細を読み込んでいます。',
   loadErrorPrefix: 'スタッフ一覧の読み込みに失敗しました:',

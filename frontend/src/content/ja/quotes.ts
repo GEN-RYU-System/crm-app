@@ -16,7 +16,7 @@ export const quotesCopy = {
   retry: '再試行',
   loadErrorPrefix: '見積もりの読み込みに失敗しました:',
   searchLabel: '見積もりを検索',
-  searchPlaceholder: '5項目から検索',
+  searchPlaceholder: '検索',
   emptyTitle: '見積もりはありません',
   emptyDescription: '発行済み見積もりが見つかりませんでした。',
   searchEmptyTitle: '検索条件に一致する見積もりはありません',
