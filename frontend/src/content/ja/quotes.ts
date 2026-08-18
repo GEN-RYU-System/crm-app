@@ -1,3 +1,11 @@
+import type { BadgeVariant } from '../../components/ui/Badge/Badge';
+
+export const QUOTE_STATUS_BADGE_VARIANT: Record<string, BadgeVariant> = {
+  '下書き':   'neutral',
+  '送付済み': 'info',
+  '期限切れ': 'warning',
+} as const;
+
 export const quotesCopy = {
   eyebrow: 'Quote management',
   title: '見積もり一覧',
@@ -8,7 +16,7 @@ export const quotesCopy = {
   retry: '再試行',
   loadErrorPrefix: '見積もりの読み込みに失敗しました:',
   searchLabel: '見積もりを検索',
-  searchPlaceholder: '6項目から検索',
+  searchPlaceholder: '5項目から検索',
   emptyTitle: '見積もりはありません',
   emptyDescription: '発行済み見積もりが見つかりませんでした。',
   searchEmptyTitle: '検索条件に一致する見積もりはありません',
@@ -25,13 +33,12 @@ export const quotesCopy = {
   detailLoadErrorPrefix: '見積もり詳細の読み込みに失敗しました:',
   backToList: '一覧へ戻る',
   columns: {
-    quoteId:     '見積もりID',
-    customerId:  '顧客ID',
-    issuedDate:  '発行日',
-    expiryDate:  '有効期限',
-    status:      'ステータス',
-    currency:    '通貨',
-    totalAmount: '合計金額',
+    quoteId:      '見積もりID',
+    customerName: '顧客名',
+    issuedDate:   '発行日',
+    expiryDate:   '有効期限',
+    totalAmount:  '合計金額',
+    status:       'ステータス',
   },
   detail: {
     title: '見積もり詳細',
