@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CRM_SORT_ICONS } from '../../app/icons';
+import { CRM_SEARCH_ICON, CRM_SORT_ICONS } from '../../app/icons';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMessage, TextField, type DataTableColumn } from '../../components/ui';
 import { ordersCopy, PAYMENT_STATUS_BADGE_VARIANT } from '../../content/ja';
@@ -78,7 +78,7 @@ export function OrderListPage() {
     <>
       <PageHeader eyebrow={ordersCopy.eyebrow} title={ordersCopy.title} subtitle={ordersCopy.subtitle} />
       <PageToolbar
-        start={<TextField aria-label={ordersCopy.searchLabel} placeholder={ordersCopy.searchPlaceholder} value={query} onChange={(e) => setQuery(e.target.value)} width="sm" />}
+        start={<TextField aria-label={ordersCopy.searchLabel} placeholder={ordersCopy.searchPlaceholder} value={query} onChange={(e) => setQuery(e.target.value)} width="sm" startIcon={<CRM_SEARCH_ICON aria-hidden="true" />} />}
         end={<Button variant="secondary" onClick={() => void load()} loading={state === 'loading'} loadingText={ordersCopy.loading}>{ordersCopy.refresh}</Button>}
       />
       <Card className="order-list-page__data-card">
