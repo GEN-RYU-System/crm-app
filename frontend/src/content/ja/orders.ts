@@ -9,13 +9,6 @@ export const PAYMENT_STATUS_BADGE_VARIANT: Record<string, BadgeVariant> = {
   '保留':     'info',
 } as const;
 
-/** 通貨コード → 通貨記号の変換表。未定義コードはコードをそのまま前置する。 */
-export const CURRENCY_SYMBOL: Record<string, string> = {
-  JPY: '¥',
-  USD: '$',
-  EUR: '€',
-} as const;
-
 export const ordersCopy = {
   eyebrow: 'Order management',
   title: '請求書一覧',

@@ -413,3 +413,25 @@ export function getCoreOrders(): Promise<readonly OrderRecord[]> {
       .getCoreOrdersForFrontend(getStoredSessionId());
   });
 }
+
+export type CurrencyRecord = {
+  currencyCode: string;
+  symbol: string;
+  name: string;
+  rateToJpy: number | null;
+};
+
+export function getCoreCurrencies(): Promise<readonly CurrencyRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (!Array.isArray(value)) { reject(new Error(errorCopy.communication)); return; }
+        resolve(value as CurrencyRecord[]);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getCoreCurrenciesForFrontend(getStoredSessionId());
+  });
+}
