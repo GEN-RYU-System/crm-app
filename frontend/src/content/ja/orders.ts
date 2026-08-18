@@ -1,3 +1,14 @@
+import type { BadgeVariant } from '../../components/ui/Badge/Badge';
+
+export const PAYMENT_STATUS_BADGE_VARIANT: Record<string, BadgeVariant> = {
+  '入金済み': 'success',
+  '未入金':   'warning',
+  '一部入金': 'warning',
+  '遅延':     'danger',
+  'キャンセル': 'neutral',
+  '保留':     'info',
+} as const;
+
 export const ordersCopy = {
   eyebrow: 'Order management',
   title: '請求書一覧',
@@ -8,7 +19,7 @@ export const ordersCopy = {
   retry: '再試行',
   loadErrorPrefix: '請求書の読み込みに失敗しました:',
   searchLabel: '請求書を検索',
-  searchPlaceholder: '5項目から検索',
+  searchPlaceholder: '9項目から検索',
   emptyTitle: '請求書はありません',
   emptyDescription: '受注データが見つかりませんでした。',
   searchEmptyTitle: '検索条件に一致する請求書はありません',
@@ -20,12 +31,14 @@ export const ordersCopy = {
   sortNone: '未選択',
   sortLabel: (label: string, direction: string) => `${label}を${direction}で並べ替え`,
   columns: {
-    orderId:       'オーダーID',
-    invoiceNumber: '請求書番号',
-    customerId:    '顧客ID',
-    status:        'ステータス',
-    orderDate:     '受注日',
-    currency:      '通貨',
-    invoiceTotal:  '請求金額',
+    orderId:         'オーダーID',
+    customerName:    '顧客名',
+    invoiceNumber:   '請求書番号',
+    invoiceIssuedAt: '請求書発行日',
+    paymentMethod:   '支払い方法',
+    invoiceTotal:    '請求金額',
+    currency:        '通貨',
+    paymentDueAt:    '支払期日',
+    paymentStatus:   '支払いステータス',
   },
 } as const;

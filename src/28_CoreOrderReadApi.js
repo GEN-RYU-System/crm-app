@@ -7,11 +7,23 @@ function getCoreOrdersForFrontend(sessionId) {
   setEmailFromSession(sessionId);
   checkPermission('lead_view');
 
-  const spreadsheet = getSpreadsheet();
-  const orders = coreCustomerFrontendReadTable(spreadsheet, 'ORDERS', [
-    'ORDER_ID', 'INVOICE_NUMBER', 'CUSTOMER_ID', 'STATUS',
-    'ORDER_DATE', 'CURRENCY', 'INVOICE_TOTAL',
-    'PAYMENT_CONFIRMED_AT', 'SHIPPED_AT', 'INVOICE_LINK'
+  var spreadsheet = getSpreadsheet();
+
+  // 顧客マスタを1回だけ読み、ID→名前の対応表を作る（172回読まない）
+  var customers = coreCustomerFrontendReadTable(spreadsheet, 'CUSTOMERS', [
+    'CUSTOMER_ID', 'CUSTOMER_NAME'
+  ]);
+  var customerNameById = customers.rows.reduce(function(map, row) {
+    var id   = coreCustomerFrontendValue(row[customers.indexes.CUSTOMER_ID]);
+    var name = coreCustomerFrontendValue(row[customers.indexes.CUSTOMER_NAME]);
+    if (id) map[id] = name;
+    return map;
+  }, {});
+
+  var orders = coreCustomerFrontendReadTable(spreadsheet, 'ORDERS', [
+    'ORDER_ID', 'CUSTOMER_ID', 'INVOICE_NUMBER', 'INVOICE_ISSUED_AT',
+    'PAYMENT_METHOD', 'INVOICE_TOTAL', 'CURRENCY',
+    'PAYMENT_DUE_AT', 'PAYMENT_STATUS'
   ]);
 
   return orders.rows
@@ -19,17 +31,17 @@ function getCoreOrdersForFrontend(sessionId) {
       return coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]);
     })
     .map(function(row) {
+      var customerId = coreCustomerFrontendValue(row[orders.indexes.CUSTOMER_ID]);
       return {
-        orderId:            coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]),
-        invoiceNumber:      coreCustomerFrontendValue(row[orders.indexes.INVOICE_NUMBER]),
-        customerId:         coreCustomerFrontendValue(row[orders.indexes.CUSTOMER_ID]),
-        status:             coreCustomerFrontendValue(row[orders.indexes.STATUS]),
-        orderDate:          coreCustomerFrontendValue(row[orders.indexes.ORDER_DATE]),
-        currency:           coreCustomerFrontendValue(row[orders.indexes.CURRENCY]),
-        invoiceTotal:       coreCustomerFrontendValue(row[orders.indexes.INVOICE_TOTAL]),
-        paymentConfirmedAt: coreCustomerFrontendValue(row[orders.indexes.PAYMENT_CONFIRMED_AT]),
-        shippedAt:          coreCustomerFrontendValue(row[orders.indexes.SHIPPED_AT]),
-        invoiceLink:        coreCustomerFrontendValue(row[orders.indexes.INVOICE_LINK])
+        orderId:         coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]),
+        customerName:    customerNameById[customerId] || '',
+        invoiceNumber:   coreCustomerFrontendValue(row[orders.indexes.INVOICE_NUMBER]),
+        invoiceIssuedAt: coreCustomerFrontendValue(row[orders.indexes.INVOICE_ISSUED_AT]),
+        paymentMethod:   coreCustomerFrontendValue(row[orders.indexes.PAYMENT_METHOD]),
+        invoiceTotal:    coreCustomerFrontendValue(row[orders.indexes.INVOICE_TOTAL]),
+        currency:        coreCustomerFrontendValue(row[orders.indexes.CURRENCY]),
+        paymentDueAt:    coreCustomerFrontendValue(row[orders.indexes.PAYMENT_DUE_AT]),
+        paymentStatus:   coreCustomerFrontendValue(row[orders.indexes.PAYMENT_STATUS])
       };
     });
 }
