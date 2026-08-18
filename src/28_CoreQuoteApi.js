@@ -345,7 +345,8 @@ function coreQuoteCalculateTotals(lines, quoteData) {
     const price = coreQuoteNumber(line.unitPrice) || 0;
     return sum + qty * price;
   }, 0);
-  const exchangeRate   = coreQuoteNumber(quoteData.exchangeRate) || 1;
+  const currency       = String(quoteData.currency || 'JPY').trim().toUpperCase();
+  const exchangeRate   = getCurrentExchangeRate(currency);
   const shippingFee    = coreQuoteNumber(quoteData.shippingFee)  || 0;
   const discount       = coreQuoteNumber(quoteData.discount)     || 0;
   const totalAmount    = subtotal + shippingFee - discount;
