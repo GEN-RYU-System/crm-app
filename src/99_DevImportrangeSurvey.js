@@ -56,5 +56,6 @@ function surveyImportrangeFormulas() {
     };
   });
 
-  return { results: results };
+  // clasp の表示上限でネスト配列が [Array] になるため、文字列化して返す
+  return { results: JSON.stringify(results) };
 }
