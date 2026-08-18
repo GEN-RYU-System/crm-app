@@ -4,7 +4,7 @@ export const inventoryCopy = {
   title: '共用在庫一覧',
   subtitle: '在庫解析システムから取り込んだ共用在庫を閲覧できます。',
   searchLabel: '在庫を検索',
-  searchPlaceholder: '表示中の項目から検索',
+  searchPlaceholder: '検索',
   loading: '共用在庫を読み込んでいます。',
   loadErrorPrefix: '共用在庫の読み込みに失敗しました:',
   retry: '再試行',
