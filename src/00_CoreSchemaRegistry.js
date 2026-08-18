@@ -173,6 +173,17 @@ const CORE_SCHEMA_V1_TABLES = {
     ]), primaryKey: null,
     referenceIds: [{ headerKey: 'PRODUCT_ID', targetTableKey: 'PRODUCTS' }]
   },
+  CURRENCIES: {
+    sheetName: '通貨マスタ', canonicalName: '通貨マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['CURRENCY_CODE', '通貨コード'],
+      ['SYMBOL',        '記号'],
+      ['NAME',          '名称'],
+      ['RATE_TO_JPY',   '円換算レート'],
+      ['IS_ACTIVE',     '有効']
+    ]), primaryKey: 'CURRENCY_CODE',
+    referenceIds: []
+  },
   LEGACY_INPUT: {
     sheetName: '請求書作成', canonicalName: '請求書作成', aliases: [], headerRowNumber: 1, sheetType: 'LEGACY_INPUT', writeAllowed: false,
     headers: {}, primaryKey: null, referenceIds: []
