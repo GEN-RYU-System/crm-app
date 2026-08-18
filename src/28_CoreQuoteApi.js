@@ -129,6 +129,9 @@ function createCoreQuoteForFrontend(sessionId, quoteData) {
   checkPermission('deal_edit');
   coreQuoteAssertRequiredFields(quoteData);
 
+  const ss = getSpreadsheet();
+  coreQuoteAssertLeadIdExists(ss, String(quoteData.leadId || '').trim());
+
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
@@ -193,10 +196,12 @@ function updateCoreQuoteForFrontend(sessionId, quoteId, quoteData) {
   const normalizedId = coreQuoteNormalizeId(quoteId);
   if (!normalizedId) throw new Error('QUOTE_ID_REQUIRED');
 
+  const ss = getSpreadsheet();
+  coreQuoteAssertLeadIdExists(ss, String(quoteData.leadId || '').trim());
+
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
-    const ss  = getSpreadsheet();
     const now = new Date();
 
     const { sheet: quoteSheet, headerIndexes: quoteHI } =
@@ -280,6 +285,28 @@ function coreQuoteAssertRequiredFields(quoteData) {
   if (!quoteData) throw new Error('QUOTE_DATA_REQUIRED');
   if (!String(quoteData.leadId  || '').trim()) throw new Error('QUOTE_LEAD_ID_REQUIRED');
   if (!String(quoteData.staffId || '').trim()) throw new Error('QUOTE_STAFF_ID_REQUIRED');
+}
+
+/**
+ * leadId が LEADS シートに存在するか検証する。
+ * 存在しない場合は QUOTE_LEAD_ID_NOT_FOUND を投げる。
+ */
+function coreQuoteAssertLeadIdExists(spreadsheet, leadId) {
+  const leadsTable   = getCoreSchemaV1Table('LEADS');
+  const leadsSheet   = getCoreSchemaV1Sheet(spreadsheet, 'LEADS');
+  const lastRow      = leadsSheet.getLastRow();
+  const dataRowStart = leadsTable.headerRowNumber + 1;
+  if (lastRow < dataRowStart) throw new Error('QUOTE_LEAD_ID_NOT_FOUND');
+  const headers    = leadsSheet.getRange(leadsTable.headerRowNumber, 1, 1, leadsSheet.getLastColumn())
+    .getDisplayValues()[0].map(function(h) { return String(h).trim(); });
+  const leadIdHeader = getCoreSchemaV1HeaderName('LEADS', 'LEAD_ID');
+  const colIdx     = headers.indexOf(leadIdHeader);
+  if (colIdx === -1) throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING: LEAD_ID');
+  const data = leadsSheet.getRange(dataRowStart, colIdx + 1, lastRow - leadsTable.headerRowNumber, 1).getValues();
+  for (let i = 0; i < data.length; i++) {
+    if (String(data[i][0] || '').trim() === leadId) return;
+  }
+  throw new Error('QUOTE_LEAD_ID_NOT_FOUND');
 }
 
 /**
