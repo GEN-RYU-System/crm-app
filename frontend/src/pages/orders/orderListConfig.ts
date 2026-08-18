@@ -4,26 +4,30 @@ import { ordersCopy } from '../../content/ja';
 
 export type OrderRow = {
   orderId: string;
+  customerName: string;
   invoiceNumber: string;
-  customerId: string;
-  status: string;
-  orderDate: string;
-  currency: string;
+  invoiceIssuedAt: string;
+  paymentMethod: string;
   invoiceTotal: string;
+  currency: string;
+  paymentDueAt: string;
+  paymentStatus: string;
 };
 export type OrderSortKey = Exclude<keyof OrderRow, 'orderId'>;
 export type OrderSortDirection = 'ascending' | 'descending';
 export type OrderSort = { key: OrderSortKey; direction: OrderSortDirection };
 
-export const ORDER_LIST_INITIAL_SORT: OrderSort = { key: 'orderDate', direction: 'descending' };
+export const ORDER_LIST_INITIAL_SORT: OrderSort = { key: 'invoiceIssuedAt', direction: 'descending' };
 
 export const ORDER_LIST_COLUMNS: readonly { key: OrderSortKey; label: string; cellAlignment: DataTableCellAlignment }[] = [
-  { key: 'invoiceNumber', label: ordersCopy.columns.invoiceNumber, cellAlignment: 'center' },
-  { key: 'customerId',    label: ordersCopy.columns.customerId,    cellAlignment: 'center' },
-  { key: 'orderDate',     label: ordersCopy.columns.orderDate,     cellAlignment: 'center' },
-  { key: 'status',        label: ordersCopy.columns.status,        cellAlignment: 'center' },
-  { key: 'currency',      label: ordersCopy.columns.currency,      cellAlignment: 'center' },
-  { key: 'invoiceTotal',  label: ordersCopy.columns.invoiceTotal,  cellAlignment: 'center' },
+  { key: 'customerName',    label: ordersCopy.columns.customerName,    cellAlignment: 'start'  },
+  { key: 'invoiceNumber',   label: ordersCopy.columns.invoiceNumber,   cellAlignment: 'center' },
+  { key: 'invoiceIssuedAt', label: ordersCopy.columns.invoiceIssuedAt, cellAlignment: 'center' },
+  { key: 'paymentMethod',   label: ordersCopy.columns.paymentMethod,   cellAlignment: 'center' },
+  { key: 'invoiceTotal',    label: ordersCopy.columns.invoiceTotal,    cellAlignment: 'center' },
+  { key: 'currency',        label: ordersCopy.columns.currency,        cellAlignment: 'center' },
+  { key: 'paymentDueAt',   label: ordersCopy.columns.paymentDueAt,    cellAlignment: 'center' },
+  { key: 'paymentStatus',  label: ordersCopy.columns.paymentStatus,   cellAlignment: 'center' },
 ];
 
 export const ORDER_LIST_SEARCH_COLUMNS: readonly OrderSortKey[] = ORDER_LIST_COLUMNS.map(({ key }) => key);
@@ -46,13 +50,15 @@ function compareRows(a: OrderRow, b: OrderRow, sort: OrderSort): number {
 export function toOrderRows(records: readonly OrderRecord[], sort: OrderSort = ORDER_LIST_INITIAL_SORT): OrderRow[] {
   return records
     .map((r) => ({
-      orderId:       text(r.orderId),
-      invoiceNumber: text(r.invoiceNumber),
-      customerId:    text(r.customerId),
-      status:        text(r.status),
-      orderDate:     formatDate(r.orderDate),
-      currency:      text(r.currency),
-      invoiceTotal:  text(r.invoiceTotal),
+      orderId:         text(r.orderId),
+      customerName:    text(r.customerName),
+      invoiceNumber:   text(r.invoiceNumber),
+      invoiceIssuedAt: formatDate(r.invoiceIssuedAt),
+      paymentMethod:   text(r.paymentMethod),
+      invoiceTotal:    text(r.invoiceTotal),
+      currency:        text(r.currency),
+      paymentDueAt:    formatDate(r.paymentDueAt),
+      paymentStatus:   text(r.paymentStatus),
     }))
     .sort((a, b) => compareRows(a, b, sort));
 }
