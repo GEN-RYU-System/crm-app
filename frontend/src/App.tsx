@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { canAccessNavigationItem, DATA_MANAGEMENT_ROOT, hasNavigationPermission, NAVIGATION_BY_ID, STAFF_MANAGEMENT_ROOT, visibleDataManagementItems, visibleNavigationGroups, type NavigationPermissions } from './app/navigation';
+import { canAccessNavigationItem, DATA_MANAGEMENT_ITEMS, hasNavigationPermission, NAVIGATION_BY_ID, visibleDataManagementItems, visibleNavigationGroups, type NavigationItemId, type NavigationPermissions } from './app/navigation';
 import { AppShell } from './components/shell';
 import { Spinner, StatusMessage } from './components/ui';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -122,28 +122,37 @@ function AppRouter() {
       ? <DataManagementPage navigationItems={dataManagementItems} />
       : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
 
+  const hubIndexRoutes: Partial<Record<NavigationItemId, ReactNode>> = {
+    leads: leadsRoute,
+    customers: customersRoute,
+    quotes: quotesRoute,
+    orders: ordersRoute,
+    inventory: inventoryRoute,
+    staff: staffRoute
+  };
+  const hubExtraRoutes: Partial<Record<NavigationItemId, ReactNode[]>> = {
+    leads: [
+      <Route key="create" path={LEAD_EDITOR_SEGMENTS.create} element={createRoute} />,
+      <Route key="detail" path={LEAD_EDITOR_SEGMENTS.detail} element={detailRoute} />
+    ],
+    customers: [
+      <Route key="detail" path={CUSTOMER_ROUTE_SEGMENTS.detail} element={customerDetailRoute} />
+    ],
+    quotes: [
+      <Route key="detail" path={QUOTE_ROUTE_SEGMENTS.detail} element={quoteDetailRoute} />
+    ]
+  };
+
   return <HashRouter><LeadListCacheProvider><CustomerListCacheProvider repository={customerGasRepository}><AppShell navigationGroups={navigationGroups}><Routes>
     <Route path={NAVIGATION_BY_ID.dashboard.hash} element={<DashboardPage kpis={kpis} state={state} error={error} onRefresh={() => void load()} />} />
-    <Route path={DATA_MANAGEMENT_ROOT} element={dataManagementRoute}>
-      <Route index element={leadsRoute} />
-      <Route path={LEAD_EDITOR_SEGMENTS.create} element={createRoute} />
-      <Route path={LEAD_EDITOR_SEGMENTS.detail} element={detailRoute} />
-    </Route>
-    <Route path={NAVIGATION_BY_ID.customers.hash} element={dataManagementRoute}>
-      <Route index element={customersRoute} />
-      <Route path={CUSTOMER_ROUTE_SEGMENTS.detail} element={customerDetailRoute} />
-    </Route>
-    <Route path={NAVIGATION_BY_ID.inventory.hash} element={dataManagementRoute}>
-      <Route index element={inventoryRoute} />
-    </Route>
-    <Route path={NAVIGATION_BY_ID.quotes.hash} element={dataManagementRoute}>
-      <Route index element={quotesRoute} />
-      <Route path={QUOTE_ROUTE_SEGMENTS.detail} element={quoteDetailRoute} />
-    </Route>
-    <Route path={NAVIGATION_BY_ID.orders.hash} element={dataManagementRoute}>
-      <Route index element={ordersRoute} />
-    </Route>
-    <Route path={STAFF_MANAGEMENT_ROOT} element={staffRoute} />
+    {DATA_MANAGEMENT_ITEMS
+      .filter((item) => item.state !== 'planned' && hubIndexRoutes[item.id] != null)
+      .map((item) => (
+        <Route key={item.id} path={item.hash} element={dataManagementRoute}>
+          <Route index element={hubIndexRoutes[item.id]} />
+          {hubExtraRoutes[item.id]}
+        </Route>
+      ))}
     <Route path={NAVIGATION_BY_ID.inbox.hash} element={inboxRoute} />
     <Route path="/leads-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
     <Route path="/new-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
