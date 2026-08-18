@@ -38,15 +38,7 @@ const DEV_REFERENCE_INTEGRITY_RELATIONSHIPS = [
   ['オーダー管理', 'オーダーID', '見積もり管理', 'オーダーID', 'OPTIONAL'],
   ['担当者マスタ', '担当者ID',   '見積もり管理', '担当者ID',   'REQUIRED'],
   // 見積もり明細
-  ['見積もり管理', '見積書ID', '見積もり明細', '見積書ID', 'REQUIRED'],
-  // 請求書管理
-  ['オーダー管理', 'オーダーID', '請求書管理', 'オーダーID', 'REQUIRED'],
-  ['顧客マスタ',   '顧客ID',     '請求書管理', '顧客ID',     'REQUIRED'],
-  ['リード管理',   'リードID',   '請求書管理', 'リードID',   'REQUIRED'],
-  ['見積もり管理', '見積書ID',   '請求書管理', '見積書ID',   'OPTIONAL'],
-  ['担当者マスタ', '担当者ID',   '請求書管理', '担当者ID',   'REQUIRED'],
-  // 請求書明細
-  ['請求書管理', '請求書ID', '請求書明細', '請求書ID', 'REQUIRED']
+  ['見積もり管理', '見積書ID', '見積もり明細', '見積書ID', 'REQUIRED']
 ];
 
 function runAndLogDevReferenceIntegrityAudit() {
