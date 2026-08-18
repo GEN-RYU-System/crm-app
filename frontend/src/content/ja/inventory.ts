@@ -1,4 +1,5 @@
 export const inventoryCopy = {
+  tabAll: 'すべて',
   eyebrow: 'Shared inventory',
   title: '共用在庫一覧',
   subtitle: '在庫解析システムから取り込んだ共用在庫を閲覧できます。',
@@ -17,11 +18,12 @@ export const inventoryCopy = {
   sortNone: '未選択',
   sortLabel: (label: string, direction: string) => `${label}を${direction}で並べ替え`,
   columns: {
-    series:    'Series',
-    quantity:  'Quantity',
-    unitPrice: 'Unit Price',
-    condition: 'Condition',
-    status:    'Status',
-    supplier:  '提供者'
+    japaneseTitle: 'Japanese Title',
+    series:        'Series',
+    quantity:      'Quantity',
+    unitPrice:     'Unit Price',
+    condition:     'Condition',
+    status:        'Status',
+    supplier:      '提供者'
   }
 } as const;

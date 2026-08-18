@@ -21,7 +21,7 @@ interface GoogleScriptRun {
   logout(sessionId: string): void;
   getSessionUser(sessionId: string): void;
   changeOwnPasswordForFrontend(sessionId: string | null, currentPassword: string, newPassword: string): void;
-  getSharedInventoryForFrontend(): void;
+  getSharedInventoryForFrontend(sessionId: string | null): void;
   getCoreQuotesForFrontend(sessionId: string | null): void;
   getCoreQuoteForFrontend(sessionId: string | null, quoteId: string): void;
   getCoreOrdersForFrontend(sessionId: string | null): void;
