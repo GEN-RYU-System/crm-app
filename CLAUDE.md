@@ -78,6 +78,32 @@ git pull origin develop
 # → release/<topic> を develop から作成して作業
 ```
 
+## worktree での作業（必須）
+
+本店（`~/crm-app-new`）では作業しない。
+複数セッションが同一ディレクトリを操作するため、
+`git checkout` でブランチが切り替わる事故が実際に発生した。
+
+### 作業開始時
+
+1. 個室を作る
+   ```bash
+   bash scripts/new-worktree.sh release/<topic>
+   ```
+2. 作られたディレクトリへ移動する
+3. チェックを通す
+   ```bash
+   bash scripts/validate-worktree-start.sh
+   ```
+   → exit 1 なら、その場所では作業しない
+
+### 作業完了後
+
+```bash
+git -C ~/crm-app-new worktree remove <個室のパス>
+git -C ~/crm-app-new branch -d <ブランチ名>
+```
+
 ## ブランチ確認（複数セッション運用のため必須）
 
 複数のセッションが同一リポジトリを操作している。
