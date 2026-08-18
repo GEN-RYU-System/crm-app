@@ -1,7 +1,8 @@
 # フロントエンド引き継ぎドキュメント
 
 > 作成: 2026-08-15  
-> 対象リポジトリ: GEN-RYU-System/crm-app（develop ブランチ、PR #142 マージ後の状態）  
+> 最終更新: 2026-08-19（PR #259 マージ後の状態に更新）  
+> 対象リポジトリ: GEN-RYU-System/crm-app（develop ブランチ）  
 > すべて実測値。推測が混じる箇所は【推測】と明記する。
 
 ---
@@ -38,7 +39,7 @@ GAS プロジェクト
 
 ## 2. GAS との接続方式
 
-`frontend/src/gas/client.ts`（182行）がすべての GAS 呼び出しを管理する。
+`frontend/src/gas/client.ts`（445行）がすべての GAS 呼び出しを管理する。
 
 ```typescript
 const runner = window.google?.script?.run;
@@ -52,7 +53,7 @@ runner
 `google.script.run` ではなく `window.google?.script?.run` で書かれているためパターンが一致しなかった。  
 `client.ts` は実際に GAS に接続している。
 
-**client.ts に定義済みの GAS 呼び出し:**
+**client.ts に定義済みの GAS 呼び出し（実測）:**
 
 | 関数 | GAS 側関数 | 用途 |
 |------|-----------|------|
@@ -64,6 +65,17 @@ runner
 | `updateLead()` | `updateLead` | リード更新 |
 | `getCoreCustomers()` | `getCoreCustomersForFrontend` | 顧客一覧 |
 | `getCoreCustomer()` | `getCoreCustomerForFrontend` | 顧客詳細 |
+| `getCoreStaff()` | `getCoreStaffForFrontend` | 担当者一覧 |
+| `getCoreStaffMember()` | `getCoreStaffMemberForFrontend` | 担当者詳細 |
+| `loginWithPassword()` | `loginWithPassword` | ログイン |
+| `gasLogout()` | `logout` | ログアウト |
+| `getSessionUser()` | `getSessionUser` | セッション確認 |
+| `changeOwnPasswordForFrontend()` | `changeOwnPasswordForFrontend` | パスワード変更 |
+| `getSharedInventory()` | `getSharedInventoryForFrontend` | 共用在庫一覧 |
+| `getCoreQuotes()` | `getCoreQuotesForFrontend` | 見積もり一覧 |
+| `getCoreQuoteDetail()` | `getCoreQuoteForFrontend` | 見積もり詳細 |
+| `getCoreOrders()` | `getCoreOrdersForFrontend` | 請求書（オーダー）一覧 |
+| `getCoreCurrencies()` | `getCoreCurrenciesForFrontend` | 通貨マスタ一覧 |
 
 ---
 
@@ -123,18 +135,62 @@ GAS 側の role→permission マッピングは `27_WebApp.js` L2611 `getPermiss
 | `features/{page}/gasAdapter.ts` | `client.ts` の GAS 呼び出しをラップするリポジトリ実装 |
 | `content/ja/{page}.ts` | 日本語コピー文字列 |
 
+### データ層の実装方式（2パターン混在）
+
+現時点でデータアクセスの方式が2パターン混在している。
+
+**パターン A: 中間層あり（customers）**
+
+```
+ListPage → CacheContext → Repository interface（contracts.ts）
+                              ↓
+                         gasAdapter.ts → gas/client.ts → GAS
+```
+
+`features/customers/contracts.ts` に `CustomerRepository` インターフェースを定義し、  
+`features/customers/gasAdapter.ts` がそれを実装する。  
+`App.tsx` がリポジトリ実装を生成して `CustomerListCacheProvider` に注入する。
+
+**パターン B: 直接呼び出し（leads / orders / quotes）**
+
+```
+ListPage（または LeadListCacheContext）→ gas/client.ts → GAS
+```
+
+`features/` 層・Repository インターフェースを持たず、ページ（またはキャッシュコンテキスト）が  
+`gas/client.ts` の関数を直接呼び出す。
+
+**注意:** `check-design-system.mjs` にはデータアクセス方式の境界チェックがない。  
+どちらのパターンで実装してもビルドは通る。
+
+### 共通ユーティリティ
+
+| ファイル | 行数 | 用途 |
+|---------|------|------|
+| `pages/shared/amountFormat.ts` | 41行 | `formatAmountWithJpy(amount, currency, amountJpy, symbolMap)` — 円換算併記表示の共通関数。orders / quotes の両方で使用。通貨が JPY の場合はそのまま表示、外貨の場合は `¥xxx（$xxx）` 形式で表示 |
+
+### 通貨マスタ（CURRENCIES）
+
+`src/00_CoreSchemaRegistry.js` に CURRENCIES テーブルが定義されており、  
+通貨コード・記号・名称・JPY換算レートの SSOT（Single Source of Truth）となっている。  
+GAS 側: `src/28_CoreCurrencyApi.js`（`getCurrentExchangeRate(currencyCode)` で現在レートを返す）  
+フロント側: `getCoreCurrencies()` → `gas/client.ts` → `getCoreCurrenciesForFrontend()`
+
 ---
 
 ## 5. 金型化の進捗状況
 
 ### 完成（GAS 実接続済み）
 
-| ページ | state | Config | GAS 接続 | 詳細ページ |
-|--------|-------|--------|---------|----------|
-| leads | `available` | `leadListConfig.ts` 83行 + `leadEditorConfig.ts` 56行 | ✅（client.ts 経由） | ✅ LeadEditorPage |
-| customers | `preview` | `customerConfig.ts` 113行（3タブ分のカラム定義含む） | ✅（client.ts 経由） | ✅ CustomerDetailPage |
+| ページ | state | 実装ファイル | GAS 側 | 詳細ページ | データ層パターン |
+|--------|-------|------------|--------|----------|--------------|
+| leads | `available` | `leadListConfig.ts` 83行 + `leadEditorConfig.ts` 56行 | `getLeadsByType` / `getLeadDetail` / `createLead` / `updateLead` | ✅ LeadEditorPage | B（直接） |
+| customers | `preview` | `customerConfig.ts` 113行（3タブ分のカラム定義含む） | `getCoreCustomersForFrontend` / `getCoreCustomerForFrontend` | ✅ CustomerDetailPage | A（中間層） |
+| orders | `preview` | `OrderListPage.tsx` 116行 / `orderListConfig.ts` 80行 | `getCoreOrdersForFrontend`（`src/28_CoreOrderReadApi.js`） | なし | B（直接） |
+| quotes | `preview` | `QuoteListPage.tsx` 121行 / `QuoteDetailPage.tsx` 150行 / `quoteListConfig.ts` 76行 | `getCoreQuotesForFrontend` / `getCoreQuoteForFrontend`（`src/28_CoreQuoteApi.js`） | ✅ QuoteDetailPage | B（直接） |
 
-leads が参照実装（リファレンス）。customers はその金型を踏襲して作られた 2 枚目。
+leads が参照実装（リファレンス）。customers はその金型を踏襲して作られた 2 枚目。  
+orders / quotes はパターン B（直接呼び出し）で実装されており、`features/` 中間層を持たない。
 
 ### 途中（GAS 未接続・モックのみ）
 
@@ -152,8 +208,6 @@ leads が参照実装（リファレンス）。customers はその金型を踏�
 
 | グループ | ページ | 必要な permission |
 |---------|--------|-----------------|
-| sales | inventory | `deal_view_all` or `deal_view_own` |
-| sales | quotes | `deal_view_all` or `deal_view_own` |
 | sales | quoteHistory | `deal_view_all` or `deal_view_own` |
 | sales | invoices | `deal_view_all` or `deal_view_own` |
 | sales | reports | `deal_view_all` or `deal_view_own` |
@@ -261,8 +315,9 @@ GAS 側の作業（React 外）:
     ・QUOTES テーブルはスキーマに存在しない
     ・業務上「見積を請求書に変換する」操作が必要なら quotes が invoices の前提になりうる【推測】
 
-  quotes → quoteHistory
+  quotes（実装済み） → quoteHistory（未着手）
     ・quoteHistory は quotes の履歴ビューであるため quotes が先
+    ・quotes ページ自体は完成済み（QuoteListPage.tsx + QuoteDetailPage.tsx）
 
   deals 【未確認】
     ・現在の navigation で deal_view_all/deal_view_own が leads と deals の両方に絡む
