@@ -73,7 +73,7 @@ function applyInvoiceTotalJpyBackfill() {
 
   try {
     var spreadsheet = getSpreadsheet();
-    var sheetName   = getCoreSchemaV1HeaderName('ORDERS', 'sheetName');
+    var sheetName   = getCoreSchemaV1TableName('ORDERS');
     var sheet       = spreadsheet.getSheetByName(sheetName);
     if (!sheet) throw new Error('シートが見つかりません: ' + sheetName);
 
