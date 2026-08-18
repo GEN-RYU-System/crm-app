@@ -1,0 +1,7 @@
+.quote-detail-page__state { padding: var(--space-xl); }
+.quote-detail-page__card { margin-bottom: var(--space-md); padding: var(--space-lg); }
+.quote-detail-page__fields { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm) var(--space-xl); }
+.quote-detail-page__field { display: flex; flex-direction: column; gap: var(--space-xs); }
+.quote-detail-page__field-label { font-size: var(--text-sm); color: var(--color-text-secondary); }
+.quote-detail-page__field-value { font-size: var(--text-md); }
+.quote-detail-page__section-title { font-size: var(--text-lg); font-weight: var(--font-weight-medium); margin-bottom: var(--space-md); }
