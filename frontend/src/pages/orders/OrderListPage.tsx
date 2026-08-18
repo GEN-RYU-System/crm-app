@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CRM_SORT_ICONS } from '../../app/icons';
+import { Badge } from '../../components/ui/Badge/Badge';
 import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMessage, TextField, type DataTableColumn } from '../../components/ui';
-import { ordersCopy } from '../../content/ja';
+import { ordersCopy, PAYMENT_STATUS_BADGE_VARIANT } from '../../content/ja';
 import { getCoreOrders, type OrderRecord } from '../../gas/client';
 import { filterOrderRows, ORDER_LIST_COLUMNS, ORDER_LIST_INITIAL_SORT, toOrderRows, type OrderRow, type OrderSort } from './orderListConfig';
 import './OrderListPage.css';
@@ -42,7 +43,14 @@ export function OrderListPage() {
     return {
       key: column.key,
       header: column.label,
-      renderCell: (row) => row[column.key],
+      renderCell: column.key === 'paymentStatus'
+        ? (row) => {
+            const label = row.paymentStatus;
+            if (label === '-') return label;
+            const variant = PAYMENT_STATUS_BADGE_VARIANT[label] ?? 'neutral';
+            return <Badge variant={variant}>{label}</Badge>;
+          }
+        : (row) => row[column.key],
       ariaSort,
       onSort: () => changeSort(column.key),
       sortAriaLabel: ordersCopy.sortLabel(column.label, direction),
