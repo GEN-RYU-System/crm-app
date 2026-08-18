@@ -1,5 +1,5 @@
 import type { ComponentType, SVGProps } from 'react';
-import { ArchiveBoxIcon, ArrowDownIcon, ArrowUpIcon, ArrowsUpDownIcon, BookOpenIcon, BriefcaseIcon, ChartBarIcon, ChatBubbleLeftRightIcon, ChevronDownIcon, CircleStackIcon, ClipboardDocumentListIcon, Cog6ToothIcon, CubeIcon, DocumentTextIcon, LanguageIcon, MapIcon, QuestionMarkCircleIcon, ReceiptPercentIcon, RectangleStackIcon, ShieldCheckIcon, Squares2X2Icon, SwatchIcon, UserGroupIcon, UserPlusIcon, UsersIcon } from '@heroicons/react/24/outline';
+import { ArchiveBoxIcon, ArrowDownIcon, ArrowUpIcon, ArrowsUpDownIcon, BookOpenIcon, BriefcaseIcon, ChartBarIcon, ChatBubbleLeftRightIcon, ChevronDownIcon, CircleStackIcon, ClipboardDocumentListIcon, Cog6ToothIcon, CubeIcon, DocumentTextIcon, LanguageIcon, MagnifyingGlassIcon, MapIcon, QuestionMarkCircleIcon, ReceiptPercentIcon, RectangleStackIcon, ShieldCheckIcon, Squares2X2Icon, SwatchIcon, UserGroupIcon, UserPlusIcon, UsersIcon } from '@heroicons/react/24/outline';
 
 export type CrmNavIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -36,3 +36,6 @@ export const CRM_SORT_ICONS = {
   ascending: ArrowUpIcon,
   descending: ArrowDownIcon
 } satisfies Record<'none' | 'ascending' | 'descending', CrmNavIcon>;
+
+/** TextField start icon for search fields. Pages must not import Heroicons directly. */
+export const CRM_SEARCH_ICON: CrmNavIcon = MagnifyingGlassIcon;

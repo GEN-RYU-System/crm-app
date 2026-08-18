@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CRM_SORT_ICONS } from '../../app/icons';
+import { CRM_SEARCH_ICON, CRM_SORT_ICONS } from '../../app/icons';
 import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMessage, TabBar, TextField, type DataTableColumn } from '../../components/ui';
 import { inventoryCopy } from '../../content/ja';
 import type { InventoryRepository, SharedInventoryDto } from '../../features/inventory/contracts';
@@ -80,6 +80,7 @@ export function InventoryListPage({ repository }: { repository: InventoryReposit
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             width="sm"
+            startIcon={<CRM_SEARCH_ICON aria-hidden="true" />}
           />
         }
       />
