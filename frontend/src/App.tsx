@@ -26,6 +26,7 @@ import { QUOTE_ROUTE_SEGMENTS } from './pages/quotes/quoteListConfig';
 import { OrderListPage } from './pages/orders/OrderListPage';
 import { StaffListPage } from './pages/staff/StaffListPage';
 import { inboxPreviewRepository } from './features/inbox/previewAdapter';
+import { inventoryGasRepository } from './features/inventory/gasAdapter';
 import { ChangePasswordPage } from './pages/auth/ChangePasswordPage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { customersCopy, errorCopy, inboxCopy, leadsCopy, ordersCopy, quotesCopy, staffCopy } from './content/ja';
@@ -103,7 +104,7 @@ function AppRouter() {
   const canAccessStaff = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.staff, permissions);
   const canAccessQuotes = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.quotes, permissions);
   const canAccessOrders = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.orders, permissions);
-  const inventoryRoute = permissionState.status === 'checking' ? <LeadPermissionLoading /> : canAccessLeads ? <InventoryListPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+  const inventoryRoute = permissionState.status === 'checking' ? <LeadPermissionLoading /> : canAccessLeads ? <InventoryListPage repository={inventoryGasRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const quotesRoute = permissionState.status === 'checking' ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={quotesCopy.permissionsChecking} />{quotesCopy.permissionsChecking}</StatusMessage> : canAccessQuotes ? <QuoteListPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const quoteDetailRoute = permissionState.status === 'checking' ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={quotesCopy.permissionsChecking} />{quotesCopy.permissionsChecking}</StatusMessage> : canAccessQuotes ? <QuoteDetailPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const ordersRoute = permissionState.status === 'checking' ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={ordersCopy.permissionsChecking} />{ordersCopy.permissionsChecking}</StatusMessage> : canAccessOrders ? <OrderListPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
