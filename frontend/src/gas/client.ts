@@ -358,15 +358,14 @@ export type QuoteDetailRecord = { quote: QuoteRecord; lines: QuoteLineRecord[] }
 
 export type OrderRecord = {
   orderId: string;
+  customerName: string;
   invoiceNumber: string;
-  customerId: string;
-  status: string;
-  orderDate: string;
-  currency: string;
+  invoiceIssuedAt: string;
+  paymentMethod: string;
   invoiceTotal: string;
-  paymentConfirmedAt: string;
-  shippedAt: string;
-  invoiceLink: string;
+  currency: string;
+  paymentDueAt: string;
+  paymentStatus: string;
 };
 
 export function getCoreQuotes(): Promise<readonly QuoteRecord[]> {
