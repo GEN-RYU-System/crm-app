@@ -345,3 +345,87 @@ function createSharedInventoryMasterSheets() {
 
   return JSON.stringify({ ok: true, spreadsheetName: ssName, created: created });
 }
+
+/**
+ * 4マスタシートの書き込み結果を検証する（読み取りのみ・書き込みなし）
+ * - 各シートの行数・ヘッダー全件
+ * - 商品マスタ同期の大分類ID/作品ID/メーカーID/product_category_ID との照合
+ */
+function verifySharedInventoryMasterSheets() {
+  const ss = getSpreadsheet();
+
+  const MASTER_DEFS = [
+    { sheetName: '大分類マスタ_共用在庫',  expectedDataRows: 3,  productIdCol: '大分類ID' },
+    { sheetName: '作品マスタ_共用在庫',    expectedDataRows: 11, productIdCol: '作品ID' },
+    { sheetName: 'メーカーマスタ_共用在庫', expectedDataRows: 5,  productIdCol: 'メーカーID' },
+    { sheetName: '商品区分マスタ_共用在庫', expectedDataRows: 2,  productIdCol: 'product_category_ID' }
+  ];
+
+  // ── 1. 各マスタシートの行数・ヘッダー ────────────────────────────────────
+  const masterResults = MASTER_DEFS.map(function(m) {
+    const sheet = ss.getSheetByName(m.sheetName);
+    if (!sheet) return { sheetName: m.sheetName, exists: false };
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
+    const headers = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(String) : [];
+    const dataRows = lastRow > 1 ? lastRow - 1 : 0;
+    return {
+      sheetName: m.sheetName,
+      exists: true,
+      lastRow: lastRow,
+      dataRows: dataRows,
+      expectedDataRows: m.expectedDataRows,
+      rowsMatch: dataRows === m.expectedDataRows,
+      headers: headers
+    };
+  });
+
+  // ── 2. 各マスタのID一覧（先頭列）を Set 化 ───────────────────────────────
+  var masterIdSets = {};
+  masterResults.forEach(function(mr) {
+    if (!mr.exists || mr.lastRow < 2) { masterIdSets[mr.sheetName] = []; return; }
+    const sheet = ss.getSheetByName(mr.sheetName);
+    const ids = sheet.getRange(2, 1, mr.lastRow - 1, 1).getValues();
+    masterIdSets[mr.sheetName] = ids.map(function(r) { return String(r[0]).trim(); }).filter(Boolean);
+  });
+
+  // ── 3. 商品マスタ同期との照合 ──────────────────────────────────────────────
+  const productSheet = ss.getSheetByName('商品マスタ同期');
+  var crossCheck = null;
+
+  if (productSheet && productSheet.getLastRow() > 1) {
+    const pLastRow  = productSheet.getLastRow();
+    const pLastCol  = productSheet.getLastColumn();
+    const pHeaders  = productSheet.getRange(1, 1, 1, pLastCol).getValues()[0].map(String);
+    const pData     = productSheet.getRange(2, 1, pLastRow - 1, pLastCol).getValues();
+
+    crossCheck = MASTER_DEFS.map(function(m) {
+      const colIdx = pHeaders.indexOf(m.productIdCol);
+      if (colIdx === -1) return { productIdCol: m.productIdCol, error: '列が見つかりません', masterSheet: m.sheetName };
+
+      const masterIds = masterIdSets[m.sheetName] || [];
+      const masterSet = {};
+      masterIds.forEach(function(id) { masterSet[id] = true; });
+
+      var emptyCount = 0;
+      var notFound   = [];
+      pData.forEach(function(row) {
+        const val = String(row[colIdx]).trim();
+        if (!val) { emptyCount++; return; }
+        if (!masterSet[val]) notFound.push(val);
+      });
+
+      return {
+        productIdCol:  m.productIdCol,
+        masterSheet:   m.sheetName,
+        masterIdCount: masterIds.length,
+        emptyCount:    emptyCount,
+        notFoundCount: notFound.length,
+        notFoundIds:   notFound,
+        ok:            notFound.length === 0
+      };
+    });
+  }
+
+  return JSON.stringify({ masterSheets: masterResults, crossCheck: crossCheck });
+}
