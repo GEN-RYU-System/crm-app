@@ -117,3 +117,102 @@ function surveyDevSpreadsheetIdentity() {
     isProd: name === 'CRM APP_PROD'
   });
 }
+
+/**
+ * 「共用在庫」シートの書き込み結果を検証する（読み取りのみ）
+ * 1. 行数・列数・ヘッダー全件
+ * 2. 期待11列との一致確認
+ * 3. Quantity / Unit Price の型確認（文字列になっている行数）
+ * 4. product_id と 商品マスタ同期 の照合
+ */
+function verifySharedInventorySheet() {
+  const ss = getSpreadsheet();
+  const EXPECTED_HEADERS = [
+    'Series', 'Quantity', 'Unit Price', 'Condition', 'Status',
+    'Note_JA', 'Note_EN', '提供者', 'product_id', 'raw_name', '除外理由'
+  ];
+
+  // ── 1. 共用在庫シート ──────────────────────────────────────────────
+  const sheet = ss.getSheetByName('共用在庫');
+  if (!sheet) {
+    return JSON.stringify({ error: '「共用在庫」シートが見つかりません' });
+  }
+
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+
+  const headers = lastCol > 0
+    ? sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(String)
+    : [];
+
+  // ── 2. 期待列との差分 ───────────────────────────────────────────────
+  const missingFromSheet  = EXPECTED_HEADERS.filter(function(h) { return headers.indexOf(h) === -1; });
+  const extraInSheet      = headers.filter(function(h) { return EXPECTED_HEADERS.indexOf(h) === -1; });
+  const headersMatch      = missingFromSheet.length === 0 && extraInSheet.length === 0 &&
+                            JSON.stringify(headers) === JSON.stringify(EXPECTED_HEADERS);
+
+  // ── 3. Quantity / Unit Price の型確認 ───────────────────────────────
+  var quantityStringRows = 0;
+  var unitPriceStringRows = 0;
+  const dataRows = lastRow - 1;
+
+  if (dataRows > 0) {
+    const qIdx = headers.indexOf('Quantity');
+    const upIdx = headers.indexOf('Unit Price');
+
+    if (qIdx !== -1 || upIdx !== -1) {
+      const colCount = lastCol;
+      const data = sheet.getRange(2, 1, dataRows, colCount).getValues();
+
+      data.forEach(function(row) {
+        if (qIdx !== -1 && typeof row[qIdx] === 'string' && row[qIdx] !== '') quantityStringRows++;
+        if (upIdx !== -1 && typeof row[upIdx] === 'string' && row[upIdx] !== '') unitPriceStringRows++;
+      });
+    }
+  }
+
+  // ── 4. product_id 照合 ──────────────────────────────────────────────
+  const masterSheet = ss.getSheetByName('商品マスタ同期');
+  var masterLookupResult = null;
+
+  if (masterSheet && dataRows > 0) {
+    const masterLastRow = masterSheet.getLastRow();
+    const masterHeaders = masterSheet.getRange(1, 1, 1, masterSheet.getLastColumn()).getValues()[0].map(String);
+    const masterPidIdx = masterHeaders.indexOf('product_id');
+
+    var masterIds = new Set();
+    if (masterPidIdx !== -1 && masterLastRow > 1) {
+      masterSheet.getRange(2, masterPidIdx + 1, masterLastRow - 1, 1).getValues()
+        .forEach(function(r) { if (r[0]) masterIds.add(String(r[0]).trim()); });
+    }
+
+    const pidIdx = headers.indexOf('product_id');
+    var notInMaster = [];
+    if (pidIdx !== -1) {
+      sheet.getRange(2, pidIdx + 1, dataRows, 1).getValues().forEach(function(r) {
+        const pid = String(r[0]).trim();
+        if (pid && !masterIds.has(pid)) notInMaster.push(pid);
+      });
+    }
+
+    masterLookupResult = {
+      masterRowCount: masterLastRow - 1,
+      notInMasterCount: notInMaster.length,
+      notInMasterIds: notInMaster
+    };
+  }
+
+  return JSON.stringify({
+    sheetName: '共用在庫',
+    lastRow: lastRow,
+    lastCol: lastCol,
+    dataRows: dataRows,
+    headers: headers,
+    headersMatch: headersMatch,
+    missingFromSheet: missingFromSheet,
+    extraInSheet: extraInSheet,
+    quantityStringRows: quantityStringRows,
+    unitPriceStringRows: unitPriceStringRows,
+    masterLookup: masterLookupResult
+  });
+}
