@@ -55,25 +55,65 @@ const CORE_SCHEMA_V1_TABLES = {
     headers: createCoreSchemaV1Headers([['ORDER_LINE_ID', '明細ID'], ['ORDER_ID', 'オーダーID'], ['LINE_NUMBER', '行番号'], ['CATEGORY', 'カテゴリ'], ['PRODUCT_NAME', '商品名'], ['STATUS', '状態'], ['SKU', 'SKU'], ['QUANTITY', '数量'], ['UNIT_PRICE', '単価'], ['SUBTOTAL', '小計'], ['PRODUCT_ID', '商品ID']]), primaryKey: 'ORDER_LINE_ID',
     referenceIds: [{ headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' }, { headerKey: 'PRODUCT_ID', targetTableKey: 'PRODUCTS' }]
   },
-  INVOICES: {
-    sheetName: '請求書管理', canonicalName: '請求書管理', aliases: [], headerRowNumber: 1, sheetType: 'TRANSACTION', writeAllowed: true, notImplemented: true,
+  QUOTES: {
+    sheetName: '見積もり管理', canonicalName: '見積もり管理', aliases: [], headerRowNumber: 1, sheetType: 'TRANSACTION', writeAllowed: true,
     headers: createCoreSchemaV1Headers([
-      ['INVOICE_ID', '請求書ID'], ['INVOICE_NUMBER', '請求書番号'], ['ORDER_ID', 'オーダーID'], ['CUSTOMER_ID', '顧客ID'], ['CUSTOMER_NAME', '顧客名'], ['INVOICE_DATE', '請求日'], ['PAYMENT_DUE_DATE', '支払期限'], ['CURRENCY', '通貨'], ['ITEM_SUBTOTAL', '商品小計'], ['SHIPPING_FEE', '配送料'], ['TOTAL_AMOUNT', '合計金額'], ['PAID_AMOUNT', '支払済み金額'], ['BALANCE', '残額'], ['STATUS', 'ステータス'], ['PAYMENT_METHOD', '決済方法'], ['BILLING_COUNTRY', '請求先国'], ['BILLING_ADDRESS', '請求先住所'], ['SHIPPING_COUNTRY', '配送先国'], ['SHIPPING_ADDRESS', '配送先住所'], ['NOTE', '備考'], ['PDF_LINK', 'PDFリンク'], ['CREATED_BY_ID', '作成者ID'], ['CREATED_BY_NAME', '作成者名'], ['SENT_AT', '送付日'], ['PAID_AT', '入金日'], ['UPDATED_AT', '更新日'], ['ERP_EXPORTED_AT', 'ERP出力日'], ['ERP_EXPORTED', 'ERP出力済み'], ['INTERNAL_MEMO', 'メモ']
+      ['QUOTE_ID', '見積書ID'], ['LEAD_ID', 'リードID'], ['CUSTOMER_ID', '顧客ID'], ['ORDER_ID', 'オーダーID'], ['STAFF_ID', '担当者ID'], ['ISSUED_DATE', '発行日'], ['EXPIRY_DATE', '有効期限'], ['STATUS', 'ステータス'], ['CURRENCY', '通貨'], ['EXCHANGE_RATE', '為替レート'], ['SUBTOTAL', '小計'], ['SHIPPING_FEE', '送料'], ['DISCOUNT', '値引き'], ['TOTAL_AMOUNT', '合計金額'], ['TOTAL_AMOUNT_JPY', '円換算合計'], ['PDF_URL', 'PDF URL'], ['NOTE', '備考'], ['CREATED_AT', '作成日時'], ['UPDATED_AT', '更新日時']
+    ]), primaryKey: 'QUOTE_ID',
+    values: {
+      STATUS: {
+        DRAFT: '下書き',
+        SENT: '送付済',
+        APPROVED: '承認',
+        LOST: '失注',
+        EXPIRED: '期限切れ'
+      }
+    },
+    referenceIds: [
+      { headerKey: 'LEAD_ID', targetTableKey: 'LEADS' },
+      { headerKey: 'CUSTOMER_ID', targetTableKey: 'CUSTOMERS' },
+      { headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' },
+      { headerKey: 'STAFF_ID', targetTableKey: 'STAFF' }
+    ]
+  },
+  QUOTE_LINES: {
+    sheetName: '見積もり明細', canonicalName: '見積もり明細', aliases: [], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['QUOTE_LINE_ID', '明細ID'], ['QUOTE_ID', '見積書ID'], ['LINE_NO', '行番号'], ['PRODUCT_ID', '商品ID'], ['PRODUCT_NAME', '商品名'], ['DESCRIPTION', '説明'], ['QUANTITY', '数量'], ['UNIT_PRICE', '単価'], ['AMOUNT', '金額'], ['NOTE', '備考']
+    ]), primaryKey: 'QUOTE_LINE_ID',
+    referenceIds: [
+      { headerKey: 'QUOTE_ID', targetTableKey: 'QUOTES' }
+    ]
+  },
+  INVOICES: {
+    sheetName: '請求書管理', canonicalName: '請求書管理', aliases: [], headerRowNumber: 1, sheetType: 'TRANSACTION', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['INVOICE_ID', '請求書ID'], ['ORDER_ID', 'オーダーID'], ['CUSTOMER_ID', '顧客ID'], ['LEAD_ID', 'リードID'], ['QUOTE_ID', '見積書ID'], ['STAFF_ID', '担当者ID'], ['ISSUED_DATE', '発行日'], ['DUE_DATE', '支払期限'], ['STATUS', 'ステータス'], ['CURRENCY', '通貨'], ['EXCHANGE_RATE', '為替レート'], ['SUBTOTAL', '小計'], ['SHIPPING_FEE', '送料'], ['CUSTOMS_DUTY', '関税'], ['DISCOUNT', '値引き'], ['TOTAL_AMOUNT', '合計金額'], ['TOTAL_AMOUNT_JPY', '円換算合計'], ['PAYMENT_DUE_DATE', '入金予定日'], ['PAID_DATE', '入金日'], ['PAID_AMOUNT', '入金額'], ['PDF_URL', 'PDF URL'], ['NOTE', '備考'], ['CREATED_AT', '作成日時'], ['UPDATED_AT', '更新日時']
     ]), primaryKey: 'INVOICE_ID',
+    values: {
+      STATUS: {
+        UNSENT: '未送付',
+        SENT: '送付済',
+        PARTIAL: '一部入金',
+        PAID: '入金済',
+        OVERDUE: '遅延'
+      }
+    },
     referenceIds: [
       { headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' },
       { headerKey: 'CUSTOMER_ID', targetTableKey: 'CUSTOMERS' },
-      { headerKey: 'CREATED_BY_ID', targetTableKey: 'STAFF' }
+      { headerKey: 'LEAD_ID', targetTableKey: 'LEADS' },
+      { headerKey: 'QUOTE_ID', targetTableKey: 'QUOTES' },
+      { headerKey: 'STAFF_ID', targetTableKey: 'STAFF' }
     ]
   },
   INVOICE_LINES: {
-    sheetName: '請求書明細', canonicalName: '請求書明細', aliases: [], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true, notImplemented: true,
+    sheetName: '請求書明細', canonicalName: '請求書明細', aliases: [], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
     headers: createCoreSchemaV1Headers([
-      ['INVOICE_LINE_ID', '明細ID'], ['INVOICE_ID', '請求書ID'], ['PRODUCT_ID', '商品ID'], ['PRODUCT_NAME_EN', '商品名（英語）'], ['PRODUCT_NAME_JA', '商品名（日本語）'], ['CATEGORY', 'カテゴリ'], ['STATUS', '状態'], ['QUANTITY', '数量'], ['UNIT_PRICE', '単価'], ['SUBTOTAL', '小計'], ['WEIGHT_KG', '重量（kg）'], ['MARK', 'マーク'], ['RELEASE_DATE', '発売日'], ['SHIPPED', '出荷済み'], ['NOTE', '備考']
+      ['INVOICE_LINE_ID', '明細ID'], ['INVOICE_ID', '請求書ID'], ['LINE_NO', '行番号'], ['PRODUCT_ID', '商品ID'], ['PRODUCT_NAME', '商品名'], ['DESCRIPTION', '説明'], ['QUANTITY', '数量'], ['UNIT_PRICE', '単価'], ['AMOUNT', '金額'], ['NOTE', '備考']
     ]), primaryKey: 'INVOICE_LINE_ID',
     referenceIds: [
-      { headerKey: 'INVOICE_ID', targetTableKey: 'INVOICES' },
-      { headerKey: 'PRODUCT_ID', targetTableKey: 'PRODUCTS' }
+      { headerKey: 'INVOICE_ID', targetTableKey: 'INVOICES' }
     ]
   },
   SHIPMENTS: {
