@@ -545,3 +545,37 @@ function scheduledOrderStatusRecalculation() {
     lock.releaseLock();
   }
 }
+
+/**
+ * scheduledOrderStatusRecalculation の時間トリガーを登録する。
+ * 同名関数のトリガーが既に存在する場合は削除してから1件だけ登録する。
+ * 他の関数のトリガーには一切触れない。
+ *
+ * @returns {Array<{ handlerFunction: string, eventType: string, uniqueId: string }>}
+ */
+function setupOrderStatusRecalculationTrigger() {
+  var targetFn = 'scheduledOrderStatusRecalculation';
+
+  // 同名トリガーのみ削除（他には触れない）
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === targetFn) {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+
+  // 毎日 4:00〜5:00 に実行
+  ScriptApp.newTrigger(targetFn)
+    .timeBased()
+    .atHour(4)
+    .everyDays(1)
+    .create();
+
+  // 登録後のトリガー一覧を返す
+  return ScriptApp.getProjectTriggers().map(function(t) {
+    return {
+      handlerFunction: t.getHandlerFunction(),
+      eventType:       String(t.getEventType()),
+      uniqueId:        t.getUniqueId()
+    };
+  });
+}
