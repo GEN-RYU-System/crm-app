@@ -9,6 +9,8 @@ export const dataManagementCopy = {
   groupExternalLinks: '外部連携',
   leads: 'リード',
   customers: '顧客',
+  quotes: '見積もり',
+  orders: '請求書',
   sales: '売上',
   inventory: '在庫',
   productMaster: '商品マスタ',

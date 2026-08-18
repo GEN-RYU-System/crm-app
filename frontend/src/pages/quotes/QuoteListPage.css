@@ -1,0 +1,2 @@
+.quote-list-page__data-card { border-radius: var(--radius-data-table); overflow: hidden; padding: var(--space-none); }
+.quote-list-page__data-state { padding: var(--space-xl); }
