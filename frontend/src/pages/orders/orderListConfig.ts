@@ -1,6 +1,6 @@
 import type { OrderRecord } from '../../gas/client';
 import type { DataTableCellAlignment } from '../../components/ui';
-import { ordersCopy } from '../../content/ja';
+import { ordersCopy, CURRENCY_SYMBOL } from '../../content/ja';
 
 export type OrderRow = {
   orderId: string;
@@ -9,7 +9,6 @@ export type OrderRow = {
   invoiceIssuedAt: string;
   paymentMethod: string;
   invoiceTotal: string;
-  currency: string;
   paymentDueAt: string;
   paymentStatus: string;
 };
@@ -25,7 +24,6 @@ export const ORDER_LIST_COLUMNS: readonly { key: OrderSortKey; label: string; ce
   { key: 'invoiceIssuedAt', label: ordersCopy.columns.invoiceIssuedAt, cellAlignment: 'center' },
   { key: 'paymentMethod',   label: ordersCopy.columns.paymentMethod,   cellAlignment: 'center' },
   { key: 'invoiceTotal',    label: ordersCopy.columns.invoiceTotal,    cellAlignment: 'center' },
-  { key: 'currency',        label: ordersCopy.columns.currency,        cellAlignment: 'center' },
   { key: 'paymentDueAt',   label: ordersCopy.columns.paymentDueAt,    cellAlignment: 'center' },
   { key: 'paymentStatus',  label: ordersCopy.columns.paymentStatus,   cellAlignment: 'center' },
 ];
@@ -42,6 +40,17 @@ function formatDate(value: unknown): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('ja-JP');
 }
 
+function formatCurrency(invoiceTotal: unknown, currency: string): string {
+  if (invoiceTotal == null || invoiceTotal === '') return '-';
+  const raw = String(invoiceTotal).replace(/,/g, '').trim();
+  if (raw === '') return '-';
+  const num = Number(raw);
+  if (!Number.isFinite(num)) return raw;
+  const formatted = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(Math.round(num));
+  const symbol = CURRENCY_SYMBOL[currency] ?? null;
+  return symbol != null ? `${symbol}${formatted}` : `${currency} ${formatted}`;
+}
+
 function compareRows(a: OrderRow, b: OrderRow, sort: OrderSort): number {
   const dir = sort.direction === 'ascending' ? 1 : -1;
   return a[sort.key].localeCompare(b[sort.key], 'ja-JP', { numeric: true, sensitivity: 'base' }) * dir;
@@ -55,8 +64,7 @@ export function toOrderRows(records: readonly OrderRecord[], sort: OrderSort = O
       invoiceNumber:   text(r.invoiceNumber),
       invoiceIssuedAt: formatDate(r.invoiceIssuedAt),
       paymentMethod:   text(r.paymentMethod),
-      invoiceTotal:    text(r.invoiceTotal),
-      currency:        text(r.currency),
+      invoiceTotal:    formatCurrency(r.invoiceTotal, r.currency),
       paymentDueAt:    formatDate(r.paymentDueAt),
       paymentStatus:   text(r.paymentStatus),
     }))

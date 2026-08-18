@@ -39,6 +39,10 @@ const CORE_SCHEMA_V1_TABLES = {
         ON_HOLD:   '保留',
         CANCELLED: 'キャンセル'
       },
+      PAYMENT_METHOD: {
+        WISE:   'Wise',
+        PAYPAL: 'PayPal'
+      },
       STATUS: {
         AWAITING_PAYMENT: '支払い待ち',
         SOURCING: '仕入れ中',
