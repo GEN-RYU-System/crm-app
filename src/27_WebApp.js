@@ -7418,9 +7418,11 @@ function writeQuoteToSheetAndGeneratePDF(quoteData) {
     quoteSheet.getRange(QUOTE_SETTINGS_ROWS.PAYMENT_CURRENCY, cols.SETTING_KEY).setValue('支払い通貨');
     quoteSheet.getRange(QUOTE_SETTINGS_ROWS.PAYMENT_CURRENCY, cols.SETTING_VALUE).setValue(quoteData.paymentCurrency || 'JPY');
 
-    // 為替レート
+    // 為替レート（通貨マスタから取得）
+    var legacyQuoteCurrency = String(quoteData.paymentCurrency || 'JPY').trim().toUpperCase();
+    var legacyQuoteRate = getCurrentExchangeRate(legacyQuoteCurrency);
     quoteSheet.getRange(QUOTE_SETTINGS_ROWS.EXCHANGE_RATE, cols.SETTING_KEY).setValue('為替レート');
-    quoteSheet.getRange(QUOTE_SETTINGS_ROWS.EXCHANGE_RATE, cols.SETTING_VALUE).setValue(quoteData.exchangeRate || 1);
+    quoteSheet.getRange(QUOTE_SETTINGS_ROWS.EXCHANGE_RATE, cols.SETTING_VALUE).setValue(legacyQuoteRate);
 
     // 請求書発行日（本日）
     const today = new Date();
@@ -7434,7 +7436,7 @@ function writeQuoteToSheetAndGeneratePDF(quoteData) {
     quoteSheet.getRange(QUOTE_SETTINGS_ROWS.PAYMENT_DUE_DATE, cols.SETTING_KEY).setValue('支払い期日');
     quoteSheet.getRange(QUOTE_SETTINGS_ROWS.PAYMENT_DUE_DATE, cols.SETTING_VALUE).setValue(dueDateStr);
 
-    Logger.log('[writeQuoteToSheetAndGeneratePDF] 設定データ書き込み完了（支払い通貨: ' + (quoteData.paymentCurrency || 'JPY') + ', 為替レート: ' + (quoteData.exchangeRate || 1) + ', 発行日: ' + issueDateStr + ', 支払期日: ' + dueDateStr + '）');
+    Logger.log('[writeQuoteToSheetAndGeneratePDF] 設定データ書き込み完了（支払い通貨: ' + legacyQuoteCurrency + ', 為替レート: ' + legacyQuoteRate + ', 発行日: ' + issueDateStr + ', 支払期日: ' + dueDateStr + '）');
 
     // スプレッドシートの再計算を待つ
     Logger.log('[writeQuoteToSheetAndGeneratePDF] スプレッドシート再計算待機中...');
@@ -7566,7 +7568,7 @@ function saveQuoteFromForm(quoteFormData) {
       shipping: quoteFormData.shipping || 0,
       total: quoteFormData.total || 0,
       totalWeight: quoteFormData.totalWeight || 0,
-      exchangeRate: quoteFormData.exchangeRate || 0,
+      exchangeRate: getCurrentExchangeRate(String(quoteFormData.paymentCurrency || quoteFormData.currency || 'JPY').trim().toUpperCase()),
       memo: quoteFormData.memo || '',
       items: []
     };
@@ -7802,7 +7804,7 @@ function generateInvoicePDFFromForm(invoiceFormData) {
       tax: invoiceFormData.tax || 0,
       total: invoiceFormData.total || 0,
       totalWeight: invoiceFormData.totalWeight || 0,
-      exchangeRate: invoiceFormData.exchangeRate || 0,
+      exchangeRate: getCurrentExchangeRate(String(invoiceFormData.paymentCurrency || invoiceFormData.currency || 'JPY').trim().toUpperCase()),
       memo: invoiceFormData.memo || '',
       // 顧客マスタ連携項目（L16-L19）を追加
       paymentName: invoiceFormData.paymentName || '',
