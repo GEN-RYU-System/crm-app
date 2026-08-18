@@ -14,6 +14,8 @@ export type SharedInventoryDto = {
   ipName: string;
   releaseDate: string;
   japaneseTitle: string;
+  englishTitle: string;
+  mark: string;
 };
 
 export type InventoryRepository = {

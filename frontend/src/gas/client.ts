@@ -303,6 +303,8 @@ export type SharedInventoryItem = {
   ipName: string;
   releaseDate: string;
   japaneseTitle: string;
+  englishTitle: string;
+  mark: string;
 };
 
 export function getSharedInventory(): Promise<readonly SharedInventoryItem[]> {

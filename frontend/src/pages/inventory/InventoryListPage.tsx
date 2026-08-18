@@ -47,10 +47,18 @@ export function InventoryListPage({ repository }: { repository: InventoryReposit
     const ariaSort = sort.key === sortKey ? sort.direction : 'none';
     const direction = ariaSort === 'none' ? inventoryCopy.sortNone : ariaSort === 'ascending' ? inventoryCopy.sortAscending : inventoryCopy.sortDescending;
     const SortIcon = CRM_SORT_ICONS[ariaSort];
+    const renderCell = column.key === 'englishTitle'
+      ? (row: InventoryRow) => (
+          <div className="inventory-title-cell">
+            <span className="inventory-title-cell__en">{row.englishTitle}</span>
+            <span className="inventory-title-cell__ja">{row.japaneseTitle}</span>
+          </div>
+        )
+      : (row: InventoryRow) => row[column.key];
     return {
       key:           column.key,
       header:        column.label,
-      renderCell:    (row: InventoryRow) => row[column.key],
+      renderCell,
       ariaSort,
       onSort:        () => changeSort(sortKey),
       sortAriaLabel: inventoryCopy.sortLabel(column.label, direction),
