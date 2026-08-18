@@ -24,6 +24,8 @@ export type NavigationItemId =
   | 'compensationSettings'
   | 'compensationRecords'
   | 'dataManagement'
+  | 'quotes'
+  | 'orders'
   | 'sales'
   | 'productMaster'
   | 'googleDrive'
@@ -68,7 +70,9 @@ export const DATA_MANAGEMENT_ROOT = '/leads';
 const DATA_MGMT_SUB_ITEMS: readonly NavigationItem[] = [
   { id: 'leads', label: dataManagementCopy.leads, hash: DATA_MANAGEMENT_ROOT, icon: 'leads', order: 1, state: 'available', requiredPermission: 'lead_view' },
   { id: 'customers', label: dataManagementCopy.customers, hash: '/customers', icon: 'customers', order: 2, state: 'preview', requiredPermission: 'lead_view' },
-  { id: 'sales', label: dataManagementCopy.sales, hash: '/sales', icon: 'invoice', order: 3, state: 'planned', requiredPermission: 'lead_view' }
+  { id: 'quotes', label: dataManagementCopy.quotes, hash: '/quotes', icon: 'document', order: 3, state: 'preview', requiredPermission: 'lead_view' },
+  { id: 'orders', label: dataManagementCopy.orders, hash: '/orders', icon: 'invoice', order: 4, state: 'preview', requiredPermission: 'lead_view' },
+  { id: 'sales', label: dataManagementCopy.sales, hash: '/sales', icon: 'invoice', order: 5, state: 'planned', requiredPermission: 'lead_view' }
 ];
 
 const PRODUCT_MGMT_SUB_ITEMS: readonly NavigationItem[] = [
