@@ -35,6 +35,25 @@ function getCoreQuotesForFrontend(sessionId) {
   checkPermission('lead_view');
 
   const ss = getSpreadsheet();
+
+  // 顧客マスタを1回だけ読み、CUSTOMER_ID → 顧客名 の対応表を作る
+  const customers = coreQuoteReadTable(ss, 'CUSTOMERS', ['CUSTOMER_ID', 'CUSTOMER_NAME']);
+  const customerNameById = customers.rows.reduce(function(map, row) {
+    const id   = coreQuoteValue(row[customers.indexes.CUSTOMER_ID]);
+    const name = coreQuoteValue(row[customers.indexes.CUSTOMER_NAME]);
+    if (id) map[id] = name;
+    return map;
+  }, {});
+
+  // リード管理を1回だけ読み、LEAD_ID → 顧客名 の対応表を作る（CUSTOMER_ID が空の見積もりに使う）
+  const leads = coreQuoteReadTable(ss, 'LEADS', ['LEAD_ID', 'CUSTOMER_NAME']);
+  const customerNameByLeadId = leads.rows.reduce(function(map, row) {
+    const id   = coreQuoteValue(row[leads.indexes.LEAD_ID]);
+    const name = coreQuoteValue(row[leads.indexes.CUSTOMER_NAME]);
+    if (id) map[id] = name;
+    return map;
+  }, {});
+
   const quotes = coreQuoteReadTable(ss, 'QUOTES', [
     'QUOTE_ID', 'LEAD_ID', 'CUSTOMER_ID', 'ORDER_ID', 'STAFF_ID',
     'ISSUED_DATE', 'EXPIRY_DATE', 'STATUS', 'CURRENCY', 'EXCHANGE_RATE',
@@ -44,7 +63,14 @@ function getCoreQuotesForFrontend(sessionId) {
 
   return quotes.rows
     .filter(function(row) { return coreQuoteValue(row[quotes.indexes.QUOTE_ID]); })
-    .map(function(row) { return coreQuoteBuildRecord(row, quotes.indexes); });
+    .map(function(row) {
+      const record = coreQuoteBuildRecord(row, quotes.indexes);
+      const customerName =
+        (record.customerId && customerNameById[record.customerId]) ||
+        (record.leadId     && customerNameByLeadId[record.leadId])  ||
+        '';
+      return Object.assign({}, record, { customerName: customerName });
+    });
 }
 
 /**

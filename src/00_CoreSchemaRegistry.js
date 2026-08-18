@@ -79,10 +79,8 @@ const CORE_SCHEMA_V1_TABLES = {
     ]), primaryKey: 'QUOTE_ID',
     values: {
       STATUS: {
-        DRAFT: '下書き',
-        SENT: '送付済',
-        APPROVED: '承認',
-        LOST: '失注',
+        DRAFT:   '下書き',
+        SENT:    '送付済み',
         EXPIRED: '期限切れ'
       }
     },
