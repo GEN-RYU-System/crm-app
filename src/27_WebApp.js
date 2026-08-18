@@ -53,6 +53,15 @@ function doGet(e) {
     }
   }
 
+  // 旧画面プレビュー（移植作業の参考用・移植完了後に削除すること）
+  if (params.page === 'legacy') {
+    return HtmlService.createTemplateFromFile('index')
+      .evaluate()
+      .setTitle('CRM (Legacy)')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
   // 常に React SPA を返す
   return HtmlService.createHtmlOutputFromFile('ReactPoc')
     .setTitle('CRM Dashboard')
