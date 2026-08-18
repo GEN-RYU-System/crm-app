@@ -14,10 +14,12 @@ function getSharedInventoryForFrontend(sessionId) {
   if (productSheet && productSheet.getLastRow() > 1) {
     const pData = productSheet.getDataRange().getValues();
     const pH    = pData[0].map(String);
-    const pidIdx = pH.indexOf('product_id');
-    const jaIdx  = pH.indexOf('Japanese Title');
-    const rdIdx  = pH.indexOf('Release Date');
-    const ipIdx  = pH.indexOf('作品ID');
+    const pidIdx  = pH.indexOf('product_id');
+    const jaIdx   = pH.indexOf('Japanese Title');
+    const enIdx   = pH.indexOf('English Title');
+    const markIdx = pH.indexOf('Mark');
+    const rdIdx   = pH.indexOf('Release Date');
+    const ipIdx   = pH.indexOf('作品ID');
     if (pidIdx !== -1) {
       for (let i = 1; i < pData.length; i++) {
         const r   = pData[i];
@@ -28,9 +30,11 @@ function getSharedInventoryForFrontend(sessionId) {
           releaseDate = Utilities.formatDate(r[rdIdx], 'JST', 'yyyy-MM-dd');
         }
         productMap[pid] = {
-          japaneseTitle: jaIdx !== -1 ? String(r[jaIdx] ?? '') : '',
+          japaneseTitle: jaIdx   !== -1 ? String(r[jaIdx]   ?? '') : '',
+          englishTitle:  enIdx   !== -1 ? String(r[enIdx]   ?? '') : '',
+          mark:          markIdx !== -1 ? String(r[markIdx]  ?? '') : '',
           releaseDate:   releaseDate,
-          ipId:          ipIdx !== -1 ? String(r[ipIdx] ?? '').trim() : ''
+          ipId:          ipIdx   !== -1 ? String(r[ipIdx]   ?? '').trim() : ''
         };
       }
     }
@@ -106,7 +110,9 @@ function getSharedInventoryForFrontend(sessionId) {
       ipId:            ipId,
       ipName:          ipName,
       releaseDate:     product.releaseDate || '',
-      japaneseTitle:   product.japaneseTitle || ''
+      japaneseTitle:   product.japaneseTitle || '',
+      englishTitle:    product.englishTitle || '',
+      mark:            product.mark || ''
     });
   }
   return rows;
