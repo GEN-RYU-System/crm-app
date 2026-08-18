@@ -286,3 +286,35 @@ export function changeOwnPasswordForFrontend(currentPassword: string, newPasswor
       .changeOwnPasswordForFrontend(getStoredSessionId(), currentPassword, newPassword);
   });
 }
+
+export type SharedInventoryItem = {
+  series: string;
+  quantity: number;
+  unitPrice: number;
+  condition: string;
+  status: string;
+  noteJa: string;
+  noteEn: string;
+  supplier: string;
+  productId: string;
+  rawName: string;
+  exclusionReason: string;
+};
+
+export function getSharedInventory(): Promise<readonly SharedInventoryItem[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (!Array.isArray(value)) {
+          reject(new Error(errorCopy.communication));
+          return;
+        }
+        resolve(value as SharedInventoryItem[]);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getSharedInventoryForFrontend();
+  });
+}
