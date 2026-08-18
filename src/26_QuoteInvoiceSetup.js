@@ -63,7 +63,7 @@ function setupQuoteInvoiceSheets() {
   lock.waitLock(30000);
   try {
     var ss = getSpreadsheet();
-    var tableKeys = ['QUOTES', 'QUOTE_LINES', 'INVOICES', 'INVOICE_LINES'];
+    var tableKeys = ['QUOTES', 'QUOTE_LINES'];
     var results = {};
 
     tableKeys.forEach(function(tableKey) {
@@ -88,6 +88,55 @@ function setupQuoteInvoiceSheets() {
 
       Logger.log('[setupQuoteInvoiceSheets] 作成完了: ' + sheetName + ' (' + headerNames.length + '列)');
       results[tableKey] = { status: 'CREATED', sheetName: sheetName, columns: headerNames.length };
+    });
+
+    return results;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * 未使用の請求書シートをリネームしてアーカイブする（1回限り実行）
+ *
+ *   「請求書管理」→「請求書管理_未使用」
+ *   「請求書明細」→「請求書明細_未使用」
+ *
+ * - 対象シートが存在しない場合は何もしない
+ * - リネーム後の名前が既に存在する場合も何もしない
+ * - 削除はしない
+ * - LockService で保護する
+ *
+ * ★ 実行タイミングは当方の指示を待つこと
+ *
+ * @returns {Object} 各シートの処理結果
+ */
+function archiveUnusedInvoiceSheets() {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var ss = getSpreadsheet();
+    var RENAMES = [
+      { from: '請求書管理', to: '請求書管理_未使用' },
+      { from: '請求書明細', to: '請求書明細_未使用' }
+    ];
+    var results = {};
+
+    RENAMES.forEach(function(item) {
+      if (ss.getSheetByName(item.to)) {
+        Logger.log('[archiveUnusedInvoiceSheets] ' + item.to + ' は既に存在します。何もしません。');
+        results[item.from] = { status: 'ALREADY_EXISTS', sheetName: item.to };
+        return;
+      }
+      var sheet = ss.getSheetByName(item.from);
+      if (!sheet) {
+        Logger.log('[archiveUnusedInvoiceSheets] ' + item.from + ' が見つかりません。何もしません。');
+        results[item.from] = { status: 'SOURCE_NOT_FOUND', sheetName: item.from };
+        return;
+      }
+      sheet.setName(item.to);
+      Logger.log('[archiveUnusedInvoiceSheets] リネーム完了: ' + item.from + ' → ' + item.to);
+      results[item.from] = { status: 'RENAMED', from: item.from, to: item.to };
     });
 
     return results;
