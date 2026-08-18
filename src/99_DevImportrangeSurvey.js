@@ -216,3 +216,132 @@ function verifySharedInventorySheet() {
     masterLookup: masterLookupResult
   });
 }
+
+/**
+ * 「商品マスタ同期」シートの Category 全種類・件数と
+ * Release Date の型内訳を実測する（読み取りのみ・書き込みなし）
+ */
+function surveyProductCategories() {
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName('商品マスタ同期');
+  if (!sheet) {
+    return JSON.stringify({ error: '「商品マスタ同期」シートが見つかりません' });
+  }
+
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+
+  if (lastRow < 2) {
+    return JSON.stringify({ error: 'データ行がありません', lastRow: lastRow });
+  }
+
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(String);
+  const catIdx = headers.indexOf('Category');
+  const rdIdx  = headers.indexOf('Release Date');
+
+  if (catIdx === -1) {
+    return JSON.stringify({ error: 'Category 列が見つかりません', headers: headers });
+  }
+
+  const dataRows = lastRow - 1;
+  const data = sheet.getRange(2, 1, dataRows, lastCol).getValues();
+
+  // ── Category 集計 ──────────────────────────────────────────────────
+  const categoryCounts = {};
+  var emptyCategory = 0;
+
+  data.forEach(function(row) {
+    const raw = row[catIdx];
+    const val = (raw === null || raw === undefined) ? '' : String(raw).trim();
+    if (val === '') {
+      emptyCategory++;
+    } else {
+      categoryCounts[val] = (categoryCounts[val] || 0) + 1;
+    }
+  });
+
+  // 件数の多い順にソート
+  const categoryList = Object.keys(categoryCounts)
+    .map(function(k) { return { category: k, count: categoryCounts[k] }; })
+    .sort(function(a, b) { return b.count - a.count; });
+
+  // ── Release Date 型内訳 ─────────────────────────────────────────────
+  var rdDateCount   = 0;
+  var rdStringCount = 0;
+  var rdEmptyCount  = 0;
+  var rdStringSamples = [];
+
+  if (rdIdx !== -1) {
+    data.forEach(function(row) {
+      const val = row[rdIdx];
+      if (val === null || val === undefined || val === '') {
+        rdEmptyCount++;
+      } else if (val instanceof Date) {
+        rdDateCount++;
+      } else {
+        rdStringCount++;
+        if (rdStringSamples.length < 5) rdStringSamples.push(String(val));
+      }
+    });
+  }
+
+  return JSON.stringify({
+    sheetName: '商品マスタ同期',
+    totalDataRows: dataRows,
+    category: {
+      columnIndex: catIdx + 1,
+      uniqueCount: categoryList.length,
+      emptyCount: emptyCategory,
+      list: categoryList
+    },
+    releaseDate: {
+      columnFound: rdIdx !== -1,
+      columnIndex: rdIdx !== -1 ? rdIdx + 1 : null,
+      dateInstanceCount: rdDateCount,
+      stringCount: rdStringCount,
+      emptyCount: rdEmptyCount,
+      stringSamples: rdStringSamples
+    }
+  });
+}
+
+/**
+ * 共用在庫マスタ用の空シートを4つ作成する（DEV環境のみ・書き込みあり）
+ * 対象: 大分類マスタ_共用在庫 / 作品マスタ_共用在庫 / メーカーマスタ_共用在庫 / 商品区分マスタ_共用在庫
+ * 前提チェック:
+ *   1. スプレッドシート名が 'CRM APP_PROD' でないこと（DEV確認）
+ *   2. 各シート名が既に存在しないこと（重複防止）
+ */
+function createSharedInventoryMasterSheets() {
+  const SHEET_NAMES = [
+    '大分類マスタ_共用在庫',
+    '作品マスタ_共用在庫',
+    'メーカーマスタ_共用在庫',
+    '商品区分マスタ_共用在庫'
+  ];
+
+  const ss = getSpreadsheet();
+  const ssName = ss.getName();
+
+  // ── 1. PROD ガード ──────────────────────────────────────────────────
+  if (ssName === 'CRM APP_PROD') {
+    return JSON.stringify({ ok: false, error: 'PROD環境での実行は禁止されています', spreadsheetName: ssName });
+  }
+
+  // ── 2. 重複チェック ─────────────────────────────────────────────────
+  const existing = SHEET_NAMES.filter(function(name) {
+    return ss.getSheetByName(name) !== null;
+  });
+  if (existing.length > 0) {
+    return JSON.stringify({ ok: false, error: '既に存在するシートがあります', existing: existing });
+  }
+
+  // ── 3. シート作成 ───────────────────────────────────────────────────
+  var created = [];
+  SHEET_NAMES.forEach(function(name) {
+    ss.insertSheet(name);
+    created.push(name);
+  });
+
+  return JSON.stringify({ ok: true, spreadsheetName: ssName, created: created });
+}
