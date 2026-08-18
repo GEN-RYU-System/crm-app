@@ -429,3 +429,178 @@ function verifySharedInventoryMasterSheets() {
 
   return JSON.stringify({ masterSheets: masterResults, crossCheck: crossCheck });
 }
+
+/**
+ * 4マスタ・商品マスタ同期・共用在庫の総合検証（読み取りのみ・書き込みなし）
+ * 1. 4マスタの行数・ヘッダー
+ * 2. 商品マスタ同期の行数・特定ID存在確認・product_category_ID 空欄件数
+ * 3. 商品マスタ同期 ID列 → 各マスタとの照合
+ * 4. 共用在庫 product_id → 商品マスタ同期 との照合（PM0232〜PM0234 含有確認）
+ */
+function verifyAllMastersAndInventory() {
+  const ss = getSpreadsheet();
+
+  // ── ヘルパー: シートの先頭列 ID 一覧を Set で返す ──────────────────────
+  function buildIdSet(sheetName) {
+    const sh = ss.getSheetByName(sheetName);
+    if (!sh || sh.getLastRow() < 2) return {};
+    const vals = sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues();
+    var set = {};
+    vals.forEach(function(r) { var v = String(r[0]).trim(); if (v) set[v] = true; });
+    return set;
+  }
+
+  // ── 1. 4マスタの行数・ヘッダー ────────────────────────────────────────
+  var MASTER_DEFS = [
+    { sheetName: '大分類マスタ_共用在庫',  expectedDataRows: 3 },
+    { sheetName: '作品マスタ_共用在庫',    expectedDataRows: 11 },
+    { sheetName: 'メーカーマスタ_共用在庫', expectedDataRows: 5 },
+    { sheetName: '商品区分マスタ_共用在庫', expectedDataRows: 2 }
+  ];
+
+  var masterSheets = MASTER_DEFS.map(function(m) {
+    var sh = ss.getSheetByName(m.sheetName);
+    if (!sh) return { sheetName: m.sheetName, exists: false };
+    var lastRow = sh.getLastRow();
+    var lastCol = sh.getLastColumn();
+    var headers = lastCol > 0 ? sh.getRange(1, 1, 1, lastCol).getValues()[0].map(String) : [];
+    var dataRows = lastRow > 1 ? lastRow - 1 : 0;
+    return {
+      sheetName: m.sheetName, exists: true,
+      lastRow: lastRow, dataRows: dataRows,
+      expectedDataRows: m.expectedDataRows,
+      rowsMatch: dataRows === m.expectedDataRows,
+      headers: headers
+    };
+  });
+
+  // ── 2. 商品マスタ同期の現状 ────────────────────────────────────────────
+  var productSheet = ss.getSheetByName('商品マスタ同期');
+  var productMasterSummary = null;
+
+  if (!productSheet) {
+    productMasterSummary = { error: '商品マスタ同期シートが見つかりません' };
+  } else {
+    var pLastRow = productSheet.getLastRow();
+    var pLastCol = productSheet.getLastColumn();
+    var pHeaders = pLastRow > 0
+      ? productSheet.getRange(1, 1, 1, pLastCol).getValues()[0].map(String)
+      : [];
+    var pDataRows = pLastRow > 1 ? pLastRow - 1 : 0;
+
+    var pidIdx   = pHeaders.indexOf('product_id');
+    var catIdIdx = pHeaders.indexOf('product_category_ID');
+
+    var checkIds = ['PM0232', 'PM0233', 'PM0234'];
+    var foundIds = {};
+    checkIds.forEach(function(id) { foundIds[id] = false; });
+    var catEmptyCount = 0;
+    var productIdSet = {};
+
+    if (pDataRows > 0) {
+      var pData = productSheet.getRange(2, 1, pDataRows, pLastCol).getValues();
+      pData.forEach(function(row) {
+        if (pidIdx !== -1) {
+          var pid = String(row[pidIdx]).trim();
+          if (pid) productIdSet[pid] = true;
+          if (foundIds.hasOwnProperty(pid)) foundIds[pid] = true;
+        }
+        if (catIdIdx !== -1) {
+          var catVal = String(row[catIdIdx]).trim();
+          if (!catVal) catEmptyCount++;
+        }
+      });
+    }
+
+    productMasterSummary = {
+      lastRow: pLastRow,
+      dataRows: pDataRows,
+      headers: pHeaders,
+      checkIds: checkIds.map(function(id) { return { id: id, found: foundIds[id] }; }),
+      productCategoryIdEmptyCount: catEmptyCount
+    };
+
+    // ── 3. ID列 → 各マスタ との照合 ──────────────────────────────────────
+    var idColDefs = [
+      { col: '大分類ID',          masterSheet: '大分類マスタ_共用在庫' },
+      { col: '作品ID',            masterSheet: '作品マスタ_共用在庫' },
+      { col: 'メーカーID',         masterSheet: 'メーカーマスタ_共用在庫' },
+      { col: 'product_category_ID', masterSheet: '商品区分マスタ_共用在庫', skipEmpty: true }
+    ];
+
+    var crossCheck = idColDefs.map(function(def) {
+      var colIdx = pHeaders.indexOf(def.col);
+      if (colIdx === -1) return { col: def.col, error: '列が見つかりません' };
+      var masterSet = buildIdSet(def.masterSheet);
+      var notFound = [];
+      var emptyCount = 0;
+      if (pDataRows > 0) {
+        var pData2 = productSheet.getRange(2, colIdx + 1, pDataRows, 1).getValues();
+        pData2.forEach(function(r) {
+          var val = String(r[0]).trim();
+          if (!val) { emptyCount++; return; }
+          if (!masterSet[val]) notFound.push(val);
+        });
+      }
+      return {
+        col: def.col, masterSheet: def.masterSheet,
+        masterIdCount: Object.keys(masterSet).length,
+        emptyCount: emptyCount,
+        notFoundCount: notFound.length,
+        notFoundIds: notFound,
+        ok: notFound.length === 0
+      };
+    });
+
+    productMasterSummary.crossCheck = crossCheck;
+  }
+
+  // ── 4. 共用在庫 product_id → 商品マスタ同期 との照合 ────────────────────
+  var inventorySheet = ss.getSheetByName('共用在庫');
+  var inventorySummary = null;
+
+  if (!inventorySheet) {
+    inventorySummary = { error: '共用在庫シートが見つかりません' };
+  } else {
+    var invLastRow = inventorySheet.getLastRow();
+    var invLastCol = inventorySheet.getLastColumn();
+    var invDataRows = invLastRow > 1 ? invLastRow - 1 : 0;
+
+    var invHeaders = invLastCol > 0
+      ? inventorySheet.getRange(1, 1, 1, invLastCol).getValues()[0].map(String)
+      : [];
+    var invPidIdx = invHeaders.indexOf('product_id');
+
+    var notInMaster = [];
+    var targetIds = ['PM0232', 'PM0233', 'PM0234'];
+    var targetFound = {};
+    targetIds.forEach(function(id) { targetFound[id] = false; });
+
+    if (invDataRows > 0 && invPidIdx !== -1) {
+      var invPids = inventorySheet.getRange(2, invPidIdx + 1, invDataRows, 1).getValues();
+      invPids.forEach(function(r) {
+        var pid = String(r[0]).trim();
+        if (pid && !productIdSet[pid]) {
+          notInMaster.push(pid);
+          if (targetFound.hasOwnProperty(pid)) targetFound[pid] = true;
+        }
+      });
+    }
+
+    inventorySummary = {
+      lastRow: invLastRow,
+      dataRows: invDataRows,
+      notInProductMasterCount: notInMaster.length,
+      notInProductMasterIds: notInMaster,
+      targetIdCheck: targetIds.map(function(id) {
+        return { id: id, foundInNotInMasterList: targetFound[id] };
+      })
+    };
+  }
+
+  return JSON.stringify({
+    masterSheets: masterSheets,
+    productMaster: productMasterSummary,
+    sharedInventory: inventorySummary
+  });
+}
