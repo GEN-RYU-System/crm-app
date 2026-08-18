@@ -93,3 +93,27 @@ function surveyScmOutputHeaders() {
     })
   });
 }
+
+/**
+ * DEV環境のスプレッドシートIDプロパティ名と、ブック名を確認する（読み取りのみ）
+ * ID の値は返さない。存在確認とブック名のみ。
+ */
+function surveyDevSpreadsheetIdentity() {
+  const props = PropertiesService.getScriptProperties().getProperties();
+  const keys = Object.keys(props).sort();
+
+  // SPREADSHEET_ID 系のキーが存在するか確認（値は返さない）
+  const spreadsheetIdKeys = keys.filter(function(k) {
+    return k.toUpperCase().indexOf('SPREADSHEET') !== -1 || k.toUpperCase().indexOf('SS_ID') !== -1;
+  });
+
+  const ss = getSpreadsheet();
+  const name = ss.getName();
+
+  return JSON.stringify({
+    allPropertyKeys: keys,
+    spreadsheetRelatedKeys: spreadsheetIdKeys,
+    spreadsheetName: name,
+    isProd: name === 'CRM APP_PROD'
+  });
+}
