@@ -3,7 +3,7 @@ import { CRM_SORT_ICONS } from '../../app/icons';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMessage, TextField, type DataTableColumn } from '../../components/ui';
 import { ordersCopy, PAYMENT_STATUS_BADGE_VARIANT } from '../../content/ja';
-import { getCoreOrders, type OrderRecord } from '../../gas/client';
+import { getCoreOrders, getCoreCurrencies, type OrderRecord } from '../../gas/client';
 import { filterOrderRows, ORDER_LIST_COLUMNS, ORDER_LIST_INITIAL_SORT, toOrderRows, type OrderRow, type OrderSort } from './orderListConfig';
 import './OrderListPage.css';
 
@@ -12,6 +12,7 @@ type LoadState = 'loading' | 'ready' | 'error';
 export function OrderListPage() {
   const [state, setState] = useState<LoadState>('loading');
   const [records, setRecords] = useState<readonly OrderRecord[]>([]);
+  const [symbolMap, setSymbolMap] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<OrderSort>(ORDER_LIST_INITIAL_SORT);
@@ -20,7 +21,19 @@ export function OrderListPage() {
     setState('loading');
     setError('');
     try {
-      setRecords(await getCoreOrders());
+      const [ordersResult, currenciesResult] = await Promise.allSettled([
+        getCoreOrders(),
+        getCoreCurrencies(),
+      ]);
+      if (ordersResult.status === 'rejected') throw ordersResult.reason;
+      setRecords(ordersResult.value);
+      if (currenciesResult.status === 'fulfilled') {
+        const map: Record<string, string> = {};
+        for (const c of currenciesResult.value) {
+          if (c.symbol) map[c.currencyCode] = c.symbol;
+        }
+        setSymbolMap(map);
+      }
       setState('ready');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '');
@@ -30,7 +43,7 @@ export function OrderListPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const rows = useMemo(() => toOrderRows(records, sort), [records, sort]);
+  const rows = useMemo(() => toOrderRows(records, sort, symbolMap), [records, sort, symbolMap]);
   const filteredRows = useMemo(() => filterOrderRows(rows, query), [rows, query]);
 
   const changeSort = (key: OrderSort['key']) =>
