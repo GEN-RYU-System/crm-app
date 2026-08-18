@@ -18,12 +18,12 @@ export const inventoryCopy = {
   sortNone: '未選択',
   sortLabel: (label: string, direction: string) => `${label}を${direction}で並べ替え`,
   columns: {
-    japaneseTitle: 'Japanese Title',
-    series:        'Series',
-    quantity:      'Quantity',
-    unitPrice:     'Unit Price',
-    condition:     'Condition',
-    status:        'Status',
-    supplier:      '提供者'
+    mark:      'マーク',
+    title:     'タイトル',
+    quantity:  'Quantity',
+    unitPrice: 'Unit Price',
+    condition: 'Condition',
+    status:    'Status',
+    supplier:  '提供者'
   }
 } as const;
