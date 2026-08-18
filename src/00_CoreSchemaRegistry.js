@@ -32,12 +32,17 @@ const CORE_SCHEMA_V1_TABLES = {
     ]), primaryKey: 'ORDER_ID',
     values: {
       STATUS: {
-        ORDERED: '受注',
-        PICKUP_REQUESTED: '集荷依頼',
-        IN_TRANSIT: '配送中',
-        SHIPMENT_NOTIFIED: '発送通知',
+        AWAITING_PAYMENT: '支払い待ち',
+        SOURCING: '仕入れ中',
+        AWAITING_SHIPPING: '発送待ち',
         COMPLETED: '完了',
-        CANCELLED: 'キャンセル'
+        TROUBLE: 'トラブル',
+        CANCELLED: 'キャンセル',
+        UNKNOWN: '不明',
+        LEGACY_ORDERED: '受注',
+        LEGACY_PICKUP_REQUESTED: '集荷依頼',
+        LEGACY_IN_TRANSIT: '配送中',
+        LEGACY_SHIPMENT_NOTIFIED: '発送通知'
       }
     },
     referenceIds: [
@@ -93,6 +98,11 @@ const CORE_SCHEMA_V1_TABLES = {
   PURCHASES: {
     sheetName: '仕入れ', canonicalName: '仕入れ管理', aliases: ['仕入れ'], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
     headers: createCoreSchemaV1Headers([['PURCHASE_ID', '仕入れID'], ['ORDER_ID', 'オーダーID'], ['PURCHASE_ASSIGNEE_ID', '仕入れ担当ID'], ['ORDERED_AT', '注文日'], ['TRANSACTION_NUMBER', '取引番号'], ['SUPPLIER', '仕入元'], ['SUPPLIER_URL', '仕入元URL'], ['QUANTITY', '数量'], ['UNIT_PRICE', '単価'], ['AMOUNT', '金額'], ['SHIPPING_OR_AGENCY_FEE', '送料/代行費'], ['CARRIER', '運送会社'], ['TRACKING_NUMBER', '送り状番号'], ['STATUS', 'ステータス'], ['NOTE', '備考'], ['REGISTERED_AT', '登録日'], ['UPDATED_AT', '更新日']]), primaryKey: 'PURCHASE_ID',
+    values: {
+      STATUS: {
+        CONFIRMED: '確定済み'
+      }
+    },
     referenceIds: [{ headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' }, { headerKey: 'PURCHASE_ASSIGNEE_ID', targetTableKey: 'STAFF' }]
   },
   FORM_TOKENS: {
