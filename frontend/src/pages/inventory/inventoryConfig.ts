@@ -1,5 +1,5 @@
 import type { DataTableCellAlignment } from '../../components/ui';
-import type { SharedInventoryItem } from '../../gas/client';
+import type { SharedInventoryDto } from '../../features/inventory/contracts';
 import { inventoryCopy } from '../../content/ja';
 
 export type InventoryRow = {
@@ -37,7 +37,7 @@ export const INVENTORY_LIST_COLUMNS: readonly { key: InventoryColumnKey; label: 
 export const INVENTORY_LIST_SEARCH_COLUMNS: readonly InventoryColumnKey[] = INVENTORY_LIST_COLUMNS.map(({ key }) => key);
 
 /** Build dynamic tabs from real data sorted by ipId ascending. "All" tab is always first. */
-export function buildInventoryTabs(items: readonly SharedInventoryItem[]): readonly { key: string; label: string }[] {
+export function buildInventoryTabs(items: readonly SharedInventoryDto[]): readonly { key: string; label: string }[] {
   const seen = new Map<string, string>(); // ipId -> ipName (display label)
   for (const item of items) {
     if (item.ipId && !seen.has(item.ipId)) {
@@ -52,7 +52,7 @@ export function buildInventoryTabs(items: readonly SharedInventoryItem[]): reado
  * Filter by active tab.
  * Items with empty ipName appear only in the "all" tab.
  */
-export function filterInventoryByTab(items: readonly SharedInventoryItem[], activeTab: string): readonly SharedInventoryItem[] {
+export function filterInventoryByTab(items: readonly SharedInventoryDto[], activeTab: string): readonly SharedInventoryDto[] {
   if (activeTab === 'all') return items;
   return items.filter((item) => item.ipName === activeTab);
 }
@@ -67,7 +67,7 @@ function compareReleaseDate(a: string, b: string, direction: InventorySortDirect
   return a.localeCompare(b) * (direction === 'ascending' ? 1 : -1);
 }
 
-export function toInventoryRows(items: readonly SharedInventoryItem[], sort: InventorySort): InventoryRow[] {
+export function toInventoryRows(items: readonly SharedInventoryDto[], sort: InventorySort): InventoryRow[] {
   const rows: InventoryRow[] = items.map((item, index) => ({
     rowKey:        `${item.productId}-${item.supplier}-${index}`,
     japaneseTitle: item.japaneseTitle,
