@@ -318,3 +318,99 @@ export function getSharedInventory(): Promise<readonly SharedInventoryItem[]> {
       .getSharedInventoryForFrontend();
   });
 }
+
+export type QuoteRecord = {
+  quoteId: string;
+  leadId: string;
+  customerId: string;
+  orderId: string;
+  staffId: string;
+  issuedDate: string;
+  expiryDate: string;
+  status: string;
+  currency: string;
+  exchangeRate: number | null;
+  subtotal: number | null;
+  shippingFee: number | null;
+  discount: number | null;
+  totalAmount: number | null;
+  totalAmountJpy: number | null;
+  pdfUrl: string;
+  note: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type QuoteLineRecord = {
+  quoteLineId: string;
+  quoteId: string;
+  lineNo: number | null;
+  productId: string;
+  productName: string;
+  description: string;
+  quantity: number | null;
+  unitPrice: number | null;
+  amount: number | null;
+  note: string;
+};
+
+export type QuoteDetailRecord = { quote: QuoteRecord; lines: QuoteLineRecord[] };
+
+export type OrderRecord = {
+  orderId: string;
+  invoiceNumber: string;
+  customerId: string;
+  status: string;
+  orderDate: string;
+  currency: string;
+  invoiceTotal: string;
+  paymentConfirmedAt: string;
+  shippedAt: string;
+  invoiceLink: string;
+};
+
+export function getCoreQuotes(): Promise<readonly QuoteRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (!Array.isArray(value)) { reject(new Error(errorCopy.communication)); return; }
+        resolve(value as QuoteRecord[]);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getCoreQuotesForFrontend(getStoredSessionId());
+  });
+}
+
+export function getCoreQuoteDetail(quoteId: string): Promise<QuoteDetailRecord | null> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (value === null) { resolve(null); return; }
+        if (typeof value !== 'object' || Array.isArray(value)) { reject(new Error(errorCopy.communication)); return; }
+        resolve(value as QuoteDetailRecord);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getCoreQuoteForFrontend(getStoredSessionId(), quoteId);
+  });
+}
+
+export function getCoreOrders(): Promise<readonly OrderRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (!Array.isArray(value)) { reject(new Error(errorCopy.communication)); return; }
+        resolve(value as OrderRecord[]);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getCoreOrdersForFrontend(getStoredSessionId());
+  });
+}
