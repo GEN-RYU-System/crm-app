@@ -1,6 +1,7 @@
 import type { OrderRecord } from '../../gas/client';
 import type { DataTableCellAlignment } from '../../components/ui';
 import { ordersCopy } from '../../content/ja';
+import { formatAmountWithJpy } from '../shared/amountFormat';
 
 export type OrderRow = {
   orderId: string;
@@ -11,8 +12,9 @@ export type OrderRow = {
   invoiceTotal: string;
   paymentDueAt: string;
   paymentStatus: string;
+  invoiceTotalJpy: number;
 };
-export type OrderSortKey = Exclude<keyof OrderRow, 'orderId'>;
+export type OrderSortKey = Exclude<keyof OrderRow, 'orderId' | 'invoiceTotalJpy'>;
 export type OrderSortDirection = 'ascending' | 'descending';
 export type OrderSort = { key: OrderSortKey; direction: OrderSortDirection };
 
@@ -40,19 +42,11 @@ function formatDate(value: unknown): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('ja-JP');
 }
 
-function formatCurrency(invoiceTotal: unknown, currency: string, symbolMap: Record<string, string>): string {
-  if (invoiceTotal == null || invoiceTotal === '') return '-';
-  const raw = String(invoiceTotal).replace(/,/g, '').trim();
-  if (raw === '') return '-';
-  const num = Number(raw);
-  if (!Number.isFinite(num)) return raw;
-  const formatted = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(Math.round(num));
-  const symbol = symbolMap[currency] ?? null;
-  return symbol != null ? `${symbol}${formatted}` : `${currency} ${formatted}`;
-}
-
 function compareRows(a: OrderRow, b: OrderRow, sort: OrderSort): number {
   const dir = sort.direction === 'ascending' ? 1 : -1;
+  if (sort.key === 'invoiceTotal') {
+    return (a.invoiceTotalJpy - b.invoiceTotalJpy) * dir;
+  }
   return a[sort.key].localeCompare(b[sort.key], 'ja-JP', { numeric: true, sensitivity: 'base' }) * dir;
 }
 
@@ -62,16 +56,20 @@ export function toOrderRows(
   symbolMap: Record<string, string> = {},
 ): OrderRow[] {
   return records
-    .map((r) => ({
-      orderId:         text(r.orderId),
-      customerName:    text(r.customerName),
-      invoiceNumber:   text(r.invoiceNumber),
-      invoiceIssuedAt: formatDate(r.invoiceIssuedAt),
-      paymentMethod:   text(r.paymentMethod),
-      invoiceTotal:    formatCurrency(r.invoiceTotal, r.currency, symbolMap),
-      paymentDueAt:    formatDate(r.paymentDueAt),
-      paymentStatus:   text(r.paymentStatus),
-    }))
+    .map((r) => {
+      const { display, jpy } = formatAmountWithJpy(r.invoiceTotal, r.currency, r.invoiceTotalJpy, symbolMap);
+      return {
+        orderId:         text(r.orderId),
+        customerName:    text(r.customerName),
+        invoiceNumber:   text(r.invoiceNumber),
+        invoiceIssuedAt: formatDate(r.invoiceIssuedAt),
+        paymentMethod:   text(r.paymentMethod),
+        invoiceTotal:    display,
+        paymentDueAt:    formatDate(r.paymentDueAt),
+        paymentStatus:   text(r.paymentStatus),
+        invoiceTotalJpy: jpy,
+      };
+    })
     .sort((a, b) => compareRows(a, b, sort));
 }
 

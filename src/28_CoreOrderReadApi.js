@@ -23,7 +23,7 @@ function getCoreOrdersForFrontend(sessionId) {
   var orders = coreCustomerFrontendReadTable(spreadsheet, 'ORDERS', [
     'ORDER_ID', 'CUSTOMER_ID', 'INVOICE_NUMBER', 'INVOICE_ISSUED_AT',
     'PAYMENT_METHOD', 'INVOICE_TOTAL', 'CURRENCY',
-    'PAYMENT_DUE_AT', 'PAYMENT_STATUS'
+    'PAYMENT_DUE_AT', 'PAYMENT_STATUS', 'INVOICE_TOTAL_JPY'
   ]);
 
   return orders.rows
@@ -40,8 +40,9 @@ function getCoreOrdersForFrontend(sessionId) {
         paymentMethod:   coreCustomerFrontendValue(row[orders.indexes.PAYMENT_METHOD]),
         invoiceTotal:    coreCustomerFrontendValue(row[orders.indexes.INVOICE_TOTAL]),
         currency:        coreCustomerFrontendValue(row[orders.indexes.CURRENCY]),
-        paymentDueAt:    coreCustomerFrontendValue(row[orders.indexes.PAYMENT_DUE_AT]),
-        paymentStatus:   coreCustomerFrontendValue(row[orders.indexes.PAYMENT_STATUS])
+        paymentDueAt:     coreCustomerFrontendValue(row[orders.indexes.PAYMENT_DUE_AT]),
+        paymentStatus:    coreCustomerFrontendValue(row[orders.indexes.PAYMENT_STATUS]),
+        invoiceTotalJpy:  coreCustomerFrontendValue(row[orders.indexes.INVOICE_TOTAL_JPY])
       };
     });
 }
