@@ -2,15 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CRM_SORT_ICONS } from '../../app/icons';
 import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMessage, TabBar, TextField, type DataTableColumn } from '../../components/ui';
 import { inventoryCopy } from '../../content/ja';
-import { getSharedInventory, type SharedInventoryItem } from '../../gas/client';
+import type { InventoryRepository, SharedInventoryDto } from '../../features/inventory/contracts';
 import { buildInventoryTabs, filterInventoryByTab, filterInventoryRows, INVENTORY_LIST_COLUMNS, INVENTORY_LIST_INITIAL_SORT, toInventoryRows, type InventoryRow, type InventorySort } from './inventoryConfig';
 import './InventoryListPage.css';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
-export function InventoryListPage() {
+export function InventoryListPage({ repository }: { repository: InventoryRepository }) {
   const [state, setState] = useState<LoadState>('loading');
-  const [items, setItems] = useState<readonly SharedInventoryItem[]>([]);
+  const [items, setItems] = useState<readonly SharedInventoryDto[]>([]);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<InventorySort>(INVENTORY_LIST_INITIAL_SORT);
@@ -20,13 +20,13 @@ export function InventoryListPage() {
     setState('loading');
     setError('');
     try {
-      setItems(await getSharedInventory());
+      setItems(await repository.listSharedInventory());
       setState('ready');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '');
       setState('error');
     }
-  }, []);
+  }, [repository]);
 
   useEffect(() => { void load(); }, [load]);
 
