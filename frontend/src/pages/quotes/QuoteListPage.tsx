@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CRM_SORT_ICONS } from '../../app/icons';
 import { NAVIGATION_BY_ID } from '../../app/navigation';
+import { Badge } from '../../components/ui/Badge/Badge';
 import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMessage, TextField, type DataTableColumn } from '../../components/ui';
-import { quotesCopy } from '../../content/ja';
-import { getCoreQuotes, type QuoteRecord } from '../../gas/client';
+import { quotesCopy, QUOTE_STATUS_BADGE_VARIANT } from '../../content/ja';
+import { getCoreQuotes, getCoreCurrencies, type QuoteRecord } from '../../gas/client';
 import { filterQuoteRows, QUOTE_LIST_COLUMNS, QUOTE_LIST_INITIAL_SORT, QUOTE_ROUTE_SEGMENTS, toQuoteRows, type QuoteRow, type QuoteSort } from './quoteListConfig';
 import './QuoteListPage.css';
 
@@ -14,6 +15,7 @@ export function QuoteListPage() {
   const navigate = useNavigate();
   const [state, setState] = useState<LoadState>('loading');
   const [records, setRecords] = useState<readonly QuoteRecord[]>([]);
+  const [symbolMap, setSymbolMap] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<QuoteSort>(QUOTE_LIST_INITIAL_SORT);
@@ -22,7 +24,19 @@ export function QuoteListPage() {
     setState('loading');
     setError('');
     try {
-      setRecords(await getCoreQuotes());
+      const [quotesResult, currenciesResult] = await Promise.allSettled([
+        getCoreQuotes(),
+        getCoreCurrencies(),
+      ]);
+      if (quotesResult.status === 'rejected') throw quotesResult.reason;
+      setRecords(quotesResult.value);
+      if (currenciesResult.status === 'fulfilled') {
+        const map: Record<string, string> = {};
+        for (const c of currenciesResult.value) {
+          if (c.symbol) map[c.currencyCode] = c.symbol;
+        }
+        setSymbolMap(map);
+      }
       setState('ready');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '');
@@ -32,7 +46,7 @@ export function QuoteListPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const rows = useMemo(() => toQuoteRows(records, sort), [records, sort]);
+  const rows = useMemo(() => toQuoteRows(records, sort, symbolMap), [records, sort, symbolMap]);
   const filteredRows = useMemo(() => filterQuoteRows(rows, query), [rows, query]);
 
   const changeSort = (key: QuoteSort['key']) =>
@@ -45,7 +59,14 @@ export function QuoteListPage() {
     return {
       key: column.key,
       header: column.label,
-      renderCell: (row) => row[column.key],
+      renderCell: column.key === 'status'
+        ? (row) => {
+            const label = row.status;
+            if (label === '-') return label;
+            const variant = QUOTE_STATUS_BADGE_VARIANT[label] ?? 'neutral';
+            return <Badge variant={variant}>{label}</Badge>;
+          }
+        : (row) => row[column.key],
       ariaSort,
       onSort: () => changeSort(column.key),
       sortAriaLabel: quotesCopy.sortLabel(column.label, direction),
