@@ -4,8 +4,10 @@ import { inventoryCopy } from '../../content/ja';
 
 export type InventoryRow = {
   rowKey:        string;
+  mark:          string;
+  englishTitle:  string;
+  /** 2nd display line + search target — not a column key */
   japaneseTitle: string;
-  series:        string;
   quantity:      string;
   unitPrice:     string;
   condition:     string;
@@ -17,24 +19,28 @@ export type InventoryRow = {
   releaseDate:   string;
 };
 
-export type InventoryColumnKey = 'japaneseTitle' | 'series' | 'quantity' | 'unitPrice' | 'condition' | 'status' | 'supplier';
+export type InventoryColumnKey = 'mark' | 'englishTitle' | 'quantity' | 'unitPrice' | 'condition' | 'status' | 'supplier';
 export type InventorySortKey = InventoryColumnKey | 'releaseDate';
 export type InventorySortDirection = 'ascending' | 'descending';
 export type InventorySort = { key: InventorySortKey; direction: InventorySortDirection };
 
+/** Search covers visible columns + japaneseTitle (2nd line of the title cell) */
+export type InventorySearchKey = 'mark' | 'englishTitle' | 'japaneseTitle' | 'quantity' | 'unitPrice' | 'condition' | 'status' | 'supplier';
+export const INVENTORY_LIST_SEARCH_KEYS: readonly InventorySearchKey[] = [
+  'mark', 'englishTitle', 'japaneseTitle', 'quantity', 'unitPrice', 'condition', 'status', 'supplier'
+];
+
 export const INVENTORY_LIST_INITIAL_SORT: InventorySort = { key: 'releaseDate', direction: 'descending' };
 
 export const INVENTORY_LIST_COLUMNS: readonly { key: InventoryColumnKey; label: string; cellAlignment: DataTableCellAlignment; sortable: boolean }[] = [
-  { key: 'japaneseTitle', label: inventoryCopy.columns.japaneseTitle, cellAlignment: 'center', sortable: true },
-  { key: 'series',        label: inventoryCopy.columns.series,        cellAlignment: 'center', sortable: true },
-  { key: 'quantity',      label: inventoryCopy.columns.quantity,      cellAlignment: 'center', sortable: true },
-  { key: 'unitPrice',     label: inventoryCopy.columns.unitPrice,     cellAlignment: 'center', sortable: true },
-  { key: 'condition',     label: inventoryCopy.columns.condition,     cellAlignment: 'center', sortable: true },
-  { key: 'status',        label: inventoryCopy.columns.status,        cellAlignment: 'center', sortable: true },
-  { key: 'supplier',      label: inventoryCopy.columns.supplier,      cellAlignment: 'center', sortable: true }
+  { key: 'mark',         label: inventoryCopy.columns.mark,      cellAlignment: 'center', sortable: true },
+  { key: 'englishTitle', label: inventoryCopy.columns.title,     cellAlignment: 'start',  sortable: true },
+  { key: 'quantity',     label: inventoryCopy.columns.quantity,  cellAlignment: 'center', sortable: true },
+  { key: 'unitPrice',    label: inventoryCopy.columns.unitPrice, cellAlignment: 'center', sortable: true },
+  { key: 'condition',    label: inventoryCopy.columns.condition, cellAlignment: 'center', sortable: true },
+  { key: 'status',       label: inventoryCopy.columns.status,    cellAlignment: 'center', sortable: true },
+  { key: 'supplier',     label: inventoryCopy.columns.supplier,  cellAlignment: 'center', sortable: true }
 ];
-
-export const INVENTORY_LIST_SEARCH_COLUMNS: readonly InventoryColumnKey[] = INVENTORY_LIST_COLUMNS.map(({ key }) => key);
 
 /** Build dynamic tabs from real data sorted by ipId ascending. "All" tab is always first. */
 export function buildInventoryTabs(items: readonly SharedInventoryDto[]): readonly { key: string; label: string }[] {
@@ -70,8 +76,9 @@ function compareReleaseDate(a: string, b: string, direction: InventorySortDirect
 export function toInventoryRows(items: readonly SharedInventoryDto[], sort: InventorySort): InventoryRow[] {
   const rows: InventoryRow[] = items.map((item, index) => ({
     rowKey:        `${item.productId}-${item.supplier}-${index}`,
+    mark:          item.mark,
+    englishTitle:  item.englishTitle,
     japaneseTitle: item.japaneseTitle,
-    series:        item.series,
     quantity:      String(item.quantity),
     unitPrice:     String(item.unitPrice),
     condition:     item.condition,
@@ -84,11 +91,12 @@ export function toInventoryRows(items: readonly SharedInventoryDto[], sort: Inve
   return rows.sort((left, right) => {
     if (sort.key === 'releaseDate') {
       const d = compareReleaseDate(left.releaseDate, right.releaseDate, sort.direction);
-      return d !== 0 ? d : left.series.localeCompare(right.series, 'ja-JP', { numeric: true, sensitivity: 'base' });
+      return d !== 0 ? d : left.englishTitle.localeCompare(right.englishTitle, 'en', { numeric: true, sensitivity: 'base' });
     }
     const direction = sort.direction === 'ascending' ? 1 : -1;
-    const comparison = left[sort.key].localeCompare(right[sort.key], 'ja-JP', { numeric: true, sensitivity: 'base' });
-    return (comparison || left.series.localeCompare(right.series, 'ja-JP', { numeric: true, sensitivity: 'base' })) * direction;
+    const locale = sort.key === 'englishTitle' || sort.key === 'mark' ? 'en' : 'ja-JP';
+    const comparison = left[sort.key].localeCompare(right[sort.key], locale, { numeric: true, sensitivity: 'base' });
+    return (comparison || left.englishTitle.localeCompare(right.englishTitle, 'en', { numeric: true, sensitivity: 'base' })) * direction;
   });
 }
 
@@ -96,5 +104,5 @@ export function filterInventoryRows(rows: readonly InventoryRow[], query: string
   const normalized = query.trim().toLocaleLowerCase('ja-JP');
   return normalized === ''
     ? rows
-    : rows.filter((row) => INVENTORY_LIST_SEARCH_COLUMNS.some((key) => row[key].toLocaleLowerCase('ja-JP').includes(normalized)));
+    : rows.filter((row) => INVENTORY_LIST_SEARCH_KEYS.some((key) => row[key].toLocaleLowerCase('ja-JP').includes(normalized)));
 }
