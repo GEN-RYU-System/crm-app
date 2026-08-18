@@ -299,6 +299,10 @@ export type SharedInventoryItem = {
   productId: string;
   rawName: string;
   exclusionReason: string;
+  ipId: string;
+  ipName: string;
+  releaseDate: string;
+  japaneseTitle: string;
 };
 
 export function getSharedInventory(): Promise<readonly SharedInventoryItem[]> {
@@ -315,7 +319,7 @@ export function getSharedInventory(): Promise<readonly SharedInventoryItem[]> {
         resolve(value as SharedInventoryItem[]);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .getSharedInventoryForFrontend();
+      .getSharedInventoryForFrontend(getStoredSessionId());
   });
 }
 
