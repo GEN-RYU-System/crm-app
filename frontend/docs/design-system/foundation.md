@@ -24,6 +24,8 @@ React POCは`HashRouter`内でSSOTの`available`または`preview` Routeを表�
 
 FormField、Badge、SkeletonはReact POCの純粋UI金型です。業務statusからBadge variantへの対応、選択肢の正本、保存・権限・GAS呼出しは金型に含めません。Form catalogは表示専用です。
 
+TextFieldは`startIcon?: ReactNode`を受け取ります。指定時はinputの左側にアイコンを配置し、inputの`padding-left`をアイコン幅ぶん自動で拡張します。未指定時は既存の描画と完全に同一です。アイコンのサイズは`--font-md`、色は`--color-text-muted`をCSS経由で適用し、呼出側から色・サイズをインラインで指定しません。アイコンは`aria-hidden="true"`で装飾として扱います。検索欄には`CRM_SEARCH_ICON`（`app/icons.tsx`公開済み）を使用し、ページからHeroiconsを直接importしません。
+
 Tabsは純粋UI金型で、`pill`と`underline`、`sm`と`md`、任意のicon・count・disabledを提供します。タブの項目・選択状態・変更処理・aria-labelは呼出側の正本で管理し、Tabs自身は業務条件やCopyを持ちません。
 
 TabBarは受信箱由来の、ページまたは一覧上部に置くカテゴリ切替バーです。`key`、`label`、`disabled`だけを扱い、iconやcountを必要とする領域内切替にはTabsを使用します。

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CRM_SORT_ICONS } from '../../app/icons';
+import { CRM_SEARCH_ICON, CRM_SORT_ICONS } from '../../app/icons';
 import { NAVIGATION_BY_ID } from '../../app/navigation';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMessage, TextField, type DataTableColumn } from '../../components/ui';
@@ -82,7 +82,7 @@ export function QuoteListPage() {
     <>
       <PageHeader eyebrow={quotesCopy.eyebrow} title={quotesCopy.title} subtitle={quotesCopy.subtitle} />
       <PageToolbar
-        start={<TextField aria-label={quotesCopy.searchLabel} placeholder={quotesCopy.searchPlaceholder} value={query} onChange={(e) => setQuery(e.target.value)} width="sm" />}
+        start={<TextField aria-label={quotesCopy.searchLabel} placeholder={quotesCopy.searchPlaceholder} value={query} onChange={(e) => setQuery(e.target.value)} width="sm" startIcon={<CRM_SEARCH_ICON aria-hidden="true" />} />}
         end={<Button variant="secondary" onClick={() => void load()} loading={state === 'loading'} loadingText={quotesCopy.loading}>{quotesCopy.refresh}</Button>}
       />
       <Card className="quote-list-page__data-card">
