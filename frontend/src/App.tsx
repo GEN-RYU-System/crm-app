@@ -19,6 +19,7 @@ import { LeadEditorPage } from './pages/leads/LeadEditorPage';
 import { LEAD_EDITOR_SEGMENTS } from './pages/leads/leadEditorConfig';
 import { LeadListPage } from './pages/leads/LeadListPage';
 import { InboxPreviewPage } from './pages/inbox/InboxPreviewPage';
+import { InventoryListPage } from './pages/inventory/InventoryListPage';
 import { StaffListPage } from './pages/staff/StaffListPage';
 import { inboxPreviewRepository } from './features/inbox/previewAdapter';
 import { ChangePasswordPage } from './pages/auth/ChangePasswordPage';
@@ -96,6 +97,7 @@ function AppRouter() {
   const canAccessCustomers = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.customers, permissions);
   const canAccessInbox = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.inbox, permissions);
   const canAccessStaff = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.staff, permissions);
+  const inventoryRoute = permissionState.status === 'checking' ? <LeadPermissionLoading /> : canAccessLeads ? <InventoryListPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const canAddLeads = hasNavigationPermission(permissions, 'lead_add');
   const canEditLeads = hasNavigationPermission(permissions, 'lead_edit');
   const leadsRoute = permissionState.status === 'checking' ? <LeadPermissionLoading /> : canAccessLeads ? <LeadListPage canAdd={canAddLeads} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
@@ -121,6 +123,9 @@ function AppRouter() {
     <Route path={NAVIGATION_BY_ID.customers.hash} element={dataManagementRoute}>
       <Route index element={customersRoute} />
       <Route path={CUSTOMER_ROUTE_SEGMENTS.detail} element={customerDetailRoute} />
+    </Route>
+    <Route path={NAVIGATION_BY_ID.inventory.hash} element={dataManagementRoute}>
+      <Route index element={inventoryRoute} />
     </Route>
     <Route path={STAFF_MANAGEMENT_ROOT} element={staffRoute} />
     <Route path={NAVIGATION_BY_ID.inbox.hash} element={inboxRoute} />
