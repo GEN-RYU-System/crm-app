@@ -1,6 +1,6 @@
 import type { OrderRecord } from '../../gas/client';
 import type { DataTableCellAlignment } from '../../components/ui';
-import { ordersCopy, CURRENCY_SYMBOL } from '../../content/ja';
+import { ordersCopy } from '../../content/ja';
 
 export type OrderRow = {
   orderId: string;
@@ -40,14 +40,14 @@ function formatDate(value: unknown): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('ja-JP');
 }
 
-function formatCurrency(invoiceTotal: unknown, currency: string): string {
+function formatCurrency(invoiceTotal: unknown, currency: string, symbolMap: Record<string, string>): string {
   if (invoiceTotal == null || invoiceTotal === '') return '-';
   const raw = String(invoiceTotal).replace(/,/g, '').trim();
   if (raw === '') return '-';
   const num = Number(raw);
   if (!Number.isFinite(num)) return raw;
   const formatted = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(Math.round(num));
-  const symbol = CURRENCY_SYMBOL[currency] ?? null;
+  const symbol = symbolMap[currency] ?? null;
   return symbol != null ? `${symbol}${formatted}` : `${currency} ${formatted}`;
 }
 
@@ -56,7 +56,11 @@ function compareRows(a: OrderRow, b: OrderRow, sort: OrderSort): number {
   return a[sort.key].localeCompare(b[sort.key], 'ja-JP', { numeric: true, sensitivity: 'base' }) * dir;
 }
 
-export function toOrderRows(records: readonly OrderRecord[], sort: OrderSort = ORDER_LIST_INITIAL_SORT): OrderRow[] {
+export function toOrderRows(
+  records: readonly OrderRecord[],
+  sort: OrderSort = ORDER_LIST_INITIAL_SORT,
+  symbolMap: Record<string, string> = {},
+): OrderRow[] {
   return records
     .map((r) => ({
       orderId:         text(r.orderId),
@@ -64,7 +68,7 @@ export function toOrderRows(records: readonly OrderRecord[], sort: OrderSort = O
       invoiceNumber:   text(r.invoiceNumber),
       invoiceIssuedAt: formatDate(r.invoiceIssuedAt),
       paymentMethod:   text(r.paymentMethod),
-      invoiceTotal:    formatCurrency(r.invoiceTotal, r.currency),
+      invoiceTotal:    formatCurrency(r.invoiceTotal, r.currency, symbolMap),
       paymentDueAt:    formatDate(r.paymentDueAt),
       paymentStatus:   text(r.paymentStatus),
     }))
