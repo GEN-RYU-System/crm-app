@@ -85,37 +85,6 @@ const CORE_SCHEMA_V1_TABLES = {
       { headerKey: 'QUOTE_ID', targetTableKey: 'QUOTES' }
     ]
   },
-  INVOICES: {
-    sheetName: '請求書管理', canonicalName: '請求書管理', aliases: [], headerRowNumber: 1, sheetType: 'TRANSACTION', writeAllowed: true,
-    headers: createCoreSchemaV1Headers([
-      ['INVOICE_ID', '請求書ID'], ['ORDER_ID', 'オーダーID'], ['CUSTOMER_ID', '顧客ID'], ['LEAD_ID', 'リードID'], ['QUOTE_ID', '見積書ID'], ['STAFF_ID', '担当者ID'], ['ISSUED_DATE', '発行日'], ['DUE_DATE', '支払期限'], ['STATUS', 'ステータス'], ['CURRENCY', '通貨'], ['EXCHANGE_RATE', '為替レート'], ['SUBTOTAL', '小計'], ['SHIPPING_FEE', '送料'], ['CUSTOMS_DUTY', '関税'], ['DISCOUNT', '値引き'], ['TOTAL_AMOUNT', '合計金額'], ['TOTAL_AMOUNT_JPY', '円換算合計'], ['PAYMENT_DUE_DATE', '入金予定日'], ['PAID_DATE', '入金日'], ['PAID_AMOUNT', '入金額'], ['PDF_URL', 'PDF URL'], ['NOTE', '備考'], ['CREATED_AT', '作成日時'], ['UPDATED_AT', '更新日時']
-    ]), primaryKey: 'INVOICE_ID',
-    values: {
-      STATUS: {
-        UNSENT: '未送付',
-        SENT: '送付済',
-        PARTIAL: '一部入金',
-        PAID: '入金済',
-        OVERDUE: '遅延'
-      }
-    },
-    referenceIds: [
-      { headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' },
-      { headerKey: 'CUSTOMER_ID', targetTableKey: 'CUSTOMERS' },
-      { headerKey: 'LEAD_ID', targetTableKey: 'LEADS' },
-      { headerKey: 'QUOTE_ID', targetTableKey: 'QUOTES' },
-      { headerKey: 'STAFF_ID', targetTableKey: 'STAFF' }
-    ]
-  },
-  INVOICE_LINES: {
-    sheetName: '請求書明細', canonicalName: '請求書明細', aliases: [], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
-    headers: createCoreSchemaV1Headers([
-      ['INVOICE_LINE_ID', '明細ID'], ['INVOICE_ID', '請求書ID'], ['LINE_NO', '行番号'], ['PRODUCT_ID', '商品ID'], ['PRODUCT_NAME', '商品名'], ['DESCRIPTION', '説明'], ['QUANTITY', '数量'], ['UNIT_PRICE', '単価'], ['AMOUNT', '金額'], ['NOTE', '備考']
-    ]), primaryKey: 'INVOICE_LINE_ID',
-    referenceIds: [
-      { headerKey: 'INVOICE_ID', targetTableKey: 'INVOICES' }
-    ]
-  },
   SHIPMENTS: {
     sheetName: '発送', canonicalName: '発送管理', aliases: ['発送'], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
     headers: createCoreSchemaV1Headers([['SHIPMENT_ID', '発送ID'], ['ORDER_ID', 'オーダーID'], ['BOX_NUMBER', '箱番号'], ['SHIPPING_METHOD', '発送方法'], ['SHIPPED_AT', '発送日'], ['TRACKING_NUMBER', '運送状番号'], ['LENGTH', '長さ'], ['WIDTH', '幅'], ['HEIGHT', '高さ'], ['WEIGHT', '重量'], ['ESTIMATED_SHIPPING_FEE', '見積もり送料'], ['INSPECTION', '検品'], ['PACKING', '梱包'], ['STORAGE', '格納'], ['PICKUP_REQUEST', '集荷依頼'], ['NOTIFICATION', '通知'], ['SHIPPING_ASSIGNEE_ID', '発送担当ID'], ['NOTE', '備考'], ['REGISTERED_AT', '登録日'], ['UPDATED_AT', '更新日']]), primaryKey: 'SHIPMENT_ID',
