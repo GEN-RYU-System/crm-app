@@ -1,25 +1,18 @@
 /**
- * Webアプリ - GET リクエスト処理（SPA統一版）
- * 常にindex.html（SPA）を返す
+ * Webアプリ - GET リクエスト処理（React SPA統一版）
+ * 常に ReactPoc（React SPA）を返す。
+ * 認証はフロントエンドのログイン画面が担う。
  *
- * アクセス制御:
- * - 担当者マスタに登録されているメールアドレスのみアクセス可能
- * - gmail.comを含む任意のドメインのメールアドレスで認証可能
- *
- * 特殊クエリパラメータ（認証・force_reset権限チェック後）:
+ * 特殊クエリパラメータ:
+ * - ?page=order-form&token=<TOKEN> : 顧客登録フォーム（認証不要・token 必須）
  * - ?action=insertTestData&key=<TEST_DATA_KEY> : テストデータ投入
  * - ?action=removeTestData&key=<TEST_DATA_KEY> : テストデータ削除
  *   TEST_DATA_KEY はスクリプトプロパティで設定。未設定時は実行不可。
- *
- * Phase 4: 追加ルート
- * - ?page=quotes : 見積書管理画面
- * - ?page=invoices : 請求書管理画面
- * - ?page=stock : 在庫閲覧画面
  */
 function doGet(e) {
   const params = e.parameter || {};
 
-  // 顧客登録フォーム（認証不要・token 必須）← 認証チェックより前に配置
+  // 顧客登録フォーム（認証不要・token 必須）← React SPA より前に配置
   if (params.page === 'order-form') {
     const token = params.token || '';
     const validation = validateFormToken(token);
@@ -35,32 +28,7 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
-  // アクセス制御: 担当者マスタに登録されているユーザーのみアクセス可能
-  const userEmail = resolveCurrentUserEmail();
-
-  if (!userEmail) {
-    return createAccessDeniedPage('ログインが必要です', 'Googleアカウントでログインしてください。');
-  }
-
-  const userInfo = getCurrentUserPermissions(userEmail);
-
-  if (!userInfo.success) {
-    return createAccessDeniedPage(
-      'アクセスが拒否されました',
-      userInfo.error || '担当者マスタに登録されていないメールアドレスです。',
-      userEmail
-    );
-  }
-
-  if (userInfo.user && userInfo.user.status !== '有効') {
-    return createAccessDeniedPage(
-      'アカウントが無効化されています',
-      '管理者にお問い合わせください。',
-      userEmail
-    );
-  }
-
-  // テストデータ操作（認証・force_reset権限チェック後）
+  // テストデータ操作（checkPermission('force_reset') でガード済み）
   if (params.action) {
     const testDataKey = PropertiesService.getScriptProperties().getProperty('TEST_DATA_KEY');
     if (testDataKey && params.key === testDataKey) {
@@ -85,59 +53,8 @@ function doGet(e) {
     }
   }
 
-  // ★Phase 4: ページルーティング追加★
-  const page = params.page || '';
-
-  // 見積書管理画面
-  if (page === 'quotes') {
-    return HtmlService.createHtmlOutputFromFile('html/quote')
-      .setTitle('見積書管理 - B2B Card CRM')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-
-  // 請求書管理画面
-  if (page === 'invoices') {
-    return HtmlService.createHtmlOutputFromFile('html/invoice')
-      .setTitle('請求書管理 - B2B Card CRM')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-
-  // 在庫閲覧画面
-  if (page === 'stock') {
-    return HtmlService.createHtmlOutputFromFile('html/stock')
-      .setTitle('在庫閲覧 - B2B Card CRM')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-
-  // 設定管理画面（ゼロコードUI）
-  if (page === 'settings') {
-    return HtmlService.createHtmlOutputFromFile('SettingsPage')
-      .setTitle('設定管理 - B2B Card CRM')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-
-  // CSVインポートガイド
-  if (page === 'csv-guide') {
-    return HtmlService.createHtmlOutputFromFile('CSVImportGuide')
-      .setTitle('CSVインポート使い方ガイド - B2B Card CRM')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-
-  // React + Vite フロントエンド基盤のDEV技術実証（認証後のみ）
-  if (page === 'frontend-poc') {
-    return HtmlService.createHtmlOutputFromFile('ReactPoc')
-      .setTitle('CRM Dashboard - Frontend POC')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
-  }
-
-  // 通常のSPAレスポンス
-  const template = HtmlService.createTemplateFromFile('index');
-  return template.evaluate()
+  // 常に React SPA を返す
+  return HtmlService.createHtmlOutputFromFile('ReactPoc')
     .setTitle('CRM Dashboard')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
