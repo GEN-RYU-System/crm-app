@@ -1,9 +1,11 @@
 /**
  * オーダーステータス判定サービス
  *
- * シートへの書き込みは一切しない。
- * calculateOrderStatus は純粋な計算のみ。
- * dryRunOrderStatusRecalculation は DEV 専用の差分確認（書き込みなし）。
+ * calculateOrderStatus          純粋な計算のみ（書き込みなし）
+ * dryRunOrderStatusRecalculation DEV 専用の差分確認（書き込みなし）
+ * applyOrderStatusRecalculation  DEV 専用。差分7件のときのみ書き込む
+ * recalculateOrderStatusById     1件のステータスを再計算して書き込む（updateCoreOrderForFrontend 用）
+ * scheduledOrderStatusRecalculation  定期実行向け全件再計算（上限20件）
  */
 
 /**
@@ -234,4 +236,312 @@ function buildOrderStatusLookup_(rows, keyField) {
  */
 function isOrderStatusEmptyValue_(value) {
   return value === null || value === undefined || value === '';
+}
+
+/**
+ * 全オーダーのステータスを新体系で再計算し、差分を書き込む。
+ * DEV 環境専用。差分が 7 件でなければ中断する。
+ *
+ * @returns {{ applied: number, verifyPassed: boolean }}
+ */
+function applyOrderStatusRecalculation() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('applyOrderStatusRecalculation は DEV 環境のみ実行できます');
+  }
+
+  var ss = getSpreadsheet();
+
+  var ordersMeta = readOrderStatusServiceSheet_(ss, 'ORDERS', [
+    'ORDER_ID', 'STATUS', 'CANCELLATION_REASON', 'PAYMENT_CONFIRMED_AT', 'INVOICE_NUMBER'
+  ]);
+  var shipmentsMeta = readOrderStatusServiceSheet_(ss, 'SHIPMENTS', [
+    'ORDER_ID', 'PICKUP_REQUEST', 'TRACKING_NUMBER'
+  ]);
+  var purchasesMeta = readOrderStatusServiceSheet_(ss, 'PURCHASES', [
+    'ORDER_ID', 'STATUS'
+  ]);
+
+  var shipmentsByOrderId = buildOrderStatusLookup_(shipmentsMeta.rows, 'ORDER_ID');
+  var purchasesByOrderId = buildOrderStatusLookup_(purchasesMeta.rows, 'ORDER_ID');
+
+  var diffs = [];
+  ordersMeta.rows.forEach(function(orderRow, i) {
+    var orderId = String(orderRow.ORDER_ID || '').trim();
+    if (!orderId) return;
+
+    var relatedShipments = (shipmentsByOrderId[orderId] || []).map(function(s) {
+      return { pickupRequest: s.PICKUP_REQUEST, trackingNumber: s.TRACKING_NUMBER };
+    });
+    var relatedPurchases = (purchasesByOrderId[orderId] || []).map(function(p) {
+      return { status: p.STATUS };
+    });
+
+    var newStatus = calculateOrderStatus(
+      {
+        cancellationReason: orderRow.CANCELLATION_REASON,
+        status:             orderRow.STATUS,
+        paymentConfirmedAt: orderRow.PAYMENT_CONFIRMED_AT,
+        invoiceNumber:      orderRow.INVOICE_NUMBER
+      },
+      relatedShipments,
+      relatedPurchases
+    );
+
+    if (newStatus !== orderRow.STATUS) {
+      diffs.push({ rowIndex: i, orderId: orderId, newStatus: newStatus });
+    }
+  });
+
+  if (diffs.length !== 7) {
+    throw new Error(
+      'applyOrderStatusRecalculation: 差分件数が想定と異なるため中断します。' +
+      '想定=7件、実際=' + diffs.length + '件'
+    );
+  }
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+
+  try {
+    var writeTarget = validateCoreSchemaV1TableForWrite(ss, 'ORDERS');
+    var statusPhysicalName = getCoreSchemaV1HeaderName('ORDERS', 'STATUS');
+    var statusColIndex = writeTarget.headerIndexes[statusPhysicalName]; // 1-indexed
+
+    if (!statusColIndex) {
+      throw new Error('STATUS 列が見つかりません');
+    }
+
+    diffs.forEach(function(diff) {
+      var sheetRow = diff.rowIndex + 2; // rows[i] → 行 i+2（ヘッダー行=1）
+      writeTarget.sheet.getRange(sheetRow, statusColIndex).setValue(diff.newStatus);
+    });
+
+    // 書き込み後の検証
+    var verifyMeta = readOrderStatusServiceSheet_(ss, 'ORDERS', [
+      'ORDER_ID', 'STATUS', 'CANCELLATION_REASON', 'PAYMENT_CONFIRMED_AT', 'INVOICE_NUMBER'
+    ]);
+    var verifyShipmentsMeta = readOrderStatusServiceSheet_(ss, 'SHIPMENTS', [
+      'ORDER_ID', 'PICKUP_REQUEST', 'TRACKING_NUMBER'
+    ]);
+    var verifyPurchasesMeta = readOrderStatusServiceSheet_(ss, 'PURCHASES', [
+      'ORDER_ID', 'STATUS'
+    ]);
+    var verifyShipmentsByOrderId = buildOrderStatusLookup_(verifyShipmentsMeta.rows, 'ORDER_ID');
+    var verifyPurchasesByOrderId = buildOrderStatusLookup_(verifyPurchasesMeta.rows, 'ORDER_ID');
+
+    var verifyFailedCount = 0;
+    verifyMeta.rows.forEach(function(orderRow) {
+      var orderId = String(orderRow.ORDER_ID || '').trim();
+      if (!orderId) return;
+
+      var relatedShipments = (verifyShipmentsByOrderId[orderId] || []).map(function(s) {
+        return { pickupRequest: s.PICKUP_REQUEST, trackingNumber: s.TRACKING_NUMBER };
+      });
+      var relatedPurchases = (verifyPurchasesByOrderId[orderId] || []).map(function(p) {
+        return { status: p.STATUS };
+      });
+
+      var expectedStatus = calculateOrderStatus(
+        {
+          cancellationReason: orderRow.CANCELLATION_REASON,
+          status:             orderRow.STATUS,
+          paymentConfirmedAt: orderRow.PAYMENT_CONFIRMED_AT,
+          invoiceNumber:      orderRow.INVOICE_NUMBER
+        },
+        relatedShipments,
+        relatedPurchases
+      );
+
+      if (expectedStatus !== orderRow.STATUS) {
+        verifyFailedCount++;
+      }
+    });
+
+    var verifyPassed = (verifyFailedCount === 0);
+    Logger.log('applyOrderStatusRecalculation: applied=' + diffs.length + ', verifyPassed=' + verifyPassed);
+
+    return { applied: diffs.length, verifyPassed: verifyPassed };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * 1件のオーダーのステータスを再計算して書き込む。
+ * updateCoreOrderForFrontend から呼び出すことを想定。
+ *
+ * @param {string} orderId
+ * @returns {string} 書き込んだ新ステータス（変更なしの場合は現在値をそのまま返す）
+ */
+function recalculateOrderStatusById(orderId) {
+  if (!orderId) {
+    throw new Error('recalculateOrderStatusById: orderId は必須です');
+  }
+
+  var ss = getSpreadsheet();
+
+  var ordersMeta = readOrderStatusServiceSheet_(ss, 'ORDERS', [
+    'ORDER_ID', 'STATUS', 'CANCELLATION_REASON', 'PAYMENT_CONFIRMED_AT', 'INVOICE_NUMBER'
+  ]);
+  var shipmentsMeta = readOrderStatusServiceSheet_(ss, 'SHIPMENTS', [
+    'ORDER_ID', 'PICKUP_REQUEST', 'TRACKING_NUMBER'
+  ]);
+  var purchasesMeta = readOrderStatusServiceSheet_(ss, 'PURCHASES', [
+    'ORDER_ID', 'STATUS'
+  ]);
+
+  var shipmentsByOrderId = buildOrderStatusLookup_(shipmentsMeta.rows, 'ORDER_ID');
+  var purchasesByOrderId = buildOrderStatusLookup_(purchasesMeta.rows, 'ORDER_ID');
+
+  var targetIndex = -1;
+  var targetRow   = null;
+  ordersMeta.rows.forEach(function(row, i) {
+    if (String(row.ORDER_ID || '').trim() === String(orderId).trim()) {
+      targetIndex = i;
+      targetRow   = row;
+    }
+  });
+
+  if (targetRow === null) {
+    throw new Error('recalculateOrderStatusById: ORDER_ID が見つかりません: ' + orderId);
+  }
+
+  var relatedShipments = (shipmentsByOrderId[String(orderId).trim()] || []).map(function(s) {
+    return { pickupRequest: s.PICKUP_REQUEST, trackingNumber: s.TRACKING_NUMBER };
+  });
+  var relatedPurchases = (purchasesByOrderId[String(orderId).trim()] || []).map(function(p) {
+    return { status: p.STATUS };
+  });
+
+  var newStatus = calculateOrderStatus(
+    {
+      cancellationReason: targetRow.CANCELLATION_REASON,
+      status:             targetRow.STATUS,
+      paymentConfirmedAt: targetRow.PAYMENT_CONFIRMED_AT,
+      invoiceNumber:      targetRow.INVOICE_NUMBER
+    },
+    relatedShipments,
+    relatedPurchases
+  );
+
+  if (newStatus === targetRow.STATUS) {
+    return targetRow.STATUS;
+  }
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+
+  try {
+    var writeTarget = validateCoreSchemaV1TableForWrite(ss, 'ORDERS');
+    var statusPhysicalName = getCoreSchemaV1HeaderName('ORDERS', 'STATUS');
+    var statusColIndex = writeTarget.headerIndexes[statusPhysicalName];
+
+    if (!statusColIndex) {
+      throw new Error('STATUS 列が見つかりません');
+    }
+
+    var sheetRow = targetIndex + 2;
+    writeTarget.sheet.getRange(sheetRow, statusColIndex).setValue(newStatus);
+
+    return newStatus;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * 定期実行向け全件ステータス再計算。
+ * 差分が 20 件を超える場合は異常と判断して中断する。
+ * LockService で二重実行を防ぐ（tryLock: 競合時は即時中断）。
+ *
+ * @returns {{ checked: number, changed: number, skipped: boolean }}
+ */
+function scheduledOrderStatusRecalculation() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(0)) {
+    Logger.log('scheduledOrderStatusRecalculation: 別プロセスが実行中のためスキップ');
+    return { checked: 0, changed: 0, skipped: true };
+  }
+
+  try {
+    var ss = getSpreadsheet();
+
+    var ordersMeta = readOrderStatusServiceSheet_(ss, 'ORDERS', [
+      'ORDER_ID', 'STATUS', 'CANCELLATION_REASON', 'PAYMENT_CONFIRMED_AT', 'INVOICE_NUMBER'
+    ]);
+    var shipmentsMeta = readOrderStatusServiceSheet_(ss, 'SHIPMENTS', [
+      'ORDER_ID', 'PICKUP_REQUEST', 'TRACKING_NUMBER'
+    ]);
+    var purchasesMeta = readOrderStatusServiceSheet_(ss, 'PURCHASES', [
+      'ORDER_ID', 'STATUS'
+    ]);
+
+    var shipmentsByOrderId = buildOrderStatusLookup_(shipmentsMeta.rows, 'ORDER_ID');
+    var purchasesByOrderId = buildOrderStatusLookup_(purchasesMeta.rows, 'ORDER_ID');
+
+    var checkedCount = 0;
+    var diffs        = [];
+
+    ordersMeta.rows.forEach(function(orderRow, i) {
+      var orderId = String(orderRow.ORDER_ID || '').trim();
+      if (!orderId) return;
+      checkedCount++;
+
+      var relatedShipments = (shipmentsByOrderId[orderId] || []).map(function(s) {
+        return { pickupRequest: s.PICKUP_REQUEST, trackingNumber: s.TRACKING_NUMBER };
+      });
+      var relatedPurchases = (purchasesByOrderId[orderId] || []).map(function(p) {
+        return { status: p.STATUS };
+      });
+
+      var newStatus = calculateOrderStatus(
+        {
+          cancellationReason: orderRow.CANCELLATION_REASON,
+          status:             orderRow.STATUS,
+          paymentConfirmedAt: orderRow.PAYMENT_CONFIRMED_AT,
+          invoiceNumber:      orderRow.INVOICE_NUMBER
+        },
+        relatedShipments,
+        relatedPurchases
+      );
+
+      if (newStatus !== orderRow.STATUS) {
+        diffs.push({ rowIndex: i, orderId: orderId, newStatus: newStatus });
+      }
+    });
+
+    if (diffs.length > 20) {
+      Logger.log(
+        'scheduledOrderStatusRecalculation: 差分が上限を超えたため中断 (' + diffs.length + '件)。' +
+        '手動での確認が必要です（dryRunOrderStatusRecalculation を実行してください）。'
+      );
+      return { checked: checkedCount, changed: 0, skipped: false };
+    }
+
+    if (diffs.length === 0) {
+      Logger.log('scheduledOrderStatusRecalculation: 差分なし (' + checkedCount + '件チェック)');
+      return { checked: checkedCount, changed: 0, skipped: false };
+    }
+
+    var writeTarget = validateCoreSchemaV1TableForWrite(ss, 'ORDERS');
+    var statusPhysicalName = getCoreSchemaV1HeaderName('ORDERS', 'STATUS');
+    var statusColIndex = writeTarget.headerIndexes[statusPhysicalName];
+
+    if (!statusColIndex) {
+      throw new Error('STATUS 列が見つかりません');
+    }
+
+    diffs.forEach(function(diff) {
+      var sheetRow = diff.rowIndex + 2;
+      writeTarget.sheet.getRange(sheetRow, statusColIndex).setValue(diff.newStatus);
+    });
+
+    Logger.log(
+      'scheduledOrderStatusRecalculation: 完了 (チェック=' + checkedCount + '件, 更新=' + diffs.length + '件)'
+    );
+
+    return { checked: checkedCount, changed: diffs.length, skipped: false };
+  } finally {
+    lock.releaseLock();
+  }
 }
