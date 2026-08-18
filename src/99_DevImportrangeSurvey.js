@@ -59,3 +59,37 @@ function surveyImportrangeFormulas() {
   // clasp の表示上限でネスト配列が [Array] になるため、文字列化して返す
   return { results: JSON.stringify(results) };
 }
+
+/**
+ * SCM出力同期 の現在のヘッダー行を全件返す（DRY RUN 用）
+ * 読み取りのみ。書き込みなし。
+ */
+function surveyScmOutputHeaders() {
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName('SCM出力同期');
+  if (!sheet) {
+    return { error: 'SCM出力同期 シートが見つかりません' };
+  }
+
+  const lastCol = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+  const headers = lastCol > 0
+    ? sheet.getRange(1, 1, 1, lastCol).getValues()[0]
+    : [];
+
+  const a1Formula = sheet.getRange('A1').getFormula();
+  const maskId = function(f) {
+    return f.replace(/"1[A-Za-z0-9_-]{25,}"/g, '"[SPREADSHEET_ID]"');
+  };
+
+  return JSON.stringify({
+    sheetName: 'SCM出力同期',
+    lastRow: lastRow,
+    lastCol: lastCol,
+    dataRows: lastRow > 0 ? lastRow - 1 : 0,
+    a1Formula: maskId(a1Formula),
+    headers: headers.map(function(name, i) {
+      return { col: i + 1, name: String(name) };
+    })
+  });
+}
