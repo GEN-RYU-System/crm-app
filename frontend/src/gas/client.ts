@@ -371,6 +371,7 @@ export type OrderRecord = {
   currency: string;
   paymentDueAt: string;
   paymentStatus: string;
+  invoiceTotalJpy: string;
 };
 
 export function getCoreQuotes(): Promise<readonly QuoteRecord[]> {

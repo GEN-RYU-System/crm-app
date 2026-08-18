@@ -1,6 +1,7 @@
 import type { QuoteRecord } from '../../gas/client';
 import type { DataTableCellAlignment } from '../../components/ui';
 import { quotesCopy } from '../../content/ja';
+import { formatAmountWithJpy } from '../shared/amountFormat';
 
 export type QuoteRow = {
   quoteId: string;
@@ -9,8 +10,9 @@ export type QuoteRow = {
   expiryDate: string;
   totalAmount: string;
   status: string;
+  totalAmountJpy: number;
 };
-export type QuoteSortKey = Exclude<keyof QuoteRow, 'quoteId'>;
+export type QuoteSortKey = Exclude<keyof QuoteRow, 'quoteId' | 'totalAmountJpy'>;
 export type QuoteSortDirection = 'ascending' | 'descending';
 export type QuoteSort = { key: QuoteSortKey; direction: QuoteSortDirection };
 
@@ -36,17 +38,11 @@ function formatDate(value: unknown): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('ja-JP');
 }
 
-function formatCurrency(totalAmount: unknown, currency: string, symbolMap: Record<string, string>): string {
-  if (totalAmount == null) return '-';
-  const num = Number(totalAmount);
-  if (!Number.isFinite(num)) return '-';
-  const formatted = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(Math.round(num));
-  const symbol = symbolMap[currency] ?? null;
-  return symbol != null ? `${symbol}${formatted}` : `${currency} ${formatted}`;
-}
-
 function compareRows(a: QuoteRow, b: QuoteRow, sort: QuoteSort): number {
   const dir = sort.direction === 'ascending' ? 1 : -1;
+  if (sort.key === 'totalAmount') {
+    return (a.totalAmountJpy - b.totalAmountJpy) * dir;
+  }
   return a[sort.key].localeCompare(b[sort.key], 'ja-JP', { numeric: true, sensitivity: 'base' }) * dir;
 }
 
@@ -56,14 +52,18 @@ export function toQuoteRows(
   symbolMap: Record<string, string> = {},
 ): QuoteRow[] {
   return records
-    .map((r) => ({
-      quoteId:      text(r.quoteId),
-      customerName: text(r.customerName),
-      issuedDate:   formatDate(r.issuedDate),
-      expiryDate:   formatDate(r.expiryDate),
-      totalAmount:  formatCurrency(r.totalAmount, r.currency, symbolMap),
-      status:       text(r.status),
-    }))
+    .map((r) => {
+      const { display, jpy } = formatAmountWithJpy(r.totalAmount, r.currency, r.totalAmountJpy, symbolMap);
+      return {
+        quoteId:        text(r.quoteId),
+        customerName:   text(r.customerName),
+        issuedDate:     formatDate(r.issuedDate),
+        expiryDate:     formatDate(r.expiryDate),
+        totalAmount:    display,
+        status:         text(r.status),
+        totalAmountJpy: jpy,
+      };
+    })
     .sort((a, b) => compareRows(a, b, sort));
 }
 
