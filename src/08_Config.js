@@ -174,11 +174,11 @@ const CONFIG = {
   // ============================================================
 
   // 見積書ステータス
+  // NOTE: Core Schema V1 では QUOTES.values.STATUS を参照すること（28_CoreQuoteApi.js 経由）。
+  // このオブジェクトは 11_Quote.js（レガシー）専用。フロントエンドからは使用禁止。
   QUOTE_STATUS: {
-    DRAFT: '下書き',
-    SENT: '送付済み',
-    APPROVED: '承認済み',
-    REJECTED: '却下',
+    DRAFT:   '下書き',
+    ISSUED:  '発行済み',
     EXPIRED: '期限切れ'
   },
 

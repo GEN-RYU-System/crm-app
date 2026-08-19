@@ -1,0 +1,8 @@
+.quote-editor-page__actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.quote-editor-page__form { display: grid; gap: var(--space-lg); }
+.quote-editor-page__lines-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-md); }
+.quote-editor-page__section-title { font-size: var(--text-lg); font-weight: var(--font-weight-medium); }
+.quote-editor-page__lines { display: grid; gap: var(--space-md); }
+.quote-editor-page__line-row { display: flex; align-items: flex-end; gap: var(--space-sm); padding: var(--space-md); background: var(--color-surface-secondary); border-radius: var(--radius-md); }
+.quote-editor-page__line-no { flex-shrink: 0; width: 1.5rem; font-size: var(--text-sm); color: var(--color-text-secondary); font-weight: var(--font-weight-medium); padding-bottom: var(--space-xs); }
+.quote-editor-page__line-fields { display: flex; flex-wrap: wrap; gap: var(--space-md); flex: 1; }

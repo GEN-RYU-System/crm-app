@@ -429,6 +429,23 @@ export type CurrencyRecord = {
   rateToJpy: number | null;
 };
 
+export type LeadOption = { leadId: string; customerName: string };
+
+export function getLeadOptionsForFrontend(): Promise<readonly LeadOption[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (!Array.isArray(value)) { reject(new Error(errorCopy.communication)); return; }
+        resolve(value as LeadOption[]);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getLeadOptionsForFrontend(getStoredSessionId());
+  });
+}
+
 export function getCoreCurrencies(): Promise<readonly CurrencyRecord[]> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
@@ -444,42 +461,27 @@ export function getCoreCurrencies(): Promise<readonly CurrencyRecord[]> {
   });
 }
 
-export type QuoteCreateResult = { success: true; quoteId: string; message?: string };
-
-export type LeadDropdownItem = {
-  leadId: string;
-  displayName: string;
+export type QuoteLinePayload = {
+  lineNo: number;
+  productName: string;
+  description: string;
+  quantity: number | null;
+  unitPrice: number | null;
+  note: string;
 };
 
-export type QuoteCreateData = {
+export type QuotePayload = {
   leadId: string;
   currency: string;
-  shippingFee: string;
-  discount: string;
+  shippingFee: number | null;
+  discount: number | null;
   note: string;
-  lines: Array<{
-    productName: string;
-    description: string;
-    quantity: string;
-    unitPrice: string;
-  }>;
+  lines: QuoteLinePayload[];
 };
 
-export function getLeadsForQuoteDropdown(): Promise<readonly LeadDropdownItem[]> {
-  const runner = window.google?.script?.run;
-  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
-  return new Promise((resolve, reject) => {
-    runner
-      .withSuccessHandler((value) => {
-        if (!Array.isArray(value)) { reject(new Error(errorCopy.communication)); return; }
-        resolve(value as LeadDropdownItem[]);
-      })
-      .withFailureHandler((error) => reject(toError(error)))
-      .getLeadsForQuoteDropdown(getStoredSessionId());
-  });
-}
+export type QuoteCreateResult = { success: true; quoteId: string; message?: string };
 
-export function createCoreQuoteSimple(quoteData: QuoteCreateData, isDraft: boolean): Promise<QuoteCreateResult> {
+export function createCoreQuote(payload: QuotePayload, isDraft: boolean): Promise<QuoteCreateResult> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
   return new Promise((resolve, reject) => {
@@ -492,6 +494,23 @@ export function createCoreQuoteSimple(quoteData: QuoteCreateData, isDraft: boole
         resolve(v as QuoteCreateResult);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .createCoreQuoteForFrontend(getStoredSessionId(), quoteData as unknown as Record<string, unknown>, isDraft);
+      .createCoreQuoteForFrontend(getStoredSessionId(), payload as unknown, isDraft);
+  });
+}
+
+export function updateCoreQuote(quoteId: string, payload: QuotePayload, isDraft: boolean): Promise<{ success: true }> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        const v = value as { success?: boolean };
+        if (!v || v.success !== true) {
+          reject(new Error(errorCopy.communication)); return;
+        }
+        resolve(v as { success: true });
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .updateCoreQuoteForFrontend(getStoredSessionId(), quoteId, payload as unknown, isDraft);
   });
 }
