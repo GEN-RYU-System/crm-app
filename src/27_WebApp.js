@@ -485,12 +485,66 @@ function getLeads(filter, leadType) {
   return leads;
 }
 
+// ─── リードキャッシュ定数 ────────────────────────────────────────────────────
+const LEADS_CACHE_INDEX_ALL       = 'LEADS_CACHE_INDEX_ALL';
+const LEADS_CACHE_PREFIX_ALL      = 'LEADS_CACHE_ALL_';
+const LEADS_CACHE_INDEX_INBOUND   = 'LEADS_CACHE_INDEX_INBOUND';
+const LEADS_CACHE_PREFIX_INBOUND  = 'LEADS_CACHE_INBOUND_';
+const LEADS_CACHE_INDEX_OUTBOUND  = 'LEADS_CACHE_INDEX_OUTBOUND';
+const LEADS_CACHE_PREFIX_OUTBOUND = 'LEADS_CACHE_OUTBOUND_';
+const LEADS_CACHE_CHUNK_SIZE      = 90000;
+const LEADS_CACHE_TTL             = 600;
+
+/** createLead / updateLead が無効化すべきキャッシュ一覧 */
+const LEADS_CACHE_TARGETS = [
+  { indexKey: LEADS_CACHE_INDEX_ALL,      prefix: LEADS_CACHE_PREFIX_ALL },
+  { indexKey: LEADS_CACHE_INDEX_INBOUND,  prefix: LEADS_CACHE_PREFIX_INBOUND },
+  { indexKey: LEADS_CACHE_INDEX_OUTBOUND, prefix: LEADS_CACHE_PREFIX_OUTBOUND }
+];
+
 /**
- * リード種別でフィルタリングしたリードを取得
+ * leadType からキャッシュキーペアを返す。
+ * undefined / '' / 'all' → ALL キー。
+ * 未知の種別は null（キャッシュ対象外）。
  */
-function getLeadsByType(sessionId, leadType) {
+function leadsGetCacheKeyPair_(leadType) {
+  const normalized = leadType ? String(leadType).trim() : '';
+  if (!normalized || normalized === 'all') {
+    return { indexKey: LEADS_CACHE_INDEX_ALL, prefix: LEADS_CACHE_PREFIX_ALL };
+  }
+  if (normalized === 'インバウンド') {
+    return { indexKey: LEADS_CACHE_INDEX_INBOUND, prefix: LEADS_CACHE_PREFIX_INBOUND };
+  }
+  if (normalized === 'アウトバウンド') {
+    return { indexKey: LEADS_CACHE_INDEX_OUTBOUND, prefix: LEADS_CACHE_PREFIX_OUTBOUND };
+  }
+  return null;
+}
+
+/**
+ * リード種別でフィルタリングしたリードを取得（キャッシュ対応）。
+ * @param {string} sessionId
+ * @param {string|undefined} leadType  'インバウンド' | 'アウトバウンド' | undefined
+ * @param {boolean} [forceRefresh]  true のときキャッシュを無視してシートから再取得
+ */
+function getLeadsByType(sessionId, leadType, forceRefresh) {
   setEmailFromSession(sessionId);
-  return getLeads('lead', leadType);
+  checkPermission(); // 認証のみチェック（キャッシュ返却前に必ず実行）
+
+  const pair = leadsGetCacheKeyPair_(leadType);
+
+  if (pair !== null && forceRefresh !== true) {
+    const cached = readCacheChunks_(pair.indexKey, pair.prefix);
+    if (cached !== null) return cached;
+  }
+
+  const rows = getLeads('lead', leadType);
+
+  if (pair !== null) {
+    writeCacheChunks_(pair.indexKey, pair.prefix, rows, LEADS_CACHE_TTL, LEADS_CACHE_CHUNK_SIZE);
+  }
+
+  return rows;
 }
 
 /**
@@ -757,14 +811,17 @@ function createLead(sessionId, leadData) {
     }
   });
 
-  // 新しい行を追加
-  sheet.appendRow(newRow);
-
-  return {
-    success: true,
-    leadId: leadId,
-    message: '新規リードを作成しました'
-  };
+  return withSheetWrite_(
+    { useLock: true, cacheTargets: LEADS_CACHE_TARGETS },
+    () => {
+      sheet.appendRow(newRow);
+      return {
+        success: true,
+        leadId: leadId,
+        message: '新規リードを作成しました'
+      };
+    }
+  );
 }
 
 /**
@@ -802,21 +859,26 @@ function updateLead(sessionId, sheetName, leadId, updateData) {
     throw new Error('リードが見つかりません: ' + leadId);
   }
 
-  // 更新データを適用
-  Object.entries(updateData).forEach(([key, value]) => {
-    const colIndex = headers.indexOf(key);
-    if (colIndex !== -1) {
-      sheet.getRange(targetRow, colIndex + 1).setValue(value);
+  return withSheetWrite_(
+    { useLock: true, cacheTargets: LEADS_CACHE_TARGETS },
+    () => {
+      // 更新データを適用
+      Object.entries(updateData).forEach(([key, value]) => {
+        const colIndex = headers.indexOf(key);
+        if (colIndex !== -1) {
+          sheet.getRange(targetRow, colIndex + 1).setValue(value);
+        }
+      });
+
+      // 更新日を設定
+      const updateDateIndex = headers.indexOf('シート更新日');
+      if (updateDateIndex !== -1) {
+        sheet.getRange(targetRow, updateDateIndex + 1).setValue(new Date());
+      }
+
+      return leadId;
     }
-  });
-
-  // 更新日を設定
-  const updateDateIndex = headers.indexOf('シート更新日');
-  if (updateDateIndex !== -1) {
-    sheet.getRange(targetRow, updateDateIndex + 1).setValue(new Date());
-  }
-
-  return leadId;
+  );
 }
 
 /**
