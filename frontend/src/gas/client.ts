@@ -376,7 +376,7 @@ export type OrderRecord = {
   invoiceTotalJpy: string;
 };
 
-export function getCoreQuotes(): Promise<readonly QuoteRecord[]> {
+export function getCoreQuotes(forceRefresh?: boolean): Promise<readonly QuoteRecord[]> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
 
@@ -387,7 +387,7 @@ export function getCoreQuotes(): Promise<readonly QuoteRecord[]> {
         resolve(value as QuoteRecord[]);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .getCoreQuotesForFrontend(getStoredSessionId());
+      .getCoreQuotesForFrontend(getStoredSessionId(), forceRefresh === true);
   });
 }
 
