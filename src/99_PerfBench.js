@@ -1116,3 +1116,98 @@ function benchLeadsCacheInvalidation() {
   Logger.log(result);
   return result;
 }
+
+/**
+ * オーダー・スタッフ一覧APIの返却データJSON文字数とチャンク数を実測する。
+ * checkPermission を呼ばないため clasp run から実行可能。
+ * キャッシュ実装前のサイズ確認用。
+ */
+function benchOrdersStaffSize() {
+  const CHUNK_SIZE = 90000;
+  const out        = ['=== benchOrdersStaffSize ===', '実行: ' + new Date().toISOString(), ''];
+  const ss         = getSpreadsheet();
+
+  // ── オーダー ────────────────────────────────────────────────────────────────
+  out.push('--- getCoreOrdersForFrontend 相当 ---');
+  {
+    const customers = coreCustomerFrontendReadTable(ss, 'CUSTOMERS', [
+      'CUSTOMER_ID', 'CUSTOMER_NAME'
+    ]);
+    const customerNameById = customers.rows.reduce(function(map, row) {
+      const id   = coreCustomerFrontendValue(row[customers.indexes.CUSTOMER_ID]);
+      const name = coreCustomerFrontendValue(row[customers.indexes.CUSTOMER_NAME]);
+      if (id) map[id] = name;
+      return map;
+    }, {});
+
+    const orders = coreCustomerFrontendReadTable(ss, 'ORDERS', [
+      'ORDER_ID', 'CUSTOMER_ID', 'INVOICE_NUMBER', 'INVOICE_ISSUED_AT',
+      'PAYMENT_METHOD', 'INVOICE_TOTAL', 'CURRENCY',
+      'PAYMENT_DUE_AT', 'PAYMENT_STATUS', 'INVOICE_TOTAL_JPY'
+    ]);
+
+    const rows = orders.rows
+      .filter(function(row) {
+        return coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]);
+      })
+      .map(function(row) {
+        const customerId = coreCustomerFrontendValue(row[orders.indexes.CUSTOMER_ID]);
+        return {
+          orderId:         coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]),
+          customerName:    customerNameById[customerId] || '',
+          invoiceNumber:   coreCustomerFrontendValue(row[orders.indexes.INVOICE_NUMBER]),
+          invoiceIssuedAt: coreCustomerFrontendValue(row[orders.indexes.INVOICE_ISSUED_AT]),
+          paymentMethod:   coreCustomerFrontendValue(row[orders.indexes.PAYMENT_METHOD]),
+          invoiceTotal:    coreCustomerFrontendValue(row[orders.indexes.INVOICE_TOTAL]),
+          currency:        coreCustomerFrontendValue(row[orders.indexes.CURRENCY]),
+          paymentDueAt:    coreCustomerFrontendValue(row[orders.indexes.PAYMENT_DUE_AT]),
+          paymentStatus:   coreCustomerFrontendValue(row[orders.indexes.PAYMENT_STATUS]),
+          invoiceTotalJpy: coreCustomerFrontendValue(row[orders.indexes.INVOICE_TOTAL_JPY])
+        };
+      });
+
+    const json       = JSON.stringify(rows);
+    const chunkCount = Math.ceil(json.length / CHUNK_SIZE);
+    out.push('  件数: ' + rows.length + '件');
+    out.push('  JSON文字数: ' + json.length + ' chars');
+    out.push('  チャンク数 (90,000 chars/chunk): ' + chunkCount);
+  }
+  out.push('');
+
+  // ── スタッフ ─────────────────────────────────────────────────────────────────
+  out.push('--- getCoreStaffForFrontend 相当 ---');
+  {
+    const activeStatus = getCoreSchemaV1Value('STAFF', 'STATUS', 'ACTIVE');
+    const staff = coreCustomerFrontendReadTable(ss, 'STAFF', [
+      'STAFF_ID', 'LAST_NAME_JA', 'FIRST_NAME_JA', 'ROLE', 'STATUS', 'EMAIL', 'DISCORD_ID'
+    ]);
+    const rows = staff.rows
+      .filter(function(row) {
+        return coreCustomerFrontendValue(row[staff.indexes.STATUS]) === activeStatus;
+      })
+      .map(function(row) {
+        return {
+          staffId:    coreCustomerFrontendValue(row[staff.indexes.STAFF_ID]),
+          fullNameJa: [
+            coreCustomerFrontendValue(row[staff.indexes.LAST_NAME_JA]),
+            coreCustomerFrontendValue(row[staff.indexes.FIRST_NAME_JA])
+          ].filter(Boolean).join(' '),
+          role:       coreCustomerFrontendValue(row[staff.indexes.ROLE]),
+          status:     coreCustomerFrontendValue(row[staff.indexes.STATUS]),
+          email:      coreCustomerFrontendValue(row[staff.indexes.EMAIL]),
+          discordId:  coreCustomerFrontendValue(row[staff.indexes.DISCORD_ID])
+        };
+      });
+
+    const json       = JSON.stringify(rows);
+    const chunkCount = Math.ceil(json.length / CHUNK_SIZE);
+    out.push('  件数: ' + rows.length + '件');
+    out.push('  JSON文字数: ' + json.length + ' chars');
+    out.push('  チャンク数 (90,000 chars/chunk): ' + chunkCount);
+  }
+  out.push('');
+
+  const result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
