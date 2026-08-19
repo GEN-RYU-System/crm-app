@@ -13,9 +13,9 @@ type DetailState = 'loading' | 'ready' | 'missing' | 'error';
 type MasterState = 'loading' | 'ready' | 'error';
 
 const STATUS_OPTIONS = [
-  { value: '下書き',  label: quotesCopy.editor.statusOptions.draft },
-  { value: '送付済み', label: quotesCopy.editor.statusOptions.sent },
-  { value: '期限切れ', label: quotesCopy.editor.statusOptions.expired },
+  { value: quotesCopy.editor.statusOptions.draft,   label: quotesCopy.editor.statusOptions.draft },
+  { value: quotesCopy.editor.statusOptions.sent,    label: quotesCopy.editor.statusOptions.sent },
+  { value: quotesCopy.editor.statusOptions.expired, label: quotesCopy.editor.statusOptions.expired },
 ];
 
 export function QuoteEditorPage({ mode, canEdit }: Props) {
