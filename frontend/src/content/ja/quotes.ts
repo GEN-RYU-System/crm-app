@@ -87,7 +87,8 @@ export const quotesCopy = {
     },
     form: {
       leadId:          'リード',
-      leadPlaceholder: 'リードIDを入力（例: LDI-00001）',
+      leadPlaceholder: '顧客名で検索...',
+      leadNoResults:   '候補が見つかりません',
       currency:        '通貨',
       shippingFee:     '送料',
       discount:        '値引き',

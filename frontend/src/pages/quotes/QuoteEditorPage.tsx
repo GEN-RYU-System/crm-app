@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, EmptyState, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField } from '../../components/ui';
 import { quotesCopy } from '../../content/ja';
-import { createCoreQuote, getCoreQuoteDetail, getCoreCurrencies, updateCoreQuote, type CurrencyRecord } from '../../gas/client';
+import { createCoreQuote, getCoreQuoteDetail, getCoreCurrencies, getLeadOptionsForFrontend, updateCoreQuote, type CurrencyRecord, type LeadOption } from '../../gas/client';
 import { emptyLineValues, emptyQuoteEditorValues, isValidDiscount, QUOTE_EDITOR_PATHS, toHalfwidthDigits, toQuoteEditorValues, toQuotePayload, type QuoteEditorValues, type QuoteLineEditorValues } from './quoteEditorConfig';
+import { LeadCombobox } from './LeadCombobox';
 import './QuoteEditorPage.css';
 
 type Props = { mode: 'create' | 'detail'; canEdit: boolean };
@@ -20,11 +21,16 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
   const [saveError, setSaveError] = useState('');
   const [savingState, setSavingState] = useState<SavingState>('idle');
   const [currencies, setCurrencies] = useState<CurrencyRecord[]>([]);
+  const [leads, setLeads] = useState<LeadOption[]>([]);
 
   useEffect(() => {
     setMasterState('loading');
-    void getCoreCurrencies()
-      .then((data) => { setCurrencies([...data]); setMasterState('ready'); })
+    void Promise.all([getCoreCurrencies(), getLeadOptionsForFrontend()])
+      .then(([currencyData, leadData]) => {
+        setCurrencies([...currencyData]);
+        setLeads([...leadData]);
+        setMasterState('ready');
+      })
       .catch(() => setMasterState('error'));
   }, []);
 
@@ -160,11 +166,13 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
         <>
           <Card>
             <div className="quote-editor-page__form">
-              <TextField
-                label={quotesCopy.editor.form.leadId}
+              <LeadCombobox
+                leads={leads}
                 value={values.leadId}
-                onChange={(e) => updateValue('leadId', e.target.value)}
+                onChange={(leadId) => updateValue('leadId', leadId)}
+                label={quotesCopy.editor.form.leadId}
                 placeholder={quotesCopy.editor.form.leadPlaceholder}
+                noResultsText={quotesCopy.editor.form.leadNoResults}
                 width="md"
                 required
                 disabled={!editable}

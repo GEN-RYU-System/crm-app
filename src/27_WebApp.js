@@ -494,6 +494,53 @@ function getLeadsByType(sessionId, leadType) {
 }
 
 /**
+ * 見積もりフォームのリード候補表示用。LEAD_ID と顧客名のみを返す（全列取得を避けて転送量を最小化）。
+ * @param {string} sessionId
+ * @returns {{ leadId: string, customerName: string }[]}
+ */
+function getLeadOptionsForFrontend(sessionId) {
+  setEmailFromSession(sessionId);
+  try {
+    checkPermission();
+  } catch (e) {
+    return [];
+  }
+  const ss = getSpreadsheet();
+  if (!ss) return [];
+
+  const leadsSheet = getCoreSchemaV1Sheet(ss, 'LEADS');
+  const leadsTable = getCoreSchemaV1Table('LEADS');
+  const lastRow    = leadsSheet.getLastRow();
+  const dataStart  = leadsTable.headerRowNumber + 1;
+  if (lastRow < dataStart) return [];
+
+  const headers = leadsSheet
+    .getRange(leadsTable.headerRowNumber, 1, 1, leadsSheet.getLastColumn())
+    .getDisplayValues()[0]
+    .map(function(h) { return String(h).trim(); });
+
+  const leadIdColName       = getCoreSchemaV1HeaderName('LEADS', 'LEAD_ID');
+  const customerNameColName = getCoreSchemaV1HeaderName('LEADS', 'CUSTOMER_NAME');
+  const leadIdColIdx        = headers.indexOf(leadIdColName);
+  const customerNameColIdx  = headers.indexOf(customerNameColName);
+
+  if (leadIdColIdx === -1) throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING: LEAD_ID');
+  if (customerNameColIdx === -1) throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING: CUSTOMER_NAME');
+
+  const rowCount      = lastRow - leadsTable.headerRowNumber;
+  const leadIdValues  = leadsSheet.getRange(dataStart, leadIdColIdx + 1, rowCount, 1).getDisplayValues();
+  const nameValues    = leadsSheet.getRange(dataStart, customerNameColIdx + 1, rowCount, 1).getDisplayValues();
+
+  var results = [];
+  for (var i = 0; i < leadIdValues.length; i++) {
+    var leadId       = String(leadIdValues[i][0] || '').trim();
+    var customerName = String(nameValues[i][0] || '').trim();
+    if (leadId) results.push({ leadId: leadId, customerName: customerName });
+  }
+  return results;
+}
+
+/**
  * 特定のリードの詳細情報を取得
  * @param {string} leadId - リードID
  * @returns {Object|null} リード情報オブジェクト、見つからない場合はnull
