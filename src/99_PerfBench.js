@@ -869,6 +869,10 @@ function benchCustomerCache() {
  *   - 'インバウンド' → getLeadsByType(sessionId, 'インバウンド')
  *   - 'アウトバウンド'→ getLeadsByType(sessionId, 'アウトバウンド')
  *
+ * getLeads() は checkPermission() を持つため clasp run から呼べない。
+ * ここではシートを直接読み、同等のフィルタ（リード種別 + LEAD_STATUSES）を
+ * 手動で適用して実データ件数・サイズ・所要時間を計測する。
+ *
  * 各タブで:
  *   - 件数 / JSON文字数 / 90,000文字チャンク分割数
  *   - 3回計測 → 各回と平均
@@ -880,15 +884,53 @@ function benchLeadsByType() {
   var CHUNK_SIZE = 90000;
   var out        = ['=== benchLeadsByType ===', '実行: ' + new Date().toISOString(), ''];
 
+  // CONFIG.LEAD_STATUSES はシート由来で動的に解決されるため、
+  // getStatusSettings() 経由で取得する（認証不要）
+  var leadStatuses = [];
+  try {
+    var cfg = getStatusSettings();
+    if (cfg && Array.isArray(cfg.LEAD_STATUSES)) {
+      if (cfg.LEAD_STATUSES.length > 0 && typeof cfg.LEAD_STATUSES[0] === 'object') {
+        // オブジェクト配列の場合: { value, order, description }
+        leadStatuses = cfg.LEAD_STATUSES.map(function(s) { return s.value || s; });
+      } else {
+        leadStatuses = cfg.LEAD_STATUSES;
+      }
+    }
+  } catch (e) {
+    out.push('LEAD_STATUSES 取得失敗: ' + e.message + ' → フォールバック値を使用');
+    leadStatuses = ['新規リード', 'リード対応中', 'リード対象外'];
+  }
+  out.push('使用 LEAD_STATUSES: ' + JSON.stringify(leadStatuses));
+  out.push('');
+
+  var ss         = getSpreadsheet();
+  var leadsSheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  if (!leadsSheet || leadsSheet.getLastRow() < 2) {
+    out.push('【エラー】リード管理シートにデータがありません');
+    var r = out.join('\n'); Logger.log(r); return r;
+  }
+
+  // 1回だけシート全読みしてキャッシュ（計測対象外）
+  var data     = leadsSheet.getDataRange().getValues();
+  var headers  = data[0];
+  var typeIdx  = headers.indexOf('リード種別');
+  var statIdx  = headers.indexOf('リードステータス');
+  var archIdx  = headers.indexOf('アーカイブ日');
+
+  out.push('シート行数: ' + (data.length - 1) + '行 / ヘッダー列数: ' + headers.length);
+  out.push('リード種別列: ' + typeIdx + ' / ステータス列: ' + statIdx);
+  out.push('');
+
   var targets = [
-    { label: '全件 (leadType=undefined)', leadType: undefined },
-    { label: 'インバウンド',              leadType: 'インバウンド' },
-    { label: 'アウトバウンド',            leadType: 'アウトバウンド' }
+    { label: '全件 (leadType=undefined / all タブ)', expectedType: '' },
+    { label: 'インバウンド',                          expectedType: 'インバウンド' },
+    { label: 'アウトバウンド',                        expectedType: 'アウトバウンド' }
   ];
 
   for (var t = 0; t < targets.length; t++) {
-    var label    = targets[t].label;
-    var leadType = targets[t].leadType;
+    var label        = targets[t].label;
+    var expectedType = targets[t].expectedType;
 
     out.push('--- ' + label + ' ---');
 
@@ -897,8 +939,27 @@ function benchLeadsByType() {
 
     for (var run = 0; run < RUNS; run++) {
       var t0   = Date.now();
-      var rows = getLeads('lead', leadType);
-      var ms   = Date.now() - t0;
+
+      // getLeads('lead', leadType) と同等のフィルタ（認証なし）
+      var rows = [];
+      for (var i = 1; i < data.length; i++) {
+        var row    = data[i];
+        var type   = typeIdx  >= 0 && row[typeIdx]  ? row[typeIdx].toString().trim()  : '';
+        var status = statIdx  >= 0 && row[statIdx]  ? row[statIdx].toString().trim()  : '';
+
+        if (!type) continue;
+        if (expectedType && type !== expectedType) continue;
+        if (!leadStatuses.includes(status)) continue;
+
+        var lead = {};
+        for (var h = 0; h < headers.length; h++) {
+          var v = row[h];
+          lead[headers[h]] = (v instanceof Date) ? v.toISOString() : v;
+        }
+        rows.push(lead);
+      }
+
+      var ms = Date.now() - t0;
       times.push(ms);
       lastRows = rows;
       out.push('  試行 ' + (run + 1) + ': ' + ms + 'ms');
