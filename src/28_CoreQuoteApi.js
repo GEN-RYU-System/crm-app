@@ -155,6 +155,7 @@ function createCoreQuoteForFrontend(sessionId, quoteData, isDraft) {
   setEmailFromSession(sessionId);
   checkPermission('deal_edit');
   coreQuoteAssertRequiredFields(quoteData);
+  validateQuoteLineInventory_(Array.isArray(quoteData.lines) ? quoteData.lines : []);
 
   const sessionUser = getSessionUser(sessionId);
   if (!sessionUser) throw new Error('SESSION_INVALID');
@@ -241,6 +242,7 @@ function updateCoreQuoteForFrontend(sessionId, quoteId, quoteData, isDraft) {
   setEmailFromSession(sessionId);
   checkPermission('deal_edit');
   coreQuoteAssertRequiredFields(quoteData);
+  validateQuoteLineInventory_(Array.isArray(quoteData.lines) ? quoteData.lines : []);
 
   const normalizedId = coreQuoteNormalizeId(quoteId);
   if (!normalizedId) throw new Error('QUOTE_ID_REQUIRED');
@@ -631,5 +633,51 @@ function migrateCoreQuoteSentToIssued() {
     return { updated: updated, skipped: skipped };
   } finally {
     lock.releaseLock();
+  }
+}
+
+// ─── 在庫数検証 ────────────────────────────────────────────────────────────────
+
+/**
+ * 明細の在庫数を検証する（productId と condition が指定されている行のみ）。
+ * 在庫数を超える数量が指定された場合は Error を throw する。
+ *
+ * @param {Object[]} lines
+ */
+function validateQuoteLineInventory_(lines) {
+  var invSchema = CORE_SCHEMA_V1_TABLES['SHARED_INVENTORY'];
+  var ss = getSpreadsheet();
+  var invSheet = ss.getSheetByName(invSchema.sheetName);
+  if (!invSheet || invSheet.getLastRow() <= 1) return;
+
+  var invData  = invSheet.getDataRange().getValues();
+  var invH     = invData[0].map(String);
+  var pidIdx   = invH.indexOf(invSchema.headers['PRODUCT_ID']);
+  var qtyIdx   = invH.indexOf(invSchema.headers['QUANTITY']);
+  var condIdx  = invH.indexOf(invSchema.headers['CONDITION']);
+  if (pidIdx < 0 || qtyIdx < 0 || condIdx < 0) return;
+
+  for (var li = 0; li < lines.length; li++) {
+    var line = lines[li];
+    if (!line.productId || !line.condition || line.quantity == null) continue;
+    var requestedQty = Number(line.quantity);
+    if (!isFinite(requestedQty) || requestedQty <= 0) continue;
+
+    var maxQty = 0;
+    for (var i = 1; i < invData.length; i++) {
+      var pid  = String(invData[i][pidIdx] != null ? invData[i][pidIdx] : '').trim();
+      var cond = String(invData[i][condIdx] != null ? invData[i][condIdx] : '');
+      if (pid === line.productId && cond === line.condition) {
+        maxQty = Number(invData[i][qtyIdx]) || 0;
+        break;
+      }
+    }
+    if (requestedQty > maxQty) {
+      throw new Error(
+        '在庫数不足: ' + (line.productName || line.productId) +
+        ' (' + line.condition + ')' +
+        ' 在庫: ' + maxQty + ', 指定: ' + requestedQty
+      );
+    }
   }
 }
