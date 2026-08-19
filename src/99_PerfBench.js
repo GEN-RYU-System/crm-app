@@ -293,3 +293,151 @@ function benchCacheService() {
   Logger.log(result);
   return result;
 }
+
+/**
+ * 【キャッシュ書き込みのみ / シート書き込みなし】
+ * CacheService の上限が「文字数」か「バイト数」かを実測で確定する
+ *
+ * 方法:
+ *   1. ASCII文字列（1文字=1byte）で境界を特定
+ *   2. 日本語全角文字列（'あ'、1文字=3bytes UTF-8）で同じことを行う
+ *   3. 両者の「文字数」「バイト数」を比較して判定
+ *
+ * 判定ロジック:
+ *   - ASCII成功最大文字数 ≈ 日本語成功最大文字数  → 文字数判定
+ *   - ASCII成功最大バイト数 ≈ 日本語成功最大バイト数 → バイト数判定
+ *
+ * 使い方: clasp run benchCacheLimitUnit
+ */
+function benchCacheLimitUnit() {
+  var cache = CacheService.getScriptCache();
+  var KEY   = 'bench_limit_unit_v1';
+  var out   = ['=== benchCacheLimitUnit ===', '実行: ' + new Date().toISOString(), ''];
+
+  // 倍増法でダミー文字列を生成
+  function buildStr(ch, n) {
+    var s = ch;
+    while (s.length < n) s += s;
+    return s.substring(0, n);
+  }
+
+  function tryPut(str) {
+    try {
+      cache.put(KEY, str, 60);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, msg: e.message };
+    }
+  }
+
+  // ── 0. 前提確認: 'あ' のバイト数を実測 ──────────────────────
+  var jaBytesPerChar = Utilities.newBlob('あ').getBytes().length;
+  out.push('前提確認: "あ" = ' + jaBytesPerChar + ' bytes/char (UTF-8)');
+  out.push('');
+
+  // ── 1. ASCII文字列（'a'、1文字=1byte）で境界を特定 ──────────
+  // benchCacheService で 100KB(102400chars) OK / 101KB(103424chars) FAIL
+  // → 97〜102 KB を 1KB刻みで再確認
+  out.push('=== 1. ASCII文字列（\'a\' × N、1文字=1byte）===');
+
+  var asciiSizesKb = [97, 98, 99, 100, 101, 102];
+  var asciiLastPass  = -1;
+  var asciiFirstFail = -1;
+
+  for (var i = 0; i < asciiSizesKb.length; i++) {
+    var nAscii   = asciiSizesKb[i] * 1024;
+    var sAscii   = buildStr('a', nAscii);
+    var bAscii   = nAscii; // ASCII: chars = bytes
+    var rAscii   = tryPut(sAscii);
+    var tagAscii = rAscii.ok ? 'OK' : ('FAIL — ' + rAscii.msg);
+    out.push('  ' + nAscii + ' chars / ' + bAscii + ' bytes: ' + tagAscii);
+    if (rAscii.ok && asciiLastPass < nAscii) asciiLastPass = nAscii;
+    if (!rAscii.ok && asciiFirstFail < 0)   asciiFirstFail = nAscii;
+  }
+
+  out.push('');
+  out.push('ASCII 成功最大: ' + asciiLastPass  + ' chars = ' + asciiLastPass  + ' bytes');
+  out.push('ASCII 失敗最小: ' + asciiFirstFail + ' chars = ' + asciiFirstFail + ' bytes');
+  out.push('');
+
+  // ── 2. 日本語全角文字列（'あ'、1文字=' + jaBytesPerChar + 'bytes）────
+  out.push('=== 2. 日本語全角文字列（\'あ\' × N、1文字=' + jaBytesPerChar + 'bytes UTF-8）===');
+  out.push('  仮説A 文字数判定: 日本語の境界も ~' + asciiLastPass + ' chars のはず');
+  out.push('  仮説B バイト数判定: 日本語の境界は ~' + Math.floor(asciiLastPass / jaBytesPerChar) + ' chars のはず');
+  out.push('');
+
+  // 仮説Bの境界: ~34K chars（102400 / 3 ≈ 34133）付近を細かく
+  // 仮説Aの境界: ~102K chars（ASCII境界と同文字数）付近も確認
+  var jaTests = [
+    30000, 33000, 33500, 34000, 34100, 34133, 34200, 35000,  // 仮説B付近
+    95000, 99000, 100000, 101000, 102000, 103000              // 仮説A付近
+  ];
+
+  var jaLastPass  = null;
+  var jaFirstFail = null;
+
+  for (var j = 0; j < jaTests.length; j++) {
+    var nJa  = jaTests[j];
+    var sJa  = buildStr('あ', nJa);
+    var bJa  = nJa * jaBytesPerChar; // 'あ' は必ず jaBytesPerChar bytes
+    var rJa  = tryPut(sJa);
+    var tagJa = rJa.ok ? 'OK' : ('FAIL — ' + rJa.msg);
+    out.push('  ' + nJa + ' chars / ' + bJa + ' bytes: ' + tagJa);
+    if (rJa.ok) jaLastPass = { chars: nJa, bytes: bJa };
+    if (!rJa.ok && !jaFirstFail) jaFirstFail = { chars: nJa, bytes: bJa };
+  }
+
+  out.push('');
+  if (jaLastPass)  out.push('日本語 成功最大: ' + jaLastPass.chars  + ' chars = ' + jaLastPass.bytes  + ' bytes');
+  if (jaFirstFail) out.push('日本語 失敗最小: ' + jaFirstFail.chars + ' chars = ' + jaFirstFail.bytes + ' bytes');
+  out.push('');
+
+  // ── 3. 判定 ─────────────────────────────────────────────────
+  out.push('=== 3. 判定 ===');
+
+  if (asciiLastPass < 0 || asciiFirstFail < 0 || !jaLastPass || !jaFirstFail) {
+    out.push('【未確定】境界の特定に必要なデータが得られなかった');
+    if (asciiLastPass < 0 || asciiFirstFail < 0) out.push('  ASCII: 境界未特定');
+    if (!jaLastPass || !jaFirstFail)              out.push('  日本語: 境界未特定');
+  } else {
+    out.push('比較:');
+    out.push('  ASCII   成功最大: ' + asciiLastPass       + ' chars / ' + asciiLastPass       + ' bytes');
+    out.push('  日本語  成功最大: ' + jaLastPass.chars     + ' chars / ' + jaLastPass.bytes     + ' bytes');
+    out.push('');
+
+    var charDiff = Math.abs(asciiLastPass - jaLastPass.chars);
+    var byteDiff = Math.abs(asciiLastPass - jaLastPass.bytes); // ASCIIのbytes=chars
+
+    // 誤差5%以内を「一致」と判定
+    var threshold = asciiLastPass * 0.05;
+
+    out.push('  文字数差: ' + charDiff + ' chars（閾値 ' + Math.round(threshold) + '）');
+    out.push('  バイト数差: ' + byteDiff + ' bytes（閾値 ' + Math.round(threshold) + '）');
+    out.push('');
+
+    var charMatch = charDiff <= threshold;
+    var byteMatch = byteDiff <= threshold;
+
+    if (charMatch && !byteMatch) {
+      out.push('【結論】文字数（char）で上限が決まっている');
+      out.push('  上限: 約 ' + asciiLastPass + ' chars');
+      out.push('  日本語では ' + jaLastPass.bytes + ' bytes（' + (jaLastPass.bytes / 1024).toFixed(1) + ' KB）まで許容された');
+    } else if (byteMatch && !charMatch) {
+      out.push('【結論】バイト数（byte）で上限が決まっている');
+      out.push('  上限: 約 ' + asciiLastPass + ' bytes');
+      out.push('  日本語では ' + jaLastPass.chars + ' chars に制限された');
+    } else if (charMatch && byteMatch) {
+      out.push('【未確定】文字数・バイト数いずれも誤差内で一致（ASCII/日本語の差が小さすぎて判別不能）');
+    } else {
+      out.push('【未確定】文字数・バイト数いずれも一致しない');
+      out.push('  文字数差: ' + charDiff + '（閾値超過）');
+      out.push('  バイト数差: ' + byteDiff + '（閾値超過）');
+    }
+  }
+
+  try { cache.remove(KEY); } catch (ignore) {}
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
