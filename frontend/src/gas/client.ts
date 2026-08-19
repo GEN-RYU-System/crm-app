@@ -145,7 +145,7 @@ export function updateLead(sheetName: string, leadId: string, updateData: Record
   });
 }
 
-export function getCoreCustomers(): Promise<readonly CustomerSummaryDto[]> {
+export function getCoreCustomers(forceRefresh?: boolean): Promise<readonly CustomerSummaryDto[]> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
 
@@ -159,7 +159,7 @@ export function getCoreCustomers(): Promise<readonly CustomerSummaryDto[]> {
         resolve(value as CustomerSummaryDto[]);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .getCoreCustomersForFrontend(getStoredSessionId());
+      .getCoreCustomersForFrontend(getStoredSessionId(), forceRefresh === true);
   });
 }
 
@@ -307,7 +307,7 @@ export type SharedInventoryItem = {
   mark: string;
 };
 
-export function getSharedInventory(): Promise<readonly SharedInventoryItem[]> {
+export function getSharedInventory(forceRefresh?: boolean): Promise<readonly SharedInventoryItem[]> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
 
@@ -321,7 +321,7 @@ export function getSharedInventory(): Promise<readonly SharedInventoryItem[]> {
         resolve(value as SharedInventoryItem[]);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .getSharedInventoryForFrontend(getStoredSessionId());
+      .getSharedInventoryForFrontend(getStoredSessionId(), forceRefresh === true);
   });
 }
 
@@ -472,7 +472,6 @@ export type QuoteLinePayload = {
 
 export type QuotePayload = {
   leadId: string;
-  status: string;
   currency: string;
   shippingFee: number | null;
   discount: number | null;
@@ -482,32 +481,36 @@ export type QuotePayload = {
 
 export type QuoteCreateResult = { success: true; quoteId: string; message?: string };
 
-export function createCoreQuote(quoteData: QuotePayload): Promise<QuoteCreateResult> {
+export function createCoreQuote(payload: QuotePayload, isDraft: boolean): Promise<QuoteCreateResult> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
-
   return new Promise((resolve, reject) => {
     runner
       .withSuccessHandler((value) => {
-        if (typeof value !== 'object' || value === null || !('success' in value) || (value as { success?: unknown }).success !== true) {
-          reject(new Error(errorCopy.communication));
-          return;
+        const v = value as { success?: boolean; quoteId?: string };
+        if (!v || v.success !== true || typeof v.quoteId !== 'string') {
+          reject(new Error(errorCopy.communication)); return;
         }
-        resolve(value as QuoteCreateResult);
+        resolve(v as QuoteCreateResult);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .createCoreQuoteForFrontend(getStoredSessionId(), quoteData);
+      .createCoreQuoteForFrontend(getStoredSessionId(), payload as unknown, isDraft);
   });
 }
 
-export function updateCoreQuote(quoteId: string, quoteData: QuotePayload): Promise<void> {
+export function updateCoreQuote(quoteId: string, payload: QuotePayload, isDraft: boolean): Promise<{ success: true }> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
-
   return new Promise((resolve, reject) => {
     runner
-      .withSuccessHandler(() => resolve())
+      .withSuccessHandler((value) => {
+        const v = value as { success?: boolean };
+        if (!v || v.success !== true) {
+          reject(new Error(errorCopy.communication)); return;
+        }
+        resolve(v as { success: true });
+      })
       .withFailureHandler((error) => reject(toError(error)))
-      .updateCoreQuoteForFrontend(getStoredSessionId(), quoteId, quoteData);
+      .updateCoreQuoteForFrontend(getStoredSessionId(), quoteId, payload as unknown, isDraft);
   });
 }

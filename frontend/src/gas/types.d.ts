@@ -13,7 +13,7 @@ interface GoogleScriptRun {
   getLeadDetail(sessionId: string | null, leadId: string): void;
   createLead(sessionId: string | null, leadData: Record<string, string>): void;
   updateLead(sessionId: string | null, sheetName: string, leadId: string, updateData: Record<string, string>): void;
-  getCoreCustomersForFrontend(sessionId: string | null): void;
+  getCoreCustomersForFrontend(sessionId: string | null, forceRefresh: boolean): void;
   getCoreCustomerForFrontend(sessionId: string | null, customerId: string): void;
   getCoreStaffForFrontend(sessionId: string | null): void;
   getCoreStaffMemberForFrontend(sessionId: string | null, staffId: string): void;
@@ -21,14 +21,14 @@ interface GoogleScriptRun {
   logout(sessionId: string): void;
   getSessionUser(sessionId: string): void;
   changeOwnPasswordForFrontend(sessionId: string | null, currentPassword: string, newPassword: string): void;
-  getSharedInventoryForFrontend(sessionId: string | null): void;
+  getSharedInventoryForFrontend(sessionId: string | null, forceRefresh: boolean): void;
   getCoreQuotesForFrontend(sessionId: string | null): void;
   getCoreQuoteForFrontend(sessionId: string | null, quoteId: string): void;
   getCoreOrdersForFrontend(sessionId: string | null): void;
   getCoreCurrenciesForFrontend(sessionId: string | null): void;
   getLeadOptionsForFrontend(sessionId: string | null): void;
-  createCoreQuoteForFrontend(sessionId: string | null, quoteData: unknown): void;
-  updateCoreQuoteForFrontend(sessionId: string | null, quoteId: string, quoteData: unknown): void;
+  createCoreQuoteForFrontend(sessionId: string | null, quoteData: unknown, isDraft: boolean): void;
+  updateCoreQuoteForFrontend(sessionId: string | null, quoteId: string, quoteData: unknown, isDraft: boolean): void;
 }
 
 interface Window {
