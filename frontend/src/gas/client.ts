@@ -68,7 +68,7 @@ export function getCurrentUser(): Promise<CurrentUser> {
   });
 }
 
-export function getLeadsByType(leadType?: LeadType): Promise<LeadRecord[]> {
+export function getLeadsByType(leadType?: LeadType, forceRefresh?: boolean): Promise<LeadRecord[]> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
 
@@ -83,7 +83,7 @@ export function getLeadsByType(leadType?: LeadType): Promise<LeadRecord[]> {
       })
       .withFailureHandler((error) => reject(toError(error)));
 
-    call.getLeadsByType(getStoredSessionId(), leadType);
+    call.getLeadsByType(getStoredSessionId(), leadType, forceRefresh === true);
   });
 }
 
