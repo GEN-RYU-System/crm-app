@@ -355,6 +355,8 @@ export type QuoteLineRecord = {
   productId: string;
   productName: string;
   description: string;
+  condition: string;
+  weight: number | null;
   quantity: number | null;
   unitPrice: number | null;
   amount: number | null;

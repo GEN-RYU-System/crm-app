@@ -59,6 +59,30 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
     });
   }, [quoteId, mode]);
 
+  useEffect(() => {
+    if (mode !== 'detail' || detailState !== 'ready') return;
+    const productIds = [...new Set(values.lines.map((l) => l.productId).filter(Boolean))];
+    if (productIds.length === 0) return;
+    productIds.forEach((productId) => {
+      if (conditionsMap.has(productId)) return;
+      void getInventoryConditions(productId)
+        .then((conditions) => {
+          setConditionsMap((prev) => new Map(prev).set(productId, [...conditions]));
+          setValues((prev) => ({
+            ...prev,
+            lines: prev.lines.map((l) => {
+              if (l.productId !== productId || !l.condition) return l;
+              const found = conditions.find((c) => c.condition === l.condition);
+              return found ? { ...l, unitWeight: found.unitWeight } : l;
+            })
+          }));
+        })
+        .catch(() => {
+          setConditionsMap((prev) => new Map(prev).set(productId, []));
+        });
+    });
+  }, [mode, detailState]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const editable = mode === 'create' || canEdit;
 
   const updateValue = (key: keyof Omit<QuoteEditorValues, 'lines'>, value: string) =>
