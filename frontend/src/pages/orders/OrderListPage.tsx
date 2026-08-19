@@ -1,48 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { CRM_SEARCH_ICON, CRM_SORT_ICONS } from '../../app/icons';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMessage, TextField, type DataTableColumn } from '../../components/ui';
 import { ordersCopy, PAYMENT_STATUS_BADGE_VARIANT } from '../../content/ja';
-import { getCoreOrders, getCoreCurrencies, type OrderRecord } from '../../gas/client';
 import { filterOrderRows, ORDER_LIST_COLUMNS, ORDER_LIST_INITIAL_SORT, toOrderRows, type OrderRow, type OrderSort } from './orderListConfig';
+import { useOrderListCache } from './OrderListCacheContext';
 import './OrderListPage.css';
 
-type LoadState = 'loading' | 'ready' | 'error';
-
 export function OrderListPage() {
-  const [state, setState] = useState<LoadState>('loading');
-  const [records, setRecords] = useState<readonly OrderRecord[]>([]);
-  const [symbolMap, setSymbolMap] = useState<Record<string, string>>({});
-  const [error, setError] = useState('');
+  const { items, symbolMap, error, loading, refreshing, ensureLoaded, refresh, retry } = useOrderListCache();
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<OrderSort>(ORDER_LIST_INITIAL_SORT);
 
-  const load = useCallback(async () => {
-    setState('loading');
-    setError('');
-    try {
-      const [ordersResult, currenciesResult] = await Promise.allSettled([
-        getCoreOrders(),
-        getCoreCurrencies(),
-      ]);
-      if (ordersResult.status === 'rejected') throw ordersResult.reason;
-      setRecords(ordersResult.value);
-      if (currenciesResult.status === 'fulfilled') {
-        const map: Record<string, string> = {};
-        for (const c of currenciesResult.value) {
-          if (c.symbol) map[c.currencyCode] = c.symbol;
-        }
-        setSymbolMap(map);
-      }
-      setState('ready');
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '');
-      setState('error');
-    }
-  }, []);
+  void ensureLoaded();
 
-  useEffect(() => { void load(); }, [load]);
-
+  const records = items ?? [];
   const rows = useMemo(() => toOrderRows(records, sort, symbolMap), [records, sort, symbolMap]);
   const filteredRows = useMemo(() => filterOrderRows(rows, query), [rows, query]);
 
@@ -72,24 +44,25 @@ export function OrderListPage() {
     };
   });
 
-  const isEmpty = state === 'ready' && filteredRows.length === 0;
+  const isLoading = loading || items === undefined;
+  const isEmpty = !isLoading && error === undefined && filteredRows.length === 0;
 
   return (
     <>
       <PageHeader eyebrow={ordersCopy.eyebrow} title={ordersCopy.title} subtitle={ordersCopy.subtitle} />
       <PageToolbar
         start={<TextField aria-label={ordersCopy.searchLabel} placeholder={ordersCopy.searchPlaceholder} value={query} onChange={(e) => setQuery(e.target.value)} width="sm" startIcon={<CRM_SEARCH_ICON aria-hidden="true" />} />}
-        end={<Button variant="secondary" onClick={() => void load()} loading={state === 'loading'} loadingText={ordersCopy.loading}>{ordersCopy.refresh}</Button>}
+        end={<Button variant="secondary" onClick={() => void refresh()} loading={refreshing} loadingText={ordersCopy.refreshing}>{ordersCopy.refresh}</Button>}
       />
       <Card className="order-list-page__data-card">
-        {state === 'loading' && (
+        {isLoading && (
           <DataTable ariaLabel={ordersCopy.tableLabel} columns={columns} rows={[]} rowKey={(row) => row.orderId} loading loadingLabel={ordersCopy.loading} skeletonRows={4} surface="embedded" />
         )}
-        {state === 'error' && (
+        {error !== undefined && (
           <div className="order-list-page__data-state">
             <StatusMessage variant="error">
               {ordersCopy.loadErrorPrefix} {error}
-              <Button variant="outline" size="sm" onClick={() => void load()}>{ordersCopy.retry}</Button>
+              <Button variant="outline" size="sm" onClick={() => void retry()}>{ordersCopy.retry}</Button>
             </StatusMessage>
           </div>
         )}
@@ -101,7 +74,7 @@ export function OrderListPage() {
             />
           </div>
         )}
-        {state === 'ready' && filteredRows.length > 0 && (
+        {!isLoading && error === undefined && filteredRows.length > 0 && (
           <DataTable
             ariaLabel={ordersCopy.tableLabel}
             columns={columns}
