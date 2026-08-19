@@ -441,3 +441,220 @@ function benchCacheLimitUnit() {
   Logger.log(result);
   return result;
 }
+
+/**
+ * 【キャッシュ書き込みのみ / シート書き込みなし】
+ * putAll / getAll を使った複数キー取得の速度を実測する
+ *
+ * 在庫結合JSONを 90,000 chars ごとに分割して putAll で保存し、
+ * getAll × 3 回の所要ミリ秒と、単一キー get() 43ms との差を報告する。
+ *
+ * 使い方: clasp run benchCacheMultiKey
+ */
+function benchCacheMultiKey() {
+  var ss  = getSpreadsheet();
+  var out = ['=== benchCacheMultiKey ===', '実行: ' + new Date().toISOString(), ''];
+
+  var SINGLE_KEY_GET_MS = 43; // benchCacheService の実測値（参照値）
+  var CHUNK_SIZE        = 90000; // chars/キー
+
+  // ── 在庫結合データの生成（benchCacheService と同一処理）────────
+  out.push('=== 在庫結合データの生成 ===');
+  var genStart = Date.now();
+
+  var productMap = {};
+  var productSheet = ss.getSheetByName('商品マスタ同期');
+  if (productSheet && productSheet.getLastRow() > 1) {
+    var pData  = productSheet.getDataRange().getValues();
+    var pH     = pData[0].map(String);
+    var pidIdx = pH.indexOf('product_id');
+    var jaIdx  = pH.indexOf('Japanese Title');
+    var rdIdx  = pH.indexOf('Release Date');
+    var ipIdx  = pH.indexOf('作品ID');
+    if (pidIdx !== -1) {
+      for (var pi = 1; pi < pData.length; pi++) {
+        var pr  = pData[pi];
+        var pid = String(pr[pidIdx] || '').trim();
+        if (!pid) continue;
+        var releaseDate = '';
+        if (rdIdx !== -1 && pr[rdIdx] instanceof Date) {
+          releaseDate = Utilities.formatDate(pr[rdIdx], 'JST', 'yyyy-MM-dd');
+        }
+        productMap[pid] = {
+          japaneseTitle: jaIdx !== -1 ? String(pr[jaIdx] || '') : '',
+          releaseDate:   releaseDate,
+          ipId:          ipIdx !== -1 ? String(pr[ipIdx] || '').trim() : ''
+        };
+      }
+    }
+  }
+
+  var ipMap = {};
+  var ipSheet = ss.getSheetByName('作品マスタ_共用在庫');
+  if (ipSheet && ipSheet.getLastRow() > 1) {
+    var ipData    = ipSheet.getDataRange().getValues();
+    var ipH       = ipData[0].map(String);
+    var ipIdIdx   = ipH.indexOf('ip_id');
+    var ipNameIdx = ipH.indexOf('作品名');
+    var ipAltIdx  = ipH.indexOf('別名');
+    if (ipIdIdx !== -1 && ipNameIdx !== -1) {
+      for (var ii = 1; ii < ipData.length; ii++) {
+        var ir  = ipData[ii];
+        var id  = String(ir[ipIdIdx] || '').trim();
+        if (!id) continue;
+        var ipName = String(ir[ipNameIdx] || '').trim();
+        var ipAlt  = ipAltIdx !== -1 ? String(ir[ipAltIdx] || '').trim() : '';
+        ipMap[id] = ipAlt || ipName;
+      }
+    }
+  }
+
+  var invRows = [];
+  var invSheet = ss.getSheetByName('共用在庫');
+  if (invSheet && invSheet.getLastRow() > 1) {
+    var invData = invSheet.getDataRange().getValues();
+    var ih = invData[0].map(String);
+    var col = {
+      series:          ih.indexOf('Series'),
+      quantity:        ih.indexOf('Quantity'),
+      unitPrice:       ih.indexOf('Unit Price'),
+      condition:       ih.indexOf('Condition'),
+      status:          ih.indexOf('Status'),
+      noteJa:          ih.indexOf('Note_JA'),
+      noteEn:          ih.indexOf('Note_EN'),
+      supplier:        ih.indexOf('提供者'),
+      productId:       ih.indexOf('product_id'),
+      rawName:         ih.indexOf('raw_name'),
+      exclusionReason: ih.indexOf('除外理由')
+    };
+    for (var ri = 1; ri < invData.length; ri++) {
+      var row  = invData[ri];
+      var rpid = String(row[col.productId] || '').trim();
+      var prd  = productMap[rpid] || {};
+      var ipId = prd.ipId || '';
+      invRows.push({
+        series:          String(row[col.series]          || ''),
+        quantity:        Number(row[col.quantity])        || 0,
+        unitPrice:       Number(row[col.unitPrice])       || 0,
+        condition:       String(row[col.condition]        || ''),
+        status:          String(row[col.status]           || ''),
+        noteJa:          String(row[col.noteJa]           || ''),
+        noteEn:          String(row[col.noteEn]           || ''),
+        supplier:        String(row[col.supplier]         || ''),
+        productId:       rpid,
+        rawName:         String(row[col.rawName]          || ''),
+        exclusionReason: String(row[col.exclusionReason]  || ''),
+        ipId:            ipId,
+        ipName:          ipId ? (ipMap[ipId] || '') : '',
+        releaseDate:     prd.releaseDate   || '',
+        japaneseTitle:   prd.japaneseTitle || ''
+      });
+    }
+  }
+
+  var jsonStr = JSON.stringify(invRows);
+  var genMs   = Date.now() - genStart;
+  out.push('結合行数: ' + invRows.length + '件');
+  out.push('JSON 文字数: ' + jsonStr.length + ' chars');
+  out.push('生成所要時間: ' + genMs + 'ms');
+  out.push('');
+
+  // ── 1. 分割 ─────────────────────────────────────────────────
+  out.push('=== 1. 分割 ===');
+  var chunks = [];
+  for (var ci = 0; ci < jsonStr.length; ci += CHUNK_SIZE) {
+    chunks.push(jsonStr.substring(ci, ci + CHUNK_SIZE));
+  }
+  var KEY_PREFIX = 'bench_multi_inv_v1_';
+  var keys   = [];
+  var putMap = {};
+  for (var ki = 0; ki < chunks.length; ki++) {
+    var key = KEY_PREFIX + ki;
+    keys.push(key);
+    putMap[key] = chunks[ki];
+  }
+  out.push('チャンクサイズ: ' + CHUNK_SIZE + ' chars/キー');
+  out.push('分割数: ' + chunks.length + ' キー');
+  for (var di = 0; di < chunks.length; di++) {
+    out.push('  キー[' + di + ']: ' + chunks[di].length + ' chars');
+  }
+  out.push('');
+
+  // ── 2. putAll ────────────────────────────────────────────────
+  out.push('=== 2. putAll ===');
+  var cache = CacheService.getScriptCache();
+  var putMs = -1;
+  var putOk = false;
+  var tPut  = Date.now();
+  try {
+    cache.putAll(putMap, 300);
+    putMs = Date.now() - tPut;
+    putOk = true;
+    out.push('結果: 成功');
+    out.push('所要時間: ' + putMs + 'ms');
+  } catch (e) {
+    putMs = Date.now() - tPut;
+    out.push('結果: 失敗');
+    out.push('所要時間: ' + putMs + 'ms');
+    out.push('エラー: ' + e.message);
+  }
+  out.push('');
+
+  // ── 3. getAll × 3 ────────────────────────────────────────────
+  out.push('=== 3. getAll × 3 ===');
+  if (!putOk) {
+    out.push('（putAll が失敗したため getAll はスキップ）');
+    out.push('');
+  } else {
+    var getTimes = [];
+    var lastData = null;
+    var allHit   = true;
+    for (var gi = 0; gi < 3; gi++) {
+      var tGet    = Date.now();
+      var got     = cache.getAll(keys);
+      var getMs   = Date.now() - tGet;
+      getTimes.push(getMs);
+      var missCount = 0;
+      for (var mk = 0; mk < keys.length; mk++) {
+        if (got[keys[mk]] === null || got[keys[mk]] === undefined) missCount++;
+      }
+      if (missCount > 0) allHit = false;
+      lastData = got;
+      out.push('試行 ' + (gi + 1) + ': ' + getMs + 'ms（ミスキー: ' + missCount + '/' + keys.length + '）');
+    }
+    var getSum = 0;
+    for (var ti = 0; ti < getTimes.length; ti++) getSum += getTimes[ti];
+    var getAvg = Math.round(getSum / getTimes.length);
+    out.push('平均 getAll(): ' + getAvg + 'ms');
+    out.push('全キーヒット: ' + (allHit ? 'OK' : 'NG'));
+    out.push('');
+
+    // ── 4. 結合・データ一致確認 ──────────────────────────────
+    out.push('=== 4. 結合・データ一致確認 ===');
+    var parts = [];
+    for (var pi2 = 0; pi2 < keys.length; pi2++) {
+      parts.push(lastData[keys[pi2]] || '');
+    }
+    var reassembled = parts.join('');
+    var match = (reassembled === jsonStr);
+    out.push('再結合文字数: ' + reassembled.length + ' chars');
+    out.push('元データと一致: ' + (match ? 'OK' : 'NG'));
+    out.push('');
+
+    // ── 5. 比較 ─────────────────────────────────────────────
+    out.push('=== 5. 比較: 単一キー get() vs getAll ===');
+    out.push('単一キー get()        : ' + SINGLE_KEY_GET_MS + 'ms（benchCacheService 実測参照値）');
+    out.push('getAll(' + keys.length + 'キー)       : ' + getAvg + 'ms');
+    var diff  = getAvg - SINGLE_KEY_GET_MS;
+    var ratio = (getAvg / SINGLE_KEY_GET_MS).toFixed(2);
+    out.push('差分                  : ' + (diff >= 0 ? '+' : '') + diff + 'ms');
+    out.push('倍率                  : ' + ratio + 'x');
+  }
+
+  // クリーンアップ（キャッシュのみ）
+  try { cache.removeAll(keys); } catch (ignore) {}
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
