@@ -1211,3 +1211,102 @@ function benchOrdersStaffSize() {
   Logger.log(result);
   return result;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// benchOrdersStaffCache: orders/staff キャッシュの 1回目/2回目速度計測
+// checkPermission を含む本番関数は clasp run から呼べないため、
+// シート読み込み部分のみ直接実行し readCacheChunks_/writeCacheChunks_ を計測する。
+// ─────────────────────────────────────────────────────────────────────────────
+function benchOrdersStaffCache() {
+  var CHUNK_SIZE = 90000;
+  var TTL        = 600;
+  var out        = ['=== benchOrdersStaffCache ===', '実行: ' + new Date().toISOString(), ''];
+
+  // キャッシュをクリアして確実に 1回目（シート読み）を発生させる
+  clearCacheChunks_(CORE_ORDERS_CACHE_INDEX, CORE_ORDERS_CACHE_PREFIX);
+  clearCacheChunks_(CORE_STAFF_CACHE_INDEX, CORE_STAFF_CACHE_PREFIX);
+  out.push('キャッシュクリア完了');
+  out.push('');
+
+  var ss = getSpreadsheet();
+
+  // ── Orders 1回目: シート読み + キャッシュ書き ──────────────────────────────
+  out.push('--- getCoreOrdersForFrontend ---');
+  var t1s = Date.now();
+  var customers = coreCustomerFrontendReadTable(ss, 'CUSTOMERS', ['CUSTOMER_ID', 'CUSTOMER_NAME']);
+  var customerNameById = customers.rows.reduce(function(map, row) {
+    var id   = coreCustomerFrontendValue(row[customers.indexes.CUSTOMER_ID]);
+    var name = coreCustomerFrontendValue(row[customers.indexes.CUSTOMER_NAME]);
+    if (id) map[id] = name;
+    return map;
+  }, {});
+  var orders = coreCustomerFrontendReadTable(ss, 'ORDERS', [
+    'ORDER_ID', 'CUSTOMER_ID', 'INVOICE_NUMBER', 'INVOICE_ISSUED_AT',
+    'PAYMENT_METHOD', 'INVOICE_TOTAL', 'CURRENCY',
+    'PAYMENT_DUE_AT', 'PAYMENT_STATUS', 'INVOICE_TOTAL_JPY'
+  ]);
+  var orderRows = orders.rows
+    .filter(function(row) { return coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]); })
+    .map(function(row) {
+      var customerId = coreCustomerFrontendValue(row[orders.indexes.CUSTOMER_ID]);
+      return {
+        orderId:         coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]),
+        customerName:    customerNameById[customerId] || '',
+        invoiceNumber:   coreCustomerFrontendValue(row[orders.indexes.INVOICE_NUMBER]),
+        invoiceIssuedAt: coreCustomerFrontendValue(row[orders.indexes.INVOICE_ISSUED_AT]),
+        paymentMethod:   coreCustomerFrontendValue(row[orders.indexes.PAYMENT_METHOD]),
+        invoiceTotal:    coreCustomerFrontendValue(row[orders.indexes.INVOICE_TOTAL]),
+        currency:        coreCustomerFrontendValue(row[orders.indexes.CURRENCY]),
+        paymentDueAt:    coreCustomerFrontendValue(row[orders.indexes.PAYMENT_DUE_AT]),
+        paymentStatus:   coreCustomerFrontendValue(row[orders.indexes.PAYMENT_STATUS]),
+        invoiceTotalJpy: coreCustomerFrontendValue(row[orders.indexes.INVOICE_TOTAL_JPY])
+      };
+    });
+  writeCacheChunks_(CORE_ORDERS_CACHE_INDEX, CORE_ORDERS_CACHE_PREFIX, orderRows, TTL, CHUNK_SIZE);
+  var orders1Ms = Date.now() - t1s;
+  out.push('  1回目 (シート読み+キャッシュ書き): ' + orders1Ms + 'ms  (' + orderRows.length + '件)');
+
+  // Orders 2回目: キャッシュ読み
+  var t2s     = Date.now();
+  var cached  = readCacheChunks_(CORE_ORDERS_CACHE_INDEX, CORE_ORDERS_CACHE_PREFIX);
+  var orders2Ms = Date.now() - t2s;
+  out.push('  2回目 (キャッシュ読み): ' + orders2Ms + 'ms  ' + (cached !== null ? 'HIT (' + cached.length + '件)' : 'MISS'));
+  out.push('');
+
+  // ── Staff 1回目: シート読み + キャッシュ書き ──────────────────────────────
+  out.push('--- getCoreStaffForFrontend ---');
+  var activeStatus = getCoreSchemaV1Value('STAFF', 'STATUS', 'ACTIVE');
+  t1s = Date.now();
+  var staffTable = coreCustomerFrontendReadTable(ss, 'STAFF', [
+    'STAFF_ID', 'LAST_NAME_JA', 'FIRST_NAME_JA', 'ROLE', 'STATUS', 'EMAIL', 'DISCORD_ID'
+  ]);
+  var staffRows = staffTable.rows
+    .filter(function(row) { return coreCustomerFrontendValue(row[staffTable.indexes.STATUS]) === activeStatus; })
+    .map(function(row) {
+      return {
+        staffId:    coreCustomerFrontendValue(row[staffTable.indexes.STAFF_ID]),
+        fullNameJa: [
+          coreCustomerFrontendValue(row[staffTable.indexes.LAST_NAME_JA]),
+          coreCustomerFrontendValue(row[staffTable.indexes.FIRST_NAME_JA])
+        ].filter(Boolean).join(' '),
+        role:       coreCustomerFrontendValue(row[staffTable.indexes.ROLE]),
+        status:     coreCustomerFrontendValue(row[staffTable.indexes.STATUS]),
+        email:      coreCustomerFrontendValue(row[staffTable.indexes.EMAIL]),
+        discordId:  coreCustomerFrontendValue(row[staffTable.indexes.DISCORD_ID])
+      };
+    });
+  writeCacheChunks_(CORE_STAFF_CACHE_INDEX, CORE_STAFF_CACHE_PREFIX, staffRows, TTL, CHUNK_SIZE);
+  var staff1Ms = Date.now() - t1s;
+  out.push('  1回目 (シート読み+キャッシュ書き): ' + staff1Ms + 'ms  (' + staffRows.length + '件)');
+
+  // Staff 2回目: キャッシュ読み
+  t2s = Date.now();
+  var cachedStaff = readCacheChunks_(CORE_STAFF_CACHE_INDEX, CORE_STAFF_CACHE_PREFIX);
+  var staff2Ms = Date.now() - t2s;
+  out.push('  2回目 (キャッシュ読み): ' + staff2Ms + 'ms  ' + (cachedStaff !== null ? 'HIT (' + cachedStaff.length + '件)' : 'MISS'));
+  out.push('');
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
