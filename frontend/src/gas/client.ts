@@ -444,57 +444,54 @@ export function getCoreCurrencies(): Promise<readonly CurrencyRecord[]> {
   });
 }
 
-export type QuoteLinePayload = {
-  lineNo: number;
-  productName: string;
-  description: string;
-  quantity: number | null;
-  unitPrice: number | null;
-  note: string;
-};
-
-export type QuotePayload = {
-  leadId: string;
-  customerId: string;
-  staffId: string;
-  issuedDate: string;
-  expiryDate: string;
-  status: string;
-  currency: string;
-  shippingFee: number | null;
-  discount: number | null;
-  note: string;
-  lines: QuoteLinePayload[];
-};
-
 export type QuoteCreateResult = { success: true; quoteId: string; message?: string };
 
-export function createCoreQuote(quoteData: QuotePayload): Promise<QuoteCreateResult> {
+export type LeadDropdownItem = {
+  leadId: string;
+  displayName: string;
+};
+
+export type QuoteCreateData = {
+  leadId: string;
+  currency: string;
+  shippingFee: string;
+  discount: string;
+  note: string;
+  lines: Array<{
+    productName: string;
+    description: string;
+    quantity: string;
+    unitPrice: string;
+  }>;
+};
+
+export function getLeadsForQuoteDropdown(): Promise<readonly LeadDropdownItem[]> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
-
   return new Promise((resolve, reject) => {
     runner
       .withSuccessHandler((value) => {
-        if (typeof value !== 'object' || value === null || !('success' in value) || (value as { success?: unknown }).success !== true) {
-          reject(new Error(errorCopy.communication));
-          return;
-        }
-        resolve(value as QuoteCreateResult);
+        if (!Array.isArray(value)) { reject(new Error(errorCopy.communication)); return; }
+        resolve(value as LeadDropdownItem[]);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .createCoreQuoteForFrontend(getStoredSessionId(), quoteData);
+      .getLeadsForQuoteDropdown(getStoredSessionId());
   });
 }
 
-export function updateCoreQuote(quoteId: string, quoteData: QuotePayload): Promise<void> {
+export function createCoreQuoteSimple(quoteData: QuoteCreateData, isDraft: boolean): Promise<QuoteCreateResult> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
-
   return new Promise((resolve, reject) => {
     runner
-      .withSuccessHandler(() => resolve())
+      .withSuccessHandler((value) => {
+        const v = value as { success?: boolean; quoteId?: string };
+        if (!v || v.success !== true || typeof v.quoteId !== 'string') {
+          reject(new Error(errorCopy.communication)); return;
+        }
+        resolve(v as QuoteCreateResult);
+      })
       .withFailureHandler((error) => reject(toError(error)))
-      .updateCoreQuoteForFrontend(getStoredSessionId(), quoteId, quoteData);
+      .createCoreQuoteForFrontend(getStoredSessionId(), quoteData as unknown as Record<string, unknown>, isDraft);
   });
 }
