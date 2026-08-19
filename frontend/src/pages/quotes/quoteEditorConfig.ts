@@ -1,4 +1,5 @@
 import { NAVIGATION_BY_ID } from '../../app/navigation';
+import { quotesCopy } from '../../content/ja';
 import type { QuoteDetailRecord, QuoteLinePayload, QuoteLineRecord, QuotePayload } from '../../gas/client';
 
 export type QuoteLineEditorValues = {
@@ -42,7 +43,7 @@ export function emptyLineValues(): QuoteLineEditorValues {
 export function emptyQuoteEditorValues(): QuoteEditorValues {
   return {
     leadId: '', customerId: '', staffId: '', issuedDate: '', expiryDate: '',
-    status: '下書き', currency: 'JPY', shippingFee: '', discount: '', note: '',
+    status: quotesCopy.editor.statusOptions.draft, currency: 'JPY', shippingFee: '', discount: '', note: '',
     lines: [emptyLineValues()]
   };
 }
