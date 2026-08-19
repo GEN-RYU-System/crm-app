@@ -444,60 +444,7 @@ export function getCoreCurrencies(): Promise<readonly CurrencyRecord[]> {
   });
 }
 
-export type QuoteLinePayload = {
-  lineNo: number;
-  productName: string;
-  description: string;
-  quantity: number | null;
-  unitPrice: number | null;
-  note: string;
-};
-
-export type QuotePayload = {
-  leadId: string;
-  customerId: string;
-  staffId: string;
-  issuedDate: string;
-  expiryDate: string;
-  status: string;
-  currency: string;
-  shippingFee: number | null;
-  discount: number | null;
-  note: string;
-  lines: QuoteLinePayload[];
-};
-
 export type QuoteCreateResult = { success: true; quoteId: string; message?: string };
-
-export function createCoreQuote(quoteData: QuotePayload): Promise<QuoteCreateResult> {
-  const runner = window.google?.script?.run;
-  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
-
-  return new Promise((resolve, reject) => {
-    runner
-      .withSuccessHandler((value) => {
-        if (typeof value !== 'object' || value === null || !('success' in value) || (value as { success?: unknown }).success !== true) {
-          reject(new Error(errorCopy.communication));
-          return;
-        }
-        resolve(value as QuoteCreateResult);
-      })
-      .withFailureHandler((error) => reject(toError(error)))
-      .createCoreQuoteForFrontend(getStoredSessionId(), quoteData as unknown as Record<string, unknown>, false);
-  });
-}
-
-export function updateCoreQuote(quoteId: string, quoteData: QuotePayload): Promise<void> {
-  const runner = window.google?.script?.run;
-  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
-
-  return new Promise((resolve, reject) => {
-    runner
-      .withSuccessHandler(() => resolve())
-      .withFailureHandler((error) => reject(toError(error)))
-      .updateCoreQuoteForFrontend(getStoredSessionId(), quoteId, quoteData as unknown as Record<string, unknown>, false);
-  });
-}
 
 export type LeadDropdownItem = {
   leadId: string;
