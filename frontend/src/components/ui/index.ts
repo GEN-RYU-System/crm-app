@@ -2,3 +2,4 @@ export { PageHeader } from './PageHeader/PageHeader'; export { Button } from './
 export { ConversationWorkspace } from './ConversationWorkspace/ConversationWorkspace'; export type { ConversationWorkspaceProps } from './ConversationWorkspace/ConversationWorkspace';
 export { SubMenu } from './SubMenu/SubMenu'; export type { SubMenuGroup, SubMenuItem, SubMenuProps } from './SubMenu/SubMenu';
 export { HubShell } from './HubShell/HubShell'; export type { HubShellProps } from './HubShell/HubShell';
+export { Combobox } from './Combobox/Combobox'; export type { ComboboxProps } from './Combobox/Combobox';
