@@ -981,3 +981,138 @@ function benchLeadsByType() {
   Logger.log(result);
   return result;
 }
+
+/**
+ * リードキャッシュの速度計測。
+ * 3タブ（ALL / INBOUND / OUTBOUND）について
+ *   - 1回目: シート全読み出し + フィルタ + writeCacheChunks_
+ *   - 2回目: readCacheChunks_
+ * を計測して比較する。
+ * checkPermission を呼ばないため clasp run から実行可能。
+ */
+function benchLeadsCache() {
+  const CHUNK_SIZE    = 90000;
+  const TTL           = 600;
+  const leadStatuses  = CONFIG.LEAD_STATUSES;
+  const out           = ['=== benchLeadsCache ===', '実行: ' + new Date().toISOString(), ''];
+
+  // 事前に全キャッシュをクリア
+  clearCacheChunks_(LEADS_CACHE_INDEX_ALL,      LEADS_CACHE_PREFIX_ALL);
+  clearCacheChunks_(LEADS_CACHE_INDEX_INBOUND,  LEADS_CACHE_PREFIX_INBOUND);
+  clearCacheChunks_(LEADS_CACHE_INDEX_OUTBOUND, LEADS_CACHE_PREFIX_OUTBOUND);
+  out.push('キャッシュクリア完了');
+  out.push('');
+
+  const ss = getSpreadsheet();
+
+  const tabs = [
+    { label: 'ALL（全件）', indexKey: LEADS_CACHE_INDEX_ALL,      prefix: LEADS_CACHE_PREFIX_ALL,      type: '' },
+    { label: 'INBOUND',     indexKey: LEADS_CACHE_INDEX_INBOUND,  prefix: LEADS_CACHE_PREFIX_INBOUND,  type: 'インバウンド' },
+    { label: 'OUTBOUND',    indexKey: LEADS_CACHE_INDEX_OUTBOUND, prefix: LEADS_CACHE_PREFIX_OUTBOUND, type: 'アウトバウンド' }
+  ];
+
+  for (const tab of tabs) {
+    out.push('--- ' + tab.label + ' ---');
+
+    // ── 1回目: シート読み出し + フィルタ + キャッシュ書き込み ──────────────
+    const t1s        = Date.now();
+    const leadsSheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+    const allData    = leadsSheet.getDataRange().getValues();
+    const headers    = allData[0];
+    const typeIdx    = headers.indexOf('リード種別');
+    const statIdx    = headers.indexOf('リードステータス');
+
+    const rows = [];
+    for (let i = 1; i < allData.length; i++) {
+      const row    = allData[i];
+      const type   = row[typeIdx] ? row[typeIdx].toString().trim() : '';
+      const status = row[statIdx] ? row[statIdx].toString().trim() : '';
+      if (!type) continue;
+      if (tab.type && type !== tab.type) continue;
+      if (!leadStatuses.includes(status)) continue;
+      const lead = {};
+      for (let h = 0; h < headers.length; h++) {
+        const v = allData[i][h];
+        lead[headers[h]] = (v instanceof Date) ? v.toISOString() : v;
+      }
+      rows.push(lead);
+    }
+
+    writeCacheChunks_(tab.indexKey, tab.prefix, rows, TTL, CHUNK_SIZE);
+    const t1ms    = Date.now() - t1s;
+    const jsonStr = JSON.stringify(rows);
+    const chunkCount = Math.ceil(jsonStr.length / CHUNK_SIZE);
+
+    out.push('  1回目 (シート読み+キャッシュ書き): ' + t1ms + 'ms');
+    out.push('  件数: ' + rows.length + '件 / JSON: ' + jsonStr.length + ' chars / チャンク: ' + chunkCount);
+
+    // ── 2回目: キャッシュ読み出し ──────────────────────────────────────────
+    const t2s    = Date.now();
+    const cached = readCacheChunks_(tab.indexKey, tab.prefix);
+    const t2ms   = Date.now() - t2s;
+
+    out.push('  2回目 (キャッシュ読み): ' + t2ms + 'ms');
+    out.push('  キャッシュヒット: ' + (cached !== null ? 'OK (' + cached.length + '件)' : 'MISS'));
+    out.push('');
+  }
+
+  const result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
+
+/**
+ * withSheetWrite_ がキャッシュを無効化することを検証する。
+ * 3キャッシュにダミーデータを書き込み → withSheetWrite_ 呼び出し → 全消去を確認。
+ * useLock: false で実行（clasp run から LockService を使わないため）。
+ */
+function benchLeadsCacheInvalidation() {
+  const CHUNK_SIZE = 90000;
+  const TTL        = 600;
+  const DUMMY      = [{ _bench: 'dummy' }];
+  const out        = ['=== benchLeadsCacheInvalidation ===', '実行: ' + new Date().toISOString(), ''];
+
+  // Step 1: 3キャッシュにダミーデータを書き込む
+  writeCacheChunks_(LEADS_CACHE_INDEX_ALL,      LEADS_CACHE_PREFIX_ALL,      DUMMY, TTL, CHUNK_SIZE);
+  writeCacheChunks_(LEADS_CACHE_INDEX_INBOUND,  LEADS_CACHE_PREFIX_INBOUND,  DUMMY, TTL, CHUNK_SIZE);
+  writeCacheChunks_(LEADS_CACHE_INDEX_OUTBOUND, LEADS_CACHE_PREFIX_OUTBOUND, DUMMY, TTL, CHUNK_SIZE);
+
+  // Step 2: 書き込み前の状態確認
+  const beforeAll = readCacheChunks_(LEADS_CACHE_INDEX_ALL,      LEADS_CACHE_PREFIX_ALL);
+  const beforeIn  = readCacheChunks_(LEADS_CACHE_INDEX_INBOUND,  LEADS_CACHE_PREFIX_INBOUND);
+  const beforeOut = readCacheChunks_(LEADS_CACHE_INDEX_OUTBOUND, LEADS_CACHE_PREFIX_OUTBOUND);
+
+  out.push('[書き込み前]');
+  out.push('  ALL:      ' + (beforeAll  !== null ? 'あり' : 'なし（異常）'));
+  out.push('  INBOUND:  ' + (beforeIn   !== null ? 'あり' : 'なし（異常）'));
+  out.push('  OUTBOUND: ' + (beforeOut  !== null ? 'あり' : 'なし（異常）'));
+  out.push('');
+
+  // Step 3: withSheetWrite_ を呼ぶ（useLock:false, ダミー writeFn）
+  const tws = Date.now();
+  withSheetWrite_(
+    { useLock: false, cacheTargets: LEADS_CACHE_TARGETS },
+    () => 'ok'
+  );
+  out.push('withSheetWrite_ 実行時間: ' + (Date.now() - tws) + 'ms（ロックなし）');
+  out.push('');
+
+  // Step 4: 書き込み後の状態確認
+  const afterAll = readCacheChunks_(LEADS_CACHE_INDEX_ALL,      LEADS_CACHE_PREFIX_ALL);
+  const afterIn  = readCacheChunks_(LEADS_CACHE_INDEX_INBOUND,  LEADS_CACHE_PREFIX_INBOUND);
+  const afterOut = readCacheChunks_(LEADS_CACHE_INDEX_OUTBOUND, LEADS_CACHE_PREFIX_OUTBOUND);
+
+  out.push('[書き込み後]');
+  out.push('  ALL:      ' + (afterAll  === null ? '消去済み ✓' : '残存（異常）'));
+  out.push('  INBOUND:  ' + (afterIn   === null ? '消去済み ✓' : '残存（異常）'));
+  out.push('  OUTBOUND: ' + (afterOut  === null ? '消去済み ✓' : '残存（異常）'));
+  out.push('');
+
+  const pass = beforeAll !== null && beforeIn !== null && beforeOut !== null
+            && afterAll  === null && afterIn  === null && afterOut  === null;
+  out.push('判定: ' + (pass ? 'PASS' : 'FAIL'));
+
+  const result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
