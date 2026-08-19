@@ -1521,3 +1521,75 @@ function benchQuotesCacheInvalidation() {
   Logger.log(result);
   return result;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// benchQuotesCacheThreeRounds: 1回目/2回目/3回目 速度計測
+// ─────────────────────────────────────────────────────────────────────────────
+function benchQuotesCacheThreeRounds() {
+  var CHUNK_SIZE = 90000;
+  var TTL        = 600;
+  var out        = ['=== benchQuotesCacheThreeRounds ===', '実行: ' + new Date().toISOString(), ''];
+
+  var ss = getSpreadsheet();
+
+  clearCacheChunks_(CORE_QUOTES_CACHE_INDEX, CORE_QUOTES_CACHE_PREFIX);
+  out.push('キャッシュクリア完了');
+  out.push('');
+
+  // ── 1回目: シート読み + キャッシュ書き ────────────────────────────────────
+  var t1s = Date.now();
+
+  var customers = coreQuoteReadTable(ss, 'CUSTOMERS', ['CUSTOMER_ID', 'CUSTOMER_NAME']);
+  var customerNameById = customers.rows.reduce(function(map, row) {
+    var id   = coreQuoteValue(row[customers.indexes.CUSTOMER_ID]);
+    var name = coreQuoteValue(row[customers.indexes.CUSTOMER_NAME]);
+    if (id) map[id] = name;
+    return map;
+  }, {});
+
+  var leads = coreQuoteReadTable(ss, 'LEADS', ['LEAD_ID', 'CUSTOMER_NAME']);
+  var customerNameByLeadId = leads.rows.reduce(function(map, row) {
+    var id   = coreQuoteValue(row[leads.indexes.LEAD_ID]);
+    var name = coreQuoteValue(row[leads.indexes.CUSTOMER_NAME]);
+    if (id) map[id] = name;
+    return map;
+  }, {});
+
+  var quotes = coreQuoteReadTable(ss, 'QUOTES', [
+    'QUOTE_ID', 'LEAD_ID', 'CUSTOMER_ID', 'ORDER_ID', 'STAFF_ID',
+    'ISSUED_DATE', 'EXPIRY_DATE', 'STATUS', 'CURRENCY', 'EXCHANGE_RATE',
+    'SUBTOTAL', 'SHIPPING_FEE', 'DISCOUNT', 'TOTAL_AMOUNT', 'TOTAL_AMOUNT_JPY',
+    'PDF_URL', 'NOTE', 'CREATED_AT', 'UPDATED_AT'
+  ]);
+
+  var rows = quotes.rows
+    .filter(function(row) { return coreQuoteValue(row[quotes.indexes.QUOTE_ID]); })
+    .map(function(row) {
+      var record = coreQuoteBuildRecord(row, quotes.indexes);
+      var customerName =
+        (record.customerId && customerNameById[record.customerId]) ||
+        (record.leadId     && customerNameByLeadId[record.leadId]) ||
+        '';
+      return Object.assign({}, record, { customerName: customerName });
+    });
+
+  writeCacheChunks_(CORE_QUOTES_CACHE_INDEX, CORE_QUOTES_CACHE_PREFIX, rows, TTL, CHUNK_SIZE);
+  var t1ms = Date.now() - t1s;
+  out.push('1回目 (シート読み+キャッシュ書き): ' + t1ms + 'ms  (' + rows.length + '件)');
+
+  // ── 2回目: キャッシュ読み ──────────────────────────────────────────────────
+  var t2s     = Date.now();
+  var cached2 = readCacheChunks_(CORE_QUOTES_CACHE_INDEX, CORE_QUOTES_CACHE_PREFIX);
+  var t2ms    = Date.now() - t2s;
+  out.push('2回目 (キャッシュ読み): ' + t2ms + 'ms  ' + (cached2 !== null ? 'HIT (' + cached2.length + '件)' : 'MISS'));
+
+  // ── 3回目: キャッシュ読み ──────────────────────────────────────────────────
+  var t3s     = Date.now();
+  var cached3 = readCacheChunks_(CORE_QUOTES_CACHE_INDEX, CORE_QUOTES_CACHE_PREFIX);
+  var t3ms    = Date.now() - t3s;
+  out.push('3回目 (キャッシュ読み): ' + t3ms + 'ms  ' + (cached3 !== null ? 'HIT (' + cached3.length + '件)' : 'MISS'));
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
