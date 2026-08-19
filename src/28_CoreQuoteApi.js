@@ -9,8 +9,6 @@
  *   getCoreQuoteForFrontend(sessionId, quoteId)
  *   createCoreQuoteForFrontend(sessionId, quoteData, isDraft)
  *   updateCoreQuoteForFrontend(sessionId, quoteId, quoteData, isDraft)
- *   setupQuoteExpirySetting()
- *
  * 権限キー:
  *   閲覧: lead_view  — 顧客/リード閲覧と同じ権限階層に揃える
  *   書き込み: deal_edit — 見積もりは商談編集の一部（営業・リーダー・オーナーが対象）
@@ -571,61 +569,6 @@ function coreQuoteNumber(value) {
 /** quoteId を文字列にトリムする */
 function coreQuoteNormalizeId(value) {
   return String(value || '').trim();
-}
-
-// ─── 設定セットアップ ──────────────────────────────────────────────────────────
-
-/**
- * 選択肢マスタに「見積もり有効期限日数」設定を追加する（初回のみ実行）。
- *
- * - 既に設定キーが存在する場合は何もしない
- * - 設定キー列・設定値列が存在しない場合はエラーを返す
- * - LockService で保護する
- *
- * 設定値はデフォルト 30 日。変更はシートで直接行うこと。
- *
- * @returns {{ status: 'ADDED'|'ALREADY_EXISTS'|'COLUMN_NOT_FOUND', key: string }}
- */
-function setupQuoteExpirySetting() {
-  const SETTING_KEY = '見積もり有効期限日数';
-  const DEFAULT_VALUE = '30';
-
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try {
-    var ss = getSpreadsheet();
-    var sheet = ss.getSheetByName(CONFIG.SHEETS.SETTINGS);
-    if (!sheet || sheet.getLastRow() < 1) {
-      return { status: 'COLUMN_NOT_FOUND', key: SETTING_KEY };
-    }
-
-    var data = sheet.getDataRange().getValues();
-    var headers = data[0];
-    var keyCol = headers.indexOf('設定キー');
-    var valCol = headers.indexOf('設定値');
-
-    if (keyCol < 0 || valCol < 0) {
-      Logger.log('[setupQuoteExpirySetting] 設定キー/設定値 列が見つかりません');
-      return { status: 'COLUMN_NOT_FOUND', key: SETTING_KEY };
-    }
-
-    for (var i = 1; i < data.length; i++) {
-      if (String(data[i][keyCol]) === SETTING_KEY) {
-        Logger.log('[setupQuoteExpirySetting] ' + SETTING_KEY + ' は既に存在します');
-        return { status: 'ALREADY_EXISTS', key: SETTING_KEY };
-      }
-    }
-
-    var newRow = new Array(headers.length).fill('');
-    newRow[keyCol] = SETTING_KEY;
-    newRow[valCol] = DEFAULT_VALUE;
-    sheet.appendRow(newRow);
-
-    Logger.log('[setupQuoteExpirySetting] 追加完了: ' + SETTING_KEY + ' = ' + DEFAULT_VALUE);
-    return { status: 'ADDED', key: SETTING_KEY };
-  } finally {
-    lock.releaseLock();
-  }
 }
 
 // ─── マイグレーション ──────────────────────────────────────────────────────────
