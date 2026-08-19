@@ -15,11 +15,12 @@ type Props = {
   placeholder?: string;
   noResultsText?: string;
   error?: string;
+  fallbackDisplayText?: string;
 };
 
 export function ProductCombobox({
   products, value, onChange, label, required, disabled,
-  placeholder, noResultsText, error
+  placeholder, noResultsText, error, fallbackDisplayText
 }: Props) {
   const [inputText, setInputText]     = useState('');
   const [isOpen, setIsOpen]           = useState(false);
@@ -30,8 +31,8 @@ export function ProductCombobox({
   useEffect(() => {
     if (!value) { setInputText(''); return; }
     const found = products.find((p) => p.productId === value);
-    setInputText(found ? found.productName : value);
-  }, [value, products]);
+    setInputText(found ? found.productName : (fallbackDisplayText ?? value));
+  }, [value, products, fallbackDisplayText]);
 
   const candidates = useMemo<InventoryProductOption[]>(() => {
     if (!isOpen) return [];
