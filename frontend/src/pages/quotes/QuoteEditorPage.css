@@ -6,3 +6,6 @@
 .quote-editor-page__line-row { display: flex; align-items: flex-end; gap: var(--space-sm); padding: var(--space-md); background: var(--color-surface-secondary); border-radius: var(--radius-md); }
 .quote-editor-page__line-no { flex-shrink: 0; width: 1.5rem; font-size: var(--text-sm); color: var(--color-text-secondary); font-weight: var(--font-weight-medium); padding-bottom: var(--space-xs); }
 .quote-editor-page__line-fields { display: flex; flex-wrap: wrap; gap: var(--space-md); flex: 1; }
+.quote-editor-page__line-calc { display: flex; flex-direction: column; gap: var(--space-xs); min-width: 5rem; }
+.quote-editor-page__line-calc-label { font-size: var(--text-sm); color: var(--color-text-secondary); font-weight: var(--font-weight-medium); }
+.quote-editor-page__line-calc-value { font-size: var(--text-sm); color: var(--color-text-primary); padding: var(--space-xs) 0; }

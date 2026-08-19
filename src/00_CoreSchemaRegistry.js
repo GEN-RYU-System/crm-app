@@ -165,6 +165,14 @@ const CORE_SCHEMA_V1_TABLES = {
       ['NOTE_EN', 'Note_EN'], ['SUPPLIER', '提供者'], ['PRODUCT_ID', 'product_id'],
       ['RAW_NAME', 'raw_name'], ['EXCLUSION_REASON', '除外理由']
     ]), primaryKey: null,
+    values: {
+      CONDITION: {
+        SEALED_BOX:         'Sealed box',
+        DAMAGED_SEALED_BOX: 'Damaged sealed box',
+        CASE:               'Case',
+        NO_SHRINK_BOX:      'No shrink box'
+      }
+    },
     referenceIds: [{ headerKey: 'PRODUCT_ID', targetTableKey: 'PRODUCTS' }]
   },
   CURRENCIES: {
