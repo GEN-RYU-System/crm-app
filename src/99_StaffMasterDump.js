@@ -1009,13 +1009,33 @@ function checkProgressStatusColumn() {
 }
 
 /**
- * 【読み取り専用 / DEV専用】送料計算マスタ4シートの列構成を調査する
+ * 【読み取り専用】送料計算マスタ4シートの列構成を調査する
  * - gid / 行数 / 列数 / ヘッダー行番号 / 全列ヘッダー名（col番号付き）/ 各列の空欄件数
+ * - DEV環境でシートが見つからない場合は PRODUCTION_SPREADSHEET_ID でフォールバック
  * シートデータの値は出力しない（ヘッダー名・件数のみ）
  */
 function auditShippingMasterSheets() {
-  var ss = getSpreadsheet();
   var out = [];
+
+  // DEV環境ではIMPORTRANGE同期シートが存在しないため、PRODスプレッドシートを参照する
+  var envSs = getSpreadsheet();
+  var probeSheet = envSs.getSheetByName(CONFIG.SHEETS.ZONES_SYNC);
+  var ss;
+  if (probeSheet) {
+    ss = envSs;
+    out.push('[参照先] 現在の環境のスプレッドシート');
+  } else {
+    var prodId = PropertiesService.getScriptProperties().getProperty('PRODUCTION_SPREADSHEET_ID');
+    if (!prodId) {
+      out.push('[ERROR] PRODUCTION_SPREADSHEET_ID が未設定です。');
+      Logger.log(out.join('\n'));
+      return out.join('\n');
+    }
+    ss = SpreadsheetApp.openById(prodId);
+    out.push('[参照先] PROD スプレッドシート (DEV環境にシートなし)');
+  }
+  out.push('スプレッドシート名: ' + ss.getName());
+  out.push('');
 
   var sheetTargets = [
     { label: '地帯表',     sheetName: CONFIG.SHEETS.ZONES_SYNC },
