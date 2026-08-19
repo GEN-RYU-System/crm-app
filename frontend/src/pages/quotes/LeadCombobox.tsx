@@ -111,7 +111,7 @@ export function LeadCombobox({
           id={inputId}
           className="ui-field__input"
           role="combobox"
-          aria-expanded={isOpen && (candidates.length > 0)}
+          aria-expanded={isOpen}
           aria-controls={listboxId}
           aria-autocomplete="list"
           aria-activedescendant={activeIndex >= 0 ? `${listboxId}-opt-${activeIndex}` : undefined}
