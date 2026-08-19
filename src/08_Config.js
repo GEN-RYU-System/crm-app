@@ -873,26 +873,52 @@ function getRemindWebhook() {
 }
 
 /**
- * 設定シートから単一キーの設定値を取得する。
- * 「設定キー」列が存在しない場合や行が見つからない場合は null を返す。
+ * システム設定シートから単一キーの設定値を取得し、VALUE_TYPE に応じて型変換して返す。
  *
- * @param {string} key - 設定キー（例: 'REMINDER_ENABLED'）
- * @returns {string|null} 設定値、または null
+ * - VALUE_TYPE = 数値  → Number に変換して返す（変換失敗時は null）
+ * - VALUE_TYPE = 真偽値 → 'true' なら true、それ以外は false を返す
+ * - それ以外           → 文字列のまま返す
+ * - シート未存在・キー未登録 → null を返す
+ *
+ * @param {string} key - 設定キー（例: 'REMINDER_ENABLED', '見積もり有効期限日数'）
+ * @returns {number|boolean|string|null}
  */
 function getSettingValue(key) {
   const ss = getSpreadsheet();
-  const sheet = ss.getSheetByName(CONFIG.SHEETS.SETTINGS);
-  if (!sheet || sheet.getLastRow() < 2) return null;
+  var sheet;
+  try {
+    sheet = getCoreSchemaV1Sheet(ss, 'SETTINGS');
+  } catch (e) {
+    return null;
+  }
+  if (sheet.getLastRow() < 2) return null;
+
+  const settingsTable = CORE_SCHEMA_V1_TABLES['SETTINGS'];
+  const keyColName  = settingsTable.headers['SETTING_KEY'];
+  const valColName  = settingsTable.headers['SETTING_VALUE'];
+  const typeColName = settingsTable.headers['VALUE_TYPE'];
+  const NUMBER_TYPE  = settingsTable.values.VALUE_TYPE.NUMBER;
+  const BOOLEAN_TYPE = settingsTable.values.VALUE_TYPE.BOOLEAN;
 
   const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  const keyCol = headers.indexOf('設定キー');
-  const valCol = headers.indexOf('設定値');
+  const headerRow = data[0];
+  const keyCol  = headerRow.indexOf(keyColName);
+  const valCol  = headerRow.indexOf(valColName);
+  const typeCol = headerRow.indexOf(typeColName);
   if (keyCol < 0 || valCol < 0) return null;
 
-  for (let i = 1; i < data.length; i++) {
+  for (var i = 1; i < data.length; i++) {
     if (String(data[i][keyCol]) === key) {
-      return String(data[i][valCol]);
+      const rawValue = String(data[i][valCol]);
+      const valueType = typeCol >= 0 ? String(data[i][typeCol]) : '';
+      if (valueType === NUMBER_TYPE) {
+        const n = Number(rawValue);
+        return isFinite(n) ? n : null;
+      }
+      if (valueType === BOOLEAN_TYPE) {
+        return rawValue === 'true';
+      }
+      return rawValue;
     }
   }
   return null;
