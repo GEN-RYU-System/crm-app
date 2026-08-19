@@ -650,15 +650,19 @@ function migrateCoreQuoteSentToIssued() {
 
     let updated = 0;
     let skipped = 0;
-    values.forEach(function(row, i) {
+    const newValues = values.map(function(row) {
       if (String(row[0]).trim() === OLD_VALUE) {
-        statusRange.getCell(i + 1, 1).setValue(NEW_VALUE);
         updated++;
-        Logger.log('[migrateCoreQuoteSentToIssued] 行 ' + (dataRowStart + i) + ': 更新');
-      } else {
-        skipped++;
+        return [NEW_VALUE];
       }
+      skipped++;
+      return row;
     });
+
+    // 一括書き込みで N+1 を回避する
+    if (updated > 0) {
+      statusRange.setValues(newValues);
+    }
 
     Logger.log('[migrateCoreQuoteSentToIssued] 完了: updated=' + updated + ', skipped=' + skipped);
     return { updated: updated, skipped: skipped };
