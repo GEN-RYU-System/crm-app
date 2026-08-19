@@ -22,13 +22,13 @@ export function InventoryListCacheProvider({ repository, children }: PropsWithCh
   const itemsRef = useRef<readonly SharedInventoryDto[] | undefined>(undefined);
   const inFlightRef = useRef<Promise<void> | undefined>(undefined);
 
-  const request = useCallback((): Promise<void> => {
+  const request = useCallback((forceRefresh: boolean): Promise<void> => {
     const inFlight = inFlightRef.current;
     if (inFlight) return inFlight;
 
     setLoading(true);
     setError(undefined);
-    const promise = repository.listSharedInventory()
+    const promise = repository.listSharedInventory(forceRefresh)
       .then((records) => {
         itemsRef.current = records;
         setItems(records);
@@ -47,17 +47,17 @@ export function InventoryListCacheProvider({ repository, children }: PropsWithCh
 
   const ensureLoaded = useCallback(() => {
     if (itemsRef.current !== undefined) return Promise.resolve();
-    return request();
+    return request(false);
   }, [request]);
 
   const refresh = useCallback(async () => {
     if (itemsRef.current === undefined) return;
     setRefreshing(true);
-    await request();
+    await request(true);
     setRefreshing(false);
   }, [request]);
 
-  const retry = useCallback(() => request(), [request]);
+  const retry = useCallback(() => request(false), [request]);
 
   return <InventoryListCacheContext.Provider value={{ items, error, loading, refreshing, ensureLoaded, refresh, retry }}>{children}</InventoryListCacheContext.Provider>;
 }
