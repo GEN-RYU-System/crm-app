@@ -145,7 +145,7 @@ export function updateLead(sheetName: string, leadId: string, updateData: Record
   });
 }
 
-export function getCoreCustomers(): Promise<readonly CustomerSummaryDto[]> {
+export function getCoreCustomers(forceRefresh?: boolean): Promise<readonly CustomerSummaryDto[]> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
 
@@ -159,7 +159,7 @@ export function getCoreCustomers(): Promise<readonly CustomerSummaryDto[]> {
         resolve(value as CustomerSummaryDto[]);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .getCoreCustomersForFrontend(getStoredSessionId());
+      .getCoreCustomersForFrontend(getStoredSessionId(), forceRefresh === true);
   });
 }
 
