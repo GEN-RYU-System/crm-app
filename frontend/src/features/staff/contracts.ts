@@ -23,6 +23,6 @@ export type StaffProfileDto = {
 };
 
 export type StaffRepository = {
-  listStaff: () => Promise<readonly StaffSummaryDto[]>;
+  listStaff: (forceRefresh?: boolean) => Promise<readonly StaffSummaryDto[]>;
   getStaff: (staffId: string) => Promise<StaffProfileDto | null>;
 };
