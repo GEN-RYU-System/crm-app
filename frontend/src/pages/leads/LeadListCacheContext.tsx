@@ -27,13 +27,13 @@ export function LeadListCacheProvider({ children }: PropsWithChildren) {
   const recordsRef = useRef<RecordsByType>({});
   const inFlightRef = useRef<Partial<Record<LeadListTabType, Promise<void>>>>({});
 
-  const requestType = useCallback((type: LeadListTabType): Promise<void> => {
+  const requestType = useCallback((type: LeadListTabType, forceRefresh?: boolean): Promise<void> => {
     const inFlight = inFlightRef.current[type];
     if (inFlight) return inFlight;
 
     setLoadingByType((previous) => ({ ...previous, [type]: true }));
     setErrorsByType((previous) => ({ ...previous, [type]: undefined }));
-    const request = getLeadsByType(type === 'all' ? undefined : type)
+    const request = getLeadsByType(type === 'all' ? undefined : type, forceRefresh === true)
       .then((records) => {
         setRecordsByType((previous) => {
           const next = { ...previous, [type]: records };
@@ -62,7 +62,7 @@ export function LeadListCacheProvider({ children }: PropsWithChildren) {
     const loadedTypes = Object.keys(recordsRef.current) as LeadListTabType[];
     if (loadedTypes.length === 0) return;
     setRefreshing(true);
-    await Promise.all(loadedTypes.map((type) => requestType(type)));
+    await Promise.all(loadedTypes.map((type) => requestType(type, true)));
     setRefreshing(false);
   }, [requestType]);
 
