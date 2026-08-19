@@ -102,6 +102,9 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
     if (!conditionsMap.has(productId)) {
       void getInventoryConditions(productId).then((conditions) => {
         setConditionsMap((prev) => new Map(prev).set(productId, [...conditions]));
+      }).catch(() => {
+        setConditionsMap((prev) => new Map(prev).set(productId, []));
+        setInventoryError(quotesCopy.editor.conditionsLoadError);
       });
     }
   };
