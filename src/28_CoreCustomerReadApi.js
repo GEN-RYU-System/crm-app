@@ -9,59 +9,6 @@ const CUSTOMER_LIST_CACHE_CHUNK_SIZE = 90000;
 const CUSTOMER_LIST_CACHE_TTL        = 600;
 
 /**
- * キャッシュから顧客一覧を読み出す。
- * 全チャンクが揃っていない場合は null を返す（→シート読み出しにフォールバック）。
- * @returns {Object[]|null}
- */
-function readCustomerListFromCache_() {
-  const cache    = CacheService.getScriptCache();
-  const indexVal = cache.get(CUSTOMER_LIST_CACHE_INDEX);
-  if (indexVal === null) return null;
-
-  const chunkCount = parseInt(indexVal, 10);
-  if (isNaN(chunkCount) || chunkCount < 1) return null;
-
-  const keys = [];
-  for (let i = 0; i < chunkCount; i++) {
-    keys.push(CUSTOMER_LIST_CACHE_PREFIX + i);
-  }
-
-  const all = cache.getAll(keys);
-  let json = '';
-  for (let j = 0; j < chunkCount; j++) {
-    const chunk = all[CUSTOMER_LIST_CACHE_PREFIX + j];
-    if (chunk === null || chunk === undefined) return null;
-    json += chunk;
-  }
-
-  try {
-    return JSON.parse(json);
-  } catch (e) {
-    return null;
-  }
-}
-
-/**
- * 顧客一覧をキャッシュに書き込む（分割キー方式）。
- * @param {Object[]} rows
- */
-function writeCustomerListToCache_(rows) {
-  const cache      = CacheService.getScriptCache();
-  const json       = JSON.stringify(rows);
-  const total      = json.length;
-  const chunkCount = Math.ceil(total / CUSTOMER_LIST_CACHE_CHUNK_SIZE);
-
-  const map = {};
-  for (let i = 0; i < chunkCount; i++) {
-    const start = i * CUSTOMER_LIST_CACHE_CHUNK_SIZE;
-    map[CUSTOMER_LIST_CACHE_PREFIX + i] = json.slice(start, start + CUSTOMER_LIST_CACHE_CHUNK_SIZE);
-  }
-  map[CUSTOMER_LIST_CACHE_INDEX] = String(chunkCount);
-
-  cache.putAll(map, CUSTOMER_LIST_CACHE_TTL);
-}
-
-/**
  * スプレッドシートから顧客一覧行を組み立てる（純粋データ変換）。
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
  * @returns {Object[]}
@@ -102,13 +49,13 @@ function getCoreCustomersForFrontend(sessionId, forceRefresh) {
   checkPermission('lead_view');
 
   if (forceRefresh !== true) {
-    const cached = readCustomerListFromCache_();
+    const cached = readCacheChunks_(CUSTOMER_LIST_CACHE_INDEX, CUSTOMER_LIST_CACHE_PREFIX);
     if (cached !== null) return cached;
   }
 
   const spreadsheet = getSpreadsheet();
   const rows = buildCoreCustomerListRows_(spreadsheet);
-  writeCustomerListToCache_(rows);
+  writeCacheChunks_(CUSTOMER_LIST_CACHE_INDEX, CUSTOMER_LIST_CACHE_PREFIX, rows, CUSTOMER_LIST_CACHE_TTL, CUSTOMER_LIST_CACHE_CHUNK_SIZE);
   return rows;
 }
 
