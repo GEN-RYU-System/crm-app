@@ -4,59 +4,6 @@ var SHARED_INVENTORY_CACHE_CHUNK_SIZE = 90000;
 var SHARED_INVENTORY_CACHE_TTL        = 600;
 
 /**
- * キャッシュから共用在庫行を読み出す。
- * 全チャンクが揃っていない場合は null を返す（→シート読み出しにフォールバック）。
- * @returns {Object[]|null}
- */
-function readSharedInventoryFromCache_() {
-  var cache     = CacheService.getScriptCache();
-  var indexVal  = cache.get(SHARED_INVENTORY_CACHE_INDEX);
-  if (indexVal === null) return null;
-
-  var chunkCount = parseInt(indexVal, 10);
-  if (isNaN(chunkCount) || chunkCount < 1) return null;
-
-  var keys = [];
-  for (var i = 0; i < chunkCount; i++) {
-    keys.push(SHARED_INVENTORY_CACHE_PREFIX + i);
-  }
-
-  var all = cache.getAll(keys);
-  var json = '';
-  for (var j = 0; j < chunkCount; j++) {
-    var chunk = all[SHARED_INVENTORY_CACHE_PREFIX + j];
-    if (chunk === null || chunk === undefined) return null;
-    json += chunk;
-  }
-
-  try {
-    return JSON.parse(json);
-  } catch (e) {
-    return null;
-  }
-}
-
-/**
- * 共用在庫行をキャッシュに書き込む（分割キー方式）。
- * @param {Object[]} rows
- */
-function writeSharedInventoryToCache_(rows) {
-  var cache = CacheService.getScriptCache();
-  var json  = JSON.stringify(rows);
-  var total = json.length;
-  var chunkCount = Math.ceil(total / SHARED_INVENTORY_CACHE_CHUNK_SIZE);
-
-  var map = {};
-  for (var i = 0; i < chunkCount; i++) {
-    var start = i * SHARED_INVENTORY_CACHE_CHUNK_SIZE;
-    map[SHARED_INVENTORY_CACHE_PREFIX + i] = json.slice(start, start + SHARED_INVENTORY_CACHE_CHUNK_SIZE);
-  }
-  map[SHARED_INVENTORY_CACHE_INDEX] = String(chunkCount);
-
-  cache.putAll(map, SHARED_INVENTORY_CACHE_TTL);
-}
-
-/**
  * スプレッドシートから共用在庫行を組み立てる（純粋データ変換）。
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
  * @returns {Object[]}
@@ -183,12 +130,12 @@ function getSharedInventoryForFrontend(sessionId, forceRefresh) {
   checkPermission('lead_view');
 
   if (forceRefresh !== true) {
-    var cached = readSharedInventoryFromCache_();
+    var cached = readCacheChunks_(SHARED_INVENTORY_CACHE_INDEX, SHARED_INVENTORY_CACHE_PREFIX);
     if (cached !== null) return cached;
   }
 
   var ss   = getSpreadsheet();
   var rows = buildSharedInventoryRows_(ss);
-  writeSharedInventoryToCache_(rows);
+  writeCacheChunks_(SHARED_INVENTORY_CACHE_INDEX, SHARED_INVENTORY_CACHE_PREFIX, rows, SHARED_INVENTORY_CACHE_TTL, SHARED_INVENTORY_CACHE_CHUNK_SIZE);
   return rows;
 }
