@@ -1114,3 +1114,42 @@ function auditDevShippingSheets() {
   Logger.log(result);
   return result;
 }
+
+/**
+ * 【読み取り専用 / DEV専用】見積もり管理シートの既存ステータス値を集計する。
+ * スキーマ変更前の事前確認用。データ値は件数のみ報告する。
+ */
+function auditQuoteStatusValues() {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('見積もり管理');
+  if (!sheet || sheet.getLastRow() < 2) {
+    var msg = 'シートなし or データ行なし';
+    Logger.log(msg);
+    return msg;
+  }
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0];
+  var statusColIdx = -1;
+  for (var i = 0; i < headers.length; i++) {
+    if (headers[i].trim() === 'ステータス') { statusColIdx = i; break; }
+  }
+  if (statusColIdx < 0) {
+    var msg2 = 'ステータス列が見つかりません';
+    Logger.log(msg2);
+    return msg2;
+  }
+  var dataRowCount = sheet.getLastRow() - 1;
+  var data = sheet.getRange(2, statusColIdx + 1, dataRowCount, 1).getValues();
+  var counts = {};
+  data.forEach(function(row) {
+    var v = String(row[0]).trim();
+    if (!v) v = '(空欄)';
+    counts[v] = (counts[v] || 0) + 1;
+  });
+  var lines = ['見積もり管理シート ステータス値集計 (総データ行: ' + dataRowCount + ')', ''];
+  Object.keys(counts).sort().forEach(function(v) {
+    lines.push('  "' + v + '": ' + counts[v] + '件');
+  });
+  var auditResult = lines.join('\n');
+  Logger.log(auditResult);
+  return auditResult;
+}
