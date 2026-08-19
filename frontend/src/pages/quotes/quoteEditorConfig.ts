@@ -1,5 +1,4 @@
 import { NAVIGATION_BY_ID } from '../../app/navigation';
-import { quotesCopy } from '../../content/ja';
 import type { QuoteDetailRecord, QuoteLinePayload, QuoteLineRecord, QuotePayload } from '../../gas/client';
 
 export type QuoteLineEditorValues = {
@@ -12,11 +11,6 @@ export type QuoteLineEditorValues = {
 
 export type QuoteEditorValues = {
   leadId: string;
-  customerId: string;
-  staffId: string;
-  issuedDate: string;
-  expiryDate: string;
-  status: string;
   currency: string;
   shippingFee: string;
   discount: string;
@@ -42,8 +36,7 @@ export function emptyLineValues(): QuoteLineEditorValues {
 
 export function emptyQuoteEditorValues(): QuoteEditorValues {
   return {
-    leadId: '', customerId: '', staffId: '', issuedDate: '', expiryDate: '',
-    status: quotesCopy.editor.statusOptions.draft, currency: 'JPY', shippingFee: '', discount: '', note: '',
+    leadId: '', currency: 'JPY', shippingFee: '', discount: '', note: '',
     lines: [emptyLineValues()]
   };
 }
@@ -62,11 +55,6 @@ export function toQuoteEditorValues(record: QuoteDetailRecord): QuoteEditorValue
   const q = record.quote;
   return {
     leadId: q.leadId ?? '',
-    customerId: q.customerId ?? '',
-    staffId: q.staffId ?? '',
-    issuedDate: q.issuedDate ?? '',
-    expiryDate: q.expiryDate ?? '',
-    status: q.status ?? '',
     currency: q.currency ?? '',
     shippingFee: q.shippingFee == null ? '' : String(q.shippingFee),
     discount: q.discount == null ? '' : String(q.discount),
@@ -82,7 +70,19 @@ function parseNumber(value: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function toQuotePayload(values: QuoteEditorValues): QuotePayload {
+/** Convert fullwidth digits to halfwidth (0xFF01-0xFF5E range offset 0xFEE0). */
+export function toHalfwidthDigits(value: string): string {
+  return value.replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+}
+
+/** Validate discount input: allow digits and decimal point only (after halfwidth conversion). */
+export function isValidDiscount(value: string): boolean {
+  const half = toHalfwidthDigits(value).trim();
+  if (half === '') return true;
+  return /^\d+(\.\d+)?$/.test(half);
+}
+
+export function toQuotePayload(values: QuoteEditorValues, statusKey: 'DRAFT' | 'ISSUED'): QuotePayload {
   const lines: QuoteLinePayload[] = values.lines.map((line, index) => ({
     lineNo: index + 1,
     productName: line.productName,
@@ -91,16 +91,13 @@ export function toQuotePayload(values: QuoteEditorValues): QuotePayload {
     unitPrice: parseNumber(line.unitPrice),
     note: line.note
   }));
+  const discountHalf = toHalfwidthDigits(values.discount);
   return {
     leadId: values.leadId,
-    customerId: values.customerId,
-    staffId: values.staffId,
-    issuedDate: values.issuedDate,
-    expiryDate: values.expiryDate,
-    status: values.status,
+    status: statusKey,
     currency: values.currency,
     shippingFee: parseNumber(values.shippingFee),
-    discount: parseNumber(values.discount),
+    discount: parseNumber(discountHalf),
     note: values.note,
     lines
   };

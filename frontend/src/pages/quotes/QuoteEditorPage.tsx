@@ -1,48 +1,30 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { CustomerSummaryDto } from '../../features/customers/contracts';
-import type { StaffSummaryDto } from '../../features/staff/contracts';
 import { Button, Card, EmptyState, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField } from '../../components/ui';
-import { leadsCopy, quotesCopy } from '../../content/ja';
-import { createCoreQuote, getCoreCustomers, getCoreQuoteDetail, getCoreStaff, getCoreCurrencies, getLeadsByType, updateCoreQuote, type CurrencyRecord, type LeadRecord } from '../../gas/client';
-import { emptyLineValues, emptyQuoteEditorValues, QUOTE_EDITOR_PATHS, toQuoteEditorValues, toQuotePayload, type QuoteEditorValues, type QuoteLineEditorValues } from './quoteEditorConfig';
+import { quotesCopy } from '../../content/ja';
+import { createCoreQuote, getCoreQuoteDetail, getCoreCurrencies, updateCoreQuote, type CurrencyRecord } from '../../gas/client';
+import { emptyLineValues, emptyQuoteEditorValues, isValidDiscount, QUOTE_EDITOR_PATHS, toHalfwidthDigits, toQuoteEditorValues, toQuotePayload, type QuoteEditorValues, type QuoteLineEditorValues } from './quoteEditorConfig';
 import './QuoteEditorPage.css';
 
 type Props = { mode: 'create' | 'detail'; canEdit: boolean };
 type DetailState = 'loading' | 'ready' | 'missing' | 'error';
-type MasterState = 'loading' | 'ready' | 'error';
-
-const STATUS_OPTIONS = [
-  { value: quotesCopy.editor.statusOptions.draft,   label: quotesCopy.editor.statusOptions.draft },
-  { value: quotesCopy.editor.statusOptions.sent,    label: quotesCopy.editor.statusOptions.sent },
-  { value: quotesCopy.editor.statusOptions.expired, label: quotesCopy.editor.statusOptions.expired },
-];
+type SavingState = 'idle' | 'draft' | 'issued';
 
 export function QuoteEditorPage({ mode, canEdit }: Props) {
   const navigate = useNavigate();
   const { quoteId } = useParams();
   const [values, setValues] = useState<QuoteEditorValues>(emptyQuoteEditorValues);
   const [detailState, setDetailState] = useState<DetailState>(mode === 'create' ? 'ready' : 'loading');
-  const [masterState, setMasterState] = useState<MasterState>('loading');
+  const [masterState, setMasterState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadError, setLoadError] = useState('');
   const [saveError, setSaveError] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  const [leads, setLeads] = useState<LeadRecord[]>([]);
-  const [customers, setCustomers] = useState<CustomerSummaryDto[]>([]);
-  const [staff, setStaff] = useState<StaffSummaryDto[]>([]);
+  const [savingState, setSavingState] = useState<SavingState>('idle');
   const [currencies, setCurrencies] = useState<CurrencyRecord[]>([]);
 
   useEffect(() => {
     setMasterState('loading');
-    void Promise.all([getLeadsByType(), getCoreCustomers(), getCoreStaff(), getCoreCurrencies()])
-      .then(([leadsData, customersData, staffData, currenciesData]) => {
-        setLeads(leadsData);
-        setCustomers([...customersData]);
-        setStaff([...staffData]);
-        setCurrencies([...currenciesData]);
-        setMasterState('ready');
-      })
+    void getCoreCurrencies()
+      .then((data) => { setCurrencies([...data]); setMasterState('ready'); })
       .catch(() => setMasterState('error'));
   }, []);
 
@@ -65,6 +47,11 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
   const updateValue = (key: keyof Omit<QuoteEditorValues, 'lines'>, value: string) =>
     setValues((prev) => ({ ...prev, [key]: value }));
 
+  const updateDiscount = (raw: string) => {
+    const half = toHalfwidthDigits(raw);
+    updateValue('discount', half);
+  };
+
   const updateLine = (index: number, key: keyof QuoteLineEditorValues, value: string) =>
     setValues((prev) => ({
       ...prev,
@@ -77,23 +64,27 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
   const removeLine = (index: number) =>
     setValues((prev) => ({ ...prev, lines: prev.lines.filter((_, i) => i !== index) }));
 
-  const save = async () => {
-    if (!values.leadId) { setSaveError(quotesCopy.editor.validation.leadRequired); return; }
-    if (!values.staffId) { setSaveError(quotesCopy.editor.validation.staffRequired); return; }
-    if (!values.issuedDate) { setSaveError(quotesCopy.editor.validation.issuedDateRequired); return; }
+  const validate = (): boolean => {
+    if (!values.leadId.trim()) { setSaveError(quotesCopy.editor.validation.leadRequired); return false; }
+    if (!isValidDiscount(values.discount)) { setSaveError(quotesCopy.editor.validation.discountInvalid); return false; }
+    return true;
+  };
+
+  const save = async (statusKey: 'DRAFT' | 'ISSUED') => {
+    if (!validate()) return;
     const targetQuoteId = quoteId;
     if (mode === 'detail' && !targetQuoteId) return;
-    setSaving(true);
+    setSavingState(statusKey === 'DRAFT' ? 'draft' : 'issued');
     setSaveError('');
     try {
-      const payload = toQuotePayload(values);
+      const payload = toQuotePayload(values, statusKey);
       if (mode === 'create') await createCoreQuote(payload);
       else await updateCoreQuote(targetQuoteId!, payload);
       navigate(QUOTE_EDITOR_PATHS.list);
     } catch (cause) {
       setSaveError(cause instanceof Error ? cause.message : quotesCopy.editor.saveErrorPrefix);
     } finally {
-      setSaving(false);
+      setSavingState('idle');
     }
   };
 
@@ -118,16 +109,7 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
   );
 
   const isLoading = detailState === 'loading' || masterState === 'loading';
-
-  const leadOptions = leads.map((lead) => {
-    const id = String(lead[leadsCopy.fields.leadId] ?? '');
-    const name = String(lead[leadsCopy.fields.customerName] ?? '');
-    return { value: id, label: name ? `${name} (${id})` : id };
-  });
-
-  const customerOptions = customers.map((c) => ({ value: c.customerId, label: c.customerName }));
-
-  const staffOptions = staff.map((s) => ({ value: s.staffId, label: s.fullNameJa }));
+  const isSaving = savingState !== 'idle';
 
   const currencyOptions = currencies.length > 0
     ? currencies.map((c) => ({ value: c.currencyCode, label: `${c.currencyCode}（${c.name}）` }))
@@ -141,11 +123,27 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
         subtitle={mode === 'create' ? quotesCopy.editor.createSubtitle : quotesCopy.editor.detailSubtitle}
         action={
           <div className="quote-editor-page__actions">
-            <Button variant="outline" onClick={() => navigate(QUOTE_EDITOR_PATHS.list)}>{quotesCopy.backToList}</Button>
+            <Button variant="outline" onClick={() => navigate(QUOTE_EDITOR_PATHS.list)} disabled={isSaving}>{quotesCopy.backToList}</Button>
             {editable && (
-              <Button onClick={() => void save()} loading={saving} loadingText={quotesCopy.editor.saving}>
-                {quotesCopy.editor.save}
-              </Button>
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={() => void save('DRAFT')}
+                  loading={savingState === 'draft'}
+                  loadingText={quotesCopy.editor.savingDraft}
+                  disabled={savingState === 'issued'}
+                >
+                  {quotesCopy.editor.saveDraft}
+                </Button>
+                <Button
+                  onClick={() => void save('ISSUED')}
+                  loading={savingState === 'issued'}
+                  loadingText={quotesCopy.editor.issuing}
+                  disabled={savingState === 'draft'}
+                >
+                  {quotesCopy.editor.issue}
+                </Button>
+              </>
             )}
           </div>
         }
@@ -157,61 +155,18 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
         <StatusMessage variant="error">{quotesCopy.editor.saveErrorPrefix} {saveError}</StatusMessage>
       )}
       {isLoading ? (
-        <Card><Skeleton variant="list" rows={8} label={quotesCopy.detailLoading} /></Card>
+        <Card><Skeleton variant="list" rows={6} label={quotesCopy.detailLoading} /></Card>
       ) : (
         <>
           <Card>
             <div className="quote-editor-page__form">
-              <Select
+              <TextField
                 label={quotesCopy.editor.form.leadId}
-                options={leadOptions}
                 value={values.leadId}
                 onChange={(e) => updateValue('leadId', e.target.value)}
-                placeholder={quotesCopy.editor.form.selectLead}
+                placeholder={quotesCopy.editor.form.leadPlaceholder}
                 width="md"
                 required
-                disabled={!editable}
-              />
-              <Select
-                label={quotesCopy.editor.form.customerId}
-                options={customerOptions}
-                value={values.customerId}
-                onChange={(e) => updateValue('customerId', e.target.value)}
-                placeholder={quotesCopy.editor.form.selectCustomer}
-                width="md"
-                disabled={!editable}
-              />
-              <Select
-                label={quotesCopy.editor.form.staffId}
-                options={staffOptions}
-                value={values.staffId}
-                onChange={(e) => updateValue('staffId', e.target.value)}
-                placeholder={quotesCopy.editor.form.selectStaff}
-                width="md"
-                required
-                disabled={!editable}
-              />
-              <TextField
-                label={quotesCopy.editor.form.issuedDate}
-                value={values.issuedDate}
-                onChange={(e) => updateValue('issuedDate', e.target.value)}
-                width="sm"
-                required
-                disabled={!editable}
-              />
-              <TextField
-                label={quotesCopy.editor.form.expiryDate}
-                value={values.expiryDate}
-                onChange={(e) => updateValue('expiryDate', e.target.value)}
-                width="sm"
-                disabled={!editable}
-              />
-              <Select
-                label={quotesCopy.editor.form.status}
-                options={STATUS_OPTIONS}
-                value={values.status}
-                onChange={(e) => updateValue('status', e.target.value)}
-                width="sm"
                 disabled={!editable}
               />
               <Select
@@ -232,7 +187,8 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
               <TextField
                 label={quotesCopy.editor.form.discount}
                 value={values.discount}
-                onChange={(e) => updateValue('discount', e.target.value)}
+                onChange={(e) => updateDiscount(e.target.value)}
+                placeholder={quotesCopy.editor.form.discountPlaceholder}
                 width="sm"
                 disabled={!editable}
               />

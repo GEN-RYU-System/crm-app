@@ -2,7 +2,7 @@ import type { BadgeVariant } from '../../components/ui/Badge/Badge';
 
 export const QUOTE_STATUS_BADGE_VARIANT: Record<string, BadgeVariant> = {
   '下書き':   'neutral',
-  '送付済み': 'info',
+  '発行済み': 'info',
   '期限切れ': 'warning',
 } as const;
 
@@ -82,20 +82,16 @@ export const quotesCopy = {
     masterLoadError: 'マスタデータの読み込みに失敗しました。',
     create: '新規見積もり作成',
     validation: {
-      leadRequired: 'リードを選択してください。',
-      staffRequired: '担当者を選択してください。',
-      issuedDateRequired: '発行日を入力してください。',
+      leadRequired: 'リードIDを入力してください。',
+      discountInvalid: '値引きは数字のみ入力してください。',
     },
     form: {
       leadId:          'リード',
-      customerId:      '顧客',
-      staffId:         '担当者',
-      issuedDate:      '発行日',
-      expiryDate:      '有効期限',
-      status:          'ステータス',
+      leadPlaceholder: 'リードIDを入力（例: LDI-00001）',
       currency:        '通貨',
       shippingFee:     '送料',
       discount:        '値引き',
+      discountPlaceholder: '数字のみ（例: 1000）',
       note:            'メモ',
       lines:           '明細',
       addLine:         '明細行を追加',
@@ -105,13 +101,14 @@ export const quotesCopy = {
       lineQuantity:    '数量',
       lineUnitPrice:   '単価',
       lineNote:        'メモ',
-      selectLead:      'リードを選択',
-      selectCustomer:  '顧客を選択（任意）',
-      selectStaff:     '担当者を選択',
     },
+    saveDraft:   '一時保存',
+    savingDraft: '保存中...',
+    issue:       '発行',
+    issuing:     '発行中...',
     statusOptions: {
       draft:   '下書き',
-      sent:    '送付済み',
+      issued:  '発行済み',
       expired: '期限切れ',
     },
   },
