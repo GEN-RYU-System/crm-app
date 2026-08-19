@@ -307,7 +307,7 @@ export type SharedInventoryItem = {
   mark: string;
 };
 
-export function getSharedInventory(): Promise<readonly SharedInventoryItem[]> {
+export function getSharedInventory(forceRefresh?: boolean): Promise<readonly SharedInventoryItem[]> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
 
@@ -321,7 +321,7 @@ export function getSharedInventory(): Promise<readonly SharedInventoryItem[]> {
         resolve(value as SharedInventoryItem[]);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .getSharedInventoryForFrontend(getStoredSessionId());
+      .getSharedInventoryForFrontend(getStoredSessionId(), forceRefresh === true);
   });
 }
 
