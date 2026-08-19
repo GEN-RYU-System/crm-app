@@ -14,6 +14,8 @@ import {
   Select,
   Skeleton,
   Spinner,
+  StatCard,
+  StatusMessage,
   SubMenu,
   TabBar,
   Tabs,
@@ -393,6 +395,24 @@ export function ComponentCatalogPage() {
               <Button variant="secondary">{commonCopy.actionExample}</Button>
             }
           />
+        </Card>
+        <Card>
+          <h2 className="catalog-page__heading">{catalogCopy.statCard}</h2>
+          <div className="catalog-page__row">
+            <StatCard
+              label={catalogCopy.statCardLabel}
+              value={catalogCopy.statCardValue}
+              help={catalogCopy.statCardHelp}
+            />
+          </div>
+        </Card>
+        <Card>
+          <h2 className="catalog-page__heading">{catalogCopy.statusMessage}</h2>
+          <div className="catalog-page__stack">
+            <StatusMessage variant="loading">{catalogCopy.statusMessageLoading}</StatusMessage>
+            <StatusMessage variant="error">{catalogCopy.statusMessageError}</StatusMessage>
+            <StatusMessage variant="empty">{catalogCopy.statusMessageEmpty}</StatusMessage>
+          </div>
         </Card>
       </div>
     </>
