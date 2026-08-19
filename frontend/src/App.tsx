@@ -8,6 +8,7 @@ import { getCurrentUser, getDashboardKpis, type DashboardKpis } from './gas/clie
 import { ComponentCatalogPage } from './pages/catalog/ComponentCatalogPage';
 import { customerGasRepository } from './features/customers/gasAdapter';
 import { staffGasRepository } from './features/staff/gasAdapter';
+import { StaffListCacheProvider } from './pages/staff/StaffListCacheContext';
 import { CustomerDetailPage } from './pages/customers/CustomerDetailPage';
 import { CustomerListPage } from './pages/customers/CustomerListPage';
 import { CUSTOMER_ROUTE_SEGMENTS } from './pages/customers/customerConfig';
@@ -121,7 +122,7 @@ function AppRouter() {
   const createRoute = canAccessLeads && canAddLeads ? <LeadEditorPage mode="create" canEdit={false} /> : <Navigate to={canAccessLeads ? NAVIGATION_BY_ID.leads.hash : NAVIGATION_BY_ID.dashboard.hash} replace />;
   const detailRoute = canAccessLeads ? <LeadEditorPage mode="detail" canEdit={canEditLeads} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const customersRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerListPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
-  const staffRoute = permissionState.status === 'checking' ? <StaffPermissionLoading /> : canAccessStaff ? <StaffListPage repository={staffGasRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+  const staffRoute = permissionState.status === 'checking' ? <StaffPermissionLoading /> : canAccessStaff ? <StaffListPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const customerDetailRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerDetailPage repository={customerGasRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const dataManagementRoute = permissionState.status === 'checking'
     ? <LeadPermissionLoading />
@@ -151,7 +152,7 @@ function AppRouter() {
     ]
   };
 
-  return <HashRouter><LeadListCacheProvider><CustomerListCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><OrderListCacheProvider repository={orderGasRepository}><AppShell navigationGroups={navigationGroups}><Routes>
+  return <HashRouter><LeadListCacheProvider><CustomerListCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><AppShell navigationGroups={navigationGroups}><Routes>
     <Route path={NAVIGATION_BY_ID.dashboard.hash} element={<DashboardPage kpis={kpis} state={state} error={error} onRefresh={() => void load()} />} />
     {DATA_MANAGEMENT_ITEMS
       .filter((item) => item.state !== 'planned' && hubIndexRoutes[item.id] != null)
@@ -169,5 +170,5 @@ function AppRouter() {
     <Route path={NAVIGATION_BY_ID.components.hash} element={<ComponentCatalogPage />} />
     <Route path="/change-password" element={<ChangePasswordPage />} />
     <Route path="*" element={<Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />} />
-  </Routes></AppShell></OrderListCacheProvider></InventoryListCacheProvider></CustomerListCacheProvider></LeadListCacheProvider></HashRouter>;
+  </Routes></AppShell></StaffListCacheProvider></OrderListCacheProvider></InventoryListCacheProvider></CustomerListCacheProvider></LeadListCacheProvider></HashRouter>;
 }
