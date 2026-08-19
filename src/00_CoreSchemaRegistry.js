@@ -178,6 +178,25 @@ const CORE_SCHEMA_V1_TABLES = {
     ]), primaryKey: 'CURRENCY_CODE',
     referenceIds: []
   },
+  SETTINGS: {
+    sheetName: 'システム設定', canonicalName: 'システム設定', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['SETTING_KEY',   '設定キー'],
+      ['SETTING_VALUE', '設定値'],
+      ['VALUE_TYPE',    '値の型'],
+      ['DESCRIPTION',   '説明'],
+      ['UPDATED_AT',    '更新日時']
+    ]), primaryKey: 'SETTING_KEY',
+    values: {
+      VALUE_TYPE: {
+        NUMBER:  '数値',
+        TEXT:    'テキスト',
+        BOOLEAN: '真偽値',
+        DATE:    '日付'
+      }
+    },
+    referenceIds: []
+  },
   LEGACY_INPUT: {
     sheetName: '請求書作成', canonicalName: '請求書作成', aliases: [], headerRowNumber: 1, sheetType: 'LEGACY_INPUT', writeAllowed: false,
     headers: {}, primaryKey: null, referenceIds: []
