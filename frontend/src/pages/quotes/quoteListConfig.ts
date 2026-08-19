@@ -73,4 +73,4 @@ export function filterQuoteRows(rows: readonly QuoteRow[], query: string): reado
   return rows.filter((row) => QUOTE_LIST_SEARCH_COLUMNS.some((key) => row[key].toLocaleLowerCase('ja-JP').includes(q)));
 }
 
-export const QUOTE_ROUTE_SEGMENTS = { detail: ':quoteId' } as const;
+export const QUOTE_ROUTE_SEGMENTS = { detail: ':quoteId', create: 'create' } as const;

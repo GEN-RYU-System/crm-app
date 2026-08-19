@@ -1007,3 +1007,149 @@ function checkProgressStatusColumn() {
   Logger.log(result);
   return result;
 }
+
+/**
+ * 【読み取り専用】送料計算マスタ4シートの列構成を調査する
+ * - gid / 行数 / 列数 / ヘッダー行番号 / 全列ヘッダー名（col番号付き）/ 各列の空欄件数
+ * - DEV環境でシートが見つからない場合は PRODUCTION_SPREADSHEET_ID でフォールバック
+ * シートデータの値は出力しない（ヘッダー名・件数のみ）
+ */
+function auditShippingMasterSheets() {
+  var out = [];
+
+  // DEV環境ではIMPORTRANGE同期シートが存在しないため、PRODスプレッドシートを参照する
+  var envSs = getSpreadsheet();
+  var probeSheet = envSs.getSheetByName(CONFIG.SHEETS.ZONES_SYNC);
+  var ss;
+  if (probeSheet) {
+    ss = envSs;
+    out.push('[参照先] 現在の環境のスプレッドシート');
+  } else {
+    var prodId = PropertiesService.getScriptProperties().getProperty('PRODUCTION_SPREADSHEET_ID');
+    if (!prodId) {
+      out.push('[ERROR] PRODUCTION_SPREADSHEET_ID が未設定です。');
+      Logger.log(out.join('\n'));
+      return out.join('\n');
+    }
+    ss = SpreadsheetApp.openById(prodId);
+    out.push('[参照先] PROD スプレッドシート (DEV環境にシートなし)');
+  }
+  out.push('スプレッドシート名: ' + ss.getName());
+  out.push('');
+
+  var sheetTargets = [
+    { label: '地帯表',     sheetName: CONFIG.SHEETS.ZONES_SYNC },
+    { label: 'FedEx送料',  sheetName: CONFIG.SHEETS.FEDEX_RATES_SYNC },
+    { label: 'DHL送料',    sheetName: CONFIG.SHEETS.DHL_RATES_SYNC },
+    { label: 'UPS送料',    sheetName: CONFIG.SHEETS.UPS_RATES_SYNC }
+  ];
+
+  sheetTargets.forEach(function(t, i) {
+    out.push('=== ' + (i + 1) + '. ' + t.label + ' (' + t.sheetName + ') ===');
+    var sheet = ss.getSheetByName(t.sheetName);
+    if (!sheet) {
+      out.push('[NOT FOUND] ' + t.sheetName);
+    } else {
+      var sheetOut = auditSheetColumnsForClasp(sheet);
+      sheetOut.forEach(function(line) { out.push(line); });
+    }
+    out.push('');
+  });
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
+
+/**
+ * 【読み取り専用 / DEV専用】DEV環境の送料マスタ4シートの列構成を調査する
+ * シート名: 地帯表 / FedEx送料 / DHL送料 / UPS送料
+ * - gid / 行数 / 列数 / ヘッダー行番号 / 全列ヘッダー名（col番号付き）/ 各列の空欄件数
+ * データ値は出力しない（ヘッダー名・件数のみ）
+ */
+function auditDevShippingSheets() {
+  var ss = getSpreadsheet();
+  var out = [];
+
+  out.push('スプレッドシート名: ' + ss.getName());
+  out.push('');
+
+  var sheetNames = ['地帯表', 'FedEx送料', 'DHL送料', 'UPS送料'];
+
+  sheetNames.forEach(function(sheetName, i) {
+    out.push('=== ' + (i + 1) + '. ' + sheetName + ' ===');
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      out.push('[NOT FOUND] ' + sheetName);
+    } else {
+      var gid = sheet.getSheetId();
+      var lastRow = sheet.getLastRow();
+      var lastCol = sheet.getLastColumn();
+      out.push('gid=' + gid + ' / ' + lastRow + '行 x ' + lastCol + '列 / ヘッダー行: 1行目');
+      if (lastCol >= 1) {
+        var headers = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+        var dataRowCount = Math.max(lastRow - 1, 0);
+        var emptyCounts = new Array(lastCol).fill(0);
+        if (dataRowCount > 0) {
+          var values = sheet.getRange(2, 1, dataRowCount, lastCol).getValues();
+          values.forEach(function(row) {
+            row.forEach(function(cell, colIdx) {
+              if (cell === '' || cell === null || cell === undefined) {
+                emptyCounts[colIdx]++;
+              }
+            });
+          });
+        }
+        out.push('データ行数: ' + dataRowCount + '行');
+        out.push('');
+        headers.forEach(function(header, j) {
+          out.push('  col' + (j + 1) + ': "' + header + '" / 空欄: ' + emptyCounts[j] + '件');
+        });
+      }
+    }
+    out.push('');
+  });
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
+
+/**
+ * 【読み取り専用 / DEV専用】見積もり管理シートの既存ステータス値を集計する。
+ * スキーマ変更前の事前確認用。データ値は件数のみ報告する。
+ */
+function auditQuoteStatusValues() {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('見積もり管理');
+  if (!sheet || sheet.getLastRow() < 2) {
+    var msg = 'シートなし or データ行なし';
+    Logger.log(msg);
+    return msg;
+  }
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0];
+  var statusColIdx = -1;
+  for (var i = 0; i < headers.length; i++) {
+    if (headers[i].trim() === 'ステータス') { statusColIdx = i; break; }
+  }
+  if (statusColIdx < 0) {
+    var msg2 = 'ステータス列が見つかりません';
+    Logger.log(msg2);
+    return msg2;
+  }
+  var dataRowCount = sheet.getLastRow() - 1;
+  var data = sheet.getRange(2, statusColIdx + 1, dataRowCount, 1).getValues();
+  var counts = {};
+  data.forEach(function(row) {
+    var v = String(row[0]).trim();
+    if (!v) v = '(空欄)';
+    counts[v] = (counts[v] || 0) + 1;
+  });
+  var lines = ['見積もり管理シート ステータス値集計 (総データ行: ' + dataRowCount + ')', ''];
+  Object.keys(counts).sort().forEach(function(v) {
+    lines.push('  "' + v + '": ' + counts[v] + '件');
+  });
+  var auditResult = lines.join('\n');
+  Logger.log(auditResult);
+  return auditResult;
+}

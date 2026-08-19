@@ -3,11 +3,70 @@
  * 物理シート名・物理ヘッダー名は00_CoreSchemaRegistry.jsから解決する。
  */
 
-function getCoreCustomersForFrontend(sessionId) {
-  setEmailFromSession(sessionId);
-  checkPermission('lead_view');
+const CUSTOMER_LIST_CACHE_INDEX      = 'CUSTOMER_LIST_CACHE_INDEX';
+const CUSTOMER_LIST_CACHE_PREFIX     = 'CUSTOMER_LIST_CACHE_';
+const CUSTOMER_LIST_CACHE_CHUNK_SIZE = 90000;
+const CUSTOMER_LIST_CACHE_TTL        = 600;
 
-  const spreadsheet = getSpreadsheet();
+/**
+ * キャッシュから顧客一覧を読み出す。
+ * 全チャンクが揃っていない場合は null を返す（→シート読み出しにフォールバック）。
+ * @returns {Object[]|null}
+ */
+function readCustomerListFromCache_() {
+  const cache    = CacheService.getScriptCache();
+  const indexVal = cache.get(CUSTOMER_LIST_CACHE_INDEX);
+  if (indexVal === null) return null;
+
+  const chunkCount = parseInt(indexVal, 10);
+  if (isNaN(chunkCount) || chunkCount < 1) return null;
+
+  const keys = [];
+  for (let i = 0; i < chunkCount; i++) {
+    keys.push(CUSTOMER_LIST_CACHE_PREFIX + i);
+  }
+
+  const all = cache.getAll(keys);
+  let json = '';
+  for (let j = 0; j < chunkCount; j++) {
+    const chunk = all[CUSTOMER_LIST_CACHE_PREFIX + j];
+    if (chunk === null || chunk === undefined) return null;
+    json += chunk;
+  }
+
+  try {
+    return JSON.parse(json);
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * 顧客一覧をキャッシュに書き込む（分割キー方式）。
+ * @param {Object[]} rows
+ */
+function writeCustomerListToCache_(rows) {
+  const cache      = CacheService.getScriptCache();
+  const json       = JSON.stringify(rows);
+  const total      = json.length;
+  const chunkCount = Math.ceil(total / CUSTOMER_LIST_CACHE_CHUNK_SIZE);
+
+  const map = {};
+  for (let i = 0; i < chunkCount; i++) {
+    const start = i * CUSTOMER_LIST_CACHE_CHUNK_SIZE;
+    map[CUSTOMER_LIST_CACHE_PREFIX + i] = json.slice(start, start + CUSTOMER_LIST_CACHE_CHUNK_SIZE);
+  }
+  map[CUSTOMER_LIST_CACHE_INDEX] = String(chunkCount);
+
+  cache.putAll(map, CUSTOMER_LIST_CACHE_TTL);
+}
+
+/**
+ * スプレッドシートから顧客一覧行を組み立てる（純粋データ変換）。
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
+ * @returns {Object[]}
+ */
+function buildCoreCustomerListRows_(spreadsheet) {
   const customers = coreCustomerFrontendReadTable(spreadsheet, 'CUSTOMERS', [
     'CUSTOMER_ID', 'SOURCE_LEAD_ID', 'CUSTOMER_NAME', 'COUNTRY', 'SALES_ASSIGNEE_NAME'
   ]);
@@ -17,25 +76,40 @@ function getCoreCustomersForFrontend(sessionId) {
   const orders = coreCustomerFrontendReadTable(spreadsheet, 'ORDERS', [
     'ORDER_ID', 'CUSTOMER_ID', 'STATUS', 'CURRENCY', 'INVOICE_TOTAL'
   ]);
-  const leadsById = coreCustomerFrontendIndexBy(leads, 'LEAD_ID');
+  const leadsById              = coreCustomerFrontendIndexBy(leads, 'LEAD_ID');
   const transactionsByCustomer = coreCustomerFrontendAggregateTransactions(orders);
 
   return customers.rows.map(function(row) {
-    const customerId = coreCustomerFrontendValue(row[customers.indexes.CUSTOMER_ID]);
+    const customerId   = coreCustomerFrontendValue(row[customers.indexes.CUSTOMER_ID]);
     const sourceLeadId = coreCustomerFrontendValue(row[customers.indexes.SOURCE_LEAD_ID]);
-    const sourceLead = leadsById[sourceLeadId];
+    const sourceLead   = leadsById[sourceLeadId];
     const transactions = transactionsByCustomer[customerId] || { count: 0, amounts: [] };
     return {
-      customerId: customerId,
-      customerName: coreCustomerFrontendValue(row[customers.indexes.CUSTOMER_NAME]),
-      country: coreCustomerFrontendValue(row[customers.indexes.COUNTRY]),
-      salesChannel: sourceLead ? coreCustomerFrontendValue(sourceLead[leads.indexes.SALES_CHANNEL]) : '',
-      handledTitle: sourceLead ? coreCustomerFrontendValue(sourceLead[leads.indexes.HANDLED_TITLE]) : '',
-      salesAssigneeName: coreCustomerFrontendValue(row[customers.indexes.SALES_ASSIGNEE_NAME]),
-      transactionCount: transactions.count,
+      customerId:         customerId,
+      customerName:       coreCustomerFrontendValue(row[customers.indexes.CUSTOMER_NAME]),
+      country:            coreCustomerFrontendValue(row[customers.indexes.COUNTRY]),
+      salesChannel:       sourceLead ? coreCustomerFrontendValue(sourceLead[leads.indexes.SALES_CHANNEL])  : '',
+      handledTitle:       sourceLead ? coreCustomerFrontendValue(sourceLead[leads.indexes.HANDLED_TITLE])  : '',
+      salesAssigneeName:  coreCustomerFrontendValue(row[customers.indexes.SALES_ASSIGNEE_NAME]),
+      transactionCount:   transactions.count,
       transactionAmounts: transactions.amounts
     };
   });
+}
+
+function getCoreCustomersForFrontend(sessionId, forceRefresh) {
+  setEmailFromSession(sessionId);
+  checkPermission('lead_view');
+
+  if (forceRefresh !== true) {
+    const cached = readCustomerListFromCache_();
+    if (cached !== null) return cached;
+  }
+
+  const spreadsheet = getSpreadsheet();
+  const rows = buildCoreCustomerListRows_(spreadsheet);
+  writeCustomerListToCache_(rows);
+  return rows;
 }
 
 function getCoreCustomerForFrontend(sessionId, customerId) {
@@ -152,7 +226,7 @@ function coreCustomerFrontendIndexBy(tableData, idHeaderKey) {
 function coreCustomerFrontendAggregateTransactions(orders) {
   const completedStatus = getCoreSchemaV1Value('ORDERS', 'STATUS', 'COMPLETED');
   const aggregates = orders.rows.reduce(function(index, row) {
-    const orderId = coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]);
+    const orderId    = coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]);
     const customerId = coreCustomerFrontendValue(row[orders.indexes.CUSTOMER_ID]);
     if (!orderId || !customerId) return index;
     const status = coreCustomerFrontendValue(row[orders.indexes.STATUS]);

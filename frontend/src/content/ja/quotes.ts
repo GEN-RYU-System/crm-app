@@ -31,6 +31,7 @@ export const quotesCopy = {
   detailNotFoundTitle: '見積もりが見つかりません',
   detailNotFoundDescription: '指定された見積もりは表示できません。',
   detailLoadErrorPrefix: '見積もり詳細の読み込みに失敗しました:',
+  newCreate: '新規作成',
   backToList: '一覧へ戻る',
   columns: {
     quoteId:      '見積もりID',
