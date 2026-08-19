@@ -21,17 +21,31 @@ const CORE_QUOTE_LINE_ID_PREFIX = 'QTL-';
 /** ID の連番部桁数 */
 const CORE_QUOTE_ID_DIGITS = 5;
 
+var CORE_QUOTES_CACHE_INDEX      = 'CORE_QUOTES_CACHE_INDEX';
+var CORE_QUOTES_CACHE_PREFIX     = 'CORE_QUOTES_CACHE_';
+var CORE_QUOTES_CACHE_CHUNK_SIZE = 90000;
+var CORE_QUOTES_CACHE_TTL        = 600;
+var CORE_QUOTES_CACHE_TARGETS    = [
+  { indexKey: CORE_QUOTES_CACHE_INDEX, prefix: CORE_QUOTES_CACHE_PREFIX }
+];
+
 // ─── 公開 API ──────────────────────────────────────────────────────────────────
 
 /**
  * 見積もり管理を全件取得する。
  *
  * @param {string} sessionId
+ * @param {boolean} forceRefresh  true のときキャッシュをスキップ
  * @returns {Object[]} 見積もりレコードの配列
  */
-function getCoreQuotesForFrontend(sessionId) {
+function getCoreQuotesForFrontend(sessionId, forceRefresh) {
   setEmailFromSession(sessionId);
   checkPermission('lead_view');
+
+  if (forceRefresh !== true) {
+    var cached = readCacheChunks_(CORE_QUOTES_CACHE_INDEX, CORE_QUOTES_CACHE_PREFIX);
+    if (cached !== null) return cached;
+  }
 
   const ss = getSpreadsheet();
 
@@ -60,7 +74,7 @@ function getCoreQuotesForFrontend(sessionId) {
     'PDF_URL', 'NOTE', 'CREATED_AT', 'UPDATED_AT'
   ]);
 
-  return quotes.rows
+  var rows = quotes.rows
     .filter(function(row) { return coreQuoteValue(row[quotes.indexes.QUOTE_ID]); })
     .map(function(row) {
       const record = coreQuoteBuildRecord(row, quotes.indexes);
@@ -70,6 +84,9 @@ function getCoreQuotesForFrontend(sessionId) {
         '';
       return Object.assign({}, record, { customerName: customerName });
     });
+
+  writeCacheChunks_(CORE_QUOTES_CACHE_INDEX, CORE_QUOTES_CACHE_PREFIX, rows, CORE_QUOTES_CACHE_TTL, CORE_QUOTES_CACHE_CHUNK_SIZE);
+  return rows;
 }
 
 /**
@@ -166,62 +183,61 @@ function createCoreQuoteForFrontend(sessionId, quoteData, isDraft) {
   const ss = getSpreadsheet();
   coreQuoteAssertLeadIdExists(ss, String(quoteData.leadId || '').trim());
 
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try {
-    const now = new Date();
+  return withSheetWrite_(
+    { useLock: true, cacheTargets: CORE_QUOTES_CACHE_TARGETS },
+    function() {
+      const now = new Date();
 
-    // 発行日・有効期限を自動計算する
-    var issuedDate = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM-dd');
-    var expiryDays = parseInt(getSettingValue('見積もり有効期限日数') || '30', 10);
-    if (isNaN(expiryDays) || expiryDays <= 0) expiryDays = 30;
-    var expiryDate = new Date(now.getTime());
-    expiryDate.setDate(expiryDate.getDate() + expiryDays);
-    var expiryDateStr = Utilities.formatDate(expiryDate, 'Asia/Tokyo', 'yyyy-MM-dd');
+      // 発行日・有効期限を自動計算する
+      var issuedDate = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM-dd');
+      var expiryDays = parseInt(getSettingValue('見積もり有効期限日数') || '30', 10);
+      if (isNaN(expiryDays) || expiryDays <= 0) expiryDays = 30;
+      var expiryDate = new Date(now.getTime());
+      expiryDate.setDate(expiryDate.getDate() + expiryDays);
+      var expiryDateStr = Utilities.formatDate(expiryDate, 'Asia/Tokyo', 'yyyy-MM-dd');
 
-    var status = isDraft
-      ? getCoreSchemaV1Value('QUOTES', 'STATUS', 'DRAFT')
-      : getCoreSchemaV1Value('QUOTES', 'STATUS', 'ISSUED');
+      var status = isDraft
+        ? getCoreSchemaV1Value('QUOTES', 'STATUS', 'DRAFT')
+        : getCoreSchemaV1Value('QUOTES', 'STATUS', 'ISSUED');
 
-    const { sheet: quoteSheet, headerIndexes: quoteHI } =
-      validateCoreSchemaV1TableForWrite(ss, 'QUOTES');
+      const { sheet: quoteSheet, headerIndexes: quoteHI } =
+        validateCoreSchemaV1TableForWrite(ss, 'QUOTES');
 
-    const newQuoteId = coreQuoteGenerateNextQuoteId(quoteSheet, quoteHI);
-    const lines      = Array.isArray(quoteData.lines) ? quoteData.lines : [];
-    const totals     = coreQuoteCalculateTotals(lines, quoteData);
+      const newQuoteId = coreQuoteGenerateNextQuoteId(quoteSheet, quoteHI);
+      const lines      = Array.isArray(quoteData.lines) ? quoteData.lines : [];
+      const totals     = coreQuoteCalculateTotals(lines, quoteData);
 
-    quoteSheet.appendRow(coreQuoteBuildQuoteRow(quoteSheet, quoteHI, {
-      QUOTE_ID:         newQuoteId,
-      LEAD_ID:          String(quoteData.leadId    || '').trim(),
-      CUSTOMER_ID:      String(quoteData.customerId || '').trim(),
-      ORDER_ID:         String(quoteData.orderId    || '').trim(),
-      STAFF_ID:         staffId,
-      ISSUED_DATE:      issuedDate,
-      EXPIRY_DATE:      expiryDateStr,
-      STATUS:           status,
-      CURRENCY:         String(quoteData.currency  || 'JPY').trim(),
-      EXCHANGE_RATE:    totals.exchangeRate,
-      SUBTOTAL:         totals.subtotal,
-      SHIPPING_FEE:     totals.shippingFee,
-      DISCOUNT:         totals.discount,
-      TOTAL_AMOUNT:     totals.totalAmount,
-      TOTAL_AMOUNT_JPY: totals.totalAmountJpy,
-      PDF_URL:          '',
-      NOTE:             String(quoteData.note || '').trim(),
-      CREATED_AT:       now,
-      UPDATED_AT:       now
-    }));
+      quoteSheet.appendRow(coreQuoteBuildQuoteRow(quoteSheet, quoteHI, {
+        QUOTE_ID:         newQuoteId,
+        LEAD_ID:          String(quoteData.leadId    || '').trim(),
+        CUSTOMER_ID:      String(quoteData.customerId || '').trim(),
+        ORDER_ID:         String(quoteData.orderId    || '').trim(),
+        STAFF_ID:         staffId,
+        ISSUED_DATE:      issuedDate,
+        EXPIRY_DATE:      expiryDateStr,
+        STATUS:           status,
+        CURRENCY:         String(quoteData.currency  || 'JPY').trim(),
+        EXCHANGE_RATE:    totals.exchangeRate,
+        SUBTOTAL:         totals.subtotal,
+        SHIPPING_FEE:     totals.shippingFee,
+        DISCOUNT:         totals.discount,
+        TOTAL_AMOUNT:     totals.totalAmount,
+        TOTAL_AMOUNT_JPY: totals.totalAmountJpy,
+        PDF_URL:          '',
+        NOTE:             String(quoteData.note || '').trim(),
+        CREATED_AT:       now,
+        UPDATED_AT:       now
+      }));
 
-    if (lines.length > 0) {
-      const { sheet: lineSheet, headerIndexes: lineHI } =
-        validateCoreSchemaV1TableForWrite(ss, 'QUOTE_LINES');
-      coreQuoteWriteLines(lineSheet, lineHI, newQuoteId, lines);
+      if (lines.length > 0) {
+        const { sheet: lineSheet, headerIndexes: lineHI } =
+          validateCoreSchemaV1TableForWrite(ss, 'QUOTE_LINES');
+        coreQuoteWriteLines(lineSheet, lineHI, newQuoteId, lines);
+      }
+
+      return { success: true, quoteId: newQuoteId };
     }
-
-    return { success: true, quoteId: newQuoteId };
-  } finally {
-    lock.releaseLock();
-  }
+  );
 }
 
 /**
@@ -256,54 +272,53 @@ function updateCoreQuoteForFrontend(sessionId, quoteId, quoteData, isDraft) {
     ? getCoreSchemaV1Value('QUOTES', 'STATUS', 'DRAFT')
     : getCoreSchemaV1Value('QUOTES', 'STATUS', 'ISSUED');
 
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try {
-    const now = new Date();
+  return withSheetWrite_(
+    { useLock: true, cacheTargets: CORE_QUOTES_CACHE_TARGETS },
+    function() {
+      const now = new Date();
 
-    const { sheet: quoteSheet, headerIndexes: quoteHI } =
-      validateCoreSchemaV1TableForWrite(ss, 'QUOTES');
+      const { sheet: quoteSheet, headerIndexes: quoteHI } =
+        validateCoreSchemaV1TableForWrite(ss, 'QUOTES');
 
-    const targetRow = coreQuoteFindRowById(quoteSheet, quoteHI, normalizedId);
-    if (targetRow === -1) throw new Error('QUOTE_NOT_FOUND');
+      const targetRow = coreQuoteFindRowById(quoteSheet, quoteHI, normalizedId);
+      if (targetRow === -1) throw new Error('QUOTE_NOT_FOUND');
 
-    const lines  = Array.isArray(quoteData.lines) ? quoteData.lines : [];
-    const totals = coreQuoteCalculateTotals(lines, quoteData);
+      const lines  = Array.isArray(quoteData.lines) ? quoteData.lines : [];
+      const totals = coreQuoteCalculateTotals(lines, quoteData);
 
-    // STAFF_ID / ISSUED_DATE / EXPIRY_DATE は変更しない
-    const updateFields = {
-      LEAD_ID:          String(quoteData.leadId    || '').trim(),
-      CUSTOMER_ID:      String(quoteData.customerId || '').trim(),
-      ORDER_ID:         String(quoteData.orderId    || '').trim(),
-      STATUS:           status,
-      CURRENCY:         String(quoteData.currency  || 'JPY').trim(),
-      EXCHANGE_RATE:    totals.exchangeRate,
-      SUBTOTAL:         totals.subtotal,
-      SHIPPING_FEE:     totals.shippingFee,
-      DISCOUNT:         totals.discount,
-      TOTAL_AMOUNT:     totals.totalAmount,
-      TOTAL_AMOUNT_JPY: totals.totalAmountJpy,
-      NOTE:             String(quoteData.note || '').trim(),
-      UPDATED_AT:       now
-    };
+      // STAFF_ID / ISSUED_DATE / EXPIRY_DATE は変更しない
+      const updateFields = {
+        LEAD_ID:          String(quoteData.leadId    || '').trim(),
+        CUSTOMER_ID:      String(quoteData.customerId || '').trim(),
+        ORDER_ID:         String(quoteData.orderId    || '').trim(),
+        STATUS:           status,
+        CURRENCY:         String(quoteData.currency  || 'JPY').trim(),
+        EXCHANGE_RATE:    totals.exchangeRate,
+        SUBTOTAL:         totals.subtotal,
+        SHIPPING_FEE:     totals.shippingFee,
+        DISCOUNT:         totals.discount,
+        TOTAL_AMOUNT:     totals.totalAmount,
+        TOTAL_AMOUNT_JPY: totals.totalAmountJpy,
+        NOTE:             String(quoteData.note || '').trim(),
+        UPDATED_AT:       now
+      };
 
-    Object.keys(updateFields).forEach(function(headerKey) {
-      const physicalHeader = getCoreSchemaV1HeaderName('QUOTES', headerKey);
-      const colIdx = quoteHI[physicalHeader];
-      if (colIdx) quoteSheet.getRange(targetRow, colIdx).setValue(updateFields[headerKey]);
-    });
+      Object.keys(updateFields).forEach(function(headerKey) {
+        const physicalHeader = getCoreSchemaV1HeaderName('QUOTES', headerKey);
+        const colIdx = quoteHI[physicalHeader];
+        if (colIdx) quoteSheet.getRange(targetRow, colIdx).setValue(updateFields[headerKey]);
+      });
 
-    const { sheet: lineSheet, headerIndexes: lineHI } =
-      validateCoreSchemaV1TableForWrite(ss, 'QUOTE_LINES');
-    coreQuoteDeleteLines(lineSheet, lineHI, normalizedId);
-    if (lines.length > 0) {
-      coreQuoteWriteLines(lineSheet, lineHI, normalizedId, lines);
+      const { sheet: lineSheet, headerIndexes: lineHI } =
+        validateCoreSchemaV1TableForWrite(ss, 'QUOTE_LINES');
+      coreQuoteDeleteLines(lineSheet, lineHI, normalizedId);
+      if (lines.length > 0) {
+        coreQuoteWriteLines(lineSheet, lineHI, normalizedId, lines);
+      }
+
+      return { success: true };
     }
-
-    return { success: true };
-  } finally {
-    lock.releaseLock();
-  }
+  );
 }
 
 // ─── 内部ヘルパー ─────────────────────────────────────────────────────────────

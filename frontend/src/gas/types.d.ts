@@ -22,7 +22,7 @@ interface GoogleScriptRun {
   getSessionUser(sessionId: string): void;
   changeOwnPasswordForFrontend(sessionId: string | null, currentPassword: string, newPassword: string): void;
   getSharedInventoryForFrontend(sessionId: string | null, forceRefresh: boolean): void;
-  getCoreQuotesForFrontend(sessionId: string | null): void;
+  getCoreQuotesForFrontend(sessionId: string | null, forceRefresh: boolean): void;
   getCoreQuoteForFrontend(sessionId: string | null, quoteId: string): void;
   getCoreOrdersForFrontend(sessionId: string | null, forceRefresh: boolean): void;
   getCoreCurrenciesForFrontend(sessionId: string | null): void;
