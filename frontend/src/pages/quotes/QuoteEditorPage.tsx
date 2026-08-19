@@ -26,6 +26,7 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
   const [inventoryProducts, setInventoryProducts] = useState<InventoryProductOption[]>([]);
   const [conditionsMap, setConditionsMap] = useState<Map<string, InventoryConditionOption[]>>(new Map());
   const [lineErrors, setLineErrors] = useState<Map<number, string>>(new Map());
+  const [inventoryError, setInventoryError] = useState('');
 
   useEffect(() => {
     setMasterState('loading');
@@ -41,7 +42,7 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
   useEffect(() => {
     void getInventoryProductOptions()
       .then((products) => setInventoryProducts([...products]))
-      .catch(() => {});
+      .catch(() => setInventoryError(quotesCopy.editor.inventoryLoadError));
   }, []);
 
   useEffect(() => {
@@ -130,23 +131,21 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
 
   const handleQuantityChange = (index: number, raw: string) => {
     const half = toHalfwidthDigits(raw);
-    setValues((prev) => {
-      const line = prev.lines[index];
-      if (!line) return prev;
+    const line = values.lines[index];
+    if (line) {
       const conditions = conditionsMap.get(line.productId) ?? [];
       const found = conditions.find((c) => c.condition === line.condition);
       const qty = Number(half);
-
       if (found && Number.isFinite(qty) && qty > found.quantity) {
         setLineErrors((errs) => new Map(errs).set(index, quotesCopy.editor.validation.lineInventoryExceeded(found.quantity)));
       } else {
         setLineErrors((errs) => { const m = new Map(errs); m.delete(index); return m; });
       }
-      return {
-        ...prev,
-        lines: prev.lines.map((l, i) => i === index ? { ...l, quantity: half } : l)
-      };
-    });
+    }
+    setValues((prev) => ({
+      ...prev,
+      lines: prev.lines.map((l, i) => i === index ? { ...l, quantity: half } : l)
+    }));
   };
 
   const getConditionOptions = (line: QuoteLineEditorValues) => {
@@ -261,6 +260,9 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
       {saveError && (
         <StatusMessage variant="error">{quotesCopy.editor.saveErrorPrefix} {saveError}</StatusMessage>
       )}
+      {inventoryError && (
+        <StatusMessage variant="error">{inventoryError}</StatusMessage>
+      )}
       {isLoading ? (
         <Card><Skeleton variant="list" rows={6} label={quotesCopy.detailLoading} /></Card>
       ) : (
@@ -331,6 +333,7 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
                     <ProductCombobox
                       products={inventoryProducts}
                       value={line.productId}
+                      fallbackDisplayText={line.productName}
                       onChange={(pid, pname) => handleProductSelect(index, pid, pname)}
                       label={quotesCopy.editor.form.lineProduct}
                       placeholder={quotesCopy.editor.form.lineProductPlaceholder}

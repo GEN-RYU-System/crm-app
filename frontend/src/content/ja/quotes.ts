@@ -81,6 +81,7 @@ export const quotesCopy = {
     saveErrorPrefix: '見積もりの保存に失敗しました:',
     loadError: '見積もりを読み込めませんでした。',
     masterLoadError: 'マスタデータの読み込みに失敗しました。',
+    inventoryLoadError: '商品候補の読み込みに失敗しました（手入力で続けられます）。',
     create: '新規見積もり作成',
     validation: {
       leadRequired: 'リードIDを入力してください。',
