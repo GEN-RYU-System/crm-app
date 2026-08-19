@@ -55,6 +55,6 @@ export type CustomerAggregateDto = {
 };
 
 export type CustomerRepository = {
-  listCustomers: () => Promise<readonly CustomerSummaryDto[]>;
+  listCustomers: (forceRefresh?: boolean) => Promise<readonly CustomerSummaryDto[]>;
   getCustomer: (customerId: string) => Promise<CustomerAggregateDto | null>;
 };
