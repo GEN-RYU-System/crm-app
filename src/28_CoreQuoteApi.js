@@ -133,14 +133,15 @@ function getCoreQuoteForFrontend(sessionId, quoteId) {
  * 見積もりを新規作成する（明細も同時登録）。
  * 合計金額は明細から自動計算する（フロントの値を信用しない）。
  *
+ * 以下はサーバー側で自動設定する（フロントから受け取らない）:
+ *   - staffId   : セッションから取得
+ *   - issuedDate: 今日の日付
+ *   - expiryDate: 発行日 + 設定値 QUOTE_EXPIRY_DAYS 日数
+ *
  * @param {string} sessionId
  * @param {{
  *   leadId: string,
- *   staffId: string,
- *   customerId?: string,
- *   orderId?: string,
- *   issuedDate?: string,
- *   expiryDate?: string,
+ *   status?: string,
  *   currency?: string,
  *   exchangeRate?: number,
  *   shippingFee?: number,
@@ -155,6 +156,10 @@ function createCoreQuoteForFrontend(sessionId, quoteData) {
   checkPermission('deal_edit');
   coreQuoteAssertRequiredFields(quoteData);
 
+  const sessionUser = getSessionUser(sessionId);
+  if (!sessionUser) throw new Error('SESSION_INVALID');
+  const staffId = sessionUser.staffId;
+
   const ss = getSpreadsheet();
   coreQuoteAssertLeadIdExists(ss, String(quoteData.leadId || '').trim());
 
@@ -163,6 +168,18 @@ function createCoreQuoteForFrontend(sessionId, quoteData) {
   try {
     const ss  = getSpreadsheet();
     const now = new Date();
+
+    // 発行日: 今日
+    const issuedDate = now;
+
+    // 有効期限: 発行日 + QUOTE_EXPIRY_DAYS 日数（設定値）
+    const expiryDaysStr = getSettingValue('QUOTE_EXPIRY_DAYS');
+    const expiryDays = expiryDaysStr ? parseInt(expiryDaysStr, 10) : 30;
+    const expiryDate = new Date(issuedDate.getTime() + (Number.isFinite(expiryDays) ? expiryDays : 30) * 24 * 60 * 60 * 1000);
+
+    // ステータス: フロントからの指定（DRAFT または ISSUED）。未指定は DRAFT
+    const statusKey = String(quoteData.status || '').trim() || 'DRAFT';
+    const statusValue = getCoreSchemaV1Value('QUOTES', 'STATUS', statusKey);
 
     const { sheet: quoteSheet, headerIndexes: quoteHI } =
       validateCoreSchemaV1TableForWrite(ss, 'QUOTES');
@@ -173,14 +190,14 @@ function createCoreQuoteForFrontend(sessionId, quoteData) {
 
     quoteSheet.appendRow(coreQuoteBuildQuoteRow(quoteSheet, quoteHI, {
       QUOTE_ID:         newQuoteId,
-      LEAD_ID:          String(quoteData.leadId    || '').trim(),
-      CUSTOMER_ID:      String(quoteData.customerId|| '').trim(),
-      ORDER_ID:         String(quoteData.orderId   || '').trim(),
-      STAFF_ID:         String(quoteData.staffId   || '').trim(),
-      ISSUED_DATE:      quoteData.issuedDate  || '',
-      EXPIRY_DATE:      quoteData.expiryDate  || '',
-      STATUS:           getCoreSchemaV1Value('QUOTES', 'STATUS', 'DRAFT'),
-      CURRENCY:         String(quoteData.currency  || '').trim(),
+      LEAD_ID:          String(quoteData.leadId || '').trim(),
+      CUSTOMER_ID:      '',
+      ORDER_ID:         '',
+      STAFF_ID:         staffId,
+      ISSUED_DATE:      issuedDate,
+      EXPIRY_DATE:      expiryDate,
+      STATUS:           statusValue,
+      CURRENCY:         String(quoteData.currency || '').trim(),
       EXCHANGE_RATE:    totals.exchangeRate,
       SUBTOTAL:         totals.subtotal,
       SHIPPING_FEE:     totals.shippingFee,
@@ -209,9 +226,23 @@ function createCoreQuoteForFrontend(sessionId, quoteData) {
  * 見積もりを更新する。明細は全削除して再登録する方式。
  * 合計金額は明細から自動計算する（フロントの値を信用しない）。
  *
+ * 以下はサーバー側で自動管理する（フロントから上書きしない）:
+ *   - staffId   : 既存値を維持
+ *   - issuedDate: 既存値を維持
+ *   - expiryDate: 既存値を維持
+ *
  * @param {string} sessionId
  * @param {string} quoteId
- * @param {Object} quoteData - createCoreQuoteForFrontend と同じ形
+ * @param {{
+ *   leadId: string,
+ *   status?: string,
+ *   currency?: string,
+ *   exchangeRate?: number,
+ *   shippingFee?: number,
+ *   discount?: number,
+ *   note?: string,
+ *   lines?: Array<{productId?,productName?,description?,quantity,unitPrice,note?}>
+ * }} quoteData
  * @returns {{ success: true }}
  */
 function updateCoreQuoteForFrontend(sessionId, quoteId, quoteData) {
@@ -240,13 +271,8 @@ function updateCoreQuoteForFrontend(sessionId, quoteId, quoteData) {
     const totals = coreQuoteCalculateTotals(lines, quoteData);
 
     const updateFields = {
-      LEAD_ID:          String(quoteData.leadId    || '').trim(),
-      CUSTOMER_ID:      String(quoteData.customerId|| '').trim(),
-      ORDER_ID:         String(quoteData.orderId   || '').trim(),
-      STAFF_ID:         String(quoteData.staffId   || '').trim(),
-      ISSUED_DATE:      quoteData.issuedDate  || '',
-      EXPIRY_DATE:      quoteData.expiryDate  || '',
-      CURRENCY:         String(quoteData.currency  || '').trim(),
+      LEAD_ID:          String(quoteData.leadId || '').trim(),
+      CURRENCY:         String(quoteData.currency || '').trim(),
       EXCHANGE_RATE:    totals.exchangeRate,
       SUBTOTAL:         totals.subtotal,
       SHIPPING_FEE:     totals.shippingFee,
@@ -257,7 +283,8 @@ function updateCoreQuoteForFrontend(sessionId, quoteId, quoteData) {
       UPDATED_AT:       now
     };
     if (quoteData.status !== undefined) {
-      updateFields.STATUS = String(quoteData.status).trim();
+      const statusKey = String(quoteData.status).trim();
+      updateFields.STATUS = getCoreSchemaV1Value('QUOTES', 'STATUS', statusKey);
     }
 
     Object.keys(updateFields).forEach(function(headerKey) {
@@ -306,11 +333,10 @@ function coreQuoteReadTable(spreadsheet, tableKey, requiredHeaderKeys) {
   return { indexes: indexes, rows: rows };
 }
 
-/** leadId / staffId の必須チェック */
+/** leadId の必須チェック。staffId はサーバー側で自動設定するため不要。 */
 function coreQuoteAssertRequiredFields(quoteData) {
   if (!quoteData) throw new Error('QUOTE_DATA_REQUIRED');
-  if (!String(quoteData.leadId  || '').trim()) throw new Error('QUOTE_LEAD_ID_REQUIRED');
-  if (!String(quoteData.staffId || '').trim()) throw new Error('QUOTE_STAFF_ID_REQUIRED');
+  if (!String(quoteData.leadId || '').trim()) throw new Error('QUOTE_LEAD_ID_REQUIRED');
 }
 
 /**
@@ -525,4 +551,118 @@ function coreQuoteNumber(value) {
 /** quoteId を文字列にトリムする */
 function coreQuoteNormalizeId(value) {
   return String(value || '').trim();
+}
+
+// ─── 設定セットアップ ──────────────────────────────────────────────────────────
+
+/**
+ * 選択肢マスタに QUOTE_EXPIRY_DAYS 設定を追加する（初回のみ実行）。
+ *
+ * - 既に設定キーが存在する場合は何もしない
+ * - 設定キー列・設定値列が存在しない場合はエラーを返す
+ * - LockService で保護する
+ *
+ * 設定値はデフォルト 30 日。変更はシートで直接行うこと。
+ *
+ * @returns {{ status: 'ADDED'|'ALREADY_EXISTS'|'COLUMN_NOT_FOUND', key: string }}
+ */
+function setupQuoteExpirySetting() {
+  const SETTING_KEY = 'QUOTE_EXPIRY_DAYS';
+  const DEFAULT_VALUE = '30';
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var ss = getSpreadsheet();
+    var sheet = ss.getSheetByName(CONFIG.SHEETS.SETTINGS);
+    if (!sheet || sheet.getLastRow() < 1) {
+      return { status: 'COLUMN_NOT_FOUND', key: SETTING_KEY };
+    }
+
+    var data = sheet.getDataRange().getValues();
+    var headers = data[0];
+    var keyCol = headers.indexOf('設定キー');
+    var valCol = headers.indexOf('設定値');
+
+    if (keyCol < 0 || valCol < 0) {
+      Logger.log('[setupQuoteExpirySetting] 設定キー/設定値 列が見つかりません');
+      return { status: 'COLUMN_NOT_FOUND', key: SETTING_KEY };
+    }
+
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][keyCol]) === SETTING_KEY) {
+        Logger.log('[setupQuoteExpirySetting] ' + SETTING_KEY + ' は既に存在します');
+        return { status: 'ALREADY_EXISTS', key: SETTING_KEY };
+      }
+    }
+
+    var newRow = new Array(headers.length).fill('');
+    newRow[keyCol] = SETTING_KEY;
+    newRow[valCol] = DEFAULT_VALUE;
+    sheet.appendRow(newRow);
+
+    Logger.log('[setupQuoteExpirySetting] 追加完了: ' + SETTING_KEY + ' = ' + DEFAULT_VALUE);
+    return { status: 'ADDED', key: SETTING_KEY };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ─── マイグレーション ──────────────────────────────────────────────────────────
+
+/**
+ * 既存の「送付済み」ステータスを「発行済み」に書き換える（1回限り実行）。
+ *
+ * QUOTES.values.STATUS が SENT:'送付済み' から ISSUED:'発行済み' に変更されたため、
+ * スプレッドシート上の既存データを新しい値に合わせる。
+ *
+ * @returns {{ updated: number, skipped: number }}
+ */
+function migrateCoreQuoteSentToIssued() {
+  // MIGRATION ONLY: raw literal required because this value was removed from the schema
+  // and can no longer be resolved via getCoreSchemaV1Value.
+  const OLD_VALUE = '\u9001\u4ed8\u6e08\u307f'; // '送付済み'
+  const NEW_VALUE = getCoreSchemaV1Value('QUOTES', 'STATUS', 'ISSUED');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss = getSpreadsheet();
+    const table = getCoreSchemaV1Table('QUOTES');
+    const sheet = getCoreSchemaV1Sheet(ss, 'QUOTES');
+    const lastRow = sheet.getLastRow();
+    if (lastRow < table.headerRowNumber + 1) {
+      Logger.log('[migrateCoreQuoteSentToIssued] データ行なし。スキップ。');
+      return { updated: 0, skipped: 0 };
+    }
+
+    const headers = sheet.getRange(table.headerRowNumber, 1, 1, sheet.getLastColumn())
+      .getDisplayValues()[0].map(function(h) { return String(h).trim(); });
+    const statusHeader = getCoreSchemaV1HeaderName('QUOTES', 'STATUS');
+    const statusColIdx = headers.indexOf(statusHeader);
+    if (statusColIdx === -1) throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING: STATUS');
+
+    const dataRowStart = table.headerRowNumber + 1;
+    const dataRowCount = lastRow - table.headerRowNumber;
+    const statusColOneBased = statusColIdx + 1;
+    const statusRange = sheet.getRange(dataRowStart, statusColOneBased, dataRowCount, 1);
+    const values = statusRange.getValues();
+
+    let updated = 0;
+    let skipped = 0;
+    values.forEach(function(row, i) {
+      if (String(row[0]).trim() === OLD_VALUE) {
+        statusRange.getCell(i + 1, 1).setValue(NEW_VALUE);
+        updated++;
+        Logger.log('[migrateCoreQuoteSentToIssued] 行 ' + (dataRowStart + i) + ': 更新');
+      } else {
+        skipped++;
+      }
+    });
+
+    Logger.log('[migrateCoreQuoteSentToIssued] 完了: updated=' + updated + ', skipped=' + skipped);
+    return { updated: updated, skipped: skipped };
+  } finally {
+    lock.releaseLock();
+  }
 }
