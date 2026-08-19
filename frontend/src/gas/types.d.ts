@@ -13,7 +13,7 @@ interface GoogleScriptRun {
   getLeadDetail(sessionId: string | null, leadId: string): void;
   createLead(sessionId: string | null, leadData: Record<string, string>): void;
   updateLead(sessionId: string | null, sheetName: string, leadId: string, updateData: Record<string, string>): void;
-  getCoreCustomersForFrontend(sessionId: string | null): void;
+  getCoreCustomersForFrontend(sessionId: string | null, forceRefresh: boolean): void;
   getCoreCustomerForFrontend(sessionId: string | null, customerId: string): void;
   getCoreStaffForFrontend(sessionId: string | null): void;
   getCoreStaffMemberForFrontend(sessionId: string | null, staffId: string): void;
