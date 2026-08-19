@@ -22,13 +22,13 @@ export function CustomerListCacheProvider({ repository, children }: PropsWithChi
   const customersRef = useRef<readonly CustomerSummaryDto[] | undefined>(undefined);
   const inFlightRef = useRef<Promise<void> | undefined>(undefined);
 
-  const request = useCallback((): Promise<void> => {
+  const request = useCallback((forceRefresh: boolean): Promise<void> => {
     const inFlight = inFlightRef.current;
     if (inFlight) return inFlight;
 
     setLoading(true);
     setError(undefined);
-    const promise = repository.listCustomers()
+    const promise = repository.listCustomers(forceRefresh)
       .then((records) => {
         customersRef.current = records;
         setCustomers(records);
@@ -47,17 +47,17 @@ export function CustomerListCacheProvider({ repository, children }: PropsWithChi
 
   const ensureLoaded = useCallback(() => {
     if (customersRef.current !== undefined) return Promise.resolve();
-    return request();
+    return request(false);
   }, [request]);
 
   const refresh = useCallback(async () => {
     if (customersRef.current === undefined) return;
     setRefreshing(true);
-    await request();
+    await request(true);
     setRefreshing(false);
   }, [request]);
 
-  const retry = useCallback(() => request(), [request]);
+  const retry = useCallback(() => request(false), [request]);
 
   return <CustomerListCacheContext.Provider value={{ customers, error, loading, refreshing, ensureLoaded, refresh, retry }}>{children}</CustomerListCacheContext.Provider>;
 }
