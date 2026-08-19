@@ -869,9 +869,10 @@ function benchCustomerCache() {
  *   - 'インバウンド' → getLeadsByType(sessionId, 'インバウンド')
  *   - 'アウトバウンド'→ getLeadsByType(sessionId, 'アウトバウンド')
  *
- * getLeads() は checkPermission() を持つため clasp run から呼べない。
- * ここではシートを直接読み、同等のフィルタ（リード種別 + LEAD_STATUSES）を
- * 手動で適用して実データ件数・サイズ・所要時間を計測する。
+ * getLeads() は checkPermission() を持つため clasp run から直接呼べない。
+ * シートを直読みし、getLeads() と同等のフィルタ
+ *   (リード種別 + CONFIG.LEAD_STATUSES) を適用して計測する。
+ * シート読み出しも計測対象に含める（各試行ごとに getDataRange().getValues() を実行）。
  *
  * 各タブで:
  *   - 件数 / JSON文字数 / 90,000文字チャンク分割数
@@ -880,30 +881,15 @@ function benchCustomerCache() {
  * 使い方: clasp run benchLeadsByType
  */
 function benchLeadsByType() {
-  var RUNS       = 3;
-  var CHUNK_SIZE = 90000;
-  var out        = ['=== benchLeadsByType ===', '実行: ' + new Date().toISOString(), ''];
+  var RUNS         = 3;
+  var CHUNK_SIZE   = 90000;
+  var leadStatuses = CONFIG.LEAD_STATUSES; // ['新規リード', 'リード対応中', 'リード対象外']
+  var out          = ['=== benchLeadsByType ===', '実行: ' + new Date().toISOString(), ''];
 
-  // CONFIG.LEAD_STATUSES はシート由来で動的に解決されるため、
-  // getStatusSettings() 経由で取得する（認証不要）
-  var leadStatuses = [];
-  try {
-    var cfg = getStatusSettings();
-    if (cfg && Array.isArray(cfg.LEAD_STATUSES)) {
-      if (cfg.LEAD_STATUSES.length > 0 && typeof cfg.LEAD_STATUSES[0] === 'object') {
-        // オブジェクト配列の場合: { value, order, description }
-        leadStatuses = cfg.LEAD_STATUSES.map(function(s) { return s.value || s; });
-      } else {
-        leadStatuses = cfg.LEAD_STATUSES;
-      }
-    }
-  } catch (e) {
-    out.push('LEAD_STATUSES 取得失敗: ' + e.message + ' → フォールバック値を使用');
-    leadStatuses = ['新規リード', 'リード対応中', 'リード対象外'];
-  }
-  out.push('使用 LEAD_STATUSES: ' + JSON.stringify(leadStatuses));
+  out.push('CONFIG.LEAD_STATUSES: ' + JSON.stringify(leadStatuses));
   out.push('');
 
+  // シート存在確認（タイミング外）
   var ss         = getSpreadsheet();
   var leadsSheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
   if (!leadsSheet || leadsSheet.getLastRow() < 2) {
@@ -911,15 +897,21 @@ function benchLeadsByType() {
     var r = out.join('\n'); Logger.log(r); return r;
   }
 
-  // 1回だけシート全読みしてキャッシュ（計測対象外）
-  var data     = leadsSheet.getDataRange().getValues();
-  var headers  = data[0];
-  var typeIdx  = headers.indexOf('リード種別');
-  var statIdx  = headers.indexOf('リードステータス');
-  var archIdx  = headers.indexOf('アーカイブ日');
+  // ヘッダー列インデックスを事前確認（タイミング外）
+  var sampleData = leadsSheet.getRange(1, 1, 1, leadsSheet.getLastColumn()).getValues()[0];
+  var typeIdx    = sampleData.indexOf('リード種別');
+  var statIdx    = sampleData.indexOf('リードステータス');
+  out.push('ヘッダー確認: リード種別列=' + typeIdx + ' / リードステータス列=' + statIdx);
+  out.push('総行数: ' + (leadsSheet.getLastRow() - 1) + '行');
 
-  out.push('シート行数: ' + (data.length - 1) + '行 / ヘッダー列数: ' + headers.length);
-  out.push('リード種別列: ' + typeIdx + ' / ステータス列: ' + statIdx);
+  // 実際のステータス分布を1回確認（デバッグ用、タイミング外）
+  var allData    = leadsSheet.getDataRange().getValues();
+  var statusCnt  = {};
+  for (var di = 1; di < allData.length; di++) {
+    var s = statIdx >= 0 && allData[di][statIdx] ? allData[di][statIdx].toString().trim() : '';
+    statusCnt[s] = (statusCnt[s] || 0) + 1;
+  }
+  out.push('ステータス分布: ' + JSON.stringify(statusCnt));
   out.push('');
 
   var targets = [
@@ -938,14 +930,19 @@ function benchLeadsByType() {
     var lastRows = null;
 
     for (var run = 0; run < RUNS; run++) {
-      var t0   = Date.now();
+      var t0 = Date.now();
 
-      // getLeads('lead', leadType) と同等のフィルタ（認証なし）
+      // ★ シート読み出しも計測対象に含める（getLeads() の実際のコストを再現）
+      var data    = leadsSheet.getDataRange().getValues();
+      var headers = data[0];
+      var ti      = headers.indexOf('リード種別');
+      var si      = headers.indexOf('リードステータス');
+
       var rows = [];
       for (var i = 1; i < data.length; i++) {
         var row    = data[i];
-        var type   = typeIdx  >= 0 && row[typeIdx]  ? row[typeIdx].toString().trim()  : '';
-        var status = statIdx  >= 0 && row[statIdx]  ? row[statIdx].toString().trim()  : '';
+        var type   = ti >= 0 && row[ti] ? row[ti].toString().trim() : '';
+        var status = si >= 0 && row[si] ? row[si].toString().trim() : '';
 
         if (!type) continue;
         if (expectedType && type !== expectedType) continue;
