@@ -1380,3 +1380,144 @@ function benchQuotesSize() {
   Logger.log(result);
   return result;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// benchQuotesCache: 一覧キャッシュの 1回目/2回目速度計測
+// ─────────────────────────────────────────────────────────────────────────────
+function benchQuotesCache() {
+  var CHUNK_SIZE = 90000;
+  var TTL        = 600;
+  var out        = ['=== benchQuotesCache ===', '実行: ' + new Date().toISOString(), ''];
+
+  var ss = getSpreadsheet();
+
+  // キャッシュをクリアして 1回目（シート読み）を確実に発生させる
+  clearCacheChunks_(CORE_QUOTES_CACHE_INDEX, CORE_QUOTES_CACHE_PREFIX);
+  out.push('キャッシュクリア完了');
+  out.push('');
+
+  // ── 1回目: getCoreQuotesForFrontend 相当（auth なし）──────────────────────
+  out.push('--- getCoreQuotesForFrontend ---');
+  var t1s = Date.now();
+
+  var customers = coreQuoteReadTable(ss, 'CUSTOMERS', ['CUSTOMER_ID', 'CUSTOMER_NAME']);
+  var customerNameById = customers.rows.reduce(function(map, row) {
+    var id   = coreQuoteValue(row[customers.indexes.CUSTOMER_ID]);
+    var name = coreQuoteValue(row[customers.indexes.CUSTOMER_NAME]);
+    if (id) map[id] = name;
+    return map;
+  }, {});
+
+  var leads = coreQuoteReadTable(ss, 'LEADS', ['LEAD_ID', 'CUSTOMER_NAME']);
+  var customerNameByLeadId = leads.rows.reduce(function(map, row) {
+    var id   = coreQuoteValue(row[leads.indexes.LEAD_ID]);
+    var name = coreQuoteValue(row[leads.indexes.CUSTOMER_NAME]);
+    if (id) map[id] = name;
+    return map;
+  }, {});
+
+  var quotes = coreQuoteReadTable(ss, 'QUOTES', [
+    'QUOTE_ID', 'LEAD_ID', 'CUSTOMER_ID', 'ORDER_ID', 'STAFF_ID',
+    'ISSUED_DATE', 'EXPIRY_DATE', 'STATUS', 'CURRENCY', 'EXCHANGE_RATE',
+    'SUBTOTAL', 'SHIPPING_FEE', 'DISCOUNT', 'TOTAL_AMOUNT', 'TOTAL_AMOUNT_JPY',
+    'PDF_URL', 'NOTE', 'CREATED_AT', 'UPDATED_AT'
+  ]);
+
+  var rows = quotes.rows
+    .filter(function(row) { return coreQuoteValue(row[quotes.indexes.QUOTE_ID]); })
+    .map(function(row) {
+      var record = coreQuoteBuildRecord(row, quotes.indexes);
+      var customerName =
+        (record.customerId && customerNameById[record.customerId]) ||
+        (record.leadId     && customerNameByLeadId[record.leadId]) ||
+        '';
+      return Object.assign({}, record, { customerName: customerName });
+    });
+
+  writeCacheChunks_(CORE_QUOTES_CACHE_INDEX, CORE_QUOTES_CACHE_PREFIX, rows, TTL, CHUNK_SIZE);
+  var t1ms = Date.now() - t1s;
+  out.push('  1回目 (シート読み+キャッシュ書き): ' + t1ms + 'ms  (' + rows.length + '件)');
+
+  // ── 2回目: キャッシュ読み ──────────────────────────────────────────────────
+  var t2s    = Date.now();
+  var cached = readCacheChunks_(CORE_QUOTES_CACHE_INDEX, CORE_QUOTES_CACHE_PREFIX);
+  var t2ms   = Date.now() - t2s;
+  out.push('  2回目 (キャッシュ読み): ' + t2ms + 'ms  ' + (cached !== null ? 'HIT (' + cached.length + '件)' : 'MISS'));
+  out.push('');
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// benchQuotesCacheInvalidation: 書き込み後にキャッシュが削除されることを検証
+// QUOTES シートの NOTE 列を直接書き換え → withSheetWrite_ でキャッシュ削除 → 確認
+// ─────────────────────────────────────────────────────────────────────────────
+function benchQuotesCacheInvalidation() {
+  var out = ['=== benchQuotesCacheInvalidation ===', '実行: ' + new Date().toISOString(), ''];
+
+  var ss = getSpreadsheet();
+
+  // Step1: キャッシュにダミーデータを書き込む
+  var dummyRows = [{ quoteId: 'DUMMY', note: 'before-update' }];
+  writeCacheChunks_(CORE_QUOTES_CACHE_INDEX, CORE_QUOTES_CACHE_PREFIX, dummyRows, 600, 90000);
+  var beforeCache = readCacheChunks_(CORE_QUOTES_CACHE_INDEX, CORE_QUOTES_CACHE_PREFIX);
+  out.push('Step1: ダミーキャッシュ書き込み → ' + (beforeCache !== null ? 'OK (before-update: ' + beforeCache[0].note + ')' : 'FAIL'));
+
+  // Step2: QUOTES シートの最初の行を取得して NOTE を書き換え（withSheetWrite_ で包む）
+  var writeResult = null;
+  var writeError  = null;
+
+  try {
+    writeResult = withSheetWrite_(
+      { useLock: false, cacheTargets: CORE_QUOTES_CACHE_TARGETS },
+      function() {
+        var ref = validateCoreSchemaV1TableForWrite(ss, 'QUOTES');
+        var quoteSheet = ref.sheet;
+        var quoteHI    = ref.headerIndexes;
+
+        var lastRow = quoteSheet.getLastRow();
+        if (lastRow < 2) return { success: true, skipped: true };
+
+        // 1件目の NOTE 列を書き換える
+        var noteHeader = getCoreSchemaV1HeaderName('QUOTES', 'NOTE');
+        var noteColIdx = quoteHI[noteHeader];
+        if (!noteColIdx) return { success: true, skipped: true };
+
+        var originalNote = quoteSheet.getRange(2, noteColIdx).getValue();
+        var newNote = 'bench-' + new Date().getTime();
+        quoteSheet.getRange(2, noteColIdx).setValue(newNote);
+
+        return { success: true, quoteId: quoteSheet.getRange(2, 1).getValue(), originalNote: String(originalNote), newNote: newNote };
+      }
+    );
+  } catch(e) {
+    writeError = e.message;
+  }
+
+  if (writeError) {
+    out.push('Step2: 書き込み FAIL: ' + writeError);
+  } else {
+    out.push('Step2: 書き込み OK → quoteId: ' + writeResult.quoteId + ' / note: ' + writeResult.originalNote + ' → ' + writeResult.newNote);
+  }
+
+  // Step3: キャッシュが削除されていることを確認
+  var afterCache = readCacheChunks_(CORE_QUOTES_CACHE_INDEX, CORE_QUOTES_CACHE_PREFIX);
+  out.push('Step3: キャッシュ確認 → ' + (afterCache === null ? 'MISS（削除済み）✅' : 'HIT（削除されていない）❌'));
+
+  // Step4: シートを読み直し、NOTE が変更されていることを確認
+  if (!writeResult || writeResult.skipped) {
+    out.push('Step4: スキップ（書き込みデータなし）');
+  } else {
+    var verifyQuotes = coreQuoteReadTable(ss, 'QUOTES', ['QUOTE_ID', 'NOTE']);
+    var firstRow = verifyQuotes.rows[0];
+    var actualNote = firstRow ? coreQuoteValue(firstRow[verifyQuotes.indexes.NOTE]) : '(no rows)';
+    var match = actualNote === writeResult.newNote;
+    out.push('Step4: シート再読み → NOTE = ' + actualNote + (match ? '  ✅ 一致' : '  ❌ 不一致（期待: ' + writeResult.newNote + '）'));
+  }
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
