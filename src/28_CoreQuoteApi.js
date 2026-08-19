@@ -101,7 +101,7 @@ function getCoreQuoteForFrontend(sessionId, quoteId) {
 
   const linesData = coreQuoteReadTable(ss, 'QUOTE_LINES', [
     'QUOTE_LINE_ID', 'QUOTE_ID', 'LINE_NO', 'PRODUCT_ID', 'PRODUCT_NAME',
-    'DESCRIPTION', 'QUANTITY', 'UNIT_PRICE', 'AMOUNT', 'NOTE'
+    'DESCRIPTION', 'CONDITION', 'WEIGHT', 'QUANTITY', 'UNIT_PRICE', 'AMOUNT', 'NOTE'
   ]);
   const matchedLines = linesData.rows
     .filter(function(row) {
@@ -115,6 +115,8 @@ function getCoreQuoteForFrontend(sessionId, quoteId) {
         productId:    coreQuoteValue(row[linesData.indexes.PRODUCT_ID]),
         productName:  coreQuoteValue(row[linesData.indexes.PRODUCT_NAME]),
         description:  coreQuoteValue(row[linesData.indexes.DESCRIPTION]),
+        condition:    coreQuoteValue(row[linesData.indexes.CONDITION]),
+        weight:       coreQuoteNumber(row[linesData.indexes.WEIGHT]),
         quantity:     coreQuoteNumber(row[linesData.indexes.QUANTITY]),
         unitPrice:    coreQuoteNumber(row[linesData.indexes.UNIT_PRICE]),
         amount:       coreQuoteNumber(row[linesData.indexes.AMOUNT]),
@@ -486,6 +488,9 @@ function coreQuoteWriteLines(sheet, headerIndexes, quoteId, lines) {
     const amount  = qty * price;
     const lastCol = sheet.getLastColumn();
     const rowData = new Array(lastCol).fill('');
+    var condition = String(line.condition || '').trim();
+    var unitWeightGrams = calculateQuoteLineWeight_(String(line.productId || '').trim(), condition);
+    var weight = unitWeightGrams * qty;
     var fieldMap = {
       QUOTE_LINE_ID: lineId,
       QUOTE_ID:      quoteId,
@@ -493,6 +498,8 @@ function coreQuoteWriteLines(sheet, headerIndexes, quoteId, lines) {
       PRODUCT_ID:    String(line.productId   || '').trim(),
       PRODUCT_NAME:  String(line.productName || '').trim(),
       DESCRIPTION:   String(line.description || '').trim(),
+      CONDITION:     condition,
+      WEIGHT:        weight,
       QUANTITY:      qty,
       UNIT_PRICE:    price,
       AMOUNT:        amount,
@@ -634,6 +641,41 @@ function migrateCoreQuoteSentToIssued() {
   } finally {
     lock.releaseLock();
   }
+}
+
+// ─── 重量計算 ──────────────────────────────────────────────────────────────────
+
+/**
+ * 商品マスタ同期シートから1個あたりの重量（グラム）を取得する。
+ * - condition が 'Case' → Case重量を返す
+ * - それ以外         → Box重量を返す
+ * - productId が空 / 重量データ取得不可 → 0 を返す
+ *
+ * @param {string} productId
+ * @param {string} condition
+ * @returns {number}
+ */
+function calculateQuoteLineWeight_(productId, condition) {
+  if (!productId) return 0;
+  var CONDITION_CASE = CORE_SCHEMA_V1_TABLES['SHARED_INVENTORY'].values.CONDITION.CASE;
+  var prodSchema = CORE_SCHEMA_V1_TABLES['PRODUCTS'];
+  var ss = getSpreadsheet();
+  var prodSheet = ss.getSheetByName(prodSchema.sheetName);
+  if (!prodSheet || prodSheet.getLastRow() <= 1) return 0;
+  var prodData = prodSheet.getDataRange().getValues();
+  var prodH = prodData[0].map(String);
+  var pidIdx  = prodH.indexOf(prodSchema.headers['PRODUCT_ID']);
+  var boxIdx  = prodH.indexOf(prodSchema.headers['BOX_WEIGHT']);
+  var caseIdx = prodH.indexOf(prodSchema.headers['CASE_WEIGHT']);
+  if (pidIdx < 0 || boxIdx < 0 || caseIdx < 0) return 0;
+  for (var i = 1; i < prodData.length; i++) {
+    var pid = String(prodData[i][pidIdx] != null ? prodData[i][pidIdx] : '').trim();
+    if (pid !== productId) continue;
+    return (condition === CONDITION_CASE)
+      ? (Number(prodData[i][caseIdx]) || 0)
+      : (Number(prodData[i][boxIdx])  || 0);
+  }
+  return 0;
 }
 
 // ─── 在庫数検証 ────────────────────────────────────────────────────────────────
