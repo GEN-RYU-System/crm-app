@@ -185,7 +185,7 @@ export function getCoreCustomer(customerId: string): Promise<CustomerAggregateDt
   });
 }
 
-export function getCoreStaff(): Promise<readonly StaffSummaryDto[]> {
+export function getCoreStaff(forceRefresh?: boolean): Promise<readonly StaffSummaryDto[]> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
 
@@ -199,7 +199,7 @@ export function getCoreStaff(): Promise<readonly StaffSummaryDto[]> {
         resolve(value as StaffSummaryDto[]);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .getCoreStaffForFrontend(getStoredSessionId());
+      .getCoreStaffForFrontend(getStoredSessionId(), forceRefresh === true);
   });
 }
 
@@ -407,7 +407,7 @@ export function getCoreQuoteDetail(quoteId: string): Promise<QuoteDetailRecord |
   });
 }
 
-export function getCoreOrders(): Promise<readonly OrderRecord[]> {
+export function getCoreOrders(forceRefresh?: boolean): Promise<readonly OrderRecord[]> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
 
@@ -418,7 +418,7 @@ export function getCoreOrders(): Promise<readonly OrderRecord[]> {
         resolve(value as OrderRecord[]);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .getCoreOrdersForFrontend(getStoredSessionId());
+      .getCoreOrdersForFrontend(getStoredSessionId(), forceRefresh === true);
   });
 }
 
