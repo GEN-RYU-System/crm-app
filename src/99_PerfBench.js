@@ -1310,3 +1310,73 @@ function benchOrdersStaffCache() {
   Logger.log(result);
   return result;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// benchQuotesSize: getCoreQuotesForFrontend の返却データ実測（3回実行）
+// auth bypass のため coreQuoteReadTable を直接呼ぶ
+// ─────────────────────────────────────────────────────────────────────────────
+function benchQuotesSize() {
+  var CHUNK_SIZE = 90000;
+  var out        = ['=== benchQuotesSize ===', '実行: ' + new Date().toISOString(), ''];
+
+  var ss = getSpreadsheet();
+
+  var totalMs = 0;
+  for (var run = 1; run <= 3; run++) {
+    var t0 = Date.now();
+
+    // getCoreQuotesForFrontend の実体（checkPermission なし）
+    var customers = coreQuoteReadTable(ss, 'CUSTOMERS', ['CUSTOMER_ID', 'CUSTOMER_NAME']);
+    var customerNameById = customers.rows.reduce(function(map, row) {
+      var id   = coreQuoteValue(row[customers.indexes.CUSTOMER_ID]);
+      var name = coreQuoteValue(row[customers.indexes.CUSTOMER_NAME]);
+      if (id) map[id] = name;
+      return map;
+    }, {});
+
+    var leads = coreQuoteReadTable(ss, 'LEADS', ['LEAD_ID', 'CUSTOMER_NAME']);
+    var customerNameByLeadId = leads.rows.reduce(function(map, row) {
+      var id   = coreQuoteValue(row[leads.indexes.LEAD_ID]);
+      var name = coreQuoteValue(row[leads.indexes.CUSTOMER_NAME]);
+      if (id) map[id] = name;
+      return map;
+    }, {});
+
+    var quotes = coreQuoteReadTable(ss, 'QUOTES', [
+      'QUOTE_ID', 'LEAD_ID', 'CUSTOMER_ID', 'ORDER_ID', 'STAFF_ID',
+      'ISSUED_DATE', 'EXPIRY_DATE', 'STATUS', 'CURRENCY', 'EXCHANGE_RATE',
+      'SUBTOTAL', 'SHIPPING_FEE', 'DISCOUNT', 'TOTAL_AMOUNT', 'TOTAL_AMOUNT_JPY',
+      'PDF_URL', 'NOTE', 'CREATED_AT', 'UPDATED_AT'
+    ]);
+
+    var rows = quotes.rows
+      .filter(function(row) { return coreQuoteValue(row[quotes.indexes.QUOTE_ID]); })
+      .map(function(row) {
+        var record = coreQuoteBuildRecord(row, quotes.indexes);
+        var customerName =
+          (record.customerId && customerNameById[record.customerId]) ||
+          (record.leadId     && customerNameByLeadId[record.leadId]) ||
+          '';
+        return Object.assign({}, record, { customerName: customerName });
+      });
+
+    var elapsed = Date.now() - t0;
+    totalMs += elapsed;
+
+    var json       = JSON.stringify(rows);
+    var chunkCount = Math.ceil(json.length / CHUNK_SIZE);
+
+    out.push('--- run ' + run + ' ---');
+    out.push('  所要時間: ' + elapsed + ' ms');
+    out.push('  件数: ' + rows.length + '件');
+    out.push('  JSON文字数: ' + json.length + ' chars');
+    out.push('  チャンク数 (90,000 chars/chunk): ' + chunkCount);
+    out.push('');
+  }
+
+  out.push('平均: ' + Math.round(totalMs / 3) + ' ms');
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
