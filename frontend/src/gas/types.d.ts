@@ -26,8 +26,9 @@ interface GoogleScriptRun {
   getCoreQuoteForFrontend(sessionId: string | null, quoteId: string): void;
   getCoreOrdersForFrontend(sessionId: string | null): void;
   getCoreCurrenciesForFrontend(sessionId: string | null): void;
-  createCoreQuoteForFrontend(sessionId: string | null, quoteData: unknown): void;
-  updateCoreQuoteForFrontend(sessionId: string | null, quoteId: string, quoteData: unknown): void;
+  createCoreQuoteForFrontend(sessionId: string | null, quoteData: Record<string, unknown>, isDraft: boolean): void;
+  updateCoreQuoteForFrontend(sessionId: string | null, quoteId: string, quoteData: Record<string, unknown>, isDraft: boolean): void;
+  getLeadsForQuoteDropdown(sessionId: string | null): void;
 }
 
 interface Window {
