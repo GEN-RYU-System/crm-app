@@ -82,7 +82,7 @@ export function isValidDiscount(value: string): boolean {
   return /^\d+(\.\d+)?$/.test(half);
 }
 
-export function toQuotePayload(values: QuoteEditorValues, statusKey: 'DRAFT' | 'ISSUED'): QuotePayload {
+export function toQuotePayload(values: QuoteEditorValues): QuotePayload {
   const lines: QuoteLinePayload[] = values.lines.map((line, index) => ({
     lineNo: index + 1,
     productName: line.productName,
@@ -94,7 +94,6 @@ export function toQuotePayload(values: QuoteEditorValues, statusKey: 'DRAFT' | '
   const discountHalf = toHalfwidthDigits(values.discount);
   return {
     leadId: values.leadId,
-    status: statusKey,
     currency: values.currency,
     shippingFee: parseNumber(values.shippingFee),
     discount: parseNumber(discountHalf),

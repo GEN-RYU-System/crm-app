@@ -83,9 +83,10 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
     setSavingState(statusKey === 'DRAFT' ? 'draft' : 'issued');
     setSaveError('');
     try {
-      const payload = toQuotePayload(values, statusKey);
-      if (mode === 'create') await createCoreQuote(payload);
-      else await updateCoreQuote(targetQuoteId!, payload);
+      const isDraft = statusKey === 'DRAFT';
+      const payload = toQuotePayload(values);
+      if (mode === 'create') await createCoreQuote(payload, isDraft);
+      else await updateCoreQuote(targetQuoteId!, payload, isDraft);
       navigate(QUOTE_EDITOR_PATHS.list);
     } catch (cause) {
       setSaveError(cause instanceof Error ? cause.message : quotesCopy.editor.saveErrorPrefix);
