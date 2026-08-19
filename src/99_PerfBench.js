@@ -859,3 +859,67 @@ function benchCustomerCache() {
   Logger.log(result);
   return result;
 }
+
+/**
+ * 【計測用 / 認証なし / 書き込みなし】
+ * getLeadsByType の3タブ分（全件 / インバウンド / アウトバウンド）を計測する。
+ *
+ * フロントエンドの呼び出しパターン:
+ *   - 'all' タブ   → getLeadsByType(sessionId, undefined)  ← leadType が undefined
+ *   - 'インバウンド' → getLeadsByType(sessionId, 'インバウンド')
+ *   - 'アウトバウンド'→ getLeadsByType(sessionId, 'アウトバウンド')
+ *
+ * 各タブで:
+ *   - 件数 / JSON文字数 / 90,000文字チャンク分割数
+ *   - 3回計測 → 各回と平均
+ *
+ * 使い方: clasp run benchLeadsByType
+ */
+function benchLeadsByType() {
+  var RUNS       = 3;
+  var CHUNK_SIZE = 90000;
+  var out        = ['=== benchLeadsByType ===', '実行: ' + new Date().toISOString(), ''];
+
+  var targets = [
+    { label: '全件 (leadType=undefined)', leadType: undefined },
+    { label: 'インバウンド',              leadType: 'インバウンド' },
+    { label: 'アウトバウンド',            leadType: 'アウトバウンド' }
+  ];
+
+  for (var t = 0; t < targets.length; t++) {
+    var label    = targets[t].label;
+    var leadType = targets[t].leadType;
+
+    out.push('--- ' + label + ' ---');
+
+    var times    = [];
+    var lastRows = null;
+
+    for (var run = 0; run < RUNS; run++) {
+      var t0   = Date.now();
+      var rows = getLeads('lead', leadType);
+      var ms   = Date.now() - t0;
+      times.push(ms);
+      lastRows = rows;
+      out.push('  試行 ' + (run + 1) + ': ' + ms + 'ms');
+    }
+
+    var sum = 0;
+    for (var i = 0; i < times.length; i++) sum += times[i];
+    var avg = Math.round(sum / RUNS);
+
+    var jsonStr    = lastRows ? JSON.stringify(lastRows) : '[]';
+    var charCount  = jsonStr.length;
+    var chunkCount = Math.ceil(charCount / CHUNK_SIZE);
+
+    out.push('  平均: ' + avg + 'ms');
+    out.push('  件数: ' + (lastRows ? lastRows.length : 0) + '件');
+    out.push('  JSON文字数: ' + charCount + ' chars');
+    out.push('  チャンク数 (90,000 chars/チャンク): ' + chunkCount);
+    out.push('');
+  }
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
