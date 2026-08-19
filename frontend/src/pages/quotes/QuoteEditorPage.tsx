@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, EmptyState, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField } from '../../components/ui';
 import { quotesCopy } from '../../content/ja';
-import { createCoreQuote, getCoreQuoteDetail, getCoreCurrencies, getLeadOptionsForFrontend, updateCoreQuote, type CurrencyRecord, type LeadOption } from '../../gas/client';
+import { createCoreQuote, getCoreQuoteDetail, getCoreCurrencies, getInventoryConditions, getInventoryProductOptions, getLeadOptionsForFrontend, updateCoreQuote, type CurrencyRecord, type InventoryConditionOption, type InventoryProductOption, type LeadOption } from '../../gas/client';
 import { emptyLineValues, emptyQuoteEditorValues, isValidDiscount, QUOTE_EDITOR_PATHS, toHalfwidthDigits, toQuoteEditorValues, toQuotePayload, type QuoteEditorValues, type QuoteLineEditorValues } from './quoteEditorConfig';
 import { LeadCombobox } from './LeadCombobox';
+import { ProductCombobox } from './ProductCombobox';
 import './QuoteEditorPage.css';
 
 type Props = { mode: 'create' | 'detail'; canEdit: boolean };
@@ -22,6 +23,10 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
   const [savingState, setSavingState] = useState<SavingState>('idle');
   const [currencies, setCurrencies] = useState<CurrencyRecord[]>([]);
   const [leads, setLeads] = useState<LeadOption[]>([]);
+  const [inventoryProducts, setInventoryProducts] = useState<InventoryProductOption[]>([]);
+  const [conditionsMap, setConditionsMap] = useState<Map<string, InventoryConditionOption[]>>(new Map());
+  const [lineErrors, setLineErrors] = useState<Map<number, string>>(new Map());
+  const [inventoryError, setInventoryError] = useState('');
 
   useEffect(() => {
     setMasterState('loading');
@@ -32,6 +37,12 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
         setMasterState('ready');
       })
       .catch(() => setMasterState('error'));
+  }, []);
+
+  useEffect(() => {
+    void getInventoryProductOptions()
+      .then((products) => setInventoryProducts([...products]))
+      .catch(() => setInventoryError(quotesCopy.editor.inventoryLoadError));
   }, []);
 
   useEffect(() => {
@@ -58,7 +69,7 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
     updateValue('discount', half);
   };
 
-  const updateLine = (index: number, key: keyof QuoteLineEditorValues, value: string) =>
+  const updateLine = (index: number, key: keyof QuoteLineEditorValues, value: string | number) =>
     setValues((prev) => ({
       ...prev,
       lines: prev.lines.map((line, i) => i === index ? { ...line, [key]: value } : line)
@@ -67,12 +78,100 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
   const addLine = () =>
     setValues((prev) => ({ ...prev, lines: [...prev.lines, emptyLineValues()] }));
 
-  const removeLine = (index: number) =>
+  const removeLine = (index: number) => {
     setValues((prev) => ({ ...prev, lines: prev.lines.filter((_, i) => i !== index) }));
+    setLineErrors((prev) => {
+      const m = new Map<number, string>();
+      prev.forEach((v, k) => { if (k < index) m.set(k, v); else if (k > index) m.set(k - 1, v); });
+      return m;
+    });
+  };
+
+  const handleProductSelect = (index: number, productId: string, productName: string) => {
+    setValues((prev) => ({
+      ...prev,
+      lines: prev.lines.map((line, i) =>
+        i === index
+          ? { ...line, productId, productName, condition: '', unitPrice: '', unitWeight: 0 }
+          : line
+      )
+    }));
+    setLineErrors((prev) => { const m = new Map(prev); m.delete(index); return m; });
+
+    if (!productId) return;
+    if (!conditionsMap.has(productId)) {
+      void getInventoryConditions(productId).then((conditions) => {
+        setConditionsMap((prev) => new Map(prev).set(productId, [...conditions]));
+      });
+    }
+  };
+
+  const handleConditionSelect = (index: number, condition: string) => {
+    setValues((prev) => {
+      const line = prev.lines[index];
+      if (!line) return prev;
+      const conditions = conditionsMap.get(line.productId) ?? [];
+      const found = conditions.find((c) => c.condition === condition);
+      return {
+        ...prev,
+        lines: prev.lines.map((l, i) =>
+          i === index
+            ? {
+                ...l,
+                condition,
+                unitPrice: found ? String(found.unitPrice) : l.unitPrice,
+                unitWeight: found ? found.unitWeight : 0
+              }
+            : l
+        )
+      };
+    });
+    setLineErrors((prev) => { const m = new Map(prev); m.delete(index); return m; });
+  };
+
+  const handleQuantityChange = (index: number, raw: string) => {
+    const half = toHalfwidthDigits(raw);
+    const line = values.lines[index];
+    if (line) {
+      const conditions = conditionsMap.get(line.productId) ?? [];
+      const found = conditions.find((c) => c.condition === line.condition);
+      const qty = Number(half);
+      if (found && Number.isFinite(qty) && qty > found.quantity) {
+        setLineErrors((errs) => new Map(errs).set(index, quotesCopy.editor.validation.lineInventoryExceeded(found.quantity)));
+      } else {
+        setLineErrors((errs) => { const m = new Map(errs); m.delete(index); return m; });
+      }
+    }
+    setValues((prev) => ({
+      ...prev,
+      lines: prev.lines.map((l, i) => i === index ? { ...l, quantity: half } : l)
+    }));
+  };
+
+  const getConditionOptions = (line: QuoteLineEditorValues) => {
+    if (!line.productId) return [];
+    const conditions = conditionsMap.get(line.productId) ?? [];
+    return conditions.map((c) => ({
+      value: c.condition,
+      label: quotesCopy.editor.form.lineConditionOptionLabel(c.condition, c.quantity)
+    }));
+  };
+
+  const calcWeight = (line: QuoteLineEditorValues) => {
+    const qty = Number(toHalfwidthDigits(line.quantity));
+    return Number.isFinite(qty) ? Math.round(line.unitWeight * qty) : 0;
+  };
+
+  const calcAmount = (line: QuoteLineEditorValues) => {
+    const qty = Number(toHalfwidthDigits(line.quantity));
+    const price = Number(toHalfwidthDigits(line.unitPrice));
+    return Number.isFinite(qty) && Number.isFinite(price) ? qty * price : null;
+  };
 
   const validate = (): boolean => {
     if (!values.leadId.trim()) { setSaveError(quotesCopy.editor.validation.leadRequired); return false; }
     if (!isValidDiscount(values.discount)) { setSaveError(quotesCopy.editor.validation.discountInvalid); return false; }
+    if (lineErrors.size > 0) { setSaveError(quotesCopy.editor.validation.lineInventoryError); return false; }
     return true;
   };
 
@@ -161,6 +260,9 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
       {saveError && (
         <StatusMessage variant="error">{quotesCopy.editor.saveErrorPrefix} {saveError}</StatusMessage>
       )}
+      {inventoryError && (
+        <StatusMessage variant="error">{inventoryError}</StatusMessage>
+      )}
       {isLoading ? (
         <Card><Skeleton variant="list" rows={6} label={quotesCopy.detailLoading} /></Card>
       ) : (
@@ -220,30 +322,40 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
               )}
             </div>
             <div className="quote-editor-page__lines">
-              {values.lines.map((line, index) => (
-                <div key={index} className="quote-editor-page__line-row">
-                  <span className="quote-editor-page__line-no">{index + 1}</span>
-                  <div className="quote-editor-page__line-fields">
-                    <TextField
-                      label={quotesCopy.editor.form.lineProductName}
-                      value={line.productName}
-                      onChange={(e) => updateLine(index, 'productName', e.target.value)}
-                      width="md"
+              {values.lines.map((line, index) => {
+                const conditionOpts = getConditionOptions(line);
+                const weight = calcWeight(line);
+                const amount = calcAmount(line);
+                const lineError = lineErrors.get(index);
+                return (
+                  <div key={index} className="quote-editor-page__line-row">
+                    <span className="quote-editor-page__line-no">{index + 1}</span>
+                    <ProductCombobox
+                      products={inventoryProducts}
+                      value={line.productId}
+                      fallbackDisplayText={line.productName}
+                      onChange={(pid, pname) => handleProductSelect(index, pid, pname)}
+                      label={quotesCopy.editor.form.lineProduct}
+                      placeholder={quotesCopy.editor.form.lineProductPlaceholder}
+                      noResultsText={quotesCopy.editor.form.lineProductNoResults}
                       disabled={!editable}
                     />
-                    <TextField
-                      label={quotesCopy.editor.form.lineDescription}
-                      value={line.description}
-                      onChange={(e) => updateLine(index, 'description', e.target.value)}
-                      width="md"
-                      disabled={!editable}
+                    <Select
+                      label={quotesCopy.editor.form.lineCondition}
+                      options={conditionOpts}
+                      value={line.condition}
+                      onChange={(e) => handleConditionSelect(index, e.target.value)}
+                      width="sm"
+                      disabled={!editable || !line.productId}
+                      placeholder={quotesCopy.editor.form.lineConditionPlaceholder}
                     />
                     <TextField
                       label={quotesCopy.editor.form.lineQuantity}
                       value={line.quantity}
-                      onChange={(e) => updateLine(index, 'quantity', e.target.value)}
+                      onChange={(e) => handleQuantityChange(index, e.target.value)}
                       width="sm"
-                      disabled={!editable}
+                      disabled={!editable || !line.condition}
+                      error={lineError}
                     />
                     <TextField
                       label={quotesCopy.editor.form.lineUnitPrice}
@@ -252,21 +364,22 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
                       width="sm"
                       disabled={!editable}
                     />
-                    <TextField
-                      label={quotesCopy.editor.form.lineNote}
-                      value={line.note}
-                      onChange={(e) => updateLine(index, 'note', e.target.value)}
-                      width="md"
-                      disabled={!editable}
-                    />
+                    <div className="quote-editor-page__line-calc">
+                      <span className="quote-editor-page__line-calc-label">{quotesCopy.editor.form.lineAmount}</span>
+                      <span className="quote-editor-page__line-calc-value">{amount != null ? amount.toLocaleString() : '—'}</span>
+                    </div>
+                    <div className="quote-editor-page__line-calc">
+                      <span className="quote-editor-page__line-calc-label">{quotesCopy.editor.form.lineWeight}</span>
+                      <span className="quote-editor-page__line-calc-value">{weight > 0 ? `${weight}g` : '—'}</span>
+                    </div>
+                    {editable && (
+                      <Button variant="outline" size="sm" onClick={() => removeLine(index)}>
+                        {quotesCopy.editor.form.removeLine}
+                      </Button>
+                    )}
                   </div>
-                  {editable && (
-                    <Button variant="outline" size="sm" onClick={() => removeLine(index)}>
-                      {quotesCopy.editor.form.removeLine}
-                    </Button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Card>
         </>

@@ -2,10 +2,13 @@ import { NAVIGATION_BY_ID } from '../../app/navigation';
 import type { QuoteDetailRecord, QuoteLinePayload, QuoteLineRecord, QuotePayload } from '../../gas/client';
 
 export type QuoteLineEditorValues = {
+  productId: string;
   productName: string;
-  description: string;
+  condition: string;
   quantity: string;
   unitPrice: string;
+  unitWeight: number;
+  description: string;
   note: string;
 };
 
@@ -31,7 +34,7 @@ export const QUOTE_EDITOR_SEGMENTS = {
 } as const;
 
 export function emptyLineValues(): QuoteLineEditorValues {
-  return { productName: '', description: '', quantity: '', unitPrice: '', note: '' };
+  return { productId: '', productName: '', condition: '', quantity: '', unitPrice: '', unitWeight: 0, description: '', note: '' };
 }
 
 export function emptyQuoteEditorValues(): QuoteEditorValues {
@@ -43,10 +46,13 @@ export function emptyQuoteEditorValues(): QuoteEditorValues {
 
 function toLineEditorValues(line: QuoteLineRecord): QuoteLineEditorValues {
   return {
+    productId: line.productId ?? '',
     productName: line.productName ?? '',
-    description: line.description ?? '',
+    condition: '',
     quantity: line.quantity == null ? '' : String(line.quantity),
     unitPrice: line.unitPrice == null ? '' : String(line.unitPrice),
+    unitWeight: 0,
+    description: line.description ?? '',
     note: line.note ?? ''
   };
 }
@@ -85,8 +91,10 @@ export function isValidDiscount(value: string): boolean {
 export function toQuotePayload(values: QuoteEditorValues): QuotePayload {
   const lines: QuoteLinePayload[] = values.lines.map((line, index) => ({
     lineNo: index + 1,
+    productId: line.productId || undefined,
     productName: line.productName,
     description: line.description,
+    condition: line.condition || undefined,
     quantity: parseNumber(line.quantity),
     unitPrice: parseNumber(line.unitPrice),
     note: line.note

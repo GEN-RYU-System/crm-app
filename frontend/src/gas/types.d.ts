@@ -29,6 +29,8 @@ interface GoogleScriptRun {
   getLeadOptionsForFrontend(sessionId: string | null): void;
   createCoreQuoteForFrontend(sessionId: string | null, quoteData: unknown, isDraft: boolean): void;
   updateCoreQuoteForFrontend(sessionId: string | null, quoteId: string, quoteData: unknown, isDraft: boolean): void;
+  getInventoryProductOptions(sessionId: string | null): void;
+  getInventoryConditions(sessionId: string | null, productId: string): void;
 }
 
 interface Window {
