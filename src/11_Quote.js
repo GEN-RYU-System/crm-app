@@ -331,33 +331,12 @@ function updateQuote(quoteId, updates) {
       const newStatus = updates['ステータス'];
       const validStatuses = [
         CONFIG.QUOTE_STATUS.DRAFT,
-        CONFIG.QUOTE_STATUS.SENT,
-        CONFIG.QUOTE_STATUS.APPROVED,
-        CONFIG.QUOTE_STATUS.REJECTED,
+        CONFIG.QUOTE_STATUS.ISSUED,
         CONFIG.QUOTE_STATUS.EXPIRED
       ];
 
       if (!validStatuses.includes(newStatus)) {
         throw new Error('無効なステータスです: ' + newStatus);
-      }
-
-      // ステータス遷移チェック
-      if (currentStatus === CONFIG.QUOTE_STATUS.APPROVED && newStatus !== CONFIG.QUOTE_STATUS.APPROVED) {
-        throw new Error('承認済みの見積書は変更できません');
-      }
-
-      if (currentStatus === CONFIG.QUOTE_STATUS.REJECTED && newStatus !== CONFIG.QUOTE_STATUS.REJECTED) {
-        Logger.log('警告: 却下済みの見積書のステータスを変更します');
-      }
-
-      // 送付日を自動設定
-      if (newStatus === CONFIG.QUOTE_STATUS.SENT && !updates['送付日']) {
-        updates['送付日'] = new Date();
-      }
-
-      // 承認日を自動設定
-      if (newStatus === CONFIG.QUOTE_STATUS.APPROVED && !updates['承認日']) {
-        updates['承認日'] = new Date();
       }
     }
 
@@ -651,7 +630,7 @@ function testGetQuote() {
 function testUpdateQuote() {
   const quoteId = 'QT-00001';
   const updates = {
-    'ステータス': CONFIG.QUOTE_STATUS.SENT,
+    'ステータス': CONFIG.QUOTE_STATUS.ISSUED,
     'メモ': 'テスト更新'
   };
   const result = updateQuote(quoteId, updates);
