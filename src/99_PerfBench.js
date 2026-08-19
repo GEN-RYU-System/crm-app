@@ -677,16 +677,16 @@ function benchInventoryCache() {
   var out = ['=== benchInventoryCache ===', '実行: ' + new Date().toISOString(), ''];
 
   // ── 0. キャッシュクリア ───────────────────────────────────────
-  CacheService.getScriptCache().remove(SHARED_INVENTORY_CACHE_INDEX);
-  out.push('キャッシュクリア: SHARED_INVENTORY_CACHE_INDEX を削除');
+  clearCacheChunks_(SHARED_INVENTORY_CACHE_INDEX, SHARED_INVENTORY_CACHE_PREFIX);
+  out.push('キャッシュクリア: ' + SHARED_INVENTORY_CACHE_INDEX + ' を削除');
   out.push('');
 
   // ── 1回目: キャッシュミス → シート読み出し + キャッシュ書き込み ─
   var t0   = Date.now();
-  var hit1 = readSharedInventoryFromCache_();
+  var hit1 = readCacheChunks_(SHARED_INVENTORY_CACHE_INDEX, SHARED_INVENTORY_CACHE_PREFIX);
   if (hit1 === null) {
     var rows = buildSharedInventoryRows_(ss);
-    writeSharedInventoryToCache_(rows);
+    writeCacheChunks_(SHARED_INVENTORY_CACHE_INDEX, SHARED_INVENTORY_CACHE_PREFIX, rows, SHARED_INVENTORY_CACHE_TTL, SHARED_INVENTORY_CACHE_CHUNK_SIZE);
   }
   var ms1 = Date.now() - t0;
   out.push('1回目 (キャッシュミス → シート読み + キャッシュ書き込み)');
@@ -696,7 +696,7 @@ function benchInventoryCache() {
 
   // ── 2回目: キャッシュヒット ─────────────────────────────────
   var t1   = Date.now();
-  var hit2 = readSharedInventoryFromCache_();
+  var hit2 = readCacheChunks_(SHARED_INVENTORY_CACHE_INDEX, SHARED_INVENTORY_CACHE_PREFIX);
   var ms2  = Date.now() - t1;
   out.push('2回目 (キャッシュヒット)');
   out.push('  キャッシュヒット確認: ' + (Array.isArray(hit2) ? 'OK（' + hit2.length + '件）' : 'NG（null）'));
@@ -705,7 +705,7 @@ function benchInventoryCache() {
 
   // ── 3回目: キャッシュヒット ─────────────────────────────────
   var t2   = Date.now();
-  var hit3 = readSharedInventoryFromCache_();
+  var hit3 = readCacheChunks_(SHARED_INVENTORY_CACHE_INDEX, SHARED_INVENTORY_CACHE_PREFIX);
   var ms3  = Date.now() - t2;
   out.push('3回目 (キャッシュヒット)');
   out.push('  キャッシュヒット確認: ' + (Array.isArray(hit3) ? 'OK（' + hit3.length + '件）' : 'NG（null）'));
@@ -815,15 +815,15 @@ function benchCustomerCache() {
   var ss  = getSpreadsheet();
   var out = ['=== benchCustomerCache ===', '実行: ' + new Date().toISOString(), ''];
 
-  CacheService.getScriptCache().remove(CUSTOMER_LIST_CACHE_INDEX);
-  out.push('キャッシュクリア: CUSTOMER_LIST_CACHE_INDEX を削除');
+  clearCacheChunks_(CUSTOMER_LIST_CACHE_INDEX, CUSTOMER_LIST_CACHE_PREFIX);
+  out.push('キャッシュクリア: ' + CUSTOMER_LIST_CACHE_INDEX + ' を削除');
   out.push('');
 
   var t0   = Date.now();
-  var hit1 = readCustomerListFromCache_();
+  var hit1 = readCacheChunks_(CUSTOMER_LIST_CACHE_INDEX, CUSTOMER_LIST_CACHE_PREFIX);
   if (hit1 === null) {
     var rows = buildCoreCustomerListRows_(ss);
-    writeCustomerListToCache_(rows);
+    writeCacheChunks_(CUSTOMER_LIST_CACHE_INDEX, CUSTOMER_LIST_CACHE_PREFIX, rows, CUSTOMER_LIST_CACHE_TTL, CUSTOMER_LIST_CACHE_CHUNK_SIZE);
   }
   var ms1 = Date.now() - t0;
   out.push('1回目 (キャッシュミス → シート読み + キャッシュ書き込み)');
@@ -832,7 +832,7 @@ function benchCustomerCache() {
   out.push('');
 
   var t1   = Date.now();
-  var hit2 = readCustomerListFromCache_();
+  var hit2 = readCacheChunks_(CUSTOMER_LIST_CACHE_INDEX, CUSTOMER_LIST_CACHE_PREFIX);
   var ms2  = Date.now() - t1;
   out.push('2回目 (キャッシュヒット)');
   out.push('  キャッシュヒット確認: ' + (Array.isArray(hit2) ? 'OK（' + hit2.length + '件）' : 'NG（null）'));
@@ -840,7 +840,7 @@ function benchCustomerCache() {
   out.push('');
 
   var t2   = Date.now();
-  var hit3 = readCustomerListFromCache_();
+  var hit3 = readCacheChunks_(CUSTOMER_LIST_CACHE_INDEX, CUSTOMER_LIST_CACHE_PREFIX);
   var ms3  = Date.now() - t2;
   out.push('3回目 (キャッシュヒット)');
   out.push('  キャッシュヒット確認: ' + (Array.isArray(hit3) ? 'OK（' + hit3.length + '件）' : 'NG（null）'));
