@@ -1007,3 +1007,36 @@ function checkProgressStatusColumn() {
   Logger.log(result);
   return result;
 }
+
+/**
+ * 【読み取り専用 / DEV専用】送料計算マスタ4シートの列構成を調査する
+ * - gid / 行数 / 列数 / ヘッダー行番号 / 全列ヘッダー名（col番号付き）/ 各列の空欄件数
+ * シートデータの値は出力しない（ヘッダー名・件数のみ）
+ */
+function auditShippingMasterSheets() {
+  var ss = getSpreadsheet();
+  var out = [];
+
+  var sheetTargets = [
+    { label: '地帯表',     sheetName: CONFIG.SHEETS.ZONES_SYNC },
+    { label: 'FedEx送料',  sheetName: CONFIG.SHEETS.FEDEX_RATES_SYNC },
+    { label: 'DHL送料',    sheetName: CONFIG.SHEETS.DHL_RATES_SYNC },
+    { label: 'UPS送料',    sheetName: CONFIG.SHEETS.UPS_RATES_SYNC }
+  ];
+
+  sheetTargets.forEach(function(t, i) {
+    out.push('=== ' + (i + 1) + '. ' + t.label + ' (' + t.sheetName + ') ===');
+    var sheet = ss.getSheetByName(t.sheetName);
+    if (!sheet) {
+      out.push('[NOT FOUND] ' + t.sheetName);
+    } else {
+      var sheetOut = auditSheetColumnsForClasp(sheet);
+      sheetOut.forEach(function(line) { out.push(line); });
+    }
+    out.push('');
+  });
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
