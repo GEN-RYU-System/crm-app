@@ -4,6 +4,7 @@ import {
   Badge,
   Button,
   Card,
+  Combobox,
   ConversationWorkspace,
   DataTable,
   EmptyState,
@@ -36,6 +37,11 @@ export function ComponentCatalogPage() {
     { value: "two", label: catalogCopy.optionTwo },
     { value: "disabled", label: catalogCopy.disabledOption, disabled: true },
   ];
+  const comboboxItems = [
+    { id: "a", label: catalogCopy.optionOne },
+    { id: "b", label: catalogCopy.optionTwo },
+  ];
+  const [comboboxValue, setComboboxValue] = useState("");
   const tabItems = [
     {
       key: "active",
@@ -288,6 +294,19 @@ export function ComponentCatalogPage() {
               label={catalogCopy.skeletonLabel}
             />
           </div>
+        </Card>
+        <Card>
+          <h2 className="catalog-page__heading">{catalogCopy.combobox}</h2>
+          <Combobox
+            items={comboboxItems}
+            getKey={(item) => item.id}
+            getLabel={(item) => item.label}
+            onSelect={(item) => setComboboxValue(item ? item.id : "")}
+            value={comboboxValue}
+            label={catalogCopy.comboboxLabel}
+            placeholder={catalogCopy.comboboxPlaceholder}
+            noResultsText={catalogCopy.comboboxNoResults}
+          />
         </Card>
         <Card>
           <h2 className="catalog-page__heading">{catalogCopy.formField}</h2>
