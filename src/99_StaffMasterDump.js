@@ -1060,3 +1060,35 @@ function auditShippingMasterSheets() {
   Logger.log(result);
   return result;
 }
+
+/**
+ * 【読み取り専用 / DEV専用】DEV環境の送料マスタ4シートの列構成を調査する
+ * シート名: 地帯表 / FedEx送料 / DHL送料 / UPS送料
+ * - gid / 行数 / 列数 / ヘッダー行番号 / 全列ヘッダー名（col番号付き）/ 各列の空欄件数
+ * データ値は出力しない（ヘッダー名・件数のみ）
+ */
+function auditDevShippingSheets() {
+  var ss = getSpreadsheet();
+  var out = [];
+
+  out.push('スプレッドシート名: ' + ss.getName());
+  out.push('');
+
+  var sheetNames = ['地帯表', 'FedEx送料', 'DHL送料', 'UPS送料'];
+
+  sheetNames.forEach(function(sheetName, i) {
+    out.push('=== ' + (i + 1) + '. ' + sheetName + ' ===');
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      out.push('[NOT FOUND] ' + sheetName);
+    } else {
+      var sheetOut = auditSheetColumnsForClasp(sheet);
+      sheetOut.forEach(function(line) { out.push(line); });
+    }
+    out.push('');
+  });
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
