@@ -19,5 +19,5 @@ export type SharedInventoryDto = {
 };
 
 export type InventoryRepository = {
-  listSharedInventory: () => Promise<readonly SharedInventoryDto[]>;
+  listSharedInventory: (forceRefresh?: boolean) => Promise<readonly SharedInventoryDto[]>;
 };
