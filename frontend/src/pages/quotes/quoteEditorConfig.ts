@@ -48,7 +48,7 @@ function toLineEditorValues(line: QuoteLineRecord): QuoteLineEditorValues {
   return {
     productId: line.productId ?? '',
     productName: line.productName ?? '',
-    condition: '',
+    condition: line.condition ?? '',
     quantity: line.quantity == null ? '' : String(line.quantity),
     unitPrice: line.unitPrice == null ? '' : String(line.unitPrice),
     unitWeight: 0,
