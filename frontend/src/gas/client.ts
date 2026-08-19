@@ -455,10 +455,6 @@ export type QuoteLinePayload = {
 
 export type QuotePayload = {
   leadId: string;
-  customerId: string;
-  staffId: string;
-  issuedDate: string;
-  expiryDate: string;
   status: string;
   currency: string;
   shippingFee: number | null;
