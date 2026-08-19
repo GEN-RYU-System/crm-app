@@ -429,6 +429,23 @@ export type CurrencyRecord = {
   rateToJpy: number | null;
 };
 
+export type LeadOption = { leadId: string; customerName: string };
+
+export function getLeadOptionsForFrontend(): Promise<readonly LeadOption[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (!Array.isArray(value)) { reject(new Error(errorCopy.communication)); return; }
+        resolve(value as LeadOption[]);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getLeadOptionsForFrontend(getStoredSessionId());
+  });
+}
+
 export function getCoreCurrencies(): Promise<readonly CurrencyRecord[]> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
