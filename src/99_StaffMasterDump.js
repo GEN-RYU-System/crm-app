@@ -1082,8 +1082,30 @@ function auditDevShippingSheets() {
     if (!sheet) {
       out.push('[NOT FOUND] ' + sheetName);
     } else {
-      var sheetOut = auditSheetColumnsForClasp(sheet);
-      sheetOut.forEach(function(line) { out.push(line); });
+      var gid = sheet.getSheetId();
+      var lastRow = sheet.getLastRow();
+      var lastCol = sheet.getLastColumn();
+      out.push('gid=' + gid + ' / ' + lastRow + '行 x ' + lastCol + '列 / ヘッダー行: 1行目');
+      if (lastCol >= 1) {
+        var headers = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+        var dataRowCount = Math.max(lastRow - 1, 0);
+        var emptyCounts = new Array(lastCol).fill(0);
+        if (dataRowCount > 0) {
+          var values = sheet.getRange(2, 1, dataRowCount, lastCol).getValues();
+          values.forEach(function(row) {
+            row.forEach(function(cell, colIdx) {
+              if (cell === '' || cell === null || cell === undefined) {
+                emptyCounts[colIdx]++;
+              }
+            });
+          });
+        }
+        out.push('データ行数: ' + dataRowCount + '行');
+        out.push('');
+        headers.forEach(function(header, j) {
+          out.push('  col' + (j + 1) + ': "' + header + '" / 空欄: ' + emptyCounts[j] + '件');
+        });
+      }
     }
     out.push('');
   });
