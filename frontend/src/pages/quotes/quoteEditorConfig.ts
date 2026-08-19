@@ -46,7 +46,7 @@ export function emptyQuoteEditorValues(): QuoteEditorValues {
 
 function toLineEditorValues(line: QuoteLineRecord): QuoteLineEditorValues {
   return {
-    productId: '',
+    productId: line.productId ?? '',
     productName: line.productName ?? '',
     condition: '',
     quantity: line.quantity == null ? '' : String(line.quantity),
