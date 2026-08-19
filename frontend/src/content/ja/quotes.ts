@@ -85,6 +85,8 @@ export const quotesCopy = {
     validation: {
       leadRequired: 'リードIDを入力してください。',
       discountInvalid: '値引きは数字のみ入力してください。',
+      lineInventoryExceeded: (max: number) => `在庫数は ${max} 個までです`,
+      lineInventoryError: '明細に在庫数エラーがあります。',
     },
     form: {
       leadId:          'リード',
@@ -98,6 +100,14 @@ export const quotesCopy = {
       lines:           '明細',
       addLine:         '明細行を追加',
       removeLine:      '削除',
+      lineProduct:            '商品名',
+      lineProductPlaceholder: '商品名で検索...',
+      lineProductNoResults:   '候補が見つかりません',
+      lineCondition:          '状態',
+      lineConditionPlaceholder: '商品を先に選択',
+      lineWeight:             '重量(g)',
+      lineAmount:             '金額',
+      lineConditionOptionLabel: (condition: string, quantity: number) => `${condition}（在庫: ${quantity}）`,
       lineProductName: '商品名',
       lineDescription: '説明',
       lineQuantity:    '数量',

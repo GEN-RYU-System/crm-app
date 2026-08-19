@@ -463,8 +463,10 @@ export function getCoreCurrencies(): Promise<readonly CurrencyRecord[]> {
 
 export type QuoteLinePayload = {
   lineNo: number;
+  productId?: string;
   productName: string;
   description: string;
+  condition?: string;
   quantity: number | null;
   unitPrice: number | null;
   note: string;
@@ -512,5 +514,45 @@ export function updateCoreQuote(quoteId: string, payload: QuotePayload, isDraft:
       })
       .withFailureHandler((error) => reject(toError(error)))
       .updateCoreQuoteForFrontend(getStoredSessionId(), quoteId, payload as unknown, isDraft);
+  });
+}
+
+export type InventoryProductOption = {
+  productId: string;
+  productName: string;
+};
+
+export type InventoryConditionOption = {
+  condition: string;
+  quantity: number;
+  unitPrice: number;
+  unitWeight: number;
+};
+
+export function getInventoryProductOptions(): Promise<readonly InventoryProductOption[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (!Array.isArray(value)) { reject(new Error(errorCopy.communication)); return; }
+        resolve(value as InventoryProductOption[]);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getInventoryProductOptions(getStoredSessionId());
+  });
+}
+
+export function getInventoryConditions(productId: string): Promise<readonly InventoryConditionOption[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (!Array.isArray(value)) { reject(new Error(errorCopy.communication)); return; }
+        resolve(value as InventoryConditionOption[]);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getInventoryConditions(getStoredSessionId(), productId);
   });
 }
