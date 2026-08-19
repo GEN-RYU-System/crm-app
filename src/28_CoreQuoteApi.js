@@ -723,3 +723,42 @@ function validateQuoteLineInventory_(lines) {
     }
   }
 }
+
+/**
+ * QUOTE_LINES（見積もり明細）に CONDITION（状態）と WEIGHT（重量）列を追加する。
+ * Core Schema V1 に登録済みの全ヘッダーを検証し、不足している列を末尾に追加する。
+ * 列が既に存在する場合はスキップ。
+ *
+ * @returns {{ added: string[], skipped: string[] }}
+ */
+function migrateQuoteLinesCoreColumns() {
+  var ss        = getSpreadsheet();
+  var schema    = CORE_SCHEMA_V1_TABLES['QUOTE_LINES'];
+  var sheet     = getCoreSchemaV1Sheet(ss, 'QUOTE_LINES');
+  var lastCol   = sheet.getLastColumn();
+  var headerRow = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(String);
+
+  var added   = [];
+  var skipped = [];
+
+  // CONDITION と WEIGHT だけを対象にする（他の列は既存）
+  var targets = [
+    schema.headers['CONDITION'],  // '状態'
+    schema.headers['WEIGHT']      // '重量'
+  ];
+
+  targets.forEach(function(headerName) {
+    if (headerRow.indexOf(headerName) >= 0) {
+      skipped.push(headerName);
+      return;
+    }
+    // 末尾に追加
+    var newCol = sheet.getLastColumn() + 1;
+    sheet.getRange(1, newCol).setValue(headerName);
+    added.push(headerName);
+  });
+
+  var result = { added: added, skipped: skipped };
+  Logger.log(JSON.stringify(result));
+  return result;
+}
