@@ -3,9 +3,19 @@
  * 物理シート名・物理ヘッダー名は 00_CoreSchemaRegistry.js から解決する。
  */
 
-function getCoreOrdersForFrontend(sessionId) {
+var CORE_ORDERS_CACHE_INDEX      = 'CORE_ORDERS_CACHE_INDEX';
+var CORE_ORDERS_CACHE_PREFIX     = 'CORE_ORDERS_CACHE_';
+var CORE_ORDERS_CACHE_CHUNK_SIZE = 90000;
+var CORE_ORDERS_CACHE_TTL        = 600;
+
+function getCoreOrdersForFrontend(sessionId, forceRefresh) {
   setEmailFromSession(sessionId);
   checkPermission('lead_view');
+
+  if (forceRefresh !== true) {
+    var cached = readCacheChunks_(CORE_ORDERS_CACHE_INDEX, CORE_ORDERS_CACHE_PREFIX);
+    if (cached !== null) return cached;
+  }
 
   var spreadsheet = getSpreadsheet();
 
@@ -26,7 +36,7 @@ function getCoreOrdersForFrontend(sessionId) {
     'PAYMENT_DUE_AT', 'PAYMENT_STATUS', 'INVOICE_TOTAL_JPY'
   ]);
 
-  return orders.rows
+  var rows = orders.rows
     .filter(function(row) {
       return coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]);
     })
@@ -45,4 +55,7 @@ function getCoreOrdersForFrontend(sessionId) {
         invoiceTotalJpy:  coreCustomerFrontendValue(row[orders.indexes.INVOICE_TOTAL_JPY])
       };
     });
+
+  writeCacheChunks_(CORE_ORDERS_CACHE_INDEX, CORE_ORDERS_CACHE_PREFIX, rows, CORE_ORDERS_CACHE_TTL, CORE_ORDERS_CACHE_CHUNK_SIZE);
+  return rows;
 }

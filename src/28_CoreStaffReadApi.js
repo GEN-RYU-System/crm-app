@@ -3,9 +3,19 @@
  * 物理シート名・物理ヘッダー名は 00_CoreSchemaRegistry.js から解決する。
  */
 
-function getCoreStaffForFrontend(sessionId) {
+var CORE_STAFF_CACHE_INDEX      = 'CORE_STAFF_CACHE_INDEX';
+var CORE_STAFF_CACHE_PREFIX     = 'CORE_STAFF_CACHE_';
+var CORE_STAFF_CACHE_CHUNK_SIZE = 90000;
+var CORE_STAFF_CACHE_TTL        = 600;
+
+function getCoreStaffForFrontend(sessionId, forceRefresh) {
   setEmailFromSession(sessionId);
   checkPermission('staff_manage');
+
+  if (forceRefresh !== true) {
+    var cachedStaff = readCacheChunks_(CORE_STAFF_CACHE_INDEX, CORE_STAFF_CACHE_PREFIX);
+    if (cachedStaff !== null) return cachedStaff;
+  }
 
   var activeStatus = getCoreSchemaV1Value('STAFF', 'STATUS', 'ACTIVE');
 
@@ -14,7 +24,7 @@ function getCoreStaffForFrontend(sessionId) {
     'STAFF_ID', 'LAST_NAME_JA', 'FIRST_NAME_JA', 'ROLE', 'STATUS', 'EMAIL', 'DISCORD_ID'
   ]);
 
-  return staff.rows
+  var rows = staff.rows
     .filter(function(row) {
       return coreCustomerFrontendValue(row[staff.indexes.STATUS]) === activeStatus;
     })
@@ -31,6 +41,9 @@ function getCoreStaffForFrontend(sessionId) {
         discordId:  coreCustomerFrontendValue(row[staff.indexes.DISCORD_ID])
       };
     });
+
+  writeCacheChunks_(CORE_STAFF_CACHE_INDEX, CORE_STAFF_CACHE_PREFIX, rows, CORE_STAFF_CACHE_TTL, CORE_STAFF_CACHE_CHUNK_SIZE);
+  return rows;
 }
 
 function getCoreStaffMemberForFrontend(sessionId, staffId) {
