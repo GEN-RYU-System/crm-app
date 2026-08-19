@@ -76,7 +76,7 @@ const CORE_SCHEMA_V1_TABLES = {
     values: {
       STATUS: {
         DRAFT:   '下書き',
-        SENT:    '送付済み',
+        ISSUED:  '発行済み',
         EXPIRED: '期限切れ'
       }
     },

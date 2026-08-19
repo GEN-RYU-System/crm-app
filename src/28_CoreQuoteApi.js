@@ -7,8 +7,10 @@
  * 公開関数:
  *   getCoreQuotesForFrontend(sessionId)
  *   getCoreQuoteForFrontend(sessionId, quoteId)
- *   createCoreQuoteForFrontend(sessionId, quoteData)
- *   updateCoreQuoteForFrontend(sessionId, quoteId, quoteData)
+ *   createCoreQuoteForFrontend(sessionId, quoteData, isDraft)
+ *   updateCoreQuoteForFrontend(sessionId, quoteId, quoteData, isDraft)
+ *   getLeadsForQuoteDropdown(sessionId)
+ *   setupQuoteExpiryDaySetting()
  *
  * 権限キー:
  *   閲覧: lead_view  — 顧客/リード閲覧と同じ権限階層に揃える
@@ -132,28 +134,33 @@ function getCoreQuoteForFrontend(sessionId, quoteId) {
 /**
  * 見積もりを新規作成する（明細も同時登録）。
  * 合計金額は明細から自動計算する（フロントの値を信用しない）。
+ * staffId はセッションから自動解決する。
+ * issuedDate / expiryDate はサーバー側で自動計算する。
  *
  * @param {string} sessionId
  * @param {{
  *   leadId: string,
- *   staffId: string,
- *   customerId?: string,
- *   orderId?: string,
- *   issuedDate?: string,
- *   expiryDate?: string,
  *   currency?: string,
- *   exchangeRate?: number,
- *   shippingFee?: number,
- *   discount?: number,
+ *   shippingFee?: string,
+ *   discount?: string,
  *   note?: string,
- *   lines?: Array<{productId?,productName?,description?,quantity,unitPrice,note?}>
+ *   lines?: Array<{productName?,description?,quantity,unitPrice}>
  * }} quoteData
+ * @param {boolean} isDraft  true → 下書き / false → 発行済み
  * @returns {{ success: true, quoteId: string }}
  */
-function createCoreQuoteForFrontend(sessionId, quoteData) {
+function createCoreQuoteForFrontend(sessionId, quoteData, isDraft) {
   setEmailFromSession(sessionId);
   checkPermission('deal_edit');
   coreQuoteAssertRequiredFields(quoteData);
+
+  // staffId をセッションから自動解決する
+  var email = Session.getActiveUser().getEmail();
+  var userInfo = getUserInfoByEmail(email);
+  if (!userInfo || !String(userInfo.staffId || '').trim()) {
+    throw new Error('QUOTE_STAFF_RESOLUTION_FAILED');
+  }
+  var resolvedStaffId = String(userInfo.staffId).trim();
 
   const ss = getSpreadsheet();
   coreQuoteAssertLeadIdExists(ss, String(quoteData.leadId || '').trim());
@@ -161,8 +168,19 @@ function createCoreQuoteForFrontend(sessionId, quoteData) {
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
-    const ss  = getSpreadsheet();
     const now = new Date();
+
+    // 発行日・有効期限を自動計算する
+    var issuedDate = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM-dd');
+    var expiryDays = parseInt(getSettingValue('見積もり有効期限日数') || '30', 10);
+    if (isNaN(expiryDays) || expiryDays <= 0) expiryDays = 30;
+    var expiryDate = new Date(now.getTime());
+    expiryDate.setDate(expiryDate.getDate() + expiryDays);
+    var expiryDateStr = Utilities.formatDate(expiryDate, 'Asia/Tokyo', 'yyyy-MM-dd');
+
+    var status = isDraft
+      ? getCoreSchemaV1Value('QUOTES', 'STATUS', 'DRAFT')
+      : getCoreSchemaV1Value('QUOTES', 'STATUS', 'ISSUED');
 
     const { sheet: quoteSheet, headerIndexes: quoteHI } =
       validateCoreSchemaV1TableForWrite(ss, 'QUOTES');
@@ -176,11 +194,11 @@ function createCoreQuoteForFrontend(sessionId, quoteData) {
       LEAD_ID:          String(quoteData.leadId    || '').trim(),
       CUSTOMER_ID:      String(quoteData.customerId|| '').trim(),
       ORDER_ID:         String(quoteData.orderId   || '').trim(),
-      STAFF_ID:         String(quoteData.staffId   || '').trim(),
-      ISSUED_DATE:      quoteData.issuedDate  || '',
-      EXPIRY_DATE:      quoteData.expiryDate  || '',
-      STATUS:           getCoreSchemaV1Value('QUOTES', 'STATUS', 'DRAFT'),
-      CURRENCY:         String(quoteData.currency  || '').trim(),
+      STAFF_ID:         resolvedStaffId,
+      ISSUED_DATE:      issuedDate,
+      EXPIRY_DATE:      expiryDateStr,
+      STATUS:           status,
+      CURRENCY:         String(quoteData.currency  || 'JPY').trim(),
       EXCHANGE_RATE:    totals.exchangeRate,
       SUBTOTAL:         totals.subtotal,
       SHIPPING_FEE:     totals.shippingFee,
@@ -208,13 +226,15 @@ function createCoreQuoteForFrontend(sessionId, quoteData) {
 /**
  * 見積もりを更新する。明細は全削除して再登録する方式。
  * 合計金額は明細から自動計算する（フロントの値を信用しない）。
+ * STAFF_ID / ISSUED_DATE / EXPIRY_DATE は作成時のまま維持する。
  *
  * @param {string} sessionId
  * @param {string} quoteId
- * @param {Object} quoteData - createCoreQuoteForFrontend と同じ形
+ * @param {Object} quoteData
+ * @param {boolean} isDraft  true → 下書き / false → 発行済み
  * @returns {{ success: true }}
  */
-function updateCoreQuoteForFrontend(sessionId, quoteId, quoteData) {
+function updateCoreQuoteForFrontend(sessionId, quoteId, quoteData, isDraft) {
   setEmailFromSession(sessionId);
   checkPermission('deal_edit');
   coreQuoteAssertRequiredFields(quoteData);
@@ -224,6 +244,10 @@ function updateCoreQuoteForFrontend(sessionId, quoteId, quoteData) {
 
   const ss = getSpreadsheet();
   coreQuoteAssertLeadIdExists(ss, String(quoteData.leadId || '').trim());
+
+  var status = isDraft
+    ? getCoreSchemaV1Value('QUOTES', 'STATUS', 'DRAFT')
+    : getCoreSchemaV1Value('QUOTES', 'STATUS', 'ISSUED');
 
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -239,14 +263,13 @@ function updateCoreQuoteForFrontend(sessionId, quoteId, quoteData) {
     const lines  = Array.isArray(quoteData.lines) ? quoteData.lines : [];
     const totals = coreQuoteCalculateTotals(lines, quoteData);
 
+    // STAFF_ID / ISSUED_DATE / EXPIRY_DATE は変更しない
     const updateFields = {
       LEAD_ID:          String(quoteData.leadId    || '').trim(),
       CUSTOMER_ID:      String(quoteData.customerId|| '').trim(),
       ORDER_ID:         String(quoteData.orderId   || '').trim(),
-      STAFF_ID:         String(quoteData.staffId   || '').trim(),
-      ISSUED_DATE:      quoteData.issuedDate  || '',
-      EXPIRY_DATE:      quoteData.expiryDate  || '',
-      CURRENCY:         String(quoteData.currency  || '').trim(),
+      STATUS:           status,
+      CURRENCY:         String(quoteData.currency  || 'JPY').trim(),
       EXCHANGE_RATE:    totals.exchangeRate,
       SUBTOTAL:         totals.subtotal,
       SHIPPING_FEE:     totals.shippingFee,
@@ -256,9 +279,6 @@ function updateCoreQuoteForFrontend(sessionId, quoteId, quoteData) {
       NOTE:             String(quoteData.note || '').trim(),
       UPDATED_AT:       now
     };
-    if (quoteData.status !== undefined) {
-      updateFields.STATUS = String(quoteData.status).trim();
-    }
 
     Object.keys(updateFields).forEach(function(headerKey) {
       const physicalHeader = getCoreSchemaV1HeaderName('QUOTES', headerKey);
@@ -277,6 +297,67 @@ function updateCoreQuoteForFrontend(sessionId, quoteId, quoteData) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * 見積もり作成用リストを返す。
+ * @param {string} sessionId
+ * @returns {Array<{leadId: string, displayName: string}>}
+ */
+function getLeadsForQuoteDropdown(sessionId) {
+  setEmailFromSession(sessionId);
+  checkPermission('lead_view');
+
+  const table = getCoreSchemaV1Table('LEADS');
+  const ss    = getSpreadsheet();
+  const sheet = getCoreSchemaV1Sheet(ss, 'LEADS');
+  const lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return [];
+  const headers = sheet.getRange(table.headerRowNumber, 1, 1, lastCol)
+    .getDisplayValues()[0].map(function(h) { return String(h).trim(); });
+  const leadIdHeader       = getCoreSchemaV1HeaderName('LEADS', 'LEAD_ID');
+  const customerNameHeader = getCoreSchemaV1HeaderName('LEADS', 'CUSTOMER_NAME');
+  const leadIdIdx       = headers.indexOf(leadIdHeader);
+  const customerNameIdx = headers.indexOf(customerNameHeader);
+  if (leadIdIdx < 0) throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING: LEAD_ID');
+  const dataRowCount = Math.max(0, sheet.getLastRow() - table.headerRowNumber);
+  if (dataRowCount === 0) return [];
+  const rows = sheet.getRange(table.headerRowNumber + 1, 1, dataRowCount, lastCol).getValues();
+  return rows
+    .filter(function(row) { return String(row[leadIdIdx] || '').trim(); })
+    .map(function(row) {
+      return {
+        leadId:      String(row[leadIdIdx] || '').trim(),
+        displayName: customerNameIdx >= 0 ? String(row[customerNameIdx] || '').trim() : String(row[leadIdIdx] || '').trim()
+      };
+    });
+}
+
+/**
+ * 【一時ツール】選択肢マスタに「見積もり有効期限日数」設定を追加する。
+ * すでに存在する場合はスキップする。
+ */
+function setupQuoteExpiryDaySetting() {
+  var ss    = getSpreadsheet();
+  var sheet = ss.getSheetByName(CONFIG.SHEETS.SETTINGS);
+  if (!sheet) { Logger.log('設定シートが見つかりません: ' + CONFIG.SHEETS.SETTINGS); return '設定シートが見つかりません'; }
+  var data    = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var keyCol  = headers.indexOf('設定キー');
+  var valCol  = headers.indexOf('設定値');
+  if (keyCol < 0 || valCol < 0) { Logger.log('設定キー/設定値列が見つかりません'); return '設定キー/設定値列が見つかりません'; }
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][keyCol]) === '見積もり有効期限日数') {
+      Logger.log('すでに存在します: ' + data[i][valCol]);
+      return 'ALREADY_EXISTS: ' + data[i][valCol];
+    }
+  }
+  var newRow = new Array(headers.length).fill('');
+  newRow[keyCol] = '見積もり有効期限日数';
+  newRow[valCol] = '30';
+  sheet.appendRow(newRow);
+  Logger.log('追加しました: 見積もり有効期限日数 = 30');
+  return 'ADDED';
 }
 
 // ─── 内部ヘルパー ─────────────────────────────────────────────────────────────
@@ -306,11 +387,10 @@ function coreQuoteReadTable(spreadsheet, tableKey, requiredHeaderKeys) {
   return { indexes: indexes, rows: rows };
 }
 
-/** leadId / staffId の必須チェック */
+/** leadId のみ必須チェック（staffId はサーバー側で自動解決） */
 function coreQuoteAssertRequiredFields(quoteData) {
   if (!quoteData) throw new Error('QUOTE_DATA_REQUIRED');
-  if (!String(quoteData.leadId  || '').trim()) throw new Error('QUOTE_LEAD_ID_REQUIRED');
-  if (!String(quoteData.staffId || '').trim()) throw new Error('QUOTE_STAFF_ID_REQUIRED');
+  if (!String(quoteData.leadId || '').trim()) throw new Error('QUOTE_LEAD_ID_REQUIRED');
 }
 
 /**
@@ -341,18 +421,39 @@ function coreQuoteAssertLeadIdExists(spreadsheet, leadId) {
  */
 function coreQuoteCalculateTotals(lines, quoteData) {
   const subtotal = lines.reduce(function(sum, line) {
-    const qty   = coreQuoteNumber(line.quantity)  || 0;
-    const price = coreQuoteNumber(line.unitPrice) || 0;
+    const qty   = coreQuoteNormalizeNumericField(line.quantity,  'quantity')  || 0;
+    const price = coreQuoteNormalizeNumericField(line.unitPrice, 'unitPrice') || 0;
     return sum + qty * price;
   }, 0);
   const currency       = String(quoteData.currency || 'JPY').trim().toUpperCase();
   const exchangeRate   = getCurrentExchangeRate(currency);
-  const shippingFee    = coreQuoteNumber(quoteData.shippingFee)  || 0;
-  const discount       = coreQuoteNumber(quoteData.discount)     || 0;
+  const shippingFee    = coreQuoteNormalizeNumericField(quoteData.shippingFee, 'shippingFee') || 0;
+  const discount       = coreQuoteNormalizeNumericField(quoteData.discount, 'discount') || 0;
   const totalAmount    = subtotal + shippingFee - discount;
   const totalAmountJpy = totalAmount * exchangeRate;
   return { subtotal: subtotal, exchangeRate: exchangeRate, shippingFee: shippingFee,
            discount: discount, totalAmount: totalAmount, totalAmountJpy: totalAmountJpy };
+}
+
+/**
+ * 数値フィールドを正規化する。
+ * - 全角数字 → 半角変換
+ * - 空文字 → null（省略可能フィールド）
+ * - 数値として不正 → INVALID_NUMERIC_FIELD エラー
+ * - 正常数値文字列 → Number(s) を返す
+ *
+ * @param {*} value
+ * @param {string} fieldName
+ * @returns {number|null}
+ */
+function coreQuoteNormalizeNumericField(value, fieldName) {
+  var s = coreQuoteValue(value)
+    .replace(/[０-９]/g, function(c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
+  if (!s) return null;
+  if (!/^[0-9]+(\.[0-9]*)?$/.test(s)) throw new Error('INVALID_NUMERIC_FIELD:' + fieldName);
+  var n = Number(s);
+  if (!isFinite(n)) throw new Error('INVALID_NUMERIC_FIELD:' + fieldName);
+  return n;
 }
 
 /**
@@ -431,12 +532,13 @@ function coreQuoteFindRowById(sheet, headerIndexes, quoteId) {
 /**
  * QUOTE_LINES シートに明細行を書き込む。
  * AMOUNT = QUANTITY × UNIT_PRICE で自動計算。
+ * quantity / unitPrice は coreQuoteNormalizeNumericField で正規化する。
  */
 function coreQuoteWriteLines(sheet, headerIndexes, quoteId, lines) {
   lines.forEach(function(line, index) {
     const lineId  = coreQuoteGenerateNextLineId(sheet, headerIndexes);
-    const qty     = coreQuoteNumber(line.quantity)  || 0;
-    const price   = coreQuoteNumber(line.unitPrice) || 0;
+    const qty     = coreQuoteNormalizeNumericField(line.quantity,  'quantity')  || 0;
+    const price   = coreQuoteNormalizeNumericField(line.unitPrice, 'unitPrice') || 0;
     const amount  = qty * price;
     const lastCol = sheet.getLastColumn();
     const rowData = new Array(lastCol).fill('');
