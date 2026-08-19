@@ -339,8 +339,8 @@ function getLeadsForQuoteDropdown(sessionId) {
  */
 function setupQuoteExpiryDaySetting() {
   var ss    = getSpreadsheet();
-  var sheet = ss.getSheetByName('選択肢マスタ');
-  if (!sheet) { Logger.log('選択肢マスタが見つかりません'); return '選択肢マスタが見つかりません'; }
+  var sheet = ss.getSheetByName(CONFIG.SHEETS.SETTINGS);
+  if (!sheet) { Logger.log('設定シートが見つかりません: ' + CONFIG.SHEETS.SETTINGS); return '設定シートが見つかりません'; }
   var data    = sheet.getDataRange().getValues();
   var headers = data[0];
   var keyCol  = headers.indexOf('設定キー');
@@ -450,8 +450,10 @@ function coreQuoteNormalizeNumericField(value, fieldName) {
   var s = coreQuoteValue(value)
     .replace(/[０-９]/g, function(c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
   if (!s) return null;
-  if (!/^[0-9]*\.?[0-9]*$/.test(s)) throw new Error('INVALID_NUMERIC_FIELD:' + fieldName);
-  return Number(s);
+  if (!/^[0-9]+(\.[0-9]*)?$/.test(s)) throw new Error('INVALID_NUMERIC_FIELD:' + fieldName);
+  var n = Number(s);
+  if (!isFinite(n)) throw new Error('INVALID_NUMERIC_FIELD:' + fieldName);
+  return n;
 }
 
 /**
