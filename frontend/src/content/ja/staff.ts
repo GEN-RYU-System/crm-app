@@ -7,6 +7,8 @@ export const staffCopy = {
   searchLabel: 'スタッフを検索',
   searchPlaceholder: '検索',
   loading: 'スタッフ一覧を読み込んでいます。',
+  refreshing: 'スタッフ一覧を更新しています。',
+  refresh: '更新',
   detailLoading: 'スタッフ詳細を読み込んでいます。',
   loadErrorPrefix: 'スタッフ一覧の読み込みに失敗しました:',
   detailLoadErrorPrefix: 'スタッフ詳細の読み込みに失敗しました:',
