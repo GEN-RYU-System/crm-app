@@ -2,7 +2,7 @@ import type { BadgeVariant } from '../../components/ui/Badge/Badge';
 
 export const QUOTE_STATUS_BADGE_VARIANT: Record<string, BadgeVariant> = {
   '下書き':   'neutral',
-  '送付済み': 'info',
+  '発行済み': 'info',
   '期限切れ': 'warning',
 } as const;
 
@@ -31,6 +31,7 @@ export const quotesCopy = {
   detailNotFoundTitle: '見積もりが見つかりません',
   detailNotFoundDescription: '指定された見積もりは表示できません。',
   detailLoadErrorPrefix: '見積もり詳細の読み込みに失敗しました:',
+  newCreate: '新規作成',
   backToList: '一覧へ戻る',
   columns: {
     quoteId:      '見積もりID',
@@ -114,5 +115,39 @@ export const quotesCopy = {
       sent:    '送付済み',
       expired: '期限切れ',
     },
+  },
+  create: {
+    title: '見積もり新規作成',
+    subtitle: '新規見積もりを作成します。',
+    lead: 'リード',
+    leadRequired: 'リードを選択してください',
+    leadPlaceholder: 'リードを選択',
+    leadLoading: '読み込み中...',
+    currency: '通貨',
+    currencyOptions: {
+      jpy: 'JPY（日本円）',
+      usd: 'USD（米ドル）',
+      eur: 'EUR（ユーロ）',
+      cny: 'CNY（人民元）',
+      hkd: 'HKD（香港ドル）',
+    },
+    shippingFee: '送料',
+    shippingFeePlaceholder: '手入力（例: 1500）',
+    discount: '値引き',
+    discountPlaceholder: '数字のみ（例: 1000）',
+    note: 'メモ',
+    lines: '明細',
+    addLine: '明細を追加',
+    removeLine: '削除',
+    lineProductName: '商品名',
+    lineDescription: '説明',
+    lineQuantity: '数量',
+    lineUnitPrice: '単価',
+    saveDraft: '一時保存',
+    publish: '発行',
+    saving: '保存中...',
+    saveSuccess: '保存しました',
+    saveError: '保存に失敗しました:',
+    loadLeadsError: 'リードの読み込みに失敗しました',
   },
 } as const;

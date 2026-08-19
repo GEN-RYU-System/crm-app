@@ -7,7 +7,6 @@ import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMes
 import { quotesCopy, QUOTE_STATUS_BADGE_VARIANT } from '../../content/ja';
 import { getCoreQuotes, getCoreCurrencies, type QuoteRecord } from '../../gas/client';
 import { filterQuoteRows, QUOTE_LIST_COLUMNS, QUOTE_LIST_INITIAL_SORT, QUOTE_ROUTE_SEGMENTS, toQuoteRows, type QuoteRow, type QuoteSort } from './quoteListConfig';
-import { QUOTE_EDITOR_PATHS } from './quoteEditorConfig';
 import './QuoteListPage.css';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -86,11 +85,17 @@ export function QuoteListPage({ canAdd = false }: Props) {
         eyebrow={quotesCopy.eyebrow}
         title={quotesCopy.title}
         subtitle={quotesCopy.subtitle}
-        action={canAdd ? <Button onClick={() => navigate(QUOTE_EDITOR_PATHS.create)}>{quotesCopy.editor.create}</Button> : undefined}
       />
       <PageToolbar
         start={<TextField aria-label={quotesCopy.searchLabel} placeholder={quotesCopy.searchPlaceholder} value={query} onChange={(e) => setQuery(e.target.value)} width="sm" startIcon={<CRM_SEARCH_ICON aria-hidden="true" />} />}
-        end={<Button variant="secondary" onClick={() => void load()} loading={state === 'loading'} loadingText={quotesCopy.loading}>{quotesCopy.refresh}</Button>}
+        end={
+          <>
+            {canAdd && (
+              <Button variant="secondary" onClick={() => navigate(`${NAVIGATION_BY_ID.quotes.hash}/${QUOTE_ROUTE_SEGMENTS.create}`)}>{quotesCopy.newCreate}</Button>
+            )}
+            <Button variant="secondary" onClick={() => void load()} loading={state === 'loading'} loadingText={quotesCopy.loading}>{quotesCopy.refresh}</Button>
+          </>
+        }
       />
       <Card className="quote-list-page__data-card">
         {state === 'loading' && (

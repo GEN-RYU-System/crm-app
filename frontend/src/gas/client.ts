@@ -483,7 +483,7 @@ export function createCoreQuote(quoteData: QuotePayload): Promise<QuoteCreateRes
         resolve(value as QuoteCreateResult);
       })
       .withFailureHandler((error) => reject(toError(error)))
-      .createCoreQuoteForFrontend(getStoredSessionId(), quoteData);
+      .createCoreQuoteForFrontend(getStoredSessionId(), quoteData as unknown as Record<string, unknown>, false);
   });
 }
 
@@ -495,6 +495,56 @@ export function updateCoreQuote(quoteId: string, quoteData: QuotePayload): Promi
     runner
       .withSuccessHandler(() => resolve())
       .withFailureHandler((error) => reject(toError(error)))
-      .updateCoreQuoteForFrontend(getStoredSessionId(), quoteId, quoteData);
+      .updateCoreQuoteForFrontend(getStoredSessionId(), quoteId, quoteData as unknown as Record<string, unknown>, false);
+  });
+}
+
+export type LeadDropdownItem = {
+  leadId: string;
+  displayName: string;
+};
+
+export type QuoteCreateData = {
+  leadId: string;
+  currency: string;
+  shippingFee: string;
+  discount: string;
+  note: string;
+  lines: Array<{
+    productName: string;
+    description: string;
+    quantity: string;
+    unitPrice: string;
+  }>;
+};
+
+export function getLeadsForQuoteDropdown(): Promise<readonly LeadDropdownItem[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (!Array.isArray(value)) { reject(new Error(errorCopy.communication)); return; }
+        resolve(value as LeadDropdownItem[]);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getLeadsForQuoteDropdown(getStoredSessionId());
+  });
+}
+
+export function createCoreQuoteSimple(quoteData: QuoteCreateData, isDraft: boolean): Promise<QuoteCreateResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        const v = value as { success?: boolean; quoteId?: string };
+        if (!v || v.success !== true || typeof v.quoteId !== 'string') {
+          reject(new Error(errorCopy.communication)); return;
+        }
+        resolve(v as QuoteCreateResult);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .createCoreQuoteForFrontend(getStoredSessionId(), quoteData as unknown as Record<string, unknown>, isDraft);
   });
 }
