@@ -725,3 +725,82 @@ function benchInventoryCache() {
   Logger.log(result);
   return result;
 }
+
+/**
+ * 【調査用 / 認証なし / 書き込みなし】
+ * getCoreCustomersForFrontend の読み取り部分を計測し、
+ * 顧客キャッシュ実装前の基準値を取得する。
+ *
+ * 計測内容:
+ *   - CUSTOMERS / LEADS / ORDERS の3テーブル読み取り + 結合 × 3回
+ *   - 結合後の件数・JSON文字数・チャンク数（90,000 chars/チャンク）
+ *
+ * 使い方: clasp run benchCustomerListMs
+ */
+function benchCustomerListMs() {
+  var ss   = getSpreadsheet();
+  var RUNS = 3;
+  var out  = ['=== benchCustomerListMs ===', '実行: ' + new Date().toISOString(), ''];
+
+  var times    = [];
+  var lastRows = [];
+
+  for (var run = 0; run < RUNS; run++) {
+    var t0 = Date.now();
+
+    var customers = coreCustomerFrontendReadTable(ss, 'CUSTOMERS', [
+      'CUSTOMER_ID', 'SOURCE_LEAD_ID', 'CUSTOMER_NAME', 'COUNTRY', 'SALES_ASSIGNEE_NAME'
+    ]);
+    var leads = coreCustomerFrontendReadTable(ss, 'LEADS', [
+      'LEAD_ID', 'SALES_CHANNEL', 'HANDLED_TITLE'
+    ]);
+    var orders = coreCustomerFrontendReadTable(ss, 'ORDERS', [
+      'ORDER_ID', 'CUSTOMER_ID', 'STATUS', 'CURRENCY', 'INVOICE_TOTAL'
+    ]);
+    var leadsById              = coreCustomerFrontendIndexBy(leads, 'LEAD_ID');
+    var transactionsByCustomer = coreCustomerFrontendAggregateTransactions(orders);
+
+    var rows = customers.rows.map(function(row) {
+      var customerId   = coreCustomerFrontendValue(row[customers.indexes.CUSTOMER_ID]);
+      var sourceLeadId = coreCustomerFrontendValue(row[customers.indexes.SOURCE_LEAD_ID]);
+      var sourceLead   = leadsById[sourceLeadId];
+      var transactions = transactionsByCustomer[customerId] || { count: 0, amounts: [] };
+      return {
+        customerId:         customerId,
+        customerName:       coreCustomerFrontendValue(row[customers.indexes.CUSTOMER_NAME]),
+        country:            coreCustomerFrontendValue(row[customers.indexes.COUNTRY]),
+        salesChannel:       sourceLead ? coreCustomerFrontendValue(sourceLead[leads.indexes.SALES_CHANNEL])  : '',
+        handledTitle:       sourceLead ? coreCustomerFrontendValue(sourceLead[leads.indexes.HANDLED_TITLE])  : '',
+        salesAssigneeName:  coreCustomerFrontendValue(row[customers.indexes.SALES_ASSIGNEE_NAME]),
+        transactionCount:   transactions.count,
+        transactionAmounts: transactions.amounts
+      };
+    });
+
+    var ms = Date.now() - t0;
+    times.push(ms);
+    lastRows = rows;
+    out.push('試行 ' + (run + 1) + ': ' + ms + 'ms');
+  }
+
+  var sum = 0;
+  for (var i = 0; i < times.length; i++) sum += times[i];
+  var avg = Math.round(sum / times.length);
+
+  var jsonStr    = JSON.stringify(lastRows);
+  var charCount  = jsonStr.length;
+  var CHUNK_SIZE = 90000;
+  var chunkCount = Math.ceil(charCount / CHUNK_SIZE);
+
+  out.push('');
+  out.push('平均: ' + avg + 'ms');
+  out.push('');
+  out.push('=== データサイズ ===');
+  out.push('件数: ' + lastRows.length + '件');
+  out.push('JSON 文字数: ' + charCount + ' chars');
+  out.push('90,000 chars/チャンク での分割: ' + chunkCount + ' チャンク');
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
