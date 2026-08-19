@@ -658,3 +658,70 @@ function benchCacheMultiKey() {
   Logger.log(result);
   return result;
 }
+
+/**
+ * 【一時計測用 / 認証なし / シート書き込みなし】
+ * getSharedInventoryForFrontend のキャッシュ効果を実測する
+ *
+ * 処理順:
+ *   0. INDEX キーを削除してキャッシュをクリア（フォールバック確定）
+ *   1回目: readSharedInventoryFromCache_() → null
+ *          buildSharedInventoryRows_() + writeSharedInventoryToCache_() を実行
+ *   2回目: readSharedInventoryFromCache_() → キャッシュヒット
+ *   3回目: readSharedInventoryFromCache_() → キャッシュヒット
+ *
+ * 使い方: clasp run benchInventoryCache
+ */
+function benchInventoryCache() {
+  var ss  = getSpreadsheet();
+  var out = ['=== benchInventoryCache ===', '実行: ' + new Date().toISOString(), ''];
+
+  // ── 0. キャッシュクリア ───────────────────────────────────────
+  CacheService.getScriptCache().remove(SHARED_INVENTORY_CACHE_INDEX);
+  out.push('キャッシュクリア: SHARED_INVENTORY_CACHE_INDEX を削除');
+  out.push('');
+
+  // ── 1回目: キャッシュミス → シート読み出し + キャッシュ書き込み ─
+  var t0   = Date.now();
+  var hit1 = readSharedInventoryFromCache_();
+  if (hit1 === null) {
+    var rows = buildSharedInventoryRows_(ss);
+    writeSharedInventoryToCache_(rows);
+  }
+  var ms1 = Date.now() - t0;
+  out.push('1回目 (キャッシュミス → シート読み + キャッシュ書き込み)');
+  out.push('  キャッシュミス確認: ' + (hit1 === null ? 'OK（null）' : 'NG（hit1 が null でない）'));
+  out.push('  所要時間: ' + ms1 + 'ms');
+  out.push('');
+
+  // ── 2回目: キャッシュヒット ─────────────────────────────────
+  var t1   = Date.now();
+  var hit2 = readSharedInventoryFromCache_();
+  var ms2  = Date.now() - t1;
+  out.push('2回目 (キャッシュヒット)');
+  out.push('  キャッシュヒット確認: ' + (Array.isArray(hit2) ? 'OK（' + hit2.length + '件）' : 'NG（null）'));
+  out.push('  所要時間: ' + ms2 + 'ms');
+  out.push('');
+
+  // ── 3回目: キャッシュヒット ─────────────────────────────────
+  var t2   = Date.now();
+  var hit3 = readSharedInventoryFromCache_();
+  var ms3  = Date.now() - t2;
+  out.push('3回目 (キャッシュヒット)');
+  out.push('  キャッシュヒット確認: ' + (Array.isArray(hit3) ? 'OK（' + hit3.length + '件）' : 'NG（null）'));
+  out.push('  所要時間: ' + ms3 + 'ms');
+  out.push('');
+
+  // ── サマリ ──────────────────────────────────────────────────
+  out.push('=== サマリ ===');
+  out.push('1回目 (シート読み): ' + ms1 + 'ms');
+  out.push('2回目 (キャッシュ): ' + ms2 + 'ms');
+  out.push('3回目 (キャッシュ): ' + ms3 + 'ms');
+  if (ms1 > 0 && ms2 > 0) {
+    out.push('高速化率: ' + (ms1 / ms2).toFixed(1) + 'x');
+  }
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
