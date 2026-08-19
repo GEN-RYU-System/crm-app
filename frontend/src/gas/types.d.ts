@@ -15,7 +15,7 @@ interface GoogleScriptRun {
   updateLead(sessionId: string | null, sheetName: string, leadId: string, updateData: Record<string, string>): void;
   getCoreCustomersForFrontend(sessionId: string | null, forceRefresh: boolean): void;
   getCoreCustomerForFrontend(sessionId: string | null, customerId: string): void;
-  getCoreStaffForFrontend(sessionId: string | null): void;
+  getCoreStaffForFrontend(sessionId: string | null, forceRefresh: boolean): void;
   getCoreStaffMemberForFrontend(sessionId: string | null, staffId: string): void;
   loginWithPassword(staffId: string, password: string): void;
   logout(sessionId: string): void;
@@ -24,7 +24,7 @@ interface GoogleScriptRun {
   getSharedInventoryForFrontend(sessionId: string | null, forceRefresh: boolean): void;
   getCoreQuotesForFrontend(sessionId: string | null): void;
   getCoreQuoteForFrontend(sessionId: string | null, quoteId: string): void;
-  getCoreOrdersForFrontend(sessionId: string | null): void;
+  getCoreOrdersForFrontend(sessionId: string | null, forceRefresh: boolean): void;
   getCoreCurrenciesForFrontend(sessionId: string | null): void;
   getLeadOptionsForFrontend(sessionId: string | null): void;
   createCoreQuoteForFrontend(sessionId: string | null, quoteData: unknown, isDraft: boolean): void;
