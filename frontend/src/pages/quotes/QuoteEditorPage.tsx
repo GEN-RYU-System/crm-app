@@ -358,6 +358,7 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
                   <div key={index} className="quote-editor-page__line-row">
                     <span className="quote-editor-page__line-no">{index + 1}</span>
                     <ProductCombobox
+                      className="quote-editor-page__line-product"
                       products={inventoryProducts}
                       value={line.productId}
                       fallbackDisplayText={line.productName}
@@ -368,27 +369,27 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
                       disabled={!editable}
                     />
                     <Select
+                      className="quote-editor-page__line-condition"
                       label={quotesCopy.editor.form.lineCondition}
                       options={conditionOpts}
                       value={line.condition}
                       onChange={(e) => handleConditionSelect(index, e.target.value)}
-                      width="sm"
                       disabled={!editable || !line.productId}
                       placeholder={quotesCopy.editor.form.lineConditionPlaceholder}
                     />
                     <TextField
+                      className="quote-editor-page__line-qty"
                       label={quotesCopy.editor.form.lineQuantity}
                       value={line.quantity}
                       onChange={(e) => handleQuantityChange(index, e.target.value)}
-                      width="sm"
                       disabled={!editable || !line.condition}
                       error={lineError}
                     />
                     <TextField
+                      className="quote-editor-page__line-price"
                       label={quotesCopy.editor.form.lineUnitPrice}
                       value={line.unitPrice}
                       onChange={(e) => updateLine(index, 'unitPrice', e.target.value)}
-                      width="sm"
                       disabled={!editable}
                     />
                     <div className="quote-editor-page__line-calc">
@@ -400,7 +401,7 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
                       <span className="quote-editor-page__line-calc-value">{weight > 0 ? `${weight}g` : '—'}</span>
                     </div>
                     {editable && (
-                      <Button variant="outline" size="sm" onClick={() => removeLine(index)}>
+                      <Button className="quote-editor-page__line-delete" variant="outline" size="sm" onClick={() => removeLine(index)}>
                         {quotesCopy.editor.form.removeLine}
                       </Button>
                     )}

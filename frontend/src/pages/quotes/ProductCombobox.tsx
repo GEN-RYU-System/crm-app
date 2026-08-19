@@ -16,11 +16,12 @@ type Props = {
   noResultsText?: string;
   error?: string;
   fallbackDisplayText?: string;
+  className?: string;
 };
 
 export function ProductCombobox({
   products, value, onChange, label, required, disabled,
-  placeholder, noResultsText, error, fallbackDisplayText
+  placeholder, noResultsText, error, fallbackDisplayText, className
 }: Props) {
   const [inputText, setInputText]     = useState('');
   const [isOpen, setIsOpen]           = useState(false);
@@ -89,7 +90,7 @@ export function ProductCombobox({
   const errorClass = error ? ' ui-field--error' : '';
 
   return (
-    <div className={`ui-field ui-field--md ui-field--width-md${errorClass}`}>
+    <div className={`ui-field ui-field--md${errorClass}${className ? ` ${className}` : ''}`}>
       {label && (
         <label className="ui-field__label" htmlFor={inputId}>
           {label}
