@@ -9,9 +9,6 @@
  *   getCoreQuoteForFrontend(sessionId, quoteId)
  *   createCoreQuoteForFrontend(sessionId, quoteData, isDraft)
  *   updateCoreQuoteForFrontend(sessionId, quoteId, quoteData, isDraft)
- *   getLeadsForQuoteDropdown(sessionId)
- *   setupQuoteExpiryDaySetting()
- *
  * 権限キー:
  *   閲覧: lead_view  — 顧客/リード閲覧と同じ権限階層に揃える
  *   書き込み: deal_edit — 見積もりは商談編集の一部（営業・リーダー・オーナーが対象）
@@ -137,6 +134,11 @@ function getCoreQuoteForFrontend(sessionId, quoteId) {
  * staffId はセッションから自動解決する。
  * issuedDate / expiryDate はサーバー側で自動計算する。
  *
+ * 以下はサーバー側で自動設定する（フロントから受け取らない）:
+ *   - staffId   : セッションから取得
+ *   - issuedDate: 今日の日付
+ *   - expiryDate: 発行日 + 設定値「見積もり有効期限日数」日数
+ *
  * @param {string} sessionId
  * @param {{
  *   leadId: string,
@@ -154,13 +156,9 @@ function createCoreQuoteForFrontend(sessionId, quoteData, isDraft) {
   checkPermission('deal_edit');
   coreQuoteAssertRequiredFields(quoteData);
 
-  // staffId をセッションから自動解決する
-  var email = Session.getActiveUser().getEmail();
-  var userInfo = getUserInfoByEmail(email);
-  if (!userInfo || !String(userInfo.staffId || '').trim()) {
-    throw new Error('QUOTE_STAFF_RESOLUTION_FAILED');
-  }
-  var resolvedStaffId = String(userInfo.staffId).trim();
+  const sessionUser = getSessionUser(sessionId);
+  if (!sessionUser) throw new Error('SESSION_INVALID');
+  const staffId = sessionUser.staffId;
 
   const ss = getSpreadsheet();
   coreQuoteAssertLeadIdExists(ss, String(quoteData.leadId || '').trim());
@@ -192,9 +190,9 @@ function createCoreQuoteForFrontend(sessionId, quoteData, isDraft) {
     quoteSheet.appendRow(coreQuoteBuildQuoteRow(quoteSheet, quoteHI, {
       QUOTE_ID:         newQuoteId,
       LEAD_ID:          String(quoteData.leadId    || '').trim(),
-      CUSTOMER_ID:      String(quoteData.customerId|| '').trim(),
-      ORDER_ID:         String(quoteData.orderId   || '').trim(),
-      STAFF_ID:         resolvedStaffId,
+      CUSTOMER_ID:      String(quoteData.customerId || '').trim(),
+      ORDER_ID:         String(quoteData.orderId    || '').trim(),
+      STAFF_ID:         staffId,
       ISSUED_DATE:      issuedDate,
       EXPIRY_DATE:      expiryDateStr,
       STATUS:           status,
@@ -227,6 +225,11 @@ function createCoreQuoteForFrontend(sessionId, quoteData, isDraft) {
  * 見積もりを更新する。明細は全削除して再登録する方式。
  * 合計金額は明細から自動計算する（フロントの値を信用しない）。
  * STAFF_ID / ISSUED_DATE / EXPIRY_DATE は作成時のまま維持する。
+ *
+ * 以下はサーバー側で自動管理する（フロントから上書きしない）:
+ *   - staffId   : 既存値を維持
+ *   - issuedDate: 既存値を維持
+ *   - expiryDate: 既存値を維持
  *
  * @param {string} sessionId
  * @param {string} quoteId
@@ -266,8 +269,8 @@ function updateCoreQuoteForFrontend(sessionId, quoteId, quoteData, isDraft) {
     // STAFF_ID / ISSUED_DATE / EXPIRY_DATE は変更しない
     const updateFields = {
       LEAD_ID:          String(quoteData.leadId    || '').trim(),
-      CUSTOMER_ID:      String(quoteData.customerId|| '').trim(),
-      ORDER_ID:         String(quoteData.orderId   || '').trim(),
+      CUSTOMER_ID:      String(quoteData.customerId || '').trim(),
+      ORDER_ID:         String(quoteData.orderId    || '').trim(),
       STATUS:           status,
       CURRENCY:         String(quoteData.currency  || 'JPY').trim(),
       EXCHANGE_RATE:    totals.exchangeRate,
@@ -297,67 +300,6 @@ function updateCoreQuoteForFrontend(sessionId, quoteId, quoteData, isDraft) {
   } finally {
     lock.releaseLock();
   }
-}
-
-/**
- * 見積もり作成用リストを返す。
- * @param {string} sessionId
- * @returns {Array<{leadId: string, displayName: string}>}
- */
-function getLeadsForQuoteDropdown(sessionId) {
-  setEmailFromSession(sessionId);
-  checkPermission('lead_view');
-
-  const table = getCoreSchemaV1Table('LEADS');
-  const ss    = getSpreadsheet();
-  const sheet = getCoreSchemaV1Sheet(ss, 'LEADS');
-  const lastCol = sheet.getLastColumn();
-  if (lastCol < 1) return [];
-  const headers = sheet.getRange(table.headerRowNumber, 1, 1, lastCol)
-    .getDisplayValues()[0].map(function(h) { return String(h).trim(); });
-  const leadIdHeader       = getCoreSchemaV1HeaderName('LEADS', 'LEAD_ID');
-  const customerNameHeader = getCoreSchemaV1HeaderName('LEADS', 'CUSTOMER_NAME');
-  const leadIdIdx       = headers.indexOf(leadIdHeader);
-  const customerNameIdx = headers.indexOf(customerNameHeader);
-  if (leadIdIdx < 0) throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING: LEAD_ID');
-  const dataRowCount = Math.max(0, sheet.getLastRow() - table.headerRowNumber);
-  if (dataRowCount === 0) return [];
-  const rows = sheet.getRange(table.headerRowNumber + 1, 1, dataRowCount, lastCol).getValues();
-  return rows
-    .filter(function(row) { return String(row[leadIdIdx] || '').trim(); })
-    .map(function(row) {
-      return {
-        leadId:      String(row[leadIdIdx] || '').trim(),
-        displayName: customerNameIdx >= 0 ? String(row[customerNameIdx] || '').trim() : String(row[leadIdIdx] || '').trim()
-      };
-    });
-}
-
-/**
- * 【一時ツール】選択肢マスタに「見積もり有効期限日数」設定を追加する。
- * すでに存在する場合はスキップする。
- */
-function setupQuoteExpiryDaySetting() {
-  var ss    = getSpreadsheet();
-  var sheet = ss.getSheetByName(CONFIG.SHEETS.SETTINGS);
-  if (!sheet) { Logger.log('設定シートが見つかりません: ' + CONFIG.SHEETS.SETTINGS); return '設定シートが見つかりません'; }
-  var data    = sheet.getDataRange().getValues();
-  var headers = data[0];
-  var keyCol  = headers.indexOf('設定キー');
-  var valCol  = headers.indexOf('設定値');
-  if (keyCol < 0 || valCol < 0) { Logger.log('設定キー/設定値列が見つかりません'); return '設定キー/設定値列が見つかりません'; }
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][keyCol]) === '見積もり有効期限日数') {
-      Logger.log('すでに存在します: ' + data[i][valCol]);
-      return 'ALREADY_EXISTS: ' + data[i][valCol];
-    }
-  }
-  var newRow = new Array(headers.length).fill('');
-  newRow[keyCol] = '見積もり有効期限日数';
-  newRow[valCol] = '30';
-  sheet.appendRow(newRow);
-  Logger.log('追加しました: 見積もり有効期限日数 = 30');
-  return 'ADDED';
 }
 
 // ─── 内部ヘルパー ─────────────────────────────────────────────────────────────
@@ -627,4 +569,67 @@ function coreQuoteNumber(value) {
 /** quoteId を文字列にトリムする */
 function coreQuoteNormalizeId(value) {
   return String(value || '').trim();
+}
+
+// ─── マイグレーション ──────────────────────────────────────────────────────────
+
+/**
+ * 既存の「送付済み」ステータスを「発行済み」に書き換える（1回限り実行）。
+ *
+ * QUOTES.values.STATUS が SENT:'送付済み' から ISSUED:'発行済み' に変更されたため、
+ * スプレッドシート上の既存データを新しい値に合わせる。
+ *
+ * @returns {{ updated: number, skipped: number }}
+ */
+function migrateCoreQuoteSentToIssued() {
+  // MIGRATION ONLY: raw literal required because this value was removed from the schema
+  // and can no longer be resolved via getCoreSchemaV1Value.
+  const OLD_VALUE = '\u9001\u4ed8\u6e08\u307f'; // '送付済み'
+  const NEW_VALUE = getCoreSchemaV1Value('QUOTES', 'STATUS', 'ISSUED');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss = getSpreadsheet();
+    const table = getCoreSchemaV1Table('QUOTES');
+    const sheet = getCoreSchemaV1Sheet(ss, 'QUOTES');
+    const lastRow = sheet.getLastRow();
+    if (lastRow < table.headerRowNumber + 1) {
+      Logger.log('[migrateCoreQuoteSentToIssued] データ行なし。スキップ。');
+      return { updated: 0, skipped: 0 };
+    }
+
+    const headers = sheet.getRange(table.headerRowNumber, 1, 1, sheet.getLastColumn())
+      .getDisplayValues()[0].map(function(h) { return String(h).trim(); });
+    const statusHeader = getCoreSchemaV1HeaderName('QUOTES', 'STATUS');
+    const statusColIdx = headers.indexOf(statusHeader);
+    if (statusColIdx === -1) throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING: STATUS');
+
+    const dataRowStart = table.headerRowNumber + 1;
+    const dataRowCount = lastRow - table.headerRowNumber;
+    const statusColOneBased = statusColIdx + 1;
+    const statusRange = sheet.getRange(dataRowStart, statusColOneBased, dataRowCount, 1);
+    const values = statusRange.getValues();
+
+    let updated = 0;
+    let skipped = 0;
+    const newValues = values.map(function(row) {
+      if (String(row[0]).trim() === OLD_VALUE) {
+        updated++;
+        return [NEW_VALUE];
+      }
+      skipped++;
+      return row;
+    });
+
+    // 一括書き込みで N+1 を回避する
+    if (updated > 0) {
+      statusRange.setValues(newValues);
+    }
+
+    Logger.log('[migrateCoreQuoteSentToIssued] 完了: updated=' + updated + ', skipped=' + skipped);
+    return { updated: updated, skipped: skipped };
+  } finally {
+    lock.releaseLock();
+  }
 }
