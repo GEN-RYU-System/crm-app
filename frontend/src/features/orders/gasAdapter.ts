@@ -1,4 +1,4 @@
-import { getCoreOrders, getCoreCurrencies } from '../../gas/client';
+import { getCoreOrders, getCoreCurrencies, getInventoryProductOptions, getInventoryConditions, createCoreOrder } from '../../gas/client';
 import type { OrderRepository } from './contracts';
 
 export const orderGasRepository: OrderRepository = {
@@ -11,4 +11,11 @@ export const orderGasRepository: OrderRepository = {
     }
     return map;
   },
+  listCurrencies: async () => {
+    const currencies = await getCoreCurrencies();
+    return currencies.map((c) => ({ currencyCode: c.currencyCode, symbol: c.symbol, name: c.name }));
+  },
+  listInventoryProducts: () => getInventoryProductOptions(),
+  getInventoryConditions: (productId) => getInventoryConditions(productId),
+  createOrder: (payload) => createCoreOrder(payload),
 };

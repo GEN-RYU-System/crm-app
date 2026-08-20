@@ -31,6 +31,7 @@ interface GoogleScriptRun {
   updateCoreQuoteForFrontend(sessionId: string | null, quoteId: string, quoteData: unknown, isDraft: boolean): void;
   getInventoryProductOptions(sessionId: string | null): void;
   getInventoryConditions(sessionId: string | null, productId: string): void;
+  createCoreOrderForFrontend(sessionId: string | null, orderData: unknown): void;
 }
 
 interface Window {
