@@ -1,7 +1,7 @@
 # フロントエンド引き継ぎドキュメント
 
 > 作成: 2026-08-15  
-> 最終更新: 2026-08-19（PR #259 マージ後の状態に更新）  
+> 最終更新: 2026-08-21（PR #261 マージ後の状態に更新）  
 > 対象リポジトリ: GEN-RYU-System/crm-app（develop ブランチ）  
 > すべて実測値。推測が混じる箇所は【推測】と明記する。
 
@@ -135,11 +135,29 @@ GAS 側の role→permission マッピングは `27_WebApp.js` L2611 `getPermiss
 | `features/{page}/gasAdapter.ts` | `client.ts` の GAS 呼び出しをラップするリポジトリ実装 |
 | `content/ja/{page}.ts` | 日本語コピー文字列 |
 
-### データ層の実装方式（2パターン混在）
+### データ層の実装方式
 
-現時点でデータアクセスの方式が2パターン混在している。
+**方針: 中間層方式（contracts.ts + gasAdapter.ts）に統一する。**  
+新規ページは必ず中間層方式で実装すること。既存の直接呼び出しページの移行は別タスク。
 
-**パターン A: 中間層あり（customers）**
+**現状（2026-08-21 時点）: 中間層 8 / 直接 5**
+
+| 方式 | ページ数 | ページ一覧 |
+|------|--------|----------|
+| 中間層（Repository 経由） | 8 | LeadListPage, CustomerListPage, CustomerDetailPage, OrderListPage, QuoteListPage, StaffListPage, InventoryListPage, InboxPreviewPage |
+| 直接（gas/client 直呼び出し） | 5 | LeadEditorPage, QuoteEditorPage, DashboardPage（App.tsx 経由）, LoginPage（AuthContext 経由）, ChangePasswordPage |
+
+**直接呼び出しのまま残っているページ（移行未着手）:**
+
+| ページ | 呼び出し元 | 内容 |
+|--------|----------|------|
+| `LeadEditorPage` | ページ自身 | リード作成・更新（`createLead` / `updateLead`） |
+| `QuoteEditorPage` | ページ自身 | 見積もり操作（7 関数） |
+| `DashboardPage` | `App.tsx` | `getDashboardKpis` を直接呼び出し |
+| `LoginPage` | `AuthContext` | `loginWithPassword` / `gasLogout` / `getSessionUser` |
+| `ChangePasswordPage` | ページ自身 | `changeOwnPasswordForFrontend` |
+
+**中間層方式の構成（参照実装: customers）:**
 
 ```
 ListPage → CacheContext → Repository interface（contracts.ts）
@@ -147,21 +165,24 @@ ListPage → CacheContext → Repository interface（contracts.ts）
                          gasAdapter.ts → gas/client.ts → GAS
 ```
 
-`features/customers/contracts.ts` に `CustomerRepository` インターフェースを定義し、  
-`features/customers/gasAdapter.ts` がそれを実装する。  
-`App.tsx` がリポジトリ実装を生成して `CustomerListCacheProvider` に注入する。
+`features/{page}/contracts.ts` に Repository インターフェースを定義し、  
+`features/{page}/gasAdapter.ts` がそれを実装する。  
+`App.tsx` がリポジトリ実装を生成してキャッシュプロバイダに注入する。
 
-**パターン B: 直接呼び出し（leads / orders / quotes）**
+**`check-design-system.mjs` の境界チェック対象:**  
+`scripts/check-design-system.mjs` は `pages/` 配下から `gas/client` を実行時インポートしていないかを検査するが、全ページではなく以下のみが対象。
 
-```
-ListPage（または LeadListCacheContext）→ gas/client.ts → GAS
-```
+| 検査対象 | チェック対象ページ |
+|--------|----------------|
+| `customers` | CustomerListPage + CustomerDetailPage |
+| `inbox` | InboxPreviewPage |
+| `inventory` | InventoryListPage |
+| `orders` | OrderListPage |
+| `staff` | StaffListPage |
+| `quotes` | QuoteListPage（QuoteEditorPage は対象外） |
+| leads / dashboard / auth | **対象外**（CI でキャッチされない） |
 
-`features/` 層・Repository インターフェースを持たず、ページ（またはキャッシュコンテキスト）が  
-`gas/client.ts` の関数を直接呼び出す。
-
-**注意:** `check-design-system.mjs` にはデータアクセス方式の境界チェックがない。  
-どちらのパターンで実装してもビルドは通る。
+leads / dashboard / auth は CI チェック対象外のため、これらのページで `gas/client` を直接インポートしてもビルドが通る点に注意すること。
 
 ### 共通ユーティリティ
 
@@ -184,13 +205,13 @@ GAS 側: `src/28_CoreCurrencyApi.js`（`getCurrentExchangeRate(currencyCode)` �
 
 | ページ | state | 実装ファイル | GAS 側 | 詳細ページ | データ層パターン |
 |--------|-------|------------|--------|----------|--------------|
-| leads | `available` | `leadListConfig.ts` 83行 + `leadEditorConfig.ts` 56行 | `getLeadsByType` / `getLeadDetail` / `createLead` / `updateLead` | ✅ LeadEditorPage | B（直接） |
-| customers | `preview` | `customerConfig.ts` 113行（3タブ分のカラム定義含む） | `getCoreCustomersForFrontend` / `getCoreCustomerForFrontend` | ✅ CustomerDetailPage | A（中間層） |
-| orders | `preview` | `OrderListPage.tsx` 116行 / `orderListConfig.ts` 80行 | `getCoreOrdersForFrontend`（`src/28_CoreOrderReadApi.js`） | なし | B（直接） |
-| quotes | `preview` | `QuoteListPage.tsx` 121行 / `QuoteDetailPage.tsx` 150行 / `quoteListConfig.ts` 76行 | `getCoreQuotesForFrontend` / `getCoreQuoteForFrontend`（`src/28_CoreQuoteApi.js`） | ✅ QuoteDetailPage | B（直接） |
+| leads | `available` | `leadListConfig.ts` 83行 + `leadEditorConfig.ts` 56行 | `getLeadsByType` / `getLeadDetail` / `createLead` / `updateLead` | ✅ LeadEditorPage | 中間層（LeadListPage） / 直接（LeadEditorPage） |
+| customers | `preview` | `customerConfig.ts` 113行（3タブ分のカラム定義含む） | `getCoreCustomersForFrontend` / `getCoreCustomerForFrontend` | ✅ CustomerDetailPage | 中間層 |
+| orders | `preview` | `OrderListPage.tsx` 116行 / `orderListConfig.ts` 80行 | `getCoreOrdersForFrontend`（`src/28_CoreOrderReadApi.js`） | なし | 中間層 |
+| quotes | `preview` | `QuoteListPage.tsx` 121行 / `QuoteDetailPage.tsx` 150行 / `quoteListConfig.ts` 76行 | `getCoreQuotesForFrontend` / `getCoreQuoteForFrontend`（`src/28_CoreQuoteApi.js`） | ✅ QuoteDetailPage | 中間層（QuoteListPage） / 直接（QuoteEditorPage） |
 
 leads が参照実装（リファレンス）。customers はその金型を踏襲して作られた 2 枚目。  
-orders / quotes はパターン B（直接呼び出し）で実装されており、`features/` 中間層を持たない。
+orders / quotes は中間層方式（CacheContext + Repository）で実装済み。ただし QuoteEditorPage と LeadEditorPage はエディタページのため Repository を経由せず gas/client を直接呼び出している。
 
 ### 途中（GAS 未接続・モックのみ）
 

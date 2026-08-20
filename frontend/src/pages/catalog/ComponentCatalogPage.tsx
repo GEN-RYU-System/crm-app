@@ -414,6 +414,47 @@ export function ComponentCatalogPage() {
             <StatusMessage variant="empty">{catalogCopy.statusMessageEmpty}</StatusMessage>
           </div>
         </Card>
+        <Card>
+          <h2 className="catalog-page__heading">{catalogCopy.pagePattern.heading}</h2>
+          <div className="catalog-page__stack">
+            <section>
+              <h3 className="catalog-page__subheading">{catalogCopy.pagePattern.filesHeading}</h3>
+              <table className="catalog-page__pattern-table">
+                <thead>
+                  <tr>
+                    <th>{catalogCopy.pagePattern.colFile}</th>
+                    <th>{catalogCopy.pagePattern.colRole}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {catalogCopy.pagePattern.files.map((item) => (
+                    <tr key={item.path}>
+                      <td><code>{item.path}</code></td>
+                      <td>{item.role}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+            <section>
+              <h3 className="catalog-page__subheading">{catalogCopy.pagePattern.prohibitionHeading}</h3>
+              <StatusMessage variant="error">{catalogCopy.pagePattern.prohibition}</StatusMessage>
+              <p className="catalog-page__copy">{catalogCopy.pagePattern.prohibitionNote}</p>
+            </section>
+            <section>
+              <h3 className="catalog-page__subheading">{catalogCopy.pagePattern.exampleHeading}</h3>
+              <table className="catalog-page__pattern-table">
+                <tbody>
+                  {catalogCopy.pagePattern.exampleFiles.map((path) => (
+                    <tr key={path}>
+                      <td><code>{path}</code></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          </div>
+        </Card>
       </div>
     </>
   );
