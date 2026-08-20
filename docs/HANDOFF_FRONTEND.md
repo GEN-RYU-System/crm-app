@@ -135,11 +135,11 @@ GAS 側の role→permission マッピングは `27_WebApp.js` L2611 `getPermiss
 | `features/{page}/gasAdapter.ts` | `client.ts` の GAS 呼び出しをラップするリポジトリ実装 |
 | `content/ja/{page}.ts` | 日本語コピー文字列 |
 
-### データ層の実装方式（2パターン混在）
+### データ層の実装方式（統一方針: 中間層方式）
 
-現時点でデータアクセスの方式が2パターン混在している。
+データ取得は中間層方式（repository経由）で統一する。金型は customers。
 
-**パターン A: 中間層あり（customers）**
+**標準パターン（中間層方式）**
 
 ```
 ListPage → CacheContext → Repository interface（contracts.ts）
@@ -147,21 +147,41 @@ ListPage → CacheContext → Repository interface（contracts.ts）
                          gasAdapter.ts → gas/client.ts → GAS
 ```
 
-`features/customers/contracts.ts` に `CustomerRepository` インターフェースを定義し、  
-`features/customers/gasAdapter.ts` がそれを実装する。  
-`App.tsx` がリポジトリ実装を生成して `CustomerListCacheProvider` に注入する。
+`features/{name}/contracts.ts` に Repository インターフェースを定義し、  
+`features/{name}/gasAdapter.ts` がそれを実装する。  
+`App.tsx` がリポジトリ実装を生成して CacheProvider に注入する。
 
-**パターン B: 直接呼び出し（leads / orders / quotes）**
+**現状の内訳（中間層8 / 直接5）**
 
-```
-ListPage（または LeadListCacheContext）→ gas/client.ts → GAS
-```
+| 方式 | ページ |
+|------|--------|
+| 中間層 | CustomerListPage / CustomerDetailPage / InventoryListPage / OrderListPage / QuoteListPage / StaffListPage / InboxPreviewPage / LoginPage |
+| 直接（gas/client を直接呼び出し） | LeadListPage（LeadListCacheContext が直接）/ LeadEditorPage / DashboardPage / QuoteEditorPage / ChangePasswordPage |
 
-`features/` 層・Repository インターフェースを持たず、ページ（またはキャッシュコンテキスト）が  
-`gas/client.ts` の関数を直接呼び出す。
+**直接のまま残っているページ一覧**
 
-**注意:** `check-design-system.mjs` にはデータアクセス方式の境界チェックがない。  
-どちらのパターンで実装してもビルドは通る。
+| ページ | 直接呼び出しのファイル |
+|--------|----------------------|
+| leads | `pages/leads/LeadListCacheContext.tsx` / `pages/leads/LeadEditorPage.tsx` |
+| dashboard | `pages/dashboard/DashboardPage.tsx` |
+| quotes editor | `pages/quotes/QuoteEditorPage.tsx` |
+| auth | `pages/auth/ChangePasswordPage.tsx` |
+
+**`check-design-system.mjs` の境界検査対象**
+
+以下の6ページについて、pages/ が gas/client を直接インポートしていないことを自動検査する。
+
+| ページ | 検査 |
+|--------|------|
+| customers | ✅ 検査対象 |
+| inbox | ✅ 検査対象 |
+| inventory | ✅ 検査対象 |
+| orders | ✅ 検査対象 |
+| staff | ✅ 検査対象 |
+| quotes（QuoteListPage のみ） | ✅ 検査対象 |
+| leads | ❌ 未検査 |
+| dashboard | ❌ 未検査 |
+| auth | ❌ 未検査 |
 
 ### 共通ユーティリティ
 
