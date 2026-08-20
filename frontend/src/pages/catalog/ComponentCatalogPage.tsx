@@ -414,6 +414,44 @@ export function ComponentCatalogPage() {
             <StatusMessage variant="empty">{catalogCopy.statusMessageEmpty}</StatusMessage>
           </div>
         </Card>
+        <Card>
+          <h2 className="catalog-page__heading">{catalogCopy.pageTemplate}</h2>
+          <p className="catalog-page__copy">{catalogCopy.pageTemplateDesc}</p>
+          <div className="catalog-page__page-template">
+            <section>
+              <p className="catalog-page__subheading-inline">{catalogCopy.pageTemplateFilesHeading}</p>
+              <dl className="catalog-page__dl">
+                <dt><code>{catalogCopy.pageTemplateFile1Path}</code></dt>
+                <dd>{catalogCopy.pageTemplateFile1Role}</dd>
+                <dt><code>{catalogCopy.pageTemplateFile2Path}</code></dt>
+                <dd>{catalogCopy.pageTemplateFile2Role}</dd>
+                <dt><code>{catalogCopy.pageTemplateFile3Path}</code></dt>
+                <dd>{catalogCopy.pageTemplateFile3Role}</dd>
+                <dt><code>{catalogCopy.pageTemplateFile4Path}</code></dt>
+                <dd>{catalogCopy.pageTemplateFile4Role}</dd>
+                <dt><code>{catalogCopy.pageTemplateFile5Path}</code></dt>
+                <dd>{catalogCopy.pageTemplateFile5Role}</dd>
+                <dt><code>{catalogCopy.pageTemplateFile6Path}</code></dt>
+                <dd>{catalogCopy.pageTemplateFile6Role}</dd>
+              </dl>
+            </section>
+            <section>
+              <p className="catalog-page__subheading-inline">{catalogCopy.pageTemplateProhibitionHeading}</p>
+              <p className="catalog-page__copy">{catalogCopy.pageTemplateProhibitionDetail}</p>
+            </section>
+            <section>
+              <p className="catalog-page__subheading-inline">{catalogCopy.pageTemplateRefHeading}</p>
+              <ul className="catalog-page__ref-list">
+                <li><code>{catalogCopy.pageTemplateRefFile1}</code></li>
+                <li><code>{catalogCopy.pageTemplateRefFile2}</code></li>
+                <li><code>{catalogCopy.pageTemplateRefFile3}</code></li>
+                <li><code>{catalogCopy.pageTemplateRefFile4}</code></li>
+                <li><code>{catalogCopy.pageTemplateRefFile5}</code></li>
+                <li><code>{catalogCopy.pageTemplateRefFile6}</code></li>
+              </ul>
+            </section>
+          </div>
+        </Card>
       </div>
     </>
   );
