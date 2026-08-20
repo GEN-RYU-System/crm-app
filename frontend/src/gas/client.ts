@@ -558,3 +558,45 @@ export function getInventoryConditions(productId: string): Promise<readonly Inve
       .getInventoryConditions(getStoredSessionId(), productId);
   });
 }
+
+export type OrderCreatePayload = {
+  customerId: string;
+  shippingDestinationId: string;
+  paymentDestinationId: string;
+  sourceLeadId: string;
+  currency: string;
+  shippingFee: number | null;
+  duty: number | null;
+  otherFee: number | null;
+  discount: number | null;
+  paymentMethod: string;
+  paymentTerms: string;
+  paymentDueAt: string;
+  note: string;
+  lines: Array<{
+    lineNo: number;
+    productId: string;
+    productName: string;
+    condition: string;
+    quantity: number | null;
+    unitPrice: number | null;
+  }>;
+};
+
+export type OrderCreateResult = { orderId: string };
+
+export function createCoreOrder(payload: OrderCreatePayload): Promise<OrderCreateResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => {
+        if (!value || typeof value !== 'object') { reject(new Error(errorCopy.communication)); return; }
+        const v = value as { orderId?: string };
+        if (typeof v.orderId !== 'string') { reject(new Error(errorCopy.communication)); return; }
+        resolve(v as OrderCreateResult);
+      })
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .createCoreOrderForFrontend(getStoredSessionId(), payload as unknown);
+  });
+}

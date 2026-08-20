@@ -26,8 +26,10 @@ import { QuoteEditorPage } from './pages/quotes/QuoteEditorPage';
 import { QuoteListPage } from './pages/quotes/QuoteListPage';
 import { QuoteListCacheProvider } from './pages/quotes/QuoteListCacheContext';
 import { QUOTE_ROUTE_SEGMENTS } from './pages/quotes/quoteListConfig';
+import { OrderEditorPage } from './pages/orders/OrderEditorPage';
 import { OrderListPage } from './pages/orders/OrderListPage';
 import { OrderListCacheProvider } from './pages/orders/OrderListCacheContext';
+import { ORDER_EDITOR_SEGMENTS } from './pages/orders/orderEditorConfig';
 import { StaffListPage } from './pages/staff/StaffListPage';
 import { inboxPreviewRepository } from './features/inbox/previewAdapter';
 import { inventoryGasRepository } from './features/inventory/gasAdapter';
@@ -112,11 +114,13 @@ function AppRouter() {
   const canAddQuotes = hasNavigationPermission(permissions, 'lead_add');
   const canEditQuotes = hasNavigationPermission(permissions, 'lead_edit');
   const canAccessOrders = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.orders, permissions);
+  const canAddOrders = hasNavigationPermission(permissions, 'lead_add');
   const inventoryRoute = permissionState.status === 'checking' ? <LeadPermissionLoading /> : canAccessLeads ? <InventoryListPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const quotesRoute = permissionState.status === 'checking' ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={quotesCopy.permissionsChecking} />{quotesCopy.permissionsChecking}</StatusMessage> : canAccessQuotes ? <QuoteListPage canAdd={canAddQuotes} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const quoteCreateRoute = canAccessQuotes && canAddQuotes ? <QuoteEditorPage mode="create" canEdit={true} /> : <Navigate to={canAccessQuotes ? NAVIGATION_BY_ID.quotes.hash : NAVIGATION_BY_ID.dashboard.hash} replace />;
   const quoteDetailRoute = permissionState.status === 'checking' ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={quotesCopy.permissionsChecking} />{quotesCopy.permissionsChecking}</StatusMessage> : canAccessQuotes ? <QuoteEditorPage mode="detail" canEdit={canEditQuotes} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
-  const ordersRoute = permissionState.status === 'checking' ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={ordersCopy.permissionsChecking} />{ordersCopy.permissionsChecking}</StatusMessage> : canAccessOrders ? <OrderListPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+  const ordersRoute = permissionState.status === 'checking' ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={ordersCopy.permissionsChecking} />{ordersCopy.permissionsChecking}</StatusMessage> : canAccessOrders ? <OrderListPage canAdd={canAddOrders} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+  const orderCreateRoute = canAccessOrders && canAddOrders ? <OrderEditorPage mode="create" canEdit={true} repository={orderGasRepository} customerRepository={customerGasRepository} /> : <Navigate to={canAccessOrders ? NAVIGATION_BY_ID.orders.hash : NAVIGATION_BY_ID.dashboard.hash} replace />;
   const canAddLeads = hasNavigationPermission(permissions, 'lead_add');
   const canEditLeads = hasNavigationPermission(permissions, 'lead_edit');
   const leadsRoute = permissionState.status === 'checking' ? <LeadPermissionLoading /> : canAccessLeads ? <LeadListPage canAdd={canAddLeads} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
@@ -151,6 +155,9 @@ function AppRouter() {
     quotes: [
       <Route key="create" path={QUOTE_ROUTE_SEGMENTS.create} element={quoteCreateRoute} />,
       <Route key="detail" path={QUOTE_ROUTE_SEGMENTS.detail} element={quoteDetailRoute} />
+    ],
+    orders: [
+      <Route key="create" path={ORDER_EDITOR_SEGMENTS.create} element={orderCreateRoute} />
     ]
   };
 
