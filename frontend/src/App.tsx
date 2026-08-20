@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { canAccessNavigationItem, DATA_MANAGEMENT_ITEMS, hasNavigationPermission, NAVIGATION_BY_ID, visibleDataManagementItems, visibleNavigationGroups, type NavigationItemId, type NavigationPermissions } from './app/navigation';
+import { usePrefetch } from './app/usePrefetch';
 import { AppShell } from './components/shell';
 import { Spinner, StatusMessage } from './components/ui';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -102,6 +103,7 @@ function AppRouter() {
   useEffect(() => { void load(); void loadPermissions(); }, [load, loadPermissions]);
 
   const permissions = permissionState.status === 'ready' ? permissionState.permissions : null;
+  usePrefetch(permissions);
   const navigationGroups = visibleNavigationGroups(permissions);
   const dataManagementItems = visibleDataManagementItems(permissions);
   const canAccessLeads = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.leads, permissions);
