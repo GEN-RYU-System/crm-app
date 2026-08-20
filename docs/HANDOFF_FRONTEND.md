@@ -204,13 +204,14 @@ GAS 側: `src/28_CoreCurrencyApi.js`（`getCurrentExchangeRate(currencyCode)` �
 
 | ページ | state | 実装ファイル | GAS 側 | 詳細ページ | データ層パターン |
 |--------|-------|------------|--------|----------|--------------|
-| leads | `available` | `leadListConfig.ts` 83行 + `leadEditorConfig.ts` 56行 | `getLeadsByType` / `getLeadDetail` / `createLead` / `updateLead` | ✅ LeadEditorPage | 直接（一覧・編集ともに） |
+| leads | `available` | `leadListConfig.ts` 83行 + `leadEditorConfig.ts` 56行 | `getLeadsByType` / `getLeadDetail` / `createLead` / `updateLead` | ✅ LeadEditorPage | 中間層（一覧）/ 直接（LeadEditorPage） |
 | customers | `preview` | `customerConfig.ts` 113行（3タブ分のカラム定義含む） | `getCoreCustomersForFrontend` / `getCoreCustomerForFrontend` | ✅ CustomerDetailPage | 中間層 |
 | orders | `preview` | `OrderListPage.tsx` 116行 / `orderListConfig.ts` 80行 | `getCoreOrdersForFrontend`（`src/28_CoreOrderReadApi.js`） | なし | 中間層（一覧） |
-| quotes | `preview` | `QuoteListPage.tsx` 121行 / `QuoteDetailPage.tsx` 150行 / `quoteListConfig.ts` 76行 | `getCoreQuotesForFrontend` / `getCoreQuoteForFrontend`（`src/28_CoreQuoteApi.js`） | ✅ QuoteDetailPage | 中間層（一覧・詳細）/ 直接（QuoteEditorPage） |
+| quotes | `preview` | `QuoteListPage.tsx` 121行 / `quoteListConfig.ts` 76行 | `getCoreQuotesForFrontend` / `getCoreQuoteForFrontend`（`src/28_CoreQuoteApi.js`） | ✅ QuoteEditorPage | 中間層（一覧）/ 直接（QuoteEditorPage） |
 
 leads が参照実装（リファレンス）。customers はその金型を踏襲して作られた 2 枚目。  
-orders / quotes はその後に中間層方式（`features/*/contracts.ts` + `gasAdapter.ts`）へ移行済み。leads は一覧・編集ともに `gas/client` を直接呼び出しており、`features/` 中間層を持たない。
+leads の一覧（LeadListPage）は LeadListCacheContext 経由（中間層）、編集（LeadEditorPage）は gas/client 直接。`features/leads/` は存在せず contracts.ts / gasAdapter.ts を持たない。  
+orders / quotes はその後に中間層方式（`features/*/contracts.ts` + `gasAdapter.ts`）へ移行済み。
 
 ### 途中（GAS 未接続・モックのみ）
 
