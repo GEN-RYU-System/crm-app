@@ -558,3 +558,45 @@ export function getInventoryConditions(productId: string): Promise<readonly Inve
       .getInventoryConditions(getStoredSessionId(), productId);
   });
 }
+
+export type OrderCreatePayload = {
+  customerId: string;
+  shippingDestinationId: string;
+  paymentDestinationId: string;
+  currency: string;
+  paymentMethod: string;
+  paymentDueAt: string;
+  orderDate: string;
+  exchangeRate: string;
+  shippingFee: string;
+  duty: string;
+  otherFee: string;
+  discount: string;
+  lines: {
+    productId: string;
+    productName: string;
+    category: string;
+    status: string;
+    quantity: string;
+    unitPrice: string;
+  }[];
+};
+
+export type OrderCreateResult = { success: true; orderId: string };
+
+export function createCoreOrder(payload: OrderCreatePayload): Promise<OrderCreateResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        const v = value as { success?: boolean; orderId?: string };
+        if (!v || v.success !== true || typeof v.orderId !== 'string') {
+          reject(new Error(errorCopy.communication)); return;
+        }
+        resolve(v as OrderCreateResult);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .createCoreOrderForFrontend(getStoredSessionId(), payload as unknown);
+  });
+}
