@@ -1,5 +1,5 @@
-import { getCoreOrders, getCoreCurrencies } from '../../gas/client';
-import type { OrderRepository } from './contracts';
+import { createCoreOrder, getCoreOrders, getCoreCurrencies, getInventoryProductOptions } from '../../gas/client';
+import type { OrderRepository, OrderCreatePayload, OrderCreateResult, InventoryProductOption } from './contracts';
 
 export const orderGasRepository: OrderRepository = {
   listOrders: (forceRefresh) => getCoreOrders(forceRefresh),
@@ -10,5 +10,19 @@ export const orderGasRepository: OrderRepository = {
       if (c.symbol) map[c.currencyCode] = c.symbol;
     }
     return map;
+  },
+  createOrder: (payload: OrderCreatePayload): Promise<OrderCreateResult> =>
+    createCoreOrder(payload),
+  listInventoryProducts: async (): Promise<readonly InventoryProductOption[]> => {
+    const products = await getInventoryProductOptions();
+    // gas/client InventoryProductOption only has productId / productName;
+    // map category / unitPrice / currency to empty string.
+    return products.map((p) => ({
+      productId: p.productId,
+      productName: p.productName,
+      category: '',
+      unitPrice: '',
+      currency: '',
+    }));
   },
 };
