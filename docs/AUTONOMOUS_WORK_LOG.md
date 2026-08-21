@@ -220,3 +220,31 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 
 ### 戻し方
 `git revert f1e9a35`
+
+---
+
+## 【8】LineItemEditor 共通部品作成・Quote/Order 明細行共通化（第2段階）— PR #331
+
+**ブランチ**: `release/line-item-editor`
+
+### 変更内容
+- **GAS** `src/28_CoreInventoryOptionApi.js`: `getInventoryProductOptions` の返値に `category` を追加
+- **`frontend/src/gas/client.ts`**: `InventoryProductOption` に `category` フィールドを追加
+- **`frontend/src/features/orders/contracts.ts`**: `InventoryConditionOption` 型と `listConditions` メソッドを追加、`InventoryProductOption` を整理
+- **`frontend/src/features/orders/gasAdapter.ts`**: `listConditions` 実装（`getInventoryConditions` 経由）、category マッピング修正
+- **`frontend/src/pages/orders/orderEditorConfig.ts`**: `OrderLineEditorValues` に `unitWeight` を追加
+- **`frontend/src/components/ui/LineItemEditor/`**: 共通明細入力部品を新規作成
+  - `LineItemEditorLabels` を呼び出し元から注入（コンポーネント自体に日本語コピーなし）
+- **`frontend/src/pages/quotes/QuoteEditorPage.tsx`**: LineItemEditor 使用にリファクタリング（動作変更なし）
+- **`frontend/src/pages/orders/OrderEditorPage.tsx`**: LineItemEditor 使用にリファクタリング
+  - 状態入力が TextField → Select（在庫連動）に変更（Quote と同フロー）
+  - category は OrderEditorValues で管理し GAS ペイロードに継続送信
+- **`frontend/src/pages/catalog/ComponentCatalogPage.tsx`**: LineItemEditor をカタログに登録
+
+### 検証結果
+- `tsc --noEmit` 通過（エラーなし）
+- `npm run build:gas` 通過（typecheck + vite build + emit-gas-html + check:design-system）
+- CI 通過（マージ後に確認）
+
+### 戻し方
+`git revert d6d9f58`
