@@ -80,7 +80,10 @@ if (artifactSource.includes('Warning: truncated output')) violations.push('gener
 // --- Unused source file detection ---
 const checkConfig = JSON.parse(await readFile(resolve(frontendDir, 'scripts/check-design-system-config.json'), 'utf8'));
 const unusedCfg = checkConfig.unusedFilesCheck ?? {};
-const unusedEntryPoints = new Set((unusedCfg.entryPoints ?? []).map((p) => resolve(frontendDir, p)));
+const unusedEntryPoints = new Set([
+  ...(unusedCfg.entryPoints ?? []).map((p) => resolve(frontendDir, p)),
+  ...(unusedCfg.excludedFiles ?? []).map((e) => resolve(frontendDir, e.path)),
+]);
 const tsSourceFiles = sourceFiles.filter((f) => {
   const ext = extname(f);
   return (ext === '.ts' || ext === '.tsx') && !f.endsWith('.d.ts');
