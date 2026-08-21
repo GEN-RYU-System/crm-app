@@ -1,69 +1,26 @@
-import { createContext, useCallback, useContext, useRef, useState, type PropsWithChildren } from 'react';
-import { errorCopy } from '../../content/ja';
+import { useCallback, type PropsWithChildren } from 'react';
+import { createListCache, SINGLE_KEY, type SingleKey } from '../../app/createListCache';
 import type { InventoryRepository, SharedInventoryDto } from '../../features/inventory/contracts';
 
-type InventoryListCache = {
-  items: readonly SharedInventoryDto[] | undefined;
-  error: string | undefined;
-  loading: boolean;
-  refreshing: boolean;
-  ensureLoaded: () => Promise<void>;
-  refresh: () => Promise<void>;
-  retry: () => Promise<void>;
-};
-
-const InventoryListCacheContext = createContext<InventoryListCache | null>(null);
+const { Provider, useCache } = createListCache<SharedInventoryDto>({ name: 'inventory' });
 
 export function InventoryListCacheProvider({ repository, children }: PropsWithChildren<{ repository: InventoryRepository }>) {
-  const [items, setItems] = useState<readonly SharedInventoryDto[] | undefined>(undefined);
-  const [error, setError] = useState<string | undefined>(undefined);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const itemsRef = useRef<readonly SharedInventoryDto[] | undefined>(undefined);
-  const inFlightRef = useRef<Promise<void> | undefined>(undefined);
-
-  const request = useCallback((forceRefresh: boolean): Promise<void> => {
-    const inFlight = inFlightRef.current;
-    if (inFlight) return inFlight;
-
-    setLoading(true);
-    setError(undefined);
-    const promise = repository.listSharedInventory(forceRefresh)
-      .then((records) => {
-        itemsRef.current = records;
-        setItems(records);
-      })
-      .catch((cause) => {
-        setError(cause instanceof Error ? cause.message : errorCopy.genericLoad);
-      })
-      .finally(() => {
-        inFlightRef.current = undefined;
-        setLoading(false);
-      });
-
-    inFlightRef.current = promise;
-    return promise;
-  }, [repository]);
-
-  const ensureLoaded = useCallback(() => {
-    if (itemsRef.current !== undefined) return Promise.resolve();
-    return request(false);
-  }, [request]);
-
-  const refresh = useCallback(async () => {
-    if (itemsRef.current === undefined) return;
-    setRefreshing(true);
-    await request(true);
-    setRefreshing(false);
-  }, [request]);
-
-  const retry = useCallback(() => request(false), [request]);
-
-  return <InventoryListCacheContext.Provider value={{ items, error, loading, refreshing, ensureLoaded, refresh, retry }}>{children}</InventoryListCacheContext.Provider>;
+  const fetcher = useCallback((_: SingleKey, forceRefresh: boolean) => repository.listSharedInventory(forceRefresh), [repository]);
+  return <Provider fetcher={fetcher}>{children}</Provider>;
 }
 
 export function useInventoryListCache() {
-  const cache = useContext(InventoryListCacheContext);
-  if (!cache) throw new Error('InventoryListCacheProvider is required.');
-  return cache;
+  const { itemsByKey, errorByKey, loadingByKey, refreshing, ensureLoaded, refresh, retry } = useCache();
+  const wrappedEnsureLoaded = useCallback(() => ensureLoaded(), [ensureLoaded]);
+  const wrappedRefresh = useCallback(() => refresh(), [refresh]);
+  const wrappedRetry = useCallback(() => retry(), [retry]);
+  return {
+    items: itemsByKey[SINGLE_KEY],
+    error: errorByKey[SINGLE_KEY],
+    loading: loadingByKey[SINGLE_KEY] ?? false,
+    refreshing,
+    ensureLoaded: wrappedEnsureLoaded,
+    refresh: wrappedRefresh,
+    retry: wrappedRetry,
+  };
 }

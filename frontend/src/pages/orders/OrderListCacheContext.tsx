@@ -1,78 +1,42 @@
-import { createContext, useCallback, useContext, useRef, useState, type PropsWithChildren } from 'react';
-import { errorCopy } from '../../content/ja';
+import { createContext, useCallback, useContext, useState, type PropsWithChildren } from 'react';
+import { createListCache, SINGLE_KEY, type SingleKey } from '../../app/createListCache';
 import type { OrderRecord, OrderRepository } from '../../features/orders/contracts';
 
-type OrderListCache = {
-  items: readonly OrderRecord[] | undefined;
-  symbolMap: Record<string, string>;
-  error: string | undefined;
-  loading: boolean;
-  refreshing: boolean;
-  ensureLoaded: () => Promise<void>;
-  refresh: () => Promise<void>;
-  retry: () => Promise<void>;
-};
-
-const OrderListCacheContext = createContext<OrderListCache | null>(null);
+const { Provider: BaseProvider, useCache } = createListCache<OrderRecord>({ name: 'orders' });
+const SymbolMapContext = createContext<Record<string, string>>({});
 
 export function OrderListCacheProvider({ repository, children }: PropsWithChildren<{ repository: OrderRepository }>) {
-  const [items, setItems] = useState<readonly OrderRecord[] | undefined>(undefined);
   const [symbolMap, setSymbolMap] = useState<Record<string, string>>({});
-  const [error, setError] = useState<string | undefined>(undefined);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const itemsRef = useRef<readonly OrderRecord[] | undefined>(undefined);
-  const inFlightRef = useRef<Promise<void> | undefined>(undefined);
-
-  const request = useCallback((forceRefresh: boolean): Promise<void> => {
-    const inFlight = inFlightRef.current;
-    if (inFlight) return inFlight;
-
-    setLoading(true);
-    setError(undefined);
-    const promise = Promise.allSettled([
+  const fetcher = useCallback(async (_: SingleKey, forceRefresh: boolean) => {
+    const [ordersResult, symbolsResult] = await Promise.allSettled([
       repository.listOrders(forceRefresh),
       repository.listCurrencySymbols(),
-    ])
-      .then(([ordersResult, symbolsResult]) => {
-        if (ordersResult.status === 'rejected') throw ordersResult.reason;
-        itemsRef.current = ordersResult.value;
-        setItems(ordersResult.value);
-        if (symbolsResult.status === 'fulfilled') {
-          setSymbolMap(symbolsResult.value);
-        }
-      })
-      .catch((cause) => {
-        setError(cause instanceof Error ? cause.message : errorCopy.genericLoad);
-      })
-      .finally(() => {
-        inFlightRef.current = undefined;
-        setLoading(false);
-      });
-
-    inFlightRef.current = promise;
-    return promise;
+    ]);
+    if (ordersResult.status === 'rejected') throw ordersResult.reason;
+    if (symbolsResult.status === 'fulfilled') setSymbolMap(symbolsResult.value);
+    return ordersResult.value;
   }, [repository]);
-
-  const ensureLoaded = useCallback(() => {
-    if (itemsRef.current !== undefined) return Promise.resolve();
-    return request(false);
-  }, [request]);
-
-  const refresh = useCallback(async () => {
-    if (itemsRef.current === undefined) return;
-    setRefreshing(true);
-    await request(true);
-    setRefreshing(false);
-  }, [request]);
-
-  const retry = useCallback(() => request(false), [request]);
-
-  return <OrderListCacheContext.Provider value={{ items, symbolMap, error, loading, refreshing, ensureLoaded, refresh, retry }}>{children}</OrderListCacheContext.Provider>;
+  return (
+    <SymbolMapContext.Provider value={symbolMap}>
+      <BaseProvider fetcher={fetcher}>{children}</BaseProvider>
+    </SymbolMapContext.Provider>
+  );
 }
 
 export function useOrderListCache() {
-  const cache = useContext(OrderListCacheContext);
-  if (!cache) throw new Error('OrderListCacheProvider is required.');
-  return cache;
+  const { itemsByKey, errorByKey, loadingByKey, refreshing, ensureLoaded, refresh, retry } = useCache();
+  const symbolMap = useContext(SymbolMapContext);
+  const wrappedEnsureLoaded = useCallback(() => ensureLoaded(), [ensureLoaded]);
+  const wrappedRefresh = useCallback(() => refresh(), [refresh]);
+  const wrappedRetry = useCallback(() => retry(), [retry]);
+  return {
+    items: itemsByKey[SINGLE_KEY],
+    symbolMap,
+    error: errorByKey[SINGLE_KEY],
+    loading: loadingByKey[SINGLE_KEY] ?? false,
+    refreshing,
+    ensureLoaded: wrappedEnsureLoaded,
+    refresh: wrappedRefresh,
+    retry: wrappedRetry,
+  };
 }
