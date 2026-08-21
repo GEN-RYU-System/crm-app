@@ -19,7 +19,6 @@ export type OrderCreatePayload = {
   paymentMethod: string;
   paymentDueAt: string;
   orderDate: string;
-  exchangeRate: string;
   shippingFee: string;
   duty: string;
   otherFee: string;

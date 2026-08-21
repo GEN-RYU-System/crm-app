@@ -1,5 +1,6 @@
 import { errorCopy, leadsCopy } from '../content/ja';
 import type { CustomerAggregateDto, CustomerSummaryDto } from '../features/customers/contracts';
+import type { OrderCreatePayload, OrderCreateResult } from '../features/orders/contracts';
 import type { StaffProfileDto, StaffSummaryDto } from '../features/staff/contracts';
 
 export type DashboardKpis = {
@@ -559,30 +560,7 @@ export function getInventoryConditions(productId: string): Promise<readonly Inve
   });
 }
 
-export type OrderCreatePayload = {
-  customerId: string;
-  shippingDestinationId: string;
-  paymentDestinationId: string;
-  currency: string;
-  paymentMethod: string;
-  paymentDueAt: string;
-  orderDate: string;
-  exchangeRate: string;
-  shippingFee: string;
-  duty: string;
-  otherFee: string;
-  discount: string;
-  lines: {
-    productId: string;
-    productName: string;
-    category: string;
-    status: string;
-    quantity: string;
-    unitPrice: string;
-  }[];
-};
-
-export type OrderCreateResult = { success: true; orderId: string };
+export { OrderCreatePayload, OrderCreateResult };
 
 export function createCoreOrder(payload: OrderCreatePayload): Promise<OrderCreateResult> {
   const runner = window.google?.script?.run;

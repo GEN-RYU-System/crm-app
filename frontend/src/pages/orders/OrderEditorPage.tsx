@@ -161,7 +161,6 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
         paymentMethod: values.paymentMethod,
         paymentDueAt: values.paymentDueAt,
         orderDate: values.orderDate,
-        exchangeRate: values.exchangeRate,
         shippingFee: values.shippingFee,
         duty: values.duty,
         otherFee: values.otherFee,
@@ -179,7 +178,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
       navigate(ORDER_EDITOR_PATHS.list);
     } catch (cause) {
       setSaveError(
-        (cause instanceof Error ? cause.message : '') || ordersCopy.editor.saveErrorPrefix
+        (cause instanceof Error ? cause.message : '') || ordersCopy.editor.saveErrorFallback
       );
     } finally {
       setSaving(false);
@@ -302,14 +301,6 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
                 value={values.currency}
                 onChange={(e) => updateValue('currency', e.target.value)}
                 width="sm"
-              />
-
-              <TextField
-                label={ordersCopy.editor.exchangeRate}
-                value={values.exchangeRate}
-                onChange={(e) => updateValue('exchangeRate', e.target.value)}
-                width="sm"
-                placeholder="1"
               />
 
               <Select
