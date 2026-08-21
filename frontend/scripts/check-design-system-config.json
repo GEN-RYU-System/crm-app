@@ -6,6 +6,12 @@
     ],
     "ignorePatterns": [
       "**/*.d.ts"
+    ],
+    "excludedFiles": [
+      {
+        "path": "src/features/inbox/previewAdapter.ts",
+        "reason": "inbox は現在 GAS 未接続のプレビュー状態のため、実装時の参照資料として残す。inbox の GAS 接続実装が完了したら除外を解除し、実際に import されているか確認すること。"
+      }
     ]
   },
   "componentUsageCheck": {
