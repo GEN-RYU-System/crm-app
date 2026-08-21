@@ -15,6 +15,7 @@ interface GoogleScriptRun {
   updateLead(sessionId: string | null, sheetName: string, leadId: string, updateData: Record<string, string>): void;
   getCoreCustomersForFrontend(sessionId: string | null, forceRefresh: boolean): void;
   getCoreCustomerForFrontend(sessionId: string | null, customerId: string): void;
+  getCoreAllCustomerAggregatesForFrontend(sessionId: string | null): void;
   getCoreStaffForFrontend(sessionId: string | null, forceRefresh: boolean): void;
   getCoreStaffMemberForFrontend(sessionId: string | null, staffId: string): void;
   loginWithPassword(staffId: string, password: string): void;
