@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, LineItemEditor, PageHeader, Select, Skeleton, StatusMessage, TextField } from '../../components/ui';
+import { Button, Card, Combobox, LineItemEditor, PageHeader, Select, Skeleton, StatusMessage, TextField } from '../../components/ui';
 import { ordersCopy } from '../../content/ja/orders';
 import type { CustomerAggregateDto } from '../../features/customers/contracts';
 import type { CustomerRepository } from '../../features/customers/contracts';
@@ -307,14 +307,15 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
         <>
           <Card>
             <div className="order-editor-page__form">
-              <Select
-                label={ordersCopy.editor.selectCustomer}
-                options={[
-                  { value: '', label: ordersCopy.editor.customerPlaceholder },
-                  ...customers.map((c) => ({ value: c.customerId, label: c.customerName })),
-                ]}
+              <Combobox
+                items={[...customers]}
+                getKey={(c) => c.customerId}
+                getLabel={(c) => c.customerName}
+                onSelect={(customer) => handleCustomerChange(customer?.customerId ?? '')}
                 value={values.customerId}
-                onChange={(e) => handleCustomerChange(e.target.value)}
+                label={ordersCopy.editor.selectCustomer}
+                placeholder={ordersCopy.editor.customerPlaceholder}
+                noResultsText={ordersCopy.editor.customerNoResults}
                 width="md"
                 required
               />
