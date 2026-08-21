@@ -1975,3 +1975,84 @@ function surveyLeadSourceColumn() {
 
   return out.join('\n');
 }
+
+/**
+ * 【読み取り専用】流入経路列の問題行を特定する
+ * 1. 値が「流入元」の行: 行番号 / リードID / 顧客名 / 登録日
+ * 2. 空欄の行: 行番号をカンマ区切り（連続する場合は 10-15 形式で圧縮）
+ */
+function listLeadSourceIssueRows() {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  if (!sheet) return JSON.stringify({ error: 'シートが見つかりません: ' + CONFIG.SHEETS.LEADS });
+
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow < 2) return JSON.stringify({ error: 'データ行がありません' });
+
+  var headers    = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var colIdx     = headers.indexOf('流入経路');
+  var leadIdIdx  = headers.indexOf('リードID');
+  var nameIdx    = headers.indexOf('顧客名');
+  var regDateIdx = headers.indexOf('登録日');
+
+  if (colIdx < 0) return JSON.stringify({ error: '流入経路 列が見つかりません' });
+
+  var dataRows = lastRow - 1;
+  var allData  = sheet.getRange(2, 1, dataRows, lastCol).getValues();
+
+  var miuraRows   = [];
+  var emptyRowNos = [];
+
+  for (var i = 0; i < allData.length; i++) {
+    var sheetRow = i + 2;
+    var val = String(allData[i][colIdx] || '').trim();
+    if (val === '流入元') {
+      miuraRows.push({
+        row:     sheetRow,
+        leadId:  String(allData[i][leadIdIdx]  || '').trim(),
+        name:    String(allData[i][nameIdx]    || '').trim(),
+        regDate: String(allData[i][regDateIdx] || '').trim()
+      });
+    } else if (val === '') {
+      emptyRowNos.push(sheetRow);
+    }
+  }
+
+  function compressRanges(nums) {
+    if (nums.length === 0) return '';
+    var ranges = [];
+    var start = nums[0], end = nums[0];
+    for (var j = 1; j < nums.length; j++) {
+      if (nums[j] === end + 1) {
+        end = nums[j];
+      } else {
+        ranges.push(start === end ? String(start) : start + '-' + end);
+        start = end = nums[j];
+      }
+    }
+    ranges.push(start === end ? String(start) : start + '-' + end);
+    return ranges.join(', ');
+  }
+
+  var out = [];
+  out.push('=== listLeadSourceIssueRows ===');
+  out.push('シート: ' + CONFIG.SHEETS.LEADS);
+  out.push('総データ行: ' + dataRows);
+  out.push('');
+
+  out.push('--- 1. 値が「流入元」の行: ' + miuraRows.length + '件 ---');
+  if (miuraRows.length === 0) {
+    out.push('  なし');
+  } else {
+    miuraRows.forEach(function(r) {
+      out.push('  row' + r.row + ' | ' + r.leadId + ' | ' + r.name + ' | ' + r.regDate);
+    });
+  }
+  out.push('');
+
+  out.push('--- 2. 空欄の行: ' + emptyRowNos.length + '件 ---');
+  out.push('  ' + (emptyRowNos.length === 0 ? 'なし' : compressRanges(emptyRowNos)));
+
+  return out.join('\n');
+}
