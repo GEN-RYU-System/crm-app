@@ -1834,21 +1834,36 @@ function devRecoverStaff(staffId) {
 }
 
 /**
- * 【調査用】LAST_CHECK_SYNC_SIGNALS を読み、最後の checkSyncSignals 呼び出しからの
- * 経過秒を返す。ポーリングが正常動作していれば 60 秒以内の値が返る。
+ * 【調査用】LAST_CHECK_SYNC_SIGNALS / LAST_CHECK_SYNC_SIGNALS_OK を読み、
+ * checkSyncSignals の呼び出し状況と認証成否を返す。
+ *
+ * verdict の種別:
+ *   - 未呼び出し: LAST_CHECK_SYNC_SIGNALS が未記録（一度も呼ばれていない）
+ *   - CALLED_AUTH_FAILED: 呼ばれたが認証失敗（セッション不正）
+ *   - POLLING_ACTIVE: 認証成功済み、最終成功から 60 秒以内
+ *   - POLLING_SLOW: 認証成功済み、最終成功から 60 秒超 5 分以内
+ *   - POLLING_STOPPED: 認証成功済み、最終成功から 5 分超
  *
  * @returns {string} JSON 文字列
- *   - lastCalledAt: ISO 8601 形式の最終呼び出し時刻
- *   - agoSec: 現在との差(秒)
- *   - verdict: POLLING_ACTIVE / POLLING_SLOW / POLLING_STOPPED
  */
 function readLastCheckSyncSignals() {
-  var v = CacheService.getScriptCache().get('LAST_CHECK_SYNC_SIGNALS');
+  var cache = CacheService.getScriptCache();
+  var v    = cache.get('LAST_CHECK_SYNC_SIGNALS');
+  var vOk  = cache.get('LAST_CHECK_SYNC_SIGNALS_OK');
   if (!v) return '未呼び出し: LAST_CHECK_SYNC_SIGNALS が未記録';
   var ms = Number(v);
   var agoSec = Math.round((Date.now() - ms) / 1000);
-  var verdict = agoSec <= 60 ? 'POLLING_ACTIVE (<=60s)'
-    : agoSec <= 300 ? 'POLLING_SLOW (>60s, <=5min)'
+  var authOk = !!vOk;
+  var authAgoSec = vOk ? Math.round((Date.now() - Number(vOk)) / 1000) : null;
+  var verdict = !authOk ? 'CALLED_AUTH_FAILED: 呼ばれたが認証失敗'
+    : authAgoSec <= 60  ? 'POLLING_ACTIVE (<=60s)'
+    : authAgoSec <= 300 ? 'POLLING_SLOW (>60s, <=5min)'
     : 'POLLING_STOPPED (>5min)';
-  return JSON.stringify({ lastCalledAt: new Date(ms).toISOString(), agoSec: agoSec, verdict: verdict });
+  return JSON.stringify({
+    lastCalledAt: new Date(ms).toISOString(),
+    agoSec: agoSec,
+    lastAuthOkAt: vOk ? new Date(Number(vOk)).toISOString() : null,
+    authAgoSec: authAgoSec,
+    verdict: verdict
+  });
 }
