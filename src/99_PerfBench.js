@@ -1754,3 +1754,81 @@ function devIssueTemporaryPassword(sessionId, staffId) {
   setEmailFromSession(sessionId);
   return issueTemporaryPasswordForFrontend(staffId);
 }
+
+// ─── DEV専用: 担当者状態の読み取り + ロックなし仮パスワード復旧 ─────────────
+
+/**
+ * 【DEV専用】担当者の認証状態スナップショットを返す。checkPermission不要。
+ * @param {string} staffId
+ */
+function devReadStaffState_(staffId) {
+  var result = validateCoreSchemaV1TableForWrite(getSpreadsheet(), 'STAFF');
+  var sheet = result.sheet;
+  var hi = result.headerIndexes;
+  var rowNum = coreStaffFindRowByStaffId(sheet, hi, staffId);
+  if (rowNum === -1) return { found: false, staffId: staffId };
+  var data = sheet.getDataRange().getValues();
+  var row = data[rowNum - 1];
+  var now = new Date();
+  var lu = row[_staffColIdx(hi, 'LOCKED_UNTIL')];
+  var isLocked = (lu instanceof Date) && (now < lu);
+  var statusActiveValue = getCoreSchemaV1Value('STAFF', 'STATUS', 'ACTIVE');
+  var currentStatus = String(row[_staffColIdx(hi, 'STATUS')]).trim();
+  return {
+    found:         true,
+    staffId:       String(row[_staffColIdx(hi, 'STAFF_ID')]).trim(),
+    status:        currentStatus,
+    statusIsActive: currentStatus === statusActiveValue,
+    hasHash:       !!String(row[_staffColIdx(hi, 'PASSWORD_HASH')]).trim(),
+    hasSalt:       !!String(row[_staffColIdx(hi, 'PASSWORD_SALT')]).trim(),
+    loginFailCount: Number(row[_staffColIdx(hi, 'LOGIN_FAIL_COUNT')]) || 0,
+    lockedUntil:   (lu instanceof Date) ? lu.toISOString() : String(lu || '(空)'),
+    isLocked:      isLocked
+  };
+}
+
+/**
+ * 【DEV専用】担当者の仮パスワードを発行し、ロック・失敗カウントをリセットする。
+ * checkPermission を呼ばず直接シートを操作する（setStaffPassword の実質的な複製）。
+ * @param {string} staffId
+ * @returns {{ staffId: string, temporaryPassword: string }}
+ */
+function devRecoverStaff(staffId) {
+  if (getEnvironment() !== 'development') throw new Error('DEV only');
+
+  var before = devReadStaffState_(staffId);
+  if (!before.found) throw new Error('STAFF_NOT_FOUND: ' + staffId);
+
+  // 仮パスワード生成・ハッシュ化
+  var tempPw = generateTemporaryPassword();
+  var salt   = generatePasswordSalt();
+  var hash   = hashPassword(tempPw, salt);
+
+  // シートへの書き込み（LockService保護）
+  var result = validateCoreSchemaV1TableForWrite(getSpreadsheet(), 'STAFF');
+  var sheet  = result.sheet;
+  var hi     = result.headerIndexes;
+  var rowNum = coreStaffFindRowByStaffId(sheet, hi, staffId);
+  if (rowNum === -1) throw new Error('STAFF_NOT_FOUND_ON_WRITE: ' + staffId);
+
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    sheet.getRange(rowNum, _staffColNum(hi, 'PASSWORD_HASH')   ).setValue(hash);
+    sheet.getRange(rowNum, _staffColNum(hi, 'PASSWORD_SALT')   ).setValue(salt);
+    sheet.getRange(rowNum, _staffColNum(hi, 'LOGIN_FAIL_COUNT')).setValue(0);
+    sheet.getRange(rowNum, _staffColNum(hi, 'LOCKED_UNTIL')    ).setValue('');
+  } finally {
+    lock.releaseLock();
+  }
+
+  // 旧セッションを全失効
+  revokeAllSessionsForStaff(staffId);
+
+  var after = devReadStaffState_(staffId);
+  return {
+    before:            before,
+    after:             after,
+    temporaryPassword: tempPw   // 呼び出し元でファイルに保存すること
+  };
+}
