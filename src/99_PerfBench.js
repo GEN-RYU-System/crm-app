@@ -1668,3 +1668,31 @@ function benchCacheSignalRead() {
   Logger.log(result);
   return result;
 }
+
+/**
+ * 【調査用 / 認証なし / 書き込みなし】checkSyncSignals 単体速度計測。
+ * SYNC_SIGNAL_* 6キーを CacheService.getAll で一括取得する所要時間を3回計測する。
+ */
+function benchCheckSyncSignals() {
+  var DOMAINS = ['leads', 'quotes', 'orders', 'inventory', 'staff', 'customers'];
+  var keys = DOMAINS.map(function(d) { return 'SYNC_SIGNAL_' + d; });
+  var cache = CacheService.getScriptCache();
+
+  var out = ['=== benchCheckSyncSignals ===', '実行: ' + new Date().toISOString(), ''];
+
+  var ms = [];
+  for (var i = 0; i < 3; i++) {
+    var t0 = Date.now();
+    cache.getAll(keys);
+    ms.push(Date.now() - t0);
+    out.push((i + 1) + '回目 getAll(' + keys.length + 'keys): ' + ms[i] + ' ms');
+  }
+
+  out.push('');
+  out.push('中央値: ' + ms.slice().sort(function(a,b){return a-b;})[1] + ' ms');
+  out.push('最大値: ' + Math.max.apply(null, ms) + ' ms');
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
