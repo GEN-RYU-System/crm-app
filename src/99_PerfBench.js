@@ -2056,3 +2056,108 @@ function listLeadSourceIssueRows() {
 
   return out.join('\n');
 }
+
+/**
+ * 【読み取り専用・DRY RUN】「Card market」→「Card Market」変換の事前確認
+ * - 完全一致する行を全件列挙（行番号・件数）
+ * - 「Card Market」（正しい表記）の件数を確認
+ * - 前後空白など大文字小文字以外の表記ゆれを確認
+ */
+function dryRunNormalizeCardMarket() {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  if (!sheet) return JSON.stringify({ error: 'シートが見つかりません: ' + CONFIG.SHEETS.LEADS });
+
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow < 2) return JSON.stringify({ error: 'データ行がありません' });
+
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var colIdx  = headers.indexOf('流入経路');
+  if (colIdx < 0) return JSON.stringify({ error: '流入経路 列が見つかりません' });
+
+  var dataRows = lastRow - 1;
+  var values   = sheet.getRange(2, colIdx + 1, dataRows, 1).getValues();
+
+  var exactMatch    = [];  // 完全一致「Card market」
+  var correctCount  = 0;  // 「Card Market」
+  var fuzzyRows     = [];  // trim後が「Card market」だが元値に前後空白あり
+
+  for (var i = 0; i < values.length; i++) {
+    var raw     = String(values[i][0] || '');
+    var trimmed = raw.trim();
+    var sheetRow = i + 2;
+
+    if (raw === 'Card market') {
+      exactMatch.push(sheetRow);
+    } else if (raw === 'Card Market') {
+      correctCount++;
+    } else if (trimmed === 'Card market' && raw !== trimmed) {
+      fuzzyRows.push({ row: sheetRow, raw: JSON.stringify(raw) });
+    }
+  }
+
+  var out = [];
+  out.push('=== dryRunNormalizeCardMarket ===');
+  out.push('シート: ' + CONFIG.SHEETS.LEADS);
+  out.push('総データ行: ' + dataRows);
+  out.push('');
+  out.push('「Card market」完全一致: ' + exactMatch.length + '件（期待値: 117件）');
+  out.push('「Card Market」正表記:   ' + correctCount + '件（期待値: 0件）');
+  out.push('前後空白あり（trim後一致）: ' + fuzzyRows.length + '件');
+  out.push('');
+  out.push('--- 「Card market」行番号 ---');
+  out.push('  ' + (exactMatch.length === 0 ? 'なし' : exactMatch.join(', ')));
+  if (fuzzyRows.length > 0) {
+    out.push('');
+    out.push('--- 前後空白あり行（要注意） ---');
+    fuzzyRows.forEach(function(r) {
+      out.push('  row' + r.row + ' raw=' + r.raw);
+    });
+  }
+  out.push('');
+  out.push('変換予定: 「Card market」→「Card Market」（' + (exactMatch.length + fuzzyRows.length) + '件）');
+
+  return out.join('\n');
+}
+
+/**
+ * 【書き込み】「Card market」を「Card Market」に変換する
+ * withSheetWrite_ でロック・キャッシュ削除を行う。
+ * dryRunNormalizeCardMarket で内容を確認し、承認を得てから実行すること。
+ */
+function applyNormalizeCardMarket() {
+  var ss    = getSpreadsheet();
+  var sheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  if (!sheet) return JSON.stringify({ error: 'シートが見つかりません: ' + CONFIG.SHEETS.LEADS });
+
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow < 2) return JSON.stringify({ error: 'データ行がありません' });
+
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var colIdx  = headers.indexOf('流入経路');
+  if (colIdx < 0) return JSON.stringify({ error: '流入経路 列が見つかりません' });
+
+  var result = withSheetWrite_(
+    { useLock: true, cacheTargets: LEADS_CACHE_TARGETS },
+    function() {
+      var dataRows = lastRow - 1;
+      var range    = sheet.getRange(2, colIdx + 1, dataRows, 1);
+      var values   = range.getValues();
+      var changed  = 0;
+
+      for (var i = 0; i < values.length; i++) {
+        if (values[i][0] === 'Card market') {
+          values[i][0] = 'Card Market';
+          changed++;
+        }
+      }
+
+      if (changed > 0) range.setValues(values);
+      return changed;
+    }
+  );
+
+  return '変換完了: ' + result + '件（Card market → Card Market）';
+}
