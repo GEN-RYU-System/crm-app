@@ -24,6 +24,7 @@ export type OrderLineEditorValues = {
   condition: string;
   quantity: string;
   unitPrice: string;
+  unitWeight: number;
 };
 
 export type OrderEditorValues = {
@@ -49,6 +50,7 @@ export function emptyOrderLine(): OrderLineEditorValues {
     condition: '',
     quantity: '',
     unitPrice: '',
+    unitWeight: 0,
   };
 }
 

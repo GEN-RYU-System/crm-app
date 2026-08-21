@@ -81,6 +81,10 @@ export const ordersCopy = {
     lineProduct: '商品',
     lineProductPlaceholder: '商品名で検索',
     lineProductNoResults: '商品が見つかりません',
+    lineConditionPlaceholder: '商品を先に選択',
+    lineConditionOptionLabel: (condition: string, quantity: number) => `${condition}（在庫: ${quantity}）`,
+    lineWeight: '重量(g)',
+    lineAmount: '金額',
     validation: {
       customerRequired: '顧客を選択してください。',
       shippingDestinationRequired: '配送先を選択してください。',

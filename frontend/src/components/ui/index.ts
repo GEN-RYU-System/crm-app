@@ -3,3 +3,4 @@ export { ConversationWorkspace } from './ConversationWorkspace/ConversationWorks
 export { SubMenu } from './SubMenu/SubMenu'; export type { SubMenuGroup, SubMenuItem, SubMenuProps } from './SubMenu/SubMenu';
 export { HubShell } from './HubShell/HubShell'; export type { HubShellProps } from './HubShell/HubShell';
 export { Combobox } from './Combobox/Combobox'; export type { ComboboxProps } from './Combobox/Combobox';
+export { LineItemEditor } from './LineItemEditor/LineItemEditor'; export type { LineItemEditorLabels, LineItemEditorProps, LineItemValue } from './LineItemEditor/LineItemEditor';
