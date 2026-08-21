@@ -1,4 +1,4 @@
-import type { DashboardKpis } from '../../gas/client';
+import type { DashboardKpis } from '../../features/dashboard/contracts';
 import { Button, Card, PageHeader, Skeleton, StatCard, StatusMessage } from '../../components/ui';
 import { commonCopy, dashboardCopy } from '../../content/ja';
 import './DashboardPage.css';
