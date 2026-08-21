@@ -18,6 +18,13 @@ const dataManagementSource = await readFile(resolve(srcDir, 'pages/data-manageme
 const nonHubIds = new Set(['dashboard', 'inbox', 'dataManagement', 'components']); const activeHubIds = [...navigationSource.matchAll(/\{\s*id:\s*'([^']+)'[^\n}]*state:\s*'(?:available|preview)'[^\n}]*\}/g)].map((m) => m[1]).filter((id) => !nonHubIds.has(id)); if (activeHubIds.length === 0) violations.push('hub route check: no active DATA_MANAGEMENT_ITEMS detected — regex may be broken or navigation.ts structure changed'); const appSource = await readFile(resolve(srcDir, 'App.tsx'), 'utf8'); const hubIndexMatch = appSource.match(/const hubIndexRoutes[^=]*=\s*\{([^}]+)\}/s); const registeredHubIds = hubIndexMatch ? [...hubIndexMatch[1].matchAll(/^\s*(\w+):/mg)].map((m) => m[1]) : []; for (const id of activeHubIds) { if (!registeredHubIds.includes(id)) violations.push(`hub route not registered in hubIndexRoutes: ${id}`); }
 const createListCacheSource = await readFile(resolve(srcDir, 'app/createListCache.tsx'), 'utf8');
 if (/from ['"].*gas\/client/.test(createListCacheSource)) violations.push('createListCache must not import from gas/client directly');
+const dashboardContractsSource = await readFile(resolve(srcDir, 'features/dashboard/contracts.ts'), 'utf8');
+const dashboardGasAdapterSource = await readFile(resolve(srcDir, 'features/dashboard/gasAdapter.ts'), 'utf8');
+const dashboardPageSource = await readFile(resolve(srcDir, 'pages/dashboard/DashboardPage.tsx'), 'utf8');
+if (!dashboardContractsSource.includes('DashboardRepository')) violations.push('dashboard feature does not declare DashboardRepository');
+if (!dashboardGasAdapterSource.includes('dashboardGasRepository')) violations.push('dashboard feature does not provide GAS repository');
+if (!dashboardGasAdapterSource.includes("from '../../gas/client'")) violations.push('dashboard GAS repository bypasses the typed GAS client');
+if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(dashboardPageSource) || !dashboardPageSource.includes('DashboardKpis')) violations.push('dashboard page bypasses the DashboardRepository boundary');
 const customerContractsSource = await readFile(resolve(srcDir, 'features/customers/contracts.ts'), 'utf8');
 const customerGasAdapterSource = await readFile(resolve(srcDir, 'features/customers/gasAdapter.ts'), 'utf8');
 const customerPageSources = await Promise.all(['pages/customers/CustomerListPage.tsx', 'pages/customers/CustomerDetailPage.tsx'].map((file) => readFile(resolve(srcDir, file), 'utf8')));
