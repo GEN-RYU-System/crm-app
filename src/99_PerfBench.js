@@ -1832,3 +1832,23 @@ function devRecoverStaff(staffId) {
     temporaryPassword: tempPw   // 呼び出し元でファイルに保存すること
   };
 }
+
+/**
+ * 【調査用】LAST_CHECK_SYNC_SIGNALS を読み、最後の checkSyncSignals 呼び出しからの
+ * 経過秒を返す。ポーリングが正常動作していれば 60 秒以内の値が返る。
+ *
+ * @returns {string} JSON 文字列
+ *   - lastCalledAt: ISO 8601 形式の最終呼び出し時刻
+ *   - agoSec: 現在との差(秒)
+ *   - verdict: POLLING_ACTIVE / POLLING_SLOW / POLLING_STOPPED
+ */
+function readLastCheckSyncSignals() {
+  var v = CacheService.getScriptCache().get('LAST_CHECK_SYNC_SIGNALS');
+  if (!v) return '未呼び出し: LAST_CHECK_SYNC_SIGNALS が未記録';
+  var ms = Number(v);
+  var agoSec = Math.round((Date.now() - ms) / 1000);
+  var verdict = agoSec <= 60 ? 'POLLING_ACTIVE (<=60s)'
+    : agoSec <= 300 ? 'POLLING_SLOW (>60s, <=5min)'
+    : 'POLLING_STOPPED (>5min)';
+  return JSON.stringify({ lastCalledAt: new Date(ms).toISOString(), agoSec: agoSec, verdict: verdict });
+}
