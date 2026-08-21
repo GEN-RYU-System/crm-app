@@ -227,20 +227,6 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
     ? currencies.map((c) => ({ value: c.currencyCode, label: `${c.currencyCode}（${c.name}）` }))
     : [{ value: 'JPY', label: 'JPY' }];
 
-  const lineItemLabels = {
-    product: quotesCopy.editor.form.lineProduct,
-    productPlaceholder: quotesCopy.editor.form.lineProductPlaceholder,
-    productNoResults: quotesCopy.editor.form.lineProductNoResults,
-    condition: quotesCopy.editor.form.lineCondition,
-    conditionPlaceholder: quotesCopy.editor.form.lineConditionPlaceholder,
-    quantity: quotesCopy.editor.form.lineQuantity,
-    unitPrice: quotesCopy.editor.form.lineUnitPrice,
-    amount: quotesCopy.editor.form.lineAmount,
-    weight: quotesCopy.editor.form.lineWeight,
-    remove: quotesCopy.editor.form.removeLine,
-    conditionOptionLabel: quotesCopy.editor.form.lineConditionOptionLabel,
-  };
-
   return (
     <>
       <PageHeader
@@ -352,7 +338,6 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
               onRemove={removeLine}
               lineErrors={lineErrors}
               disabled={!editable}
-              labels={lineItemLabels}
             />
           </Card>
         </>
