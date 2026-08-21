@@ -1,0 +1,11 @@
+.sales-order-list-page__layout { display: flex; gap: var(--space-lg); align-items: flex-start; }
+.sales-order-list-page__sidebar { flex-shrink: 0; width: 11rem; }
+.sales-order-list-page__sidebar-nav { display: flex; flex-direction: column; gap: var(--space-xs); }
+.sales-order-list-page__tab { display: flex; justify-content: space-between; align-items: center; padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-sm); border: none; background: transparent; cursor: pointer; text-align: left; font-size: var(--font-size-sm); color: var(--color-text-secondary); transition: background 0.1s; width: 100%; }
+.sales-order-list-page__tab:hover { background: var(--color-surface-hover); color: var(--color-text-primary); }
+.sales-order-list-page__tab--active { background: var(--color-surface-selected); color: var(--color-text-primary); font-weight: var(--font-weight-medium); }
+.sales-order-list-page__tab-count { font-size: var(--font-size-xs); color: var(--color-text-tertiary); }
+.sales-order-list-page__tab--active .sales-order-list-page__tab-count { color: var(--color-text-secondary); }
+.sales-order-list-page__main { flex: 1; min-width: 0; }
+.sales-order-list-page__data-card { border-radius: var(--radius-data-table); overflow: hidden; padding: var(--space-none); }
+.sales-order-list-page__data-state { padding: var(--space-xl); }
