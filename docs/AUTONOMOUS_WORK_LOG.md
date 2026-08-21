@@ -540,3 +540,24 @@ DEV実機確認後に記録予定
 
 ### revert用SHA
 `git revert <SHA>` （PR merge後に確定）
+
+---
+
+## 【PR6】グローバルナビに受注管理を追加 (/sales-orders)
+
+**日付**: 2026-08-22
+**PR**: release/sales-orders-nav
+
+### 変更内容（ファイル単位）
+- `frontend/src/app/navigation.ts`: NavigationItemId に salesOrders 追加、leads グループに受注管理エントリ追加
+- `frontend/src/content/ja/navigation.ts`: salesOrders: '受注管理' を追加
+- `frontend/src/App.tsx`: /sales-orders のハードコードを NAVIGATION_BY_ID.salesOrders.hash に変更
+- `frontend/scripts/check-design-system.mjs`: salesOrders を nonHubIds に追加（hub 外の直接ルートのため）
+- `docs/AUTONOMOUS_WORK_LOG.md` (本ファイル): PR6 作業ログ追記
+
+### 検証結果
+- `npm run build:gas` 通過（typecheck -> build -> emit-gas-html -> check:design-system）
+- CI: PR push後に確認
+
+### revert用SHA
+`git revert <SHA>` （PR merge後に確定）
