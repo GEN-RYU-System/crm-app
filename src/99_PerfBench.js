@@ -1737,3 +1737,20 @@ function verifySyncSignalLeads() {
   Logger.log(result);
   return result;
 }
+
+/**
+ * 【DEV専用・使い捨て】セッション経由で仮パスワードを発行する。
+ * issueTemporaryPasswordForFrontend は sessionId を受け取らないため、
+ * このラッパーで setEmailFromSession を前置する。
+ *
+ * @param {string} sessionId  管理者のセッションID
+ * @param {string} staffId    対象の担当者ID
+ * @returns {{ staffId: string, temporaryPassword: string }}
+ */
+function devIssueTemporaryPassword(sessionId, staffId) {
+  if (getEnvironment() !== 'development') {
+    throw new Error('DEV only');
+  }
+  setEmailFromSession(sessionId);
+  return issueTemporaryPasswordForFrontend(staffId);
+}
