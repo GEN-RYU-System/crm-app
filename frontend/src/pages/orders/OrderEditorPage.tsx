@@ -1,22 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, PageHeader, Select, Skeleton, StatusMessage, TextField } from '../../components/ui';
+import { Button, Card, LineItemEditor, PageHeader, Select, Skeleton, StatusMessage, TextField } from '../../components/ui';
 import { ordersCopy } from '../../content/ja/orders';
 import type { CustomerAggregateDto } from '../../features/customers/contracts';
 import type { CustomerRepository } from '../../features/customers/contracts';
-import type { InventoryProductOption, OrderCreatePayload, OrderRepository } from '../../features/orders/contracts';
+import type { InventoryConditionOption, InventoryProductOption, OrderCreatePayload, OrderRepository } from '../../features/orders/contracts';
 import {
   calcInvoiceTotal,
-  calcLineSubtotal,
   emptyOrderEditorValues,
   emptyOrderLine,
   ORDER_EDITOR_PATHS,
   PAYMENT_METHODS,
   toHalfwidthDigits,
   type OrderEditorValues,
-  type OrderLineEditorValues,
 } from './orderEditorConfig';
-import { OrderProductCombobox } from './OrderProductCombobox';
 import './OrderEditorPage.css';
 
 type Props = {
@@ -39,6 +36,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
   const [customers, setCustomers] = useState<readonly { customerId: string; customerName: string }[]>([]);
   const [customerAggregate, setCustomerAggregate] = useState<CustomerAggregateDto | null>(null);
   const [inventoryProducts, setInventoryProducts] = useState<InventoryProductOption[]>([]);
+  const [conditionsMap, setConditionsMap] = useState<Map<string, InventoryConditionOption[]>>(new Map());
   const [currencies, setCurrencies] = useState<string[]>(['USD', 'JPY', 'EUR', 'GBP']);
 
   useEffect(() => {
@@ -87,26 +85,66 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
   const updateValue = <K extends keyof Omit<OrderEditorValues, 'lines'>>(key: K, value: OrderEditorValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: value }));
 
-  const updateLine = (index: number, key: keyof OrderLineEditorValues, value: string) =>
-    setValues((prev) => ({
-      ...prev,
-      lines: prev.lines.map((line, i) => i === index ? { ...line, [key]: value } : line),
-    }));
-
-  const handleProductSelect = (index: number, product: InventoryProductOption | null) => {
+  const handleProductSelect = (index: number, productId: string, productName: string) => {
+    const product = inventoryProducts.find((p) => p.productId === productId);
     setValues((prev) => ({
       ...prev,
       lines: prev.lines.map((line, i) =>
         i === index
           ? {
               ...line,
-              productId: product?.productId ?? '',
-              productName: product?.productName ?? '',
+              productId,
+              productName,
               category: product?.category ?? '',
-              unitPrice: product?.unitPrice ?? '',
+              condition: '',
+              unitPrice: '',
+              unitWeight: 0,
             }
           : line
       ),
+    }));
+    if (!productId) return;
+    if (!conditionsMap.has(productId)) {
+      void repository.listConditions(productId)
+        .then((conditions) => setConditionsMap((prev) => new Map(prev).set(productId, [...conditions])))
+        .catch(() => setConditionsMap((prev) => new Map(prev).set(productId, [])));
+    }
+  };
+
+  const handleConditionSelect = (index: number, condition: string) => {
+    setValues((prev) => {
+      const line = prev.lines[index];
+      if (!line) return prev;
+      const conditions = conditionsMap.get(line.productId) ?? [];
+      const found = conditions.find((c) => c.condition === condition);
+      return {
+        ...prev,
+        lines: prev.lines.map((l, i) =>
+          i === index
+            ? {
+                ...l,
+                condition,
+                unitPrice: found ? String(found.unitPrice) : l.unitPrice,
+                unitWeight: found ? found.unitWeight : 0,
+              }
+            : l
+        ),
+      };
+    });
+  };
+
+  const handleQuantityChange = (index: number, raw: string) => {
+    const half = toHalfwidthDigits(raw);
+    setValues((prev) => ({
+      ...prev,
+      lines: prev.lines.map((l, i) => i === index ? { ...l, quantity: half } : l),
+    }));
+  };
+
+  const handleUnitPriceChange = (index: number, value: string) => {
+    setValues((prev) => ({
+      ...prev,
+      lines: prev.lines.map((l, i) => i === index ? { ...l, unitPrice: value } : l),
     }));
   };
 
@@ -222,6 +260,20 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
   );
 
   const isLoading = masterState === 'loading';
+
+  const lineItemLabels = {
+    product: ordersCopy.editor.lineProduct,
+    productPlaceholder: ordersCopy.editor.lineProductPlaceholder,
+    productNoResults: ordersCopy.editor.lineProductNoResults,
+    condition: ordersCopy.editor.condition,
+    conditionPlaceholder: ordersCopy.editor.lineConditionPlaceholder,
+    quantity: ordersCopy.editor.quantity,
+    unitPrice: ordersCopy.editor.unitPrice,
+    amount: ordersCopy.editor.subtotal,
+    weight: ordersCopy.editor.lineWeight,
+    remove: ordersCopy.editor.removeLine,
+    conditionOptionLabel: ordersCopy.editor.lineConditionOptionLabel,
+  };
 
   return (
     <>
@@ -339,71 +391,17 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
               </Button>
             </div>
 
-            <div className="order-editor-page__lines">
-              {values.lines.map((line, index) => {
-                const subtotal = calcLineSubtotal(line);
-                return (
-                  <div key={index} className="order-editor-page__line-row">
-                    <span className="order-editor-page__line-no">{index + 1}</span>
-
-                    <OrderProductCombobox
-                      className="order-editor-page__line-product"
-                      products={inventoryProducts}
-                      value={line.productId}
-                      onChange={(product) => handleProductSelect(index, product)}
-                      label={ordersCopy.editor.lineProduct}
-                      placeholder={ordersCopy.editor.lineProductPlaceholder}
-                      noResultsText={ordersCopy.editor.lineProductNoResults}
-                    />
-
-                    <TextField
-                      className="order-editor-page__line-category"
-                      label={ordersCopy.editor.category}
-                      value={line.category}
-                      onChange={(e) => updateLine(index, 'category', e.target.value)}
-                    />
-
-                    <TextField
-                      className="order-editor-page__line-condition"
-                      label={ordersCopy.editor.condition}
-                      value={line.condition}
-                      onChange={(e) => updateLine(index, 'condition', e.target.value)}
-                      placeholder="Sealed box"
-                    />
-
-                    <TextField
-                      className="order-editor-page__line-qty"
-                      label={ordersCopy.editor.quantity}
-                      value={line.quantity}
-                      onChange={(e) => updateLine(index, 'quantity', e.target.value)}
-                    />
-
-                    <TextField
-                      className="order-editor-page__line-price"
-                      label={ordersCopy.editor.unitPrice}
-                      value={line.unitPrice}
-                      onChange={(e) => updateLine(index, 'unitPrice', e.target.value)}
-                    />
-
-                    <div className="order-editor-page__line-calc">
-                      <span className="order-editor-page__line-calc-label">{ordersCopy.editor.subtotal}</span>
-                      <span className="order-editor-page__line-calc-value">
-                        {subtotal != null ? subtotal.toLocaleString() : '—'}
-                      </span>
-                    </div>
-
-                    <Button
-                      className="order-editor-page__line-delete"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeLine(index)}
-                    >
-                      {ordersCopy.editor.removeLine}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
+            <LineItemEditor
+              products={inventoryProducts}
+              lines={values.lines}
+              conditionsMap={conditionsMap}
+              onProductSelect={handleProductSelect}
+              onConditionSelect={handleConditionSelect}
+              onQuantityChange={handleQuantityChange}
+              onUnitPriceChange={handleUnitPriceChange}
+              onRemove={removeLine}
+              labels={lineItemLabels}
+            />
           </Card>
 
           <Card>
