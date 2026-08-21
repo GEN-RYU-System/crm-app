@@ -28,6 +28,7 @@ export type CustomerProfileDto = {
 
 export type ShippingAddressDto = {
   addressId: string;
+  displayName: string;
   recipient: string;
   country: string;
   address: string;
@@ -39,6 +40,7 @@ export type ShippingAddressDto = {
 
 export type PaymentProfileDto = {
   paymentProfileId: string;
+  displayName: string;
   billingName: string;
   country: string;
   address: string;

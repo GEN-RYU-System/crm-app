@@ -17,12 +17,12 @@ const CORE_SCHEMA_V1_TABLES = {
   },
   SHIPPING_DESTINATIONS: {
     sheetName: '配送先マスタ', canonicalName: '配送先マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
-    headers: createCoreSchemaV1Headers([['SHIPPING_DESTINATION_ID', '配送先ID'], ['CUSTOMER_ID', '顧客ID'], ['RECIPIENT_NAME', '宛名'], ['ADDRESS_LINE_1', 'Address 1'], ['ADDRESS_LINE_2', 'Address 2'], ['ADDRESS_LINE_3', 'Address 3'], ['CITY', 'City'], ['STATE', 'State'], ['ZIP', 'Zip'], ['COUNTRY', '国'], ['PHONE', '電話'], ['COUNTRY_CODE', '国番号'], ['EMAIL', 'D Email'], ['TAX_ID', 'D Tax ID'], ['IS_DEFAULT', '既定'], ['IS_ACTIVE', '有効']]), primaryKey: 'SHIPPING_DESTINATION_ID',
+    headers: createCoreSchemaV1Headers([['SHIPPING_DESTINATION_ID', '配送先ID'], ['CUSTOMER_ID', '顧客ID'], ['RECIPIENT_NAME', '宛名'], ['ADDRESS_LINE_1', 'Address 1'], ['ADDRESS_LINE_2', 'Address 2'], ['ADDRESS_LINE_3', 'Address 3'], ['CITY', 'City'], ['STATE', 'State'], ['ZIP', 'Zip'], ['COUNTRY', '国'], ['PHONE', '電話'], ['COUNTRY_CODE', '国番号'], ['EMAIL', 'D Email'], ['TAX_ID', 'D Tax ID'], ['DISPLAY_NAME', '表示名'], ['IS_DEFAULT', '既定'], ['IS_ACTIVE', '有効']]), primaryKey: 'SHIPPING_DESTINATION_ID',
     referenceIds: [{ headerKey: 'CUSTOMER_ID', targetTableKey: 'CUSTOMERS' }]
   },
   PAYMENT_DESTINATIONS: {
     sheetName: '支払先マスタ', canonicalName: '支払先マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
-    headers: createCoreSchemaV1Headers([['PAYMENT_DESTINATION_ID', '支払先ID'], ['CUSTOMER_ID', '顧客ID'], ['BILLING_NAME', '請求名義'], ['ADDRESS_LINE_1', 'Address 1'], ['ADDRESS_LINE_2', 'Address 2'], ['ADDRESS_LINE_3', 'Address 3'], ['CITY', 'City'], ['STATE', 'State'], ['ZIP', 'Zip'], ['COUNTRY', '国'], ['PAYMENT_METHOD', '支払方法'], ['CURRENCY', '通貨'], ['TAX_ID', 'B Tax ID'], ['IS_DEFAULT', '既定'], ['IS_ACTIVE', '有効']]), primaryKey: 'PAYMENT_DESTINATION_ID',
+    headers: createCoreSchemaV1Headers([['PAYMENT_DESTINATION_ID', '支払先ID'], ['CUSTOMER_ID', '顧客ID'], ['BILLING_NAME', '請求名義'], ['ADDRESS_LINE_1', 'Address 1'], ['ADDRESS_LINE_2', 'Address 2'], ['ADDRESS_LINE_3', 'Address 3'], ['CITY', 'City'], ['STATE', 'State'], ['ZIP', 'Zip'], ['COUNTRY', '国'], ['PAYMENT_METHOD', '支払方法'], ['CURRENCY', '通貨'], ['TAX_ID', 'B Tax ID'], ['DISPLAY_NAME', '表示名'], ['IS_DEFAULT', '既定'], ['IS_ACTIVE', '有効']]), primaryKey: 'PAYMENT_DESTINATION_ID',
     referenceIds: [{ headerKey: 'CUSTOMER_ID', targetTableKey: 'CUSTOMERS' }]
   },
   ORDERS: {
