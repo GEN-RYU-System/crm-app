@@ -1912,3 +1912,66 @@ function readLeadSheetFormulas() {
     hasFormulas: formulaColumns.length > 0
   }, null, 2);
 }
+
+/**
+ * 【読み取り専用】リード管理シートの「流入経路」列の値分布を調査する
+ * - 値の種類と件数
+ * - 空欄の件数
+ * - 選択肢マスタ8件との突き合わせ（マスタ外の値を列挙）
+ */
+function surveyLeadSourceColumn() {
+  var MASTER_VALUES = [
+    'Instagram', 'Facebook', 'Market Place', 'Whatsapp',
+    'Card Market', 'eBay', '紹介', 'その他'
+  ];
+
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  if (!sheet) return JSON.stringify({ error: 'シートが見つかりません: ' + CONFIG.SHEETS.LEADS });
+
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow < 2) return JSON.stringify({ error: 'データ行がありません' });
+
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var colIdx = headers.indexOf('流入経路');
+  if (colIdx < 0) return JSON.stringify({ error: '流入経路 列が見つかりません' });
+
+  var dataRows = lastRow - 1;
+  var values = sheet.getRange(2, colIdx + 1, dataRows, 1).getValues();
+
+  var dist = {};
+  var emptyCount = 0;
+  for (var i = 0; i < values.length; i++) {
+    var v = String(values[i][0] || '').trim();
+    if (v === '') { emptyCount++; continue; }
+    dist[v] = (dist[v] || 0) + 1;
+  }
+
+  var masterSet = {};
+  MASTER_VALUES.forEach(function(m) { masterSet[m] = true; });
+  var unknownValues = Object.keys(dist).filter(function(k) { return !masterSet[k]; });
+
+  var out = [];
+  out.push('=== surveyLeadSourceColumn ===');
+  out.push('シート: ' + CONFIG.SHEETS.LEADS);
+  out.push('総データ行: ' + dataRows);
+  out.push('流入経路 列: col' + (colIdx + 1));
+  out.push('');
+  out.push('--- 値の分布 ---');
+  Object.keys(dist).sort().forEach(function(k) {
+    out.push('  ' + JSON.stringify(k) + ': ' + dist[k] + '件');
+  });
+  out.push('');
+  out.push('空欄: ' + emptyCount + '件');
+  out.push('');
+  out.push('--- 選択肢マスタ8件との突き合わせ ---');
+  out.push('マスタ外の値: ' + (unknownValues.length === 0 ? 'なし' : unknownValues.map(function(k) { return JSON.stringify(k) + '(' + dist[k] + '件)'; }).join(', ')));
+  out.push('');
+  out.push('--- マスタ値ごとの件数 ---');
+  MASTER_VALUES.forEach(function(m) {
+    out.push('  ' + JSON.stringify(m) + ': ' + (dist[m] || 0) + '件');
+  });
+
+  return out.join('\n');
+}
