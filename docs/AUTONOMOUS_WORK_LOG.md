@@ -461,3 +461,34 @@ GAS API の返り値に `status` フィールドを追加する。
 
 ### revert用SHA
 `git revert <SHA>` （PR merge後に確定）
+
+---
+
+## 【PR2】受注管理サイドメニュー: ステータス選択肢APIを新設
+
+**日付**: 2026-08-22
+**PR**: release/order-sidemenu-pr2
+
+### 変更前の状態
+- `getCoreOrderStatusOptionsForFrontend` 関数が存在しなかった
+- `CORE_ORDER_STATUS_TAB_KEYS` 配列が存在しなかった
+
+### 変更内容（ファイル単位）
+- `src/28_CoreOrderReadApi.js`:
+  - `CORE_ORDER_STATUS_TAB_KEYS` 配列を追加（6ステータス、UNKNOWN除外）
+  - `getCoreOrderStatusOptionsForFrontend` 関数を追加
+  - `getCoreSchemaV1Value` でシート実値を返す実装（ハードコードなし）
+
+### 変更理由
+サイドメニューのタブ定義をGASから取得可能にする。
+ラベルはスキーマの実値（シートの値）から生成することで、
+フロントへの文字列ハードコードを防ぐ。
+
+### 検証結果
+- `npm run build:gas` 通過
+- `grep -rn "支払い待ち\|仕入れ中\|発送待ち" frontend/src/` ヒット 0
+- CI: PR push後に確認予定
+- `clasp run getCoreOrderStatusOptionsForFrontend` → 返り値6件確認予定
+
+### revert用SHA
+`git revert <SHA>` （PR merge後に確定）
