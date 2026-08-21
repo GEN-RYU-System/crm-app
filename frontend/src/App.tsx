@@ -49,7 +49,9 @@ import { orderGasRepository } from './features/orders/gasAdapter';
 import { quoteGasRepository } from './features/quotes/gasAdapter';
 import { ChangePasswordPage } from './pages/auth/ChangePasswordPage';
 import { LoginPage } from './pages/auth/LoginPage';
-import { customersCopy, errorCopy, inboxCopy, leadsCopy, ordersCopy, quotesCopy, staffCopy } from './content/ja';
+import { SalesOrderListPage } from './pages/sales-orders/SalesOrderListPage';
+import { SalesOrderListCacheProvider } from './pages/sales-orders/SalesOrderListCacheContext';
+import { customersCopy, errorCopy, inboxCopy, leadsCopy, ordersCopy, quotesCopy, salesOrdersCopy, staffCopy } from './content/ja';
 import { authCopy } from './content/ja/auth';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -158,11 +160,13 @@ function AppRouter() {
   const canEditQuotes = hasNavigationPermission(permissions, 'lead_edit');
   const canAccessOrders = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.orders, permissions);
   const canAddOrders = hasNavigationPermission(permissions, 'lead_add');
+  const canAccessSalesOrders = permissionState.status === 'ready' && hasNavigationPermission(permissions, 'lead_view');
   const inventoryRoute = permissionState.status === 'checking' ? <LeadPermissionLoading /> : canAccessLeads ? <InventoryListPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const quotesRoute = permissionState.status === 'checking' ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={quotesCopy.permissionsChecking} />{quotesCopy.permissionsChecking}</StatusMessage> : canAccessQuotes ? <QuoteListPage canAdd={canAddQuotes} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const quoteCreateRoute = canAccessQuotes && canAddQuotes ? <QuoteEditorPage mode="create" canEdit={true} /> : <Navigate to={canAccessQuotes ? NAVIGATION_BY_ID.quotes.hash : NAVIGATION_BY_ID.dashboard.hash} replace />;
   const quoteDetailRoute = permissionState.status === 'checking' ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={quotesCopy.permissionsChecking} />{quotesCopy.permissionsChecking}</StatusMessage> : canAccessQuotes ? <QuoteEditorPage mode="detail" canEdit={canEditQuotes} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const ordersRoute = permissionState.status === 'checking' ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={ordersCopy.permissionsChecking} />{ordersCopy.permissionsChecking}</StatusMessage> : canAccessOrders ? <OrderListPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+  const salesOrdersRoute = permissionState.status === 'checking' ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={salesOrdersCopy.permissionsChecking} />{salesOrdersCopy.permissionsChecking}</StatusMessage> : canAccessSalesOrders ? <SalesOrderListPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const orderCreateRoute = canAccessOrders && canAddOrders
     ? <OrderEditorPage mode="create" repository={orderGasRepository} customerRepository={customerGasRepository} />
     : <Navigate to={canAccessOrders ? NAVIGATION_BY_ID.orders.hash : NAVIGATION_BY_ID.dashboard.hash} replace />;
@@ -206,7 +210,7 @@ function AppRouter() {
     ]
   };
 
-  return <HashRouter><LeadListCacheProvider><CustomerListCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><CustomerAggregateCacheProvider repository={customerGasRepository}><><SyncPoller /><AppShellWithPrefetch permissions={permissions} navigationGroups={navigationGroups}><Routes>
+  return <HashRouter><LeadListCacheProvider><CustomerListCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><CustomerAggregateCacheProvider repository={customerGasRepository}><SalesOrderListCacheProvider><><SyncPoller /><AppShellWithPrefetch permissions={permissions} navigationGroups={navigationGroups}><Routes>
     <Route path={NAVIGATION_BY_ID.dashboard.hash} element={<DashboardPage kpis={kpis} state={state} error={error} onRefresh={() => void load()} />} />
     {DATA_MANAGEMENT_ITEMS
       .filter((item) => item.state !== 'planned' && hubIndexRoutes[item.id] != null)
@@ -217,6 +221,7 @@ function AppRouter() {
         </Route>
       ))}
     <Route path={NAVIGATION_BY_ID.inbox.hash} element={inboxRoute} />
+    <Route path="/sales-orders" element={salesOrdersRoute} />
     <Route path="/leads-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
     <Route path="/new-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
     <Route path="/route-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
@@ -224,5 +229,5 @@ function AppRouter() {
     <Route path={NAVIGATION_BY_ID.components.hash} element={<ComponentCatalogPage />} />
     <Route path="/change-password" element={<ChangePasswordPage />} />
     <Route path="*" element={<Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />} />
-  </Routes></AppShellWithPrefetch></></CustomerAggregateCacheProvider></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></InventoryListCacheProvider></CustomerListCacheProvider></LeadListCacheProvider></HashRouter>;
+  </Routes></AppShellWithPrefetch></></SalesOrderListCacheProvider></CustomerAggregateCacheProvider></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></InventoryListCacheProvider></CustomerListCacheProvider></LeadListCacheProvider></HashRouter>;
 }

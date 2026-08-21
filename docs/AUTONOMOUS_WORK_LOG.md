@@ -492,3 +492,51 @@ GAS API の返り値に `status` フィールドを追加する。
 
 ### revert用SHA
 `git revert <SHA>` （PR merge後に確定）
+
+---
+
+## 【PR1】マージ確定情報
+
+**mergedAt**: 2026-08-21T21:28:22Z
+**mergeCommit.oid**: 8acc6bc98df465559de9d8ea50abebb94b2df809
+**revert用SHA**: `git revert 8acc6bc98df465559de9d8ea50abebb94b2df809`
+
+---
+
+## 【PR2】マージ確定情報
+
+**mergedAt**: 2026-08-21T21:31:37Z
+**mergeCommit.oid**: 9a048b302870ff943b5e9462fce7b47672724b8e
+**revert用SHA**: `git revert 9a048b302870ff943b5e9462fce7b47672724b8e`
+
+---
+
+## 【PR5】受注管理ページ新規作成 (/sales-orders)
+
+**日付**: 2026-08-22
+**PR**: release/sales-orders-page
+
+### 変更内容（ファイル単位）
+- `frontend/src/content/ja/salesOrders.ts` (新規): 受注管理ページ用コピー・バッジバリアント定義
+- `frontend/src/content/ja/index.ts`: salesOrdersCopy / SALES_ORDER_PAYMENT_STATUS_BADGE_VARIANT の re-export 追加
+- `frontend/src/gas/client.ts`: OrderStatusOption 型・getCoreOrderStatusOptions() 関数を追加
+- `frontend/src/gas/types.d.ts`: getCoreOrderStatusOptionsForFrontend を GoogleScriptRun 型に追加
+- `frontend/src/features/salesOrders/contracts.ts` (新規): SalesOrderStatusOption / SalesOrderTab 型定義
+- `frontend/src/features/salesOrders/gasAdapter.ts` (新規): OrderRecord -> SalesOrderRow マッピング
+- `frontend/src/pages/sales-orders/SalesOrderListCacheContext.tsx` (新規): 受注一覧・ステータス選択肢のキャッシュ Provider
+- `frontend/src/pages/sales-orders/salesOrderListConfig.ts` (新規): 列定義・ソート・フィルタ関数
+- `frontend/src/pages/sales-orders/SalesOrderListPage.tsx` (新規): 受注管理ページ本体
+- `frontend/src/pages/sales-orders/SalesOrderListPage.css` (新規): ページスタイル
+- `frontend/src/App.tsx`: /sales-orders ルート追加・SalesOrderListCacheProvider でラップ
+- `docs/AUTONOMOUS_WORK_LOG.md` (本ファイル): PR5 作業ログ追記
+
+### 不明ステータス件数
+DEV実機確認後に記録予定
+
+### 検証結果
+- `npm run build:gas` 通過（typecheck -> build -> emit-gas-html -> check:design-system）
+- `grep -rn "支払い待ち|仕入れ中|発送待ち" frontend/src/` ヒット 0
+- CI: PR push後に確認
+
+### revert用SHA
+`git revert <SHA>` （PR merge後に確定）
