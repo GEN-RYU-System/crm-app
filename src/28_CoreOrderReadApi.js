@@ -61,3 +61,29 @@ function getCoreOrdersForFrontend(sessionId, forceRefresh) {
   writeCacheChunks_(CORE_ORDERS_CACHE_INDEX, CORE_ORDERS_CACHE_PREFIX, rows, CORE_ORDERS_CACHE_TTL, CORE_ORDERS_CACHE_CHUNK_SIZE);
   return rows;
 }
+
+/**
+ * サイドメニューのタブとして表示するステータスを、表示順で返す。
+ * UNKNOWN は業務上出さない前提のためタブに含めない。
+ * （UNKNOWN の行が万一存在しても「すべて」タブには表示されるため取りこぼさない）
+ */
+var CORE_ORDER_STATUS_TAB_KEYS = [
+  'AWAITING_PAYMENT',
+  'SOURCING',
+  'AWAITING_SHIPPING',
+  'COMPLETED',
+  'TROUBLE',
+  'CANCELLED'
+];
+
+function getCoreOrderStatusOptionsForFrontend(sessionId) {
+  setEmailFromSession(sessionId);
+  checkPermission('lead_view');
+
+  return CORE_ORDER_STATUS_TAB_KEYS.map(function(key) {
+    return {
+      key:   key,
+      label: getCoreSchemaV1Value('ORDERS', 'STATUS', key)
+    };
+  });
+}
