@@ -236,12 +236,12 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
 
   const shippingOptions = customerAggregate?.shippingAddresses.map((a) => ({
     value: a.addressId,
-    label: [a.recipient, a.country, a.address].filter(Boolean).join(' / '),
+    label: a.displayName || [a.recipient, a.country, a.address].filter(Boolean).join(' / '),
   })) ?? [];
 
   const paymentOptions = customerAggregate?.paymentProfiles.map((p) => ({
     value: p.paymentProfileId,
-    label: [p.billingName, p.country, p.method, p.currency].filter(Boolean).join(' / '),
+    label: p.displayName || [p.country, p.address].filter(Boolean).join(' / '),
   })) ?? [];
 
   const currencyOptions = currencies.map((c) => ({ value: c, label: c }));

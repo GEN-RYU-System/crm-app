@@ -79,12 +79,12 @@ function getCoreCustomerForFrontend(sessionId, customerId) {
   const shipping = coreCustomerFrontendReadTable(spreadsheet, 'SHIPPING_DESTINATIONS', [
     'SHIPPING_DESTINATION_ID', 'CUSTOMER_ID', 'RECIPIENT_NAME', 'ADDRESS_LINE_1',
     'ADDRESS_LINE_2', 'ADDRESS_LINE_3', 'CITY', 'STATE', 'ZIP', 'COUNTRY',
-    'PHONE', 'EMAIL', 'IS_DEFAULT', 'IS_ACTIVE'
+    'PHONE', 'EMAIL', 'DISPLAY_NAME', 'IS_DEFAULT', 'IS_ACTIVE'
   ]);
   const payments = coreCustomerFrontendReadTable(spreadsheet, 'PAYMENT_DESTINATIONS', [
     'PAYMENT_DESTINATION_ID', 'CUSTOMER_ID', 'BILLING_NAME', 'ADDRESS_LINE_1',
     'ADDRESS_LINE_2', 'ADDRESS_LINE_3', 'CITY', 'STATE', 'ZIP', 'COUNTRY',
-    'PAYMENT_METHOD', 'CURRENCY', 'IS_DEFAULT', 'IS_ACTIVE'
+    'PAYMENT_METHOD', 'CURRENCY', 'DISPLAY_NAME', 'IS_DEFAULT', 'IS_ACTIVE'
   ]);
   const customerShipping = shipping.rows.filter(function(row) {
     return coreCustomerFrontendValue(row[shipping.indexes.CUSTOMER_ID]) === normalizedCustomerId;
@@ -113,6 +113,7 @@ function getCoreCustomerForFrontend(sessionId, customerId) {
     shippingAddresses: customerShipping.map(function(row) {
       return {
         addressId: coreCustomerFrontendValue(row[shipping.indexes.SHIPPING_DESTINATION_ID]),
+        displayName: coreCustomerFrontendValue(row[shipping.indexes.DISPLAY_NAME]),
         recipient: coreCustomerFrontendValue(row[shipping.indexes.RECIPIENT_NAME]),
         country: coreCustomerFrontendValue(row[shipping.indexes.COUNTRY]),
         address: coreCustomerFrontendJoinAddress(row, shipping.indexes),
@@ -125,6 +126,7 @@ function getCoreCustomerForFrontend(sessionId, customerId) {
     paymentProfiles: customerPayments.map(function(row) {
       return {
         paymentProfileId: coreCustomerFrontendValue(row[payments.indexes.PAYMENT_DESTINATION_ID]),
+        displayName: coreCustomerFrontendValue(row[payments.indexes.DISPLAY_NAME]),
         billingName: coreCustomerFrontendValue(row[payments.indexes.BILLING_NAME]),
         country: coreCustomerFrontendValue(row[payments.indexes.COUNTRY]),
         address: coreCustomerFrontendJoinAddress(row, payments.indexes),
