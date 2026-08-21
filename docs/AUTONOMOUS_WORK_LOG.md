@@ -492,3 +492,42 @@ GAS API の返り値に `status` フィールドを追加する。
 
 ### revert用SHA
 `git revert <SHA>` （PR merge後に確定）
+
+---
+
+## 【PR3】受注管理サイドメニュー: サイドメニューの配線
+
+**日付**: 2026-08-22
+**PR**: release/order-sidemenu-pr3
+
+### 変更前の状態
+- `getCoreOrderStatusOptions` 関数がclient.tsに存在しなかった
+- `OrderRepository.listStatusOptions` が存在しなかった
+- `OrderListCacheContext.tsx` にステータス選択肢のキャッシュがなかった
+- `OrderListPage.tsx` にタブUIがなかった
+- `orderListConfig.ts` の `OrderRow` に `status` フィールドがなかった
+
+### 変更内容（ファイル単位）
+- `frontend/src/gas/types.d.ts`: `getCoreOrderStatusOptionsForFrontend` を型定義に追加
+- `frontend/src/gas/client.ts`: `OrderStatusOption` 型と `getCoreOrderStatusOptions()` を追加
+- `frontend/src/features/orders/contracts.ts`: `OrderStatusOption` 型と `OrderRepository.listStatusOptions` を追加
+- `frontend/src/features/orders/gasAdapter.ts`: `listStatusOptions` の実装を追加
+- `frontend/src/pages/orders/OrderListCacheContext.tsx`: `StatusOptionsContext` とステータス選択肢キャッシュを追加
+- `frontend/src/pages/orders/orderListConfig.ts`: `OrderRow.status` フィールド追加・`filterOrderRowsByStatus` 追加
+- `frontend/src/pages/orders/OrderListPage.tsx`: タブ表示・件数算出・ステータス絞り込みを追加
+- `frontend/src/content/ja/orders.ts`: `statusTabLabel`・`statusAllLabel` コピーを追加
+
+### 変更理由
+- タブ定義をGAS APIから動的に取得（ハードコードなし）
+- ステータス選択肢はキャッシュコンテキストにロード（追加API呼び出しなし）
+- 件数はフロントで集計（orders一覧APIのstatusフィールドを活用）
+- 絞り込みはラベル（シート実値）で比較
+
+### 検証結果
+- `npm run build:gas` 通過（typecheck → build → emit-gas-html → design-system check）
+- `grep -rn "支払い待ち\|仕入れ中\|発送待ち" frontend/src/` ヒット 0
+- CI: PR push後に確認予定
+- DEV実機確認: PR push後に確認予定
+
+### revert用SHA
+`git revert <SHA>` （PR merge後に確定）

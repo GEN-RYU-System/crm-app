@@ -426,6 +426,26 @@ export function getCoreOrders(forceRefresh?: boolean): Promise<readonly OrderRec
   });
 }
 
+export type OrderStatusOption = {
+  key: string;
+  label: string;
+};
+
+export function getCoreOrderStatusOptions(): Promise<readonly OrderStatusOption[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (!Array.isArray(value)) { reject(new Error(errorCopy.communication)); return; }
+        resolve(value as OrderStatusOption[]);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getCoreOrderStatusOptionsForFrontend(getStoredSessionId());
+  });
+}
+
 export type CurrencyRecord = {
   currencyCode: string;
   symbol: string;

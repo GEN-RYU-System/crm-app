@@ -2,24 +2,48 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CRM_SEARCH_ICON, CRM_SORT_ICONS } from '../../app/icons';
 import { Badge } from '../../components/ui/Badge/Badge';
-import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMessage, TextField, type DataTableColumn } from '../../components/ui';
+import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMessage, TabBar, TextField, type DataTableColumn } from '../../components/ui';
 import { ordersCopy, PAYMENT_STATUS_BADGE_VARIANT } from '../../content/ja';
-import { filterOrderRows, ORDER_LIST_COLUMNS, ORDER_LIST_INITIAL_SORT, toOrderRows, type OrderRow, type OrderSort } from './orderListConfig';
+import { filterOrderRows, filterOrderRowsByStatus, ORDER_LIST_COLUMNS, ORDER_LIST_INITIAL_SORT, toOrderRows, type OrderRow, type OrderSort } from './orderListConfig';
 import { useOrderListCache } from './OrderListCacheContext';
 import { ORDER_ROUTE_SEGMENTS } from './orderEditorConfig';
 import './OrderListPage.css';
 
+const ALL_STATUS_KEY = '';
+
 export function OrderListPage() {
   const navigate = useNavigate();
-  const { items, symbolMap, error, loading, refreshing, ensureLoaded, refresh, retry } = useOrderListCache();
+  const { items, symbolMap, statusOptions, error, loading, refreshing, ensureLoaded, refresh, retry } = useOrderListCache();
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<OrderSort>(ORDER_LIST_INITIAL_SORT);
+  const [activeStatusLabel, setActiveStatusLabel] = useState<string>(ALL_STATUS_KEY);
 
   void ensureLoaded();
 
   const records = items ?? [];
   const rows = useMemo(() => toOrderRows(records, sort, symbolMap), [records, sort, symbolMap]);
-  const filteredRows = useMemo(() => filterOrderRows(rows, query), [rows, query]);
+
+  // Count per status tab (including the "all" tab)
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { [ALL_STATUS_KEY]: rows.length };
+    for (const opt of statusOptions) {
+      counts[opt.label] = rows.filter((r) => r.status === opt.label).length;
+    }
+    return counts;
+  }, [rows, statusOptions]);
+
+  // Tab items with "all" pinned first
+  const tabItems = useMemo(() => {
+    const all = { key: ALL_STATUS_KEY, label: `${ordersCopy.statusAllLabel} (${statusCounts[ALL_STATUS_KEY] ?? 0})` };
+    const rest = statusOptions.map((opt) => ({
+      key: opt.label,
+      label: `${opt.label} (${statusCounts[opt.label] ?? 0})`,
+    }));
+    return [all, ...rest];
+  }, [statusOptions, statusCounts]);
+
+  const statusFilteredRows = useMemo(() => filterOrderRowsByStatus(rows, activeStatusLabel), [rows, activeStatusLabel]);
+  const filteredRows = useMemo(() => filterOrderRows(statusFilteredRows, query), [statusFilteredRows, query]);
 
   const changeSort = (key: OrderSort['key']) =>
     setSort((prev) => prev.key === key ? { key, direction: prev.direction === 'ascending' ? 'descending' : 'ascending' } : { key, direction: 'ascending' });
@@ -66,6 +90,14 @@ export function OrderListPage() {
         start={<TextField aria-label={ordersCopy.searchLabel} placeholder={ordersCopy.searchPlaceholder} value={query} onChange={(e) => setQuery(e.target.value)} width="sm" startIcon={<CRM_SEARCH_ICON aria-hidden="true" />} />}
         end={<Button variant="secondary" onClick={() => void refresh()} loading={refreshing} loadingText={ordersCopy.refreshing}>{ordersCopy.refresh}</Button>}
       />
+      {statusOptions.length > 0 && (
+        <TabBar
+          aria-label={ordersCopy.statusTabLabel}
+          items={tabItems}
+          activeKey={activeStatusLabel}
+          onChange={setActiveStatusLabel}
+        />
+      )}
       <Card className="order-list-page__data-card">
         {isLoading && (
           <DataTable ariaLabel={ordersCopy.tableLabel} columns={columns} rows={[]} rowKey={(row) => row.orderId} loading loadingLabel={ordersCopy.loading} skeletonRows={4} surface="embedded" />

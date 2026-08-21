@@ -1,8 +1,9 @@
-import { createCoreOrder, getCoreOrders, getCoreCurrencies, getInventoryConditions, getInventoryProductOptions } from '../../gas/client';
+import { createCoreOrder, getCoreOrders, getCoreOrderStatusOptions, getCoreCurrencies, getInventoryConditions, getInventoryProductOptions } from '../../gas/client';
 import type { OrderRepository, OrderCreatePayload, OrderCreateResult, InventoryProductOption, InventoryConditionOption } from './contracts';
 
 export const orderGasRepository: OrderRepository = {
   listOrders: (forceRefresh) => getCoreOrders(forceRefresh),
+  listStatusOptions: () => getCoreOrderStatusOptions(),
   listCurrencySymbols: async () => {
     const currencies = await getCoreCurrencies();
     const map: Record<string, string> = {};
