@@ -24,6 +24,7 @@ function checkSyncSignals(sessionId) {
   // 権限チェック不要: 時刻情報のみ、データを含まない
 
   var cache = CacheService.getScriptCache();
+  try { cache.put('LAST_CHECK_SYNC_SIGNALS', String(Date.now()), 21600); } catch (e) {}
   var keys = SYNC_SIGNAL_DOMAINS.map(function(d) { return 'SYNC_SIGNAL_' + d; });
   var values = cache.getAll(keys);
 
