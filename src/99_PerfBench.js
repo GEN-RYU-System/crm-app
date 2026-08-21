@@ -1867,3 +1867,48 @@ function readLastCheckSyncSignals() {
     verdict: verdict
   });
 }
+
+/**
+ * 【調査用】リード管理シートの数式を確認する。
+ * 先頭5データ行の getFormulas() 結果から数式が存在する列を列挙する。
+ * setValues で書き戻すと数式が消えるかを判断するための調査関数。
+ * 読み取りのみ。書き込み一切なし。
+ *
+ * @returns {string} JSON 文字列
+ */
+function readLeadSheetFormulas() {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  if (!sheet) return JSON.stringify({ error: 'シートが見つかりません: ' + CONFIG.SHEETS.LEADS });
+
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow < 2) return JSON.stringify({ error: 'データ行がありません' });
+
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var checkRows = Math.min(lastRow - 1, 5);
+  var formulas = sheet.getRange(2, 1, checkRows, lastCol).getFormulas();
+
+  var formulaColumns = [];
+  for (var row = 0; row < formulas.length; row++) {
+    for (var col = 0; col < formulas[row].length; col++) {
+      var f = formulas[row][col];
+      if (f) {
+        formulaColumns.push({
+          colIndex: col + 1,
+          header: String(headers[col] || ''),
+          row: row + 2,
+          formula: f
+        });
+      }
+    }
+  }
+
+  return JSON.stringify({
+    sheetName: CONFIG.SHEETS.LEADS,
+    totalCols: lastCol,
+    checkedRows: checkRows,
+    formulaColumns: formulaColumns,
+    hasFormulas: formulaColumns.length > 0
+  }, null, 2);
+}
