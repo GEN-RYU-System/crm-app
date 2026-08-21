@@ -104,7 +104,8 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
     { id: 'dashboard', label: navigationCopy.dashboard, hash: '/dashboard', icon: 'dashboard', order: 1, state: 'available' }
   ] },
   { id: 'leads', label: navigationCopy.groups.leads, order: 2, items: [
-    { id: 'inbox', label: navigationCopy.inbox, hash: '/inbox', icon: 'chat', order: 1, state: 'preview', requiredPermission: 'lead_view' }
+    { id: 'inbox', label: navigationCopy.inbox, hash: '/inbox', icon: 'chat', order: 1, state: 'preview', requiredPermission: 'lead_view' },
+    { id: 'orders', label: navigationCopy.orders, hash: '/orders', icon: 'invoice', order: 2, state: 'preview', requiredPermission: 'lead_view' }
   ] },
   { id: 'management', label: navigationCopy.groups.management, order: 3, items: [
     { id: 'dataManagement', label: navigationCopy.managementCenter, hash: DATA_MANAGEMENT_ROOT, icon: 'database', order: 1, state: 'available', requiredPermission: 'lead_view', children: DATA_MANAGEMENT_ITEMS }
