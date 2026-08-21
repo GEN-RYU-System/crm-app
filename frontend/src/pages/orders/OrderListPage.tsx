@@ -6,7 +6,7 @@ import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMes
 import { ordersCopy, PAYMENT_STATUS_BADGE_VARIANT } from '../../content/ja';
 import { filterOrderRows, ORDER_LIST_COLUMNS, ORDER_LIST_INITIAL_SORT, toOrderRows, type OrderRow, type OrderSort } from './orderListConfig';
 import { useOrderListCache } from './OrderListCacheContext';
-import { ORDER_ROUTE_SEGMENTS } from './orderEditorConfig';
+import { ORDER_EDITOR_PATHS } from './orderEditorConfig';
 import './OrderListPage.css';
 
 export function OrderListPage() {
@@ -57,7 +57,7 @@ export function OrderListPage() {
         title={ordersCopy.title}
         subtitle={ordersCopy.subtitle}
         action={
-          <Button onClick={() => navigate(ORDER_ROUTE_SEGMENTS.create)}>
+          <Button onClick={() => navigate(ORDER_EDITOR_PATHS.create)}>
             {ordersCopy.createOrder}
           </Button>
         }
