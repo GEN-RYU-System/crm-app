@@ -2,6 +2,7 @@ import { Combobox } from '../Combobox/Combobox';
 import { Select } from '../Select/Select';
 import { TextField } from '../TextField/TextField';
 import { Button } from '../Button/Button';
+import { lineItemEditorCopy } from '../../../content/ja/lineItemEditor';
 import './LineItemEditor.css';
 
 export type LineItemValue = {
@@ -45,15 +46,14 @@ export type LineItemEditorProps = {
   onRemove: (index: number) => void;
   lineErrors?: Map<number, string>;
   disabled?: boolean;
-  labels: LineItemEditorLabels;
+  labels?: LineItemEditorLabels;
 };
+
+const DEFAULT_LABELS: LineItemEditorLabels = { ...lineItemEditorCopy };
 
 function toHalf(value: string): string {
   return value.replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0));
 }
-
-const defaultConditionOptionLabel = (condition: string, quantity: number): string =>
-  `${condition} (${quantity})`;
 
 type ProductItem = { productId: string; productName: string };
 
@@ -68,9 +68,9 @@ export function LineItemEditor({
   onRemove,
   lineErrors,
   disabled = false,
-  labels,
+  labels = DEFAULT_LABELS,
 }: LineItemEditorProps) {
-  const conditionLabel = labels.conditionOptionLabel ?? defaultConditionOptionLabel;
+  const conditionLabel = labels.conditionOptionLabel ?? lineItemEditorCopy.conditionOptionLabel;
 
   return (
     <div className="line-item-editor__lines">

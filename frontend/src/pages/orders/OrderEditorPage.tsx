@@ -261,20 +261,6 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
 
   const isLoading = masterState === 'loading';
 
-  const lineItemLabels = {
-    product: ordersCopy.editor.lineProduct,
-    productPlaceholder: ordersCopy.editor.lineProductPlaceholder,
-    productNoResults: ordersCopy.editor.lineProductNoResults,
-    condition: ordersCopy.editor.condition,
-    conditionPlaceholder: ordersCopy.editor.lineConditionPlaceholder,
-    quantity: ordersCopy.editor.quantity,
-    unitPrice: ordersCopy.editor.unitPrice,
-    amount: ordersCopy.editor.subtotal,
-    weight: ordersCopy.editor.lineWeight,
-    remove: ordersCopy.editor.removeLine,
-    conditionOptionLabel: ordersCopy.editor.lineConditionOptionLabel,
-  };
-
   return (
     <>
       <PageHeader
@@ -401,7 +387,6 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
               onQuantityChange={handleQuantityChange}
               onUnitPriceChange={handleUnitPriceChange}
               onRemove={removeLine}
-              labels={lineItemLabels}
             />
           </Card>
 
