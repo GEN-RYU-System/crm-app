@@ -32,6 +32,11 @@ frontend/（Vite + React 18）
 - **直接 push 禁止**: `main` / `develop` への直接 push は `.githooks/pre-push` でブロック
 - **clasp push はCI経由のみ**（ローカルからの直接 push 禁止）
 
+## マージ方式
+
+`gh pr merge <番号> --squash` で統一する（`--merge` / `--rebase` 不可）。
+詳細は `docs/AUTONOMOUS_WORK_RULES.md` 参照。
+
 ## ディレクトリ構成
 
 ```
