@@ -9,6 +9,7 @@ import {
   DataTable,
   EmptyState,
   HubShell,
+  LineItemEditor,
   PageHeader,
   PageToolbar,
   Select,
@@ -22,6 +23,7 @@ import {
   Textarea,
   TextField,
   type DataTableColumn,
+  type LineItemValue,
 } from "../../components/ui";
 import { catalogCopy, commonCopy, inboxCopy } from "../../content/ja";
 import "./ComponentCatalogPage.css";
@@ -44,6 +46,29 @@ export function ComponentCatalogPage() {
     { id: "b", label: catalogCopy.optionTwo },
   ];
   const [comboboxValue, setComboboxValue] = useState("");
+  const [lineItems, setLineItems] = useState<LineItemValue[]>([
+    { productId: "PM0001", productName: catalogCopy.lineItemSampleProductA, condition: "New", quantity: "2", unitPrice: "1000", unitWeight: 200 },
+  ]);
+  const catalogProducts = [
+    { productId: "PM0001", productName: catalogCopy.lineItemSampleProductA },
+    { productId: "PM0002", productName: catalogCopy.lineItemSampleProductB },
+  ];
+  const catalogConditionsMap = new Map([
+    ["PM0001", [{ condition: "New", quantity: 10, unitPrice: 1000, unitWeight: 200 }, { condition: "Sealed", quantity: 5, unitPrice: 900, unitWeight: 200 }]],
+    ["PM0002", [{ condition: "New", quantity: 3, unitPrice: 2000, unitWeight: 300 }]],
+  ]);
+  const catalogLineLabels = {
+    product: catalogCopy.lineItemProduct,
+    productPlaceholder: catalogCopy.lineItemProductPlaceholder,
+    productNoResults: catalogCopy.lineItemProductNoResults,
+    condition: catalogCopy.lineItemCondition,
+    conditionPlaceholder: catalogCopy.lineItemConditionPlaceholder,
+    quantity: catalogCopy.lineItemQuantity,
+    unitPrice: catalogCopy.lineItemUnitPrice,
+    amount: catalogCopy.lineItemAmount,
+    weight: catalogCopy.lineItemWeight,
+    remove: catalogCopy.lineItemRemove,
+  };
   const tabItems = [
     {
       key: "active",
@@ -296,6 +321,42 @@ export function ComponentCatalogPage() {
               label={catalogCopy.skeletonLabel}
             />
           </div>
+        </Card>
+        <Card>
+          <h2 className="catalog-page__heading">{catalogCopy.lineItemEditor}</h2>
+          <LineItemEditor
+            products={catalogProducts}
+            lines={lineItems}
+            conditionsMap={catalogConditionsMap}
+            onProductSelect={(index, productId, productName) =>
+              setLineItems((prev) =>
+                prev.map((l, i) =>
+                  i === index ? { ...l, productId, productName, condition: "", unitPrice: "", unitWeight: 0 } : l
+                )
+              )
+            }
+            onConditionSelect={(index, condition) =>
+              setLineItems((prev) =>
+                prev.map((l, i) => {
+                  if (i !== index) return l;
+                  const conds = catalogConditionsMap.get(l.productId) ?? [];
+                  const found = conds.find((c) => c.condition === condition);
+                  return { ...l, condition, unitPrice: found ? String(found.unitPrice) : l.unitPrice, unitWeight: found ? found.unitWeight : 0 };
+                })
+              )
+            }
+            onQuantityChange={(index, value) =>
+              setLineItems((prev) => prev.map((l, i) => i === index ? { ...l, quantity: value } : l))
+            }
+            onUnitPriceChange={(index, value) =>
+              setLineItems((prev) => prev.map((l, i) => i === index ? { ...l, unitPrice: value } : l))
+            }
+            onRemove={(index) => setLineItems((prev) => prev.filter((_, i) => i !== index))}
+            labels={catalogLineLabels}
+          />
+          <Button variant="outline" size="sm" onClick={() => setLineItems((prev) => [...prev, { productId: "", productName: "", condition: "", quantity: "", unitPrice: "", unitWeight: 0 }])}>
+            {catalogCopy.lineItemAddLine}
+          </Button>
         </Card>
         <Card>
           <h2 className="catalog-page__heading">{catalogCopy.combobox}</h2>

@@ -35,8 +35,13 @@ export type InventoryProductOption = {
   productId: string;
   productName: string;
   category: string;
-  unitPrice: string;
-  currency: string;
+};
+
+export type InventoryConditionOption = {
+  condition: string;
+  quantity: number;
+  unitPrice: number;
+  unitWeight: number;
 };
 
 export type OrderRepository = {
@@ -44,4 +49,5 @@ export type OrderRepository = {
   listCurrencySymbols: () => Promise<Record<string, string>>;
   createOrder: (payload: OrderCreatePayload) => Promise<OrderCreateResult>;
   listInventoryProducts: () => Promise<readonly InventoryProductOption[]>;
+  listConditions: (productId: string) => Promise<readonly InventoryConditionOption[]>;
 };
