@@ -1,8 +1,12 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import '../FormField/FormField.css';
 import './Combobox.css';
 
 const MAX_CANDIDATES = 10;
+const DROPDOWN_MAX_H_PX = 320; // max-height: 20rem at 16px base
+const DROPDOWN_GAP_PX = 4;
+const DROPDOWN_MIN_H_PX = 80;
 
 export type ComboboxProps<T> = {
   items: T[];
@@ -29,8 +33,10 @@ export function Combobox<T>({
   const [inputText, setInputText] = useState('');
   const [isOpen, setIsOpen]       = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
   const inputId   = useId();
   const listboxId = useId();
+  const wrapRef   = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!value) { setInputText(''); return; }
@@ -48,6 +54,46 @@ export function Combobox<T>({
       .slice(0, MAX_CANDIDATES);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, inputText, isOpen]);
+
+  // Compute fixed-position dropdown coordinates synchronously after layout
+  // to avoid flash of incorrectly-positioned dropdown.
+  useLayoutEffect(() => {
+    if (!isOpen || !wrapRef.current) return;
+
+    const update = () => {
+      if (!wrapRef.current) return;
+      const rect = wrapRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom - DROPDOWN_GAP_PX;
+      const spaceAbove = rect.top - DROPDOWN_GAP_PX;
+      const openUpward = spaceAbove > spaceBelow && spaceBelow < DROPDOWN_MAX_H_PX;
+
+      if (openUpward) {
+        setDropdownStyle({
+          position: 'fixed',
+          bottom: window.innerHeight - rect.top + DROPDOWN_GAP_PX,
+          left: rect.left,
+          width: rect.width,
+          maxHeight: Math.max(spaceAbove, DROPDOWN_MIN_H_PX),
+        });
+      } else {
+        setDropdownStyle({
+          position: 'fixed',
+          top: rect.bottom + DROPDOWN_GAP_PX,
+          left: rect.left,
+          width: rect.width,
+          maxHeight: Math.max(spaceBelow, DROPDOWN_MIN_H_PX),
+        });
+      }
+    };
+
+    update();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [isOpen]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputText(e.target.value);
@@ -103,7 +149,7 @@ export function Combobox<T>({
           {required && <span className="ui-field__required" aria-hidden="true">*</span>}
         </label>
       )}
-      <div className="ui-field__input-wrap combobox__wrap">
+      <div className="ui-field__input-wrap combobox__wrap" ref={wrapRef}>
         <input
           id={inputId}
           className="ui-field__input"
@@ -122,8 +168,13 @@ export function Combobox<T>({
           required={required}
           autoComplete="off"
         />
-        {isOpen && (
-          <ul id={listboxId} className="combobox__dropdown" role="listbox">
+        {isOpen && createPortal(
+          <ul
+            id={listboxId}
+            className="combobox__dropdown"
+            role="listbox"
+            style={dropdownStyle}
+          >
             {candidates.length > 0
               ? candidates.map((item, i) => (
                 <li
@@ -144,7 +195,8 @@ export function Combobox<T>({
                 </li>
               )
             }
-          </ul>
+          </ul>,
+          document.body
         )}
       </div>
       {error && (
