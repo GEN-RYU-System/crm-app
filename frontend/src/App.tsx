@@ -5,7 +5,9 @@ import { usePrefetch } from './app/usePrefetch';
 import { AppShell } from './components/shell';
 import { Spinner, StatusMessage } from './components/ui';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { getCurrentUser, getDashboardKpis, type DashboardKpis } from './gas/client';
+import { getCurrentUser } from './gas/client';
+import type { DashboardKpis } from './features/dashboard/contracts';
+import { dashboardGasRepository } from './features/dashboard/gasAdapter';
 import { ComponentCatalogPage } from './pages/catalog/ComponentCatalogPage';
 import { customerGasRepository } from './features/customers/gasAdapter';
 import { leadGasRepository } from './features/leads/gasAdapter';
@@ -87,7 +89,7 @@ function AppRouter() {
     setState('loading');
     setError('');
     try {
-      setKpis(await getDashboardKpis());
+      setKpis(await dashboardGasRepository.getKpis());
       setState('ready');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : errorCopy.genericLoad);
