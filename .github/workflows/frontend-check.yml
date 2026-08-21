@@ -1,0 +1,30 @@
+name: Frontend Check
+
+on:
+  pull_request:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Typecheck
+        run: cd frontend && npm run typecheck
+
+      - name: Build and verify GAS artifact
+        run: cd frontend && npm run build:gas

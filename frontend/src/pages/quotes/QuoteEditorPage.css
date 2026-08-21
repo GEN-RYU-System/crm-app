@@ -1,0 +1,74 @@
+.quote-editor-page__actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.quote-editor-page__form { display: grid; gap: var(--space-lg); }
+.quote-editor-page__lines-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-md); }
+.quote-editor-page__section-title { font-size: var(--font-md); font-weight: var(--font-weight-semibold); }
+.quote-editor-page__lines { display: grid; gap: var(--space-md); }
+
+/* ========================================================
+   明細行: line-row
+   display: flex; align-items: flex-end; flex-wrap: なし
+   各子要素の合計幅がコンテンツ幅を超えないよう flex で按分
+   ======================================================== */
+.quote-editor-page__line-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--color-page);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+}
+
+/* line-row 内の .ui-field の固定幅・margin-bottom をリセット */
+.quote-editor-page__line-row .ui-field {
+  margin-bottom: 0;
+  width: auto;
+  min-width: 0;
+}
+
+/* 行番号 */
+.quote-editor-page__line-no {
+  flex-shrink: 0;
+  width: 1.5rem;
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-semibold);
+  padding-bottom: var(--space-sm);
+}
+
+/* 商品名（コンボボックス）: 最も広く */
+.quote-editor-page__line-product { flex: 3 1 0; }
+
+/* 状態（セレクト） */
+.quote-editor-page__line-condition { flex: 2 1 0; }
+
+/* 数量: 狭い固定幅 */
+.quote-editor-page__line-qty { flex: 0 0 5rem; }
+
+/* 単価 */
+.quote-editor-page__line-price { flex: 1 1 0; }
+
+/* 金額・重量（表示のみ） */
+.quote-editor-page__line-calc {
+  flex-shrink: 0;
+  width: 4.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.quote-editor-page__line-calc-label {
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-semibold);
+}
+.quote-editor-page__line-calc-value {
+  font-size: var(--font-sm);
+  color: var(--color-text-primary);
+  padding: var(--space-xs) 0;
+}
+
+/* 削除ボタン */
+.quote-editor-page__line-delete {
+  flex-shrink: 0;
+  white-space: nowrap;
+}

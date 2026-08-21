@@ -1,41 +1,18 @@
 /**
- * Webアプリ - GET リクエスト処理（SPA統一版）
- * 常にindex.html（SPA）を返す
- *
- * アクセス制御:
- * - 担当者マスタに登録されているメールアドレスのみアクセス可能
- * - gmail.comを含む任意のドメインのメールアドレスで認証可能
+ * Webアプリ - GET リクエスト処理（React SPA統一版）
+ * 常に ReactPoc（React SPA）を返す。
+ * 認証はフロントエンドのログイン画面が担う。
  *
  * 特殊クエリパラメータ:
- * - ?action=insertTestData&key=badge2026 : テストデータ投入
- * - ?action=removeTestData&key=badge2026 : テストデータ削除
- *
- * Phase 4: 追加ルート
- * - ?page=quotes : 見積書管理画面
- * - ?page=invoices : 請求書管理画面
- * - ?page=stock : 在庫閲覧画面
+ * - ?page=order-form&token=<TOKEN> : 顧客登録フォーム（認証不要・token 必須）
+ * - ?action=insertTestData&key=<TEST_DATA_KEY> : テストデータ投入
+ * - ?action=removeTestData&key=<TEST_DATA_KEY> : テストデータ削除
+ *   TEST_DATA_KEY はスクリプトプロパティで設定。未設定時は実行不可。
  */
 function doGet(e) {
-  // テストデータ操作のクエリパラメータをチェック
   const params = e.parameter || {};
 
-  if (params.action && params.key === 'badge2026') {
-    let result;
-
-    if (params.action === 'insertTestData') {
-      result = insertBadgeTestData();
-      return ContentService.createTextOutput(JSON.stringify(result, null, 2))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    if (params.action === 'removeTestData') {
-      result = removeTestData();
-      return ContentService.createTextOutput(JSON.stringify(result, null, 2))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-  }
-
-  // 顧客登録フォーム（認証不要・token 必須）← 認証チェックより前に配置
+  // 顧客登録フォーム（認証不要・token 必須）← React SPA より前に配置
   if (params.page === 'order-form') {
     const token = params.token || '';
     const validation = validateFormToken(token);
@@ -51,77 +28,42 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
-  // アクセス制御: 担当者マスタに登録されているユーザーのみアクセス可能
-  const userEmail = Session.getActiveUser().getEmail();
-
-  if (!userEmail) {
-    return createAccessDeniedPage('ログインが必要です', 'Googleアカウントでログインしてください。');
+  // テストデータ操作（checkPermission('force_reset') でガード済み）
+  if (params.action) {
+    const testDataKey = PropertiesService.getScriptProperties().getProperty('TEST_DATA_KEY');
+    if (testDataKey && params.key === testDataKey) {
+      try {
+        checkPermission('force_reset');
+      } catch (authError) {
+        return ContentService.createTextOutput(
+          JSON.stringify({ success: false, error: authError.message }, null, 2)
+        ).setMimeType(ContentService.MimeType.JSON);
+      }
+      let result;
+      if (params.action === 'insertTestData') {
+        result = insertBadgeTestData();
+        return ContentService.createTextOutput(JSON.stringify(result, null, 2))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+      if (params.action === 'removeTestData') {
+        result = removeTestData();
+        return ContentService.createTextOutput(JSON.stringify(result, null, 2))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+    }
   }
 
-  const userInfo = getCurrentUserPermissions(userEmail);
-
-  if (!userInfo.success) {
-    return createAccessDeniedPage(
-      'アクセスが拒否されました',
-      userInfo.error || '担当者マスタに登録されていないメールアドレスです。',
-      userEmail
-    );
-  }
-
-  if (userInfo.user && userInfo.user.status !== '有効') {
-    return createAccessDeniedPage(
-      'アカウントが無効化されています',
-      '管理者にお問い合わせください。',
-      userEmail
-    );
-  }
-
-  // ★Phase 4: ページルーティング追加★
-  const page = params.page || '';
-
-  // 見積書管理画面
-  if (page === 'quotes') {
-    return HtmlService.createHtmlOutputFromFile('html/quote')
-      .setTitle('見積書管理 - B2B Card CRM')
+  // 旧画面プレビュー（移植作業の参考用・移植完了後に削除すること）
+  if (params.page === 'legacy') {
+    return HtmlService.createTemplateFromFile('index')
+      .evaluate()
+      .setTitle('CRM (Legacy)')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
-  // 請求書管理画面
-  if (page === 'invoices') {
-    return HtmlService.createHtmlOutputFromFile('html/invoice')
-      .setTitle('請求書管理 - B2B Card CRM')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-
-  // 在庫閲覧画面
-  if (page === 'stock') {
-    return HtmlService.createHtmlOutputFromFile('html/stock')
-      .setTitle('在庫閲覧 - B2B Card CRM')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-
-  // 設定管理画面（ゼロコードUI）
-  if (page === 'settings') {
-    return HtmlService.createHtmlOutputFromFile('SettingsPage')
-      .setTitle('設定管理 - B2B Card CRM')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-
-  // CSVインポートガイド
-  if (page === 'csv-guide') {
-    return HtmlService.createHtmlOutputFromFile('CSVImportGuide')
-      .setTitle('CSVインポート使い方ガイド - B2B Card CRM')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-
-  // 通常のSPAレスポンス
-  const template = HtmlService.createTemplateFromFile('index');
-  return template.evaluate()
+  // 常に React SPA を返す
+  return HtmlService.createHtmlOutputFromFile('ReactPoc')
     .setTitle('CRM Dashboard')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -381,7 +323,9 @@ function include(filename) {
 /**
  * ダッシュボード用のKPIデータを取得（統合シート版）
  */
-function getDashboardKPIs() {
+function getDashboardKPIs(sessionId) {
+  setEmailFromSession(sessionId);
+  checkPermission('dashboard_view');
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
 
@@ -395,7 +339,7 @@ function getDashboardKPIs() {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const typeIdx = headers.indexOf('リード種別');
-  const statusIdx = headers.indexOf('リード進捗');
+  const statusIdx = headers.indexOf('リードステータス');
   const revenueIdx = headers.indexOf('初回取引金額');
 
   let leadsIn = 0, leadsOut = 0, activeDeals = 0, wonDeals = 0, lostDeals = 0, totalRevenue = 0;
@@ -471,7 +415,8 @@ function getLeads(filter, leadType) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const typeIdx = headers.indexOf('リード種別');
-  const statusIdx = headers.indexOf('リード進捗');
+  const statusIdx = headers.indexOf('リードステータス');
+  const archivedAtIdx = headers.indexOf('アーカイブ日');
 
   console.log('getLeads: typeIdx=' + typeIdx + ', statusIdx=' + statusIdx);
   console.log('getLeads: LEAD_STATUSES=' + JSON.stringify(CONFIG.LEAD_STATUSES));
@@ -518,7 +463,10 @@ function getLeads(filter, leadType) {
       continue;
     }
     if (filter === 'deal' && !CONFIG.DEAL_STATUSES.includes(status)) continue;
-    if (filter === 'closed' && !CONFIG.CLOSED_STATUSES.includes(status)) continue;
+    if (filter === 'closed') {
+      const isArchived = archivedAtIdx >= 0 && row[archivedAtIdx];
+      if (!CONFIG.CLOSED_STATUSES.includes(status) && !isArchived) continue;
+    }
 
     const lead = {};
     headers.forEach((header, index) => {
@@ -537,11 +485,113 @@ function getLeads(filter, leadType) {
   return leads;
 }
 
+// ─── リードキャッシュ定数 ────────────────────────────────────────────────────
+const LEADS_CACHE_INDEX_ALL       = 'LEADS_CACHE_INDEX_ALL';
+const LEADS_CACHE_PREFIX_ALL      = 'LEADS_CACHE_ALL_';
+const LEADS_CACHE_INDEX_INBOUND   = 'LEADS_CACHE_INDEX_INBOUND';
+const LEADS_CACHE_PREFIX_INBOUND  = 'LEADS_CACHE_INBOUND_';
+const LEADS_CACHE_INDEX_OUTBOUND  = 'LEADS_CACHE_INDEX_OUTBOUND';
+const LEADS_CACHE_PREFIX_OUTBOUND = 'LEADS_CACHE_OUTBOUND_';
+const LEADS_CACHE_CHUNK_SIZE      = 90000;
+const LEADS_CACHE_TTL             = 600;
+
+/** createLead / updateLead が無効化すべきキャッシュ一覧 */
+const LEADS_CACHE_TARGETS = [
+  { indexKey: LEADS_CACHE_INDEX_ALL,      prefix: LEADS_CACHE_PREFIX_ALL },
+  { indexKey: LEADS_CACHE_INDEX_INBOUND,  prefix: LEADS_CACHE_PREFIX_INBOUND },
+  { indexKey: LEADS_CACHE_INDEX_OUTBOUND, prefix: LEADS_CACHE_PREFIX_OUTBOUND }
+];
+
 /**
- * リード種別でフィルタリングしたリードを取得
+ * leadType からキャッシュキーペアを返す。
+ * undefined / '' / 'all' → ALL キー。
+ * 未知の種別は null（キャッシュ対象外）。
  */
-function getLeadsByType(leadType) {
-  return getLeads('lead', leadType);
+function leadsGetCacheKeyPair_(leadType) {
+  const normalized = leadType ? String(leadType).trim() : '';
+  if (!normalized || normalized === 'all') {
+    return { indexKey: LEADS_CACHE_INDEX_ALL, prefix: LEADS_CACHE_PREFIX_ALL };
+  }
+  if (normalized === 'インバウンド') {
+    return { indexKey: LEADS_CACHE_INDEX_INBOUND, prefix: LEADS_CACHE_PREFIX_INBOUND };
+  }
+  if (normalized === 'アウトバウンド') {
+    return { indexKey: LEADS_CACHE_INDEX_OUTBOUND, prefix: LEADS_CACHE_PREFIX_OUTBOUND };
+  }
+  return null;
+}
+
+/**
+ * リード種別でフィルタリングしたリードを取得（キャッシュ対応）。
+ * @param {string} sessionId
+ * @param {string|undefined} leadType  'インバウンド' | 'アウトバウンド' | undefined
+ * @param {boolean} [forceRefresh]  true のときキャッシュを無視してシートから再取得
+ */
+function getLeadsByType(sessionId, leadType, forceRefresh) {
+  setEmailFromSession(sessionId);
+  checkPermission(); // 認証のみチェック（キャッシュ返却前に必ず実行）
+
+  const pair = leadsGetCacheKeyPair_(leadType);
+
+  if (pair !== null && forceRefresh !== true) {
+    const cached = readCacheChunks_(pair.indexKey, pair.prefix);
+    if (cached !== null) return cached;
+  }
+
+  const rows = getLeads('lead', leadType);
+
+  if (pair !== null) {
+    writeCacheChunks_(pair.indexKey, pair.prefix, rows, LEADS_CACHE_TTL, LEADS_CACHE_CHUNK_SIZE);
+  }
+
+  return rows;
+}
+
+/**
+ * 見積もりフォームのリード候補表示用。LEAD_ID と顧客名のみを返す（全列取得を避けて転送量を最小化）。
+ * @param {string} sessionId
+ * @returns {{ leadId: string, customerName: string }[]}
+ */
+function getLeadOptionsForFrontend(sessionId) {
+  setEmailFromSession(sessionId);
+  try {
+    checkPermission();
+  } catch (e) {
+    return [];
+  }
+  const ss = getSpreadsheet();
+  if (!ss) return [];
+
+  const leadsSheet = getCoreSchemaV1Sheet(ss, 'LEADS');
+  const leadsTable = getCoreSchemaV1Table('LEADS');
+  const lastRow    = leadsSheet.getLastRow();
+  const dataStart  = leadsTable.headerRowNumber + 1;
+  if (lastRow < dataStart) return [];
+
+  const headers = leadsSheet
+    .getRange(leadsTable.headerRowNumber, 1, 1, leadsSheet.getLastColumn())
+    .getDisplayValues()[0]
+    .map(function(h) { return String(h).trim(); });
+
+  const leadIdColName       = getCoreSchemaV1HeaderName('LEADS', 'LEAD_ID');
+  const customerNameColName = getCoreSchemaV1HeaderName('LEADS', 'CUSTOMER_NAME');
+  const leadIdColIdx        = headers.indexOf(leadIdColName);
+  const customerNameColIdx  = headers.indexOf(customerNameColName);
+
+  if (leadIdColIdx === -1) throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING: LEAD_ID');
+  if (customerNameColIdx === -1) throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING: CUSTOMER_NAME');
+
+  const rowCount      = lastRow - leadsTable.headerRowNumber;
+  const leadIdValues  = leadsSheet.getRange(dataStart, leadIdColIdx + 1, rowCount, 1).getDisplayValues();
+  const nameValues    = leadsSheet.getRange(dataStart, customerNameColIdx + 1, rowCount, 1).getDisplayValues();
+
+  var results = [];
+  for (var i = 0; i < leadIdValues.length; i++) {
+    var leadId       = String(leadIdValues[i][0] || '').trim();
+    var customerName = String(nameValues[i][0] || '').trim();
+    if (leadId) results.push({ leadId: leadId, customerName: customerName });
+  }
+  return results;
 }
 
 /**
@@ -549,7 +599,8 @@ function getLeadsByType(leadType) {
  * @param {string} leadId - リードID
  * @returns {Object|null} リード情報オブジェクト、見つからない場合はnull
  */
-function getLeadDetail(leadId) {
+function getLeadDetail(sessionId, leadId) {
+  setEmailFromSession(sessionId);
   console.log('getLeadDetail START: leadId=' + leadId);
 
   try {
@@ -621,7 +672,7 @@ function getMyLeads() {
     return [];
   }
 
-  const userEmail = Session.getActiveUser().getEmail();
+  const userEmail = resolveCurrentUserEmail();
   console.log('getMyLeads: userEmail=' + userEmail);
 
   const ss = getSpreadsheet();
@@ -711,7 +762,10 @@ function addNewLead(leadType, leadData) {
 /**
  * 新規リードを作成
  */
-function createLead(leadData) {
+function createLead(sessionId, leadData) {
+  setEmailFromSession(sessionId);
+  checkPermission('lead_add');
+
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
 
@@ -728,7 +782,7 @@ function createLead(leadData) {
   const leadId = generateNextLeadId(leadType);
 
   // 現在のユーザー情報を取得
-  const userEmail = Session.getActiveUser().getEmail();
+  const userEmail = resolveCurrentUserEmail();
   const userInfo = getUserInfoByEmail(userEmail);
   const currentUserName = userInfo ? userInfo.staffName : '';
 
@@ -743,9 +797,9 @@ function createLead(leadData) {
       newRow.push(new Date());
     } else if (header === 'リード種別') {
       newRow.push(leadType);
-    } else if (header === 'リード進捗') {
-      // 新規リード作成時は必ず「新規」を設定
-      newRow.push('新規');
+    } else if (header === 'リードステータス') {
+      // 新規リード作成時は必ず「新規リード」を設定
+      newRow.push('新規リード');
     } else if (header === 'リード担当者') {
       // 新規リード作成時は現在のユーザー名を設定
       newRow.push(leadData[header] || currentUserName);
@@ -757,20 +811,26 @@ function createLead(leadData) {
     }
   });
 
-  // 新しい行を追加
-  sheet.appendRow(newRow);
-
-  return {
-    success: true,
-    leadId: leadId,
-    message: '新規リードを作成しました'
-  };
+  return withSheetWrite_(
+    { useLock: true, cacheTargets: LEADS_CACHE_TARGETS },
+    () => {
+      sheet.appendRow(newRow);
+      return {
+        success: true,
+        leadId: leadId,
+        message: '新規リードを作成しました'
+      };
+    }
+  );
 }
 
 /**
  * リードを更新
  */
-function updateLead(sheetName, leadId, updateData) {
+function updateLead(sessionId, sheetName, leadId, updateData) {
+  setEmailFromSession(sessionId);
+  checkPermission('lead_edit');
+
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
 
@@ -799,21 +859,26 @@ function updateLead(sheetName, leadId, updateData) {
     throw new Error('リードが見つかりません: ' + leadId);
   }
 
-  // 更新データを適用
-  Object.entries(updateData).forEach(([key, value]) => {
-    const colIndex = headers.indexOf(key);
-    if (colIndex !== -1) {
-      sheet.getRange(targetRow, colIndex + 1).setValue(value);
+  return withSheetWrite_(
+    { useLock: true, cacheTargets: LEADS_CACHE_TARGETS },
+    () => {
+      // 更新データを適用
+      Object.entries(updateData).forEach(([key, value]) => {
+        const colIndex = headers.indexOf(key);
+        if (colIndex !== -1) {
+          sheet.getRange(targetRow, colIndex + 1).setValue(value);
+        }
+      });
+
+      // 更新日を設定
+      const updateDateIndex = headers.indexOf('シート更新日');
+      if (updateDateIndex !== -1) {
+        sheet.getRange(targetRow, updateDateIndex + 1).setValue(new Date());
+      }
+
+      return leadId;
     }
-  });
-
-  // 更新日を設定
-  const updateDateIndex = headers.indexOf('シート更新日');
-  if (updateDateIndex !== -1) {
-    sheet.getRange(targetRow, updateDateIndex + 1).setValue(new Date());
-  }
-
-  return leadId;
+  );
 }
 
 /**
@@ -986,11 +1051,12 @@ function assignLeadToSales(leadId) {
   }
 
   // 現在のユーザー情報を取得
-  const currentUser = Session.getActiveUser().getEmail();
+  const currentUser = resolveCurrentUserEmail();
 
   // 各列を更新
-  if (progressIndex !== -1) {
-    sheet.getRange(targetRow, progressIndex + 1).setValue('アサイン確定');
+  const leadStatusIndex = headers.indexOf('リードステータス');
+  if (leadStatusIndex !== -1) {
+    sheet.getRange(targetRow, leadStatusIndex + 1).setValue('アサイン確定');
   }
   if (assignDateIndex !== -1) {
     sheet.getRange(targetRow, assignDateIndex + 1).setValue(new Date());
@@ -1000,11 +1066,8 @@ function assignLeadToSales(leadId) {
   }
   if (assigneeIdIndex !== -1) {
     // 担当者IDは簡易的にメールアドレスの@前を使用
-    const userId = currentUser.split('@')[0];
+    const userId = currentUser ? currentUser.split('@')[0] : '';
     sheet.getRange(targetRow, assigneeIdIndex + 1).setValue(userId);
-  }
-  if (dealProgressIndex !== -1) {
-    sheet.getRange(targetRow, dealProgressIndex + 1).setValue('アサイン確定');
   }
   if (updateDateIndex !== -1) {
     sheet.getRange(targetRow, updateDateIndex + 1).setValue(new Date());
@@ -1198,9 +1261,10 @@ function debugGetStaffMasterData() {
  * 現在ログイン中のユーザー情報と権限を取得
  * @returns {Object} {success: boolean, name: string, role: string, email: string, permissions: Object}
  */
-function getCurrentUser() {
+function getCurrentUser(sessionId) {
+  setEmailFromSession(sessionId);
   try {
-    const email = Session.getActiveUser().getEmail();
+    const email = resolveCurrentUserEmail();
     Logger.log('getCurrentUser: email = ' + email);
 
     const userInfo = getCurrentUserPermissions(email);
@@ -1539,11 +1603,10 @@ function assignLeadToStaff(leadId, staffId) {
     const leadsData = leadsSheet.getDataRange().getValues();
     const leadsHeaders = leadsData[0];
     const leadIdIdx = leadsHeaders.indexOf('リードID');
-    const leadProgressIdx = leadsHeaders.indexOf('リード進捗');
+    const leadStatusIdx = leadsHeaders.indexOf('リードステータス');
     const staffNameIdx = leadsHeaders.indexOf('営業担当者');
     const staffIdColIdx = leadsHeaders.indexOf('担当者ID');
     const assignDateIdx = leadsHeaders.indexOf('アサイン日');
-    const dealProgressIdx = leadsHeaders.indexOf('商談進捗');
     const updateDateIdx = leadsHeaders.indexOf('シート更新日');
     const customerNameIdx = leadsHeaders.indexOf('顧客名');
 
@@ -1564,11 +1627,10 @@ function assignLeadToStaff(leadId, staffId) {
 
     // リードシートを更新
     const now = new Date();
-    if (leadProgressIdx >= 0) leadsSheet.getRange(leadRowNum, leadProgressIdx + 1).setValue('アサイン確定');
+    if (leadStatusIdx >= 0) leadsSheet.getRange(leadRowNum, leadStatusIdx + 1).setValue('アサイン確定');
     if (staffNameIdx >= 0) leadsSheet.getRange(leadRowNum, staffNameIdx + 1).setValue(staffName);
     if (staffIdColIdx >= 0) leadsSheet.getRange(leadRowNum, staffIdColIdx + 1).setValue(staffId);
     if (assignDateIdx >= 0) leadsSheet.getRange(leadRowNum, assignDateIdx + 1).setValue(now);
-    if (dealProgressIdx >= 0) leadsSheet.getRange(leadRowNum, dealProgressIdx + 1).setValue('アサイン確定');
     if (updateDateIdx >= 0) leadsSheet.getRange(leadRowNum, updateDateIdx + 1).setValue(now);
 
     // 3. Discord通知を送信
@@ -1686,12 +1748,7 @@ function archiveLeadWithReason(leadId, archiveReason) {
     // リードシートを更新
     const now = new Date();
 
-    if (leadProgressIdx >= 0) {
-      leadsSheet.getRange(leadRowNum, leadProgressIdx + 1).setValue('アーカイブ');
-      Logger.log('✅ リード進捗を更新: アーカイブ (行' + leadRowNum + ', 列' + (leadProgressIdx + 1) + ')');
-    } else {
-      Logger.log('⚠️ リード進捗列が見つかりません（leadProgressIdx=' + leadProgressIdx + '）');
-    }
+    // リード進捗への書き込みを廃止。アーカイブ日・アーカイブ理由で管理する
 
     if (archiveReasonIdx >= 0) {
       leadsSheet.getRange(leadRowNum, archiveReasonIdx + 1).setValue(archiveReason);
@@ -1737,7 +1794,7 @@ function getNewAssigns() {
     }
 
     // 現在のユーザー情報を取得
-    const userEmail = Session.getActiveUser().getEmail();
+    const userEmail = resolveCurrentUserEmail();
     const userInfo = getUserInfoByEmail(userEmail);
 
     if (!userInfo || !userInfo.staffId) {
@@ -1797,7 +1854,7 @@ function startDeal(leadId) {
     const headers = data[0];
 
     const leadIdIdx = headers.indexOf('リードID');
-    const statusIdx = headers.indexOf('商談進捗'); // 実際のシートでは「商談進捗」
+    const leadStatusIdx = headers.indexOf('リードステータス');
     const updateDateIdx = headers.indexOf('シート更新日');
 
     let leadRowNum = -1;
@@ -1815,7 +1872,7 @@ function startDeal(leadId) {
 
     // ステータスを更新
     const now = new Date();
-    if (statusIdx >= 0) sheet.getRange(leadRowNum, statusIdx + 1).setValue('対応中');
+    if (leadStatusIdx >= 0) sheet.getRange(leadRowNum, leadStatusIdx + 1).setValue('商談中');
     if (updateDateIdx >= 0) sheet.getRange(leadRowNum, updateDateIdx + 1).setValue(now);
 
     return {
@@ -1921,7 +1978,7 @@ function getDeals() {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const statusIdx = headers.indexOf('リード進捗');
+  const statusIdx = headers.indexOf('リードステータス');
   const staffIdx = headers.indexOf('担当者');
   const deals = [];
 
@@ -2244,13 +2301,15 @@ function generateNextStaffId() {
   }
 
   const nextNum = maxNum + 1;
-  return CONFIG.STAFF_ID_PREFIX + String(nextNum).padStart(3, '0');
+  return CONFIG.STAFF_ID_PREFIX + String(nextNum).padStart(5, '0');
 }
 
 /**
  * 担当者を追加
  */
 function addStaff(staffData) {
+  checkPermission('staff_manage');
+
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
 
@@ -2278,6 +2337,8 @@ function addStaff(staffData) {
  * 担当者を更新
  */
 function updateStaff(staffId, staffData) {
+  checkPermission('staff_manage');
+
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
 
@@ -2321,6 +2382,8 @@ function updateStaff(staffId, staffData) {
  * 担当者を削除
  */
 function deleteStaff(staffId) {
+  checkPermission('staff_manage');
+
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
 
@@ -2544,7 +2607,11 @@ function deleteGoal(goalId) {
  * 現在のユーザーの役割を取得
  */
 function getCurrentUserRole() {
-  const email = Session.getActiveUser().getEmail();
+  const email = resolveCurrentUserEmail();
+
+  if (!email) {
+    return { role: null, staffId: null, staffName: null, email: '', error: 'ログインが必要です' };
+  }
 
   // 担当者マスタからメールアドレスで検索
   const ss = getSpreadsheet();
@@ -2689,7 +2756,7 @@ function getLeadsKPI(leadType) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const typeIdx = headers.indexOf('リード種別');
-  const statusIdx = headers.indexOf('リード進捗');
+  const statusIdx = headers.indexOf('リードステータス');
   const assignIdx = headers.indexOf('担当者');
   const regDateIdx = headers.indexOf('登録日');
 
@@ -2723,7 +2790,7 @@ function getLeadsKPI(leadType) {
     if (!assignee || assignee === '') unassigned++;
 
     // 対応中
-    if (status === '対応中') inProgress++;
+    if (status === 'リード対応中') inProgress++;
   }
 
   return { total, todayNew, unassigned, inProgress };
@@ -2748,7 +2815,7 @@ function getCSMetrics() {
   const regDateIdx = headers.indexOf('登録日');
   const assignIdx = headers.indexOf('担当者');
   const assignDateIdx = headers.indexOf('アサイン日');
-  const statusIdx = headers.indexOf('リード進捗');
+  const statusIdx = headers.indexOf('リードステータス');
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -3068,7 +3135,7 @@ function getLeaderMetrics() {
   const headers = data[0];
   const regDateIdx = headers.indexOf('登録日');
   const assignIdx = headers.indexOf('担当者');
-  const statusIdx = headers.indexOf('リード進捗');
+  const statusIdx = headers.indexOf('リードステータス');
   const amountIdx = headers.indexOf('月間見込み金額');
 
   const now = new Date();
@@ -3834,11 +3901,11 @@ function restoreLeadFromArchive(leadId, newStatus) {
         Logger.log('🔄 Clearing archiveReason at row=' + leadRowIndex + ', col=' + (archiveReasonCol + 1));
         sheet.getRange(leadRowIndex, archiveReasonCol + 1).clearContent();
       }
-      if (leadProgressCol >= 0) {
-        const newProgressValue = newStatus || '新規';
-        Logger.log('🔄 Setting leadProgress to "' + newProgressValue + '" at row=' + leadRowIndex + ', col=' + (leadProgressCol + 1));
-        sheet.getRange(leadRowIndex, leadProgressCol + 1).setValue(newProgressValue);
-        Logger.log('✅ leadProgress updated successfully');
+      const leadStatusCol = headers.indexOf('リードステータス');
+      if (leadStatusCol >= 0) {
+        Logger.log('🔄 Setting leadStatus to "リード対応中" at row=' + leadRowIndex + ', col=' + (leadStatusCol + 1));
+        sheet.getRange(leadRowIndex, leadStatusCol + 1).setValue('リード対応中');
+        Logger.log('✅ leadStatus updated successfully');
       }
       // リード担当者をクリア（新規状態に戻すため）
       if (leadStaffCol >= 0) {
@@ -5264,7 +5331,7 @@ function getSalesStats() {
     const headers = data[0];
 
     const staffIdx = headers.indexOf('担当者');
-    const statusIdx = headers.indexOf('リード進捗');
+    const statusIdx = headers.indexOf('リードステータス');
     const tradeDateIdx = headers.indexOf('初回取引日');
     const tradeAmountIdx = headers.indexOf('初回取引金額');
     const cumulativeAmountIdx = headers.indexOf('累計取引金額');
@@ -5369,7 +5436,7 @@ function getReminders() {
     const headers = data[0];
 
     const staffIdx = headers.indexOf('担当者');
-    const statusIdx = headers.indexOf('リード進捗');
+    const statusIdx = headers.indexOf('リードステータス');
     const nextActionDateIdx = headers.indexOf('次回アクション日');
 
     const now = new Date();
@@ -5480,7 +5547,7 @@ function getNewCustomers() {
     const headers = data[0];
 
     const staffIdx = headers.indexOf('担当者');
-    const statusIdx = headers.indexOf('リード進捗');
+    const statusIdx = headers.indexOf('リードステータス');
 
     const newCustomers = [];
 
@@ -5527,7 +5594,7 @@ function getRouteCustomers() {
     const headers = data[0];
 
     const staffIdx = headers.indexOf('担当者');
-    const statusIdx = headers.indexOf('リード進捗');
+    const statusIdx = headers.indexOf('リードステータス');
     const tradeDateIdx = headers.indexOf('初回取引日');
 
     const routeCustomers = [];
@@ -5591,7 +5658,7 @@ function getAllDealsStats() {
     const data = leadSheet.getDataRange().getValues();
     const headers = data[0];
 
-    const statusIdx = headers.indexOf('リード進捗');
+    const statusIdx = headers.indexOf('リードステータス');
     const tradeDateIdx = headers.indexOf('初回取引日');
     const cumulativeAmountIdx = headers.indexOf('累計取引金額');
     const updateDateIdx = headers.indexOf('シート更新日');
@@ -5690,7 +5757,7 @@ function getStaffSummary() {
     const headers = data[0];
 
     const staffIdx = headers.indexOf('担当者');
-    const statusIdx = headers.indexOf('リード進捗');
+    const statusIdx = headers.indexOf('リードステータス');
     const tradeDateIdx = headers.indexOf('初回取引日');
     const tradeAmountIdx = headers.indexOf('初回取引金額');
     const updateDateIdx = headers.indexOf('シート更新日');
@@ -5787,7 +5854,7 @@ function getAllNewCustomers() {
     const data = leadSheet.getDataRange().getValues();
     const headers = data[0];
 
-    const statusIdx = headers.indexOf('リード進捗');
+    const statusIdx = headers.indexOf('リードステータス');
 
     const allNewCustomers = [];
 
@@ -5830,7 +5897,7 @@ function getAllRouteCustomers() {
     const data = leadSheet.getDataRange().getValues();
     const headers = data[0];
 
-    const statusIdx = headers.indexOf('リード進捗');
+    const statusIdx = headers.indexOf('リードステータス');
     const tradeDateIdx = headers.indexOf('初回取引日');
 
     const allRouteCustomers = [];
@@ -6413,7 +6480,7 @@ function syncQuoteHeaderToCreationSheet(headerData) {
  */
 function saveQuoteFromCreationSheet() {
   try {
-    const userEmail = Session.getActiveUser().getEmail();
+    const userEmail = resolveCurrentUserEmail();
     const sheet = getQuoteCreationSheet();
 
     // 1. ヘッダー情報をJ列・K列から読み取り
@@ -6512,7 +6579,7 @@ function saveQuoteFromCreationSheet() {
  */
 function getStaffFullName() {
   try {
-    const userEmail = Session.getActiveUser().getEmail();
+    const userEmail = resolveCurrentUserEmail() || '';
     const ss = getSpreadsheet();
     const staffSheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
 
@@ -6549,7 +6616,7 @@ function getStaffFullName() {
 
   } catch (error) {
     Logger.log('[getStaffFullName] エラー: ' + error.message);
-    return Session.getActiveUser().getEmail(); // フォールバック
+    return resolveCurrentUserEmail() || ''; // フォールバック
   }
 }
 
@@ -6718,7 +6785,7 @@ function syncQuoteHeaderToSheet(headerData) {
  */
 function saveQuoteFromWorkSheet() {
   try {
-    const userEmail = Session.getActiveUser().getEmail();
+    const userEmail = resolveCurrentUserEmail();
     const sheet = getUserQuoteWorkSheet();
 
     Logger.log('[saveQuoteFromWorkSheet] 保存開始 - ユーザー: ' + userEmail);
@@ -7460,9 +7527,11 @@ function writeQuoteToSheetAndGeneratePDF(quoteData) {
     quoteSheet.getRange(QUOTE_SETTINGS_ROWS.PAYMENT_CURRENCY, cols.SETTING_KEY).setValue('支払い通貨');
     quoteSheet.getRange(QUOTE_SETTINGS_ROWS.PAYMENT_CURRENCY, cols.SETTING_VALUE).setValue(quoteData.paymentCurrency || 'JPY');
 
-    // 為替レート
+    // 為替レート（通貨マスタから取得）
+    var legacyQuoteCurrency = String(quoteData.paymentCurrency || 'JPY').trim().toUpperCase();
+    var legacyQuoteRate = getCurrentExchangeRate(legacyQuoteCurrency);
     quoteSheet.getRange(QUOTE_SETTINGS_ROWS.EXCHANGE_RATE, cols.SETTING_KEY).setValue('為替レート');
-    quoteSheet.getRange(QUOTE_SETTINGS_ROWS.EXCHANGE_RATE, cols.SETTING_VALUE).setValue(quoteData.exchangeRate || 1);
+    quoteSheet.getRange(QUOTE_SETTINGS_ROWS.EXCHANGE_RATE, cols.SETTING_VALUE).setValue(legacyQuoteRate);
 
     // 請求書発行日（本日）
     const today = new Date();
@@ -7476,7 +7545,7 @@ function writeQuoteToSheetAndGeneratePDF(quoteData) {
     quoteSheet.getRange(QUOTE_SETTINGS_ROWS.PAYMENT_DUE_DATE, cols.SETTING_KEY).setValue('支払い期日');
     quoteSheet.getRange(QUOTE_SETTINGS_ROWS.PAYMENT_DUE_DATE, cols.SETTING_VALUE).setValue(dueDateStr);
 
-    Logger.log('[writeQuoteToSheetAndGeneratePDF] 設定データ書き込み完了（支払い通貨: ' + (quoteData.paymentCurrency || 'JPY') + ', 為替レート: ' + (quoteData.exchangeRate || 1) + ', 発行日: ' + issueDateStr + ', 支払期日: ' + dueDateStr + '）');
+    Logger.log('[writeQuoteToSheetAndGeneratePDF] 設定データ書き込み完了（支払い通貨: ' + legacyQuoteCurrency + ', 為替レート: ' + legacyQuoteRate + ', 発行日: ' + issueDateStr + ', 支払期日: ' + dueDateStr + '）');
 
     // スプレッドシートの再計算を待つ
     Logger.log('[writeQuoteToSheetAndGeneratePDF] スプレッドシート再計算待機中...');
@@ -7608,7 +7677,7 @@ function saveQuoteFromForm(quoteFormData) {
       shipping: quoteFormData.shipping || 0,
       total: quoteFormData.total || 0,
       totalWeight: quoteFormData.totalWeight || 0,
-      exchangeRate: quoteFormData.exchangeRate || 0,
+      exchangeRate: getCurrentExchangeRate(String(quoteFormData.paymentCurrency || quoteFormData.currency || 'JPY').trim().toUpperCase()),
       memo: quoteFormData.memo || '',
       items: []
     };
@@ -7844,7 +7913,7 @@ function generateInvoicePDFFromForm(invoiceFormData) {
       tax: invoiceFormData.tax || 0,
       total: invoiceFormData.total || 0,
       totalWeight: invoiceFormData.totalWeight || 0,
-      exchangeRate: invoiceFormData.exchangeRate || 0,
+      exchangeRate: getCurrentExchangeRate(String(invoiceFormData.paymentCurrency || invoiceFormData.currency || 'JPY').trim().toUpperCase()),
       memo: invoiceFormData.memo || '',
       // 顧客マスタ連携項目（L16-L19）を追加
       paymentName: invoiceFormData.paymentName || '',

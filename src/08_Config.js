@@ -7,82 +7,41 @@
 // ============================================================
 
 /**
- * 本番環境の固定ID
- */
-const PRODUCTION_IDS = {
-  SPREADSHEET_ID: '[REDACTED]',
-  ARCHIVE_BOOK_ID: '1J4VFKwwV5xbEy15TrbwriFRDiYTH-YfrVTzwTQJpXpI',
-  DEV_FOLDER_ID: '1BKFjFJIxEM2j-HFaxgFuTLAcgAnRuXMi',
-  // SCM（サプライチェーン管理）スプレッドシート
-  SCM_SPREADSHEET_ID: '1IvM1lBvPRPJRaMLODHYgWwDJzu1j038hYQxrk6ipZPs'
-};
-
-/**
- * デプロイID
- */
-const DEPLOY_IDS = {
-  PRODUCTION: 'AKfycbzpeOkyBzA0kyD6T9aDE1uYVIil1z6KY0Ssc6Hta5EX7xoIAk_-EkxgmjILhN9Ceg5M',
-  TEST: 'AKfycbwGUUcdUs_L-a4c9Ux9PBPuX9X6t5YMGVnlInL5RGOq63a2QfaJUgIbNdV4ylcN0Xou2g'
-};
-
-/**
- * 現在の環境を取得（'production' or 'development'）
+ * 現在の環境を取得する。未設定・不正値は安全のため停止する。
  */
 function getEnvironment() {
-  const props = PropertiesService.getScriptProperties();
-  return props.getProperty('ENVIRONMENT') || 'production';
+  const environment = PropertiesService.getScriptProperties().getProperty('ENVIRONMENT');
+  if (environment !== 'development' && environment !== 'production') {
+    throw new Error('ENVIRONMENT must be explicitly set to development or production');
+  }
+  return environment;
 }
 
 /**
- * 環境を設定
- * @param {string} env - 'production' or 'development'
+ * 必須スクリプトプロパティを取得する。環境間フォールバックはしない。
  */
-function setEnvironment(env) {
-  if (env !== 'production' && env !== 'development') {
-    throw new Error('環境は "production" または "development" を指定してください');
+function getRequiredScriptProperty(key) {
+  const value = PropertiesService.getScriptProperties().getProperty(key);
+  if (!value) {
+    throw new Error(`Required script property is not set: ${key}`);
   }
-  const props = PropertiesService.getScriptProperties();
-  props.setProperty('ENVIRONMENT', env);
-  Logger.log('環境を ' + env + ' に設定しました');
+  return value;
 }
 
 /**
  * スプレッドシートを取得（環境に応じて切り替え）
  */
 function getSpreadsheet() {
-  const env = getEnvironment();
-  const props = PropertiesService.getScriptProperties();
-
-  if (env === 'development') {
-    const devId = props.getProperty('DEV_SPREADSHEET_ID');
-    if (!devId) {
-      Logger.log('警告: DEV_SPREADSHEET_ID が未設定のため、本番スプレッドシートを使用します');
-      return SpreadsheetApp.openById(PRODUCTION_IDS.SPREADSHEET_ID);
-    }
-    return SpreadsheetApp.openById(devId);
-  }
-
-  // 本番環境
-  return SpreadsheetApp.openById(PRODUCTION_IDS.SPREADSHEET_ID);
+  getEnvironment();
+  return SpreadsheetApp.openById(getRequiredScriptProperty('SPREADSHEET_ID'));
 }
 
 /**
  * アーカイブブックを取得（環境に応じて切り替え）
  */
 function getArchiveBook() {
-  const env = getEnvironment();
-  const props = PropertiesService.getScriptProperties();
-
-  if (env === 'development') {
-    const devArchiveId = props.getProperty('DEV_ARCHIVE_BOOK_ID');
-    if (devArchiveId) {
-      return SpreadsheetApp.openById(devArchiveId);
-    }
-    // 開発環境でもアーカイブブックがない場合は本番を使用（読み取り専用想定）
-    Logger.log('警告: DEV_ARCHIVE_BOOK_ID が未設定のため、本番アーカイブブックを使用します');
-  }
-
-  return SpreadsheetApp.openById(PRODUCTION_IDS.ARCHIVE_BOOK_ID);
+  getEnvironment();
+  return SpreadsheetApp.openById(getRequiredScriptProperty('ARCHIVE_BOOK_ID'));
 }
 
 /**
@@ -90,32 +49,10 @@ function getArchiveBook() {
  */
 function showCurrentEnvironment() {
   const env = getEnvironment();
-  const props = PropertiesService.getScriptProperties();
-
-  Logger.log('========================================');
-  Logger.log('現在の環境情報');
-  Logger.log('========================================');
-  Logger.log('ENVIRONMENT: ' + env);
-
-  try {
-    const ss = getSpreadsheet();
-    Logger.log('スプレッドシート: ' + ss.getName());
-    Logger.log('スプレッドシートID: ' + ss.getId());
-  } catch (e) {
-    Logger.log('スプレッドシート取得エラー: ' + e.message);
-  }
-
-  if (env === 'development') {
-    Logger.log('DEV_SPREADSHEET_ID: ' + (props.getProperty('DEV_SPREADSHEET_ID') || '未設定'));
-    Logger.log('DEV_ARCHIVE_BOOK_ID: ' + (props.getProperty('DEV_ARCHIVE_BOOK_ID') || '未設定'));
-  }
-
-  Logger.log('========================================');
-
   return {
     environment: env,
-    spreadsheetId: getSpreadsheet().getId(),
-    spreadsheetName: getSpreadsheet().getName()
+    spreadsheetConfigured: Boolean(getRequiredScriptProperty('SPREADSHEET_ID')),
+    archiveConfigured: Boolean(getRequiredScriptProperty('ARCHIVE_BOOK_ID'))
   };
 }
 
@@ -123,10 +60,8 @@ const CONFIG = {
   // シート名
   SHEETS: {
     // 統合リード管理シート（メイン）
-    LEADS: 'リード管理',
 
     // マスタ・設定シート
-    STAFF: '担当者マスタ',
     SETTINGS: '選択肢マスタ',
     PERMISSIONS: '権限設定',
     GOALS: '目標設定',
@@ -171,22 +106,14 @@ const CONFIG = {
     SALES_DATA_SYNC: '📊売上データ同期',
 
     // ★ SCM統合: マスタデータ（IMPORTRANGE同期） ★
-    SCM_PRODUCT_MASTER_SYNC: '商品マスタ同期',
     SCM_STOCK_SYNC: '集計同期',
     SCM_SUPPLIER_MASTER_SYNC: '仕入元マスタ同期',
 
     // ★ CRM顧客マスタ（CRM内ネイティブ） ★
-    CRM_CUSTOMERS: '顧客マスタ',
-    CRM_SHIPPING: '配送先マスタ',
-    CRM_PAYMENT: '支払先マスタ',
 
     // ★ オーダー管理 ★
-    ORDER_MASTER: 'オーダー管理',
-    ORDER_LINES: 'オーダー明細',
 
     // ★ 発送・仕入れ（1オーダーn個口/複数仕入れ） ★
-    SHIPMENT: '発送',
-    PURCHASE: '仕入れ'
   },
 
   // リードID接頭辞（インバウンド: LDI-, アウトバウンド: LDO-）
@@ -224,13 +151,15 @@ const CONFIG = {
   },
 
   // リード段階のステータス（リマインド対象外）
-  LEAD_STATUSES: ['新規', '対応中', '対象外'],
+  LEAD_STATUSES: ['新規リード', 'リード対応中', 'リード対象外'],
 
   // 商談段階のステータス（リマインド対象）
-  DEAL_STATUSES: ['アサイン確定', '商談中', '見積もり提示'],
+  // 注: 見積もり提示は quotes テーブルで管理するため '商談中' に統合
+  DEAL_STATUSES: ['アサイン確定', '商談中'],
 
-  // 完了ステータス（アーカイブ対象）
-  CLOSED_STATUSES: ['成約', '失注', '追客', '対象外', 'アーカイブ'],
+  // 完了ステータス
+  // 注: アーカイブはアーカイブ日（アーカイブ日列）が空でないかで判定するため除外
+  CLOSED_STATUSES: ['成約', '失注', '追客(短期)', '追客(長期)', '商談対象外', 'リード対象外'],
 
   // ボトルネック特定設定
   BOTTLENECK_SETTINGS: {
@@ -245,11 +174,11 @@ const CONFIG = {
   // ============================================================
 
   // 見積書ステータス
+  // NOTE: Core Schema V1 では QUOTES.values.STATUS を参照すること（28_CoreQuoteApi.js 経由）。
+  // このオブジェクトは 11_Quote.js（レガシー）専用。フロントエンドからは使用禁止。
   QUOTE_STATUS: {
-    DRAFT: '下書き',
-    SENT: '送付済み',
-    APPROVED: '承認済み',
-    REJECTED: '却下',
+    DRAFT:   '下書き',
+    ISSUED:  '発行済み',
     EXPIRED: '期限切れ'
   },
 
@@ -279,11 +208,8 @@ const CONFIG = {
     EUR: 'ユーロ（EUR）'
   },
 
-  // ERP連携設定
+  // ERP連携設定（接続先IDはスクリプトプロパティから必須取得）
   ERP: {
-    // ERPスプレッドシートID（PropertiesServiceから取得、フォールバック）
-    SPREADSHEET_ID: '[REDACTED]',
-
     // ERPシート名（同期先）
     SHEETS: {
       SALES_DATA: '📊売上データ',
@@ -293,6 +219,22 @@ const CONFIG = {
     }
   }
 };
+
+// Core Schema V1 の値はアクセス時に解決する。これにより、別ファイルの
+// Registry const 初期化順に CONFIG 自体が依存しない。
+Object.defineProperties(CONFIG.SHEETS, {
+  LEADS: { enumerable: true, get: function() { return getCoreSchemaV1TableName('LEADS'); } },
+  STAFF: { enumerable: true, get: function() { return getCoreSchemaV1TableName('STAFF'); } },
+  SCM_PRODUCT_MASTER_SYNC: { enumerable: true, get: function() { return getCoreSchemaV1TableName('PRODUCTS'); } },
+  CRM_CUSTOMERS: { enumerable: true, get: function() { return getCoreSchemaV1TableName('CUSTOMERS'); } },
+  CRM_SHIPPING: { enumerable: true, get: function() { return getCoreSchemaV1TableName('SHIPPING_DESTINATIONS'); } },
+  CRM_PAYMENT: { enumerable: true, get: function() { return getCoreSchemaV1TableName('PAYMENT_DESTINATIONS'); } },
+  ORDER_MASTER: { enumerable: true, get: function() { return getCoreSchemaV1TableName('ORDERS'); } },
+  ORDER_LINES: { enumerable: true, get: function() { return getCoreSchemaV1TableName('ORDER_LINES'); } },
+  SHIPMENT: { enumerable: true, get: function() { return getCoreSchemaV1TableName('SHIPMENTS'); } },
+  PURCHASE: { enumerable: true, get: function() { return getCoreSchemaV1TableName('PURCHASES'); } },
+  FORM_TOKENS: { enumerable: true, get: function() { return getCoreSchemaV1TableName('FORM_TOKENS'); } }
+});
 
 /**
  * プルダウン選択肢（デフォルト値・初期設定用）
@@ -307,7 +249,7 @@ const DEFAULT_DROPDOWN_OPTIONS = {
   顧客タイプ: ['信頼重視', '価格重視', '不明'],
   返信速度: ['24h以内', '48h以内', '3日以上', '未返信'],
   連絡手段: ['Instagram DM', 'WhatsApp', 'Email', 'Discord', 'LINE', '電話', 'その他'],
-  進捗ステータス: ['新規', '対応中', '対象外', 'アサイン確定', '商談中', '見積もり提示', '成約', '失注', '追客', 'アーカイブ'],
+  リードステータス: ['新規リード', 'リード対応中', 'アサイン確定', 'リード対象外', '商談中', '商談対象外', '追客(短期)', '追客(長期)', '成約', '失注'],
   次回アクション日: ['相手の返信後', '不明点を確認後', '本日中', '明日までに', '3日以内', '1週間以内'],
   取り扱いタイトル: ['Pokemon', 'One Piece', 'Yu-Gi-Oh', 'Dragon Ball', 'Weiss Schwarz', '複数', 'その他'],
   販売形態: ['実店舗', 'EC', 'ライブ配信', '複合', '不明'],
@@ -328,7 +270,7 @@ const DEFAULT_DROPDOWN_OPTIONS = {
  */
 const DROPDOWN_COLUMNS = [
   '流入経路（IN）', '流入経路（OUT）', '国', '温度感', '想定規模', '顧客タイプ', '返信速度', '連絡手段',
-  '進捗ステータス', '次回アクション日', '取り扱いタイトル', '販売形態', '競合比較中', '購入頻度',
+  'リードステータス', '次回アクション日', '取り扱いタイトル', '販売形態', '競合比較中', '購入頻度',
   '商談結果', '商談の手応え', 'アーカイブ理由', '対象外理由', '失注理由', '役割', 'ステータス', '期間タイプ'
 ];
 
@@ -527,7 +469,7 @@ const HEADERS = {
   INVOICES: [
     '請求書ID',           // 1: INV-00001
     '請求書番号',         // 2: #0001
-    '商談ID',             // 3: LDI-00001
+    'オーダーID',           // 3: OD-00001
     '顧客ID',             // 4: CT-00001
     '顧客名',             // 5: ABC Trading
     '請求日',             // 6: 2026/01/26
@@ -931,26 +873,52 @@ function getRemindWebhook() {
 }
 
 /**
- * 設定シートから単一キーの設定値を取得する。
- * 「設定キー」列が存在しない場合や行が見つからない場合は null を返す。
+ * システム設定シートから単一キーの設定値を取得し、VALUE_TYPE に応じて型変換して返す。
  *
- * @param {string} key - 設定キー（例: 'REMINDER_ENABLED'）
- * @returns {string|null} 設定値、または null
+ * - VALUE_TYPE = 数値  → Number に変換して返す（変換失敗時は null）
+ * - VALUE_TYPE = 真偽値 → 'true' なら true、それ以外は false を返す
+ * - それ以外           → 文字列のまま返す
+ * - シート未存在・キー未登録 → null を返す
+ *
+ * @param {string} key - 設定キー（例: 'REMINDER_ENABLED', '見積もり有効期限日数'）
+ * @returns {number|boolean|string|null}
  */
 function getSettingValue(key) {
   const ss = getSpreadsheet();
-  const sheet = ss.getSheetByName(CONFIG.SHEETS.SETTINGS);
-  if (!sheet || sheet.getLastRow() < 2) return null;
+  var sheet;
+  try {
+    sheet = getCoreSchemaV1Sheet(ss, 'SETTINGS');
+  } catch (e) {
+    return null;
+  }
+  if (sheet.getLastRow() < 2) return null;
+
+  const settingsTable = CORE_SCHEMA_V1_TABLES['SETTINGS'];
+  const keyColName  = settingsTable.headers['SETTING_KEY'];
+  const valColName  = settingsTable.headers['SETTING_VALUE'];
+  const typeColName = settingsTable.headers['VALUE_TYPE'];
+  const NUMBER_TYPE  = settingsTable.values.VALUE_TYPE.NUMBER;
+  const BOOLEAN_TYPE = settingsTable.values.VALUE_TYPE.BOOLEAN;
 
   const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  const keyCol = headers.indexOf('設定キー');
-  const valCol = headers.indexOf('設定値');
+  const headerRow = data[0];
+  const keyCol  = headerRow.indexOf(keyColName);
+  const valCol  = headerRow.indexOf(valColName);
+  const typeCol = headerRow.indexOf(typeColName);
   if (keyCol < 0 || valCol < 0) return null;
 
-  for (let i = 1; i < data.length; i++) {
+  for (var i = 1; i < data.length; i++) {
     if (String(data[i][keyCol]) === key) {
-      return String(data[i][valCol]);
+      const rawValue = String(data[i][valCol]);
+      const valueType = typeCol >= 0 ? String(data[i][typeCol]) : '';
+      if (valueType === NUMBER_TYPE) {
+        const n = Number(rawValue);
+        return isFinite(n) ? n : null;
+      }
+      if (valueType === BOOLEAN_TYPE) {
+        return rawValue === 'true';
+      }
+      return rawValue;
     }
   }
   return null;
@@ -1301,56 +1269,4 @@ function getStaffData() {
   }
 
   return staff;
-}
-
-// ============================================================
-// ファイル管理（clasp run用）
-// ============================================================
-
-/**
- * スプレッドシートを指定フォルダに移動
- * - 本番スプレッドシート → 本番フォルダ
- * - アーカイブブック → 本番フォルダ
- * - 開発スプレッドシート → 開発フォルダ
- */
-function moveSpreadsheets() {
-  const PROD_FOLDER_ID = '1JIPeqiT_2ucBUK875sQBcuSYHkT-GtdD';
-  const DEV_FOLDER_ID = '1rV7ZKxZZtCubafp-9lMyCIPgmaAbJjh_';
-
-  const props = PropertiesService.getScriptProperties();
-  const devSpreadsheetId = props.getProperty('DEV_SPREADSHEET_ID') || '[REDACTED]';
-
-  const filesToMove = [
-    { id: PRODUCTION_IDS.SPREADSHEET_ID, targetFolder: PROD_FOLDER_ID, name: '本番スプレッドシート' },
-    { id: PRODUCTION_IDS.ARCHIVE_BOOK_ID, targetFolder: PROD_FOLDER_ID, name: 'アーカイブブック' },
-    { id: devSpreadsheetId, targetFolder: DEV_FOLDER_ID, name: '開発スプレッドシート' }
-  ];
-
-  const results = [];
-
-  filesToMove.forEach(item => {
-    try {
-      const file = DriveApp.getFileById(item.id);
-      const targetFolder = DriveApp.getFolderById(item.targetFolder);
-
-      // 現在の親フォルダから削除
-      const parents = file.getParents();
-      while (parents.hasNext()) {
-        parents.next().removeFile(file);
-      }
-
-      // 新しいフォルダに追加
-      targetFolder.addFile(file);
-
-      const result = item.name + ' → ' + targetFolder.getName() + ' に移動完了';
-      Logger.log(result);
-      results.push({ success: true, message: result });
-    } catch (e) {
-      const error = item.name + ' の移動に失敗: ' + e.message;
-      Logger.log(error);
-      results.push({ success: false, message: error });
-    }
-  });
-
-  return results;
 }

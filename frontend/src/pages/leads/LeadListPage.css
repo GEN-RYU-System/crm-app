@@ -1,0 +1,3 @@
+.lead-list-page__actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.lead-list-page__data-card { border-radius: var(--radius-data-table); overflow: hidden; padding: var(--space-none); }
+.lead-list-page__data-state { padding: var(--space-xl); }

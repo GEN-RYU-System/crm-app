@@ -351,7 +351,7 @@ function writeInvoiceToSalesData(pdfUrl) {
       const orderStaffCol = salesDataMapping['取引状況受注担当者'];
       if (orderStaffCol) {
         // 実行者のメールアドレスを取得
-        const activeUserEmail = Session.getActiveUser().getEmail();
+        const activeUserEmail = resolveCurrentUserEmail() || '';
         // スタッフ管理から氏名を検索
         const orderStaffName = getStaffFullName(
           activeUserEmail,

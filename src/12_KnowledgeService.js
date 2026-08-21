@@ -70,12 +70,10 @@ function saveKnowledge(formData) {
     const now = new Date();
     let currentUser = '';
     try {
-      // ウェブアプリでは getActiveUser が空になる場合があるため getEffectiveUser もフォールバックに使用
-      let email = Session.getActiveUser().getEmail();
-      if (!email) email = Session.getEffectiveUser().getEmail();
+      const email = resolveCurrentUserEmail();
       Logger.log('saveKnowledge currentUser email: ' + email);
       Logger.log('saveKnowledge updatedByIdx: ' + updatedByIdx);
-      currentUser = getStaffNameByEmail_(email) || email;
+      currentUser = email ? (getStaffNameByEmail_(email) || email) : 'unknown';
       Logger.log('saveKnowledge currentUser name: ' + currentUser);
     } catch (e) {
       Logger.log('saveKnowledge currentUser取得エラー: ' + e.message);

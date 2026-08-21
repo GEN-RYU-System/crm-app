@@ -1,17 +1,58 @@
 name: Deploy to DEV
 
 on:
+  push:
+    branches: [develop]
   workflow_dispatch:
+
+concurrency:
+  group: crm-app-dev-deploy
+  cancel-in-progress: false
+  queue: max
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Resolve and verify deploy commit
+        id: target
+        run: |
+          set -o pipefail
+
+          if [ "${{ github.event_name }}" = "push" ]; then
+            target_sha="${{ github.sha }}"
+          else
+            target_sha=$(curl --fail-with-body --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ github.token }}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${{ github.repository }}/git/ref/heads/develop" \
+              | jq --raw-output '.object.sha')
+          fi
+
+          if ! curl --fail-with-body --silent --show-error \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ github.token }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/commits/${target_sha}/pulls" \
+            | jq --exit-status --arg base "develop" \
+              '.[] | select(.merged_at != null and .base.ref == $base)' \
+              > /dev/null; then
+            echo "::error::DEV deployment requires a GitHub merged PR with base=develop."
+            exit 1
+          fi
+
+          echo "sha=${target_sha}" >> "$GITHUB_OUTPUT"
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ steps.target.outputs.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -20,6 +61,12 @@ jobs:
 
       - name: Install clasp
         run: npm install -g @google/clasp
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Build GAS artifact
+        run: cd frontend && npm run build:gas
 
       - name: Restore .clasprc.json
         env:
@@ -31,9 +78,9 @@ jobs:
 
       - name: Generate .clasp.json
         env:
-          SCRIPT_ID: ${{ secrets.SCRIPT_ID_DEV }}
+          SCRIPT_ID_DEV: ${{ secrets.SCRIPT_ID_DEV }}
         run: |
-          printf '{"scriptId":"%s","rootDir":"src"}\n' "$SCRIPT_ID" > .clasp.json
+          printf '{"scriptId":"%s","rootDir":"src"}\n' "$SCRIPT_ID_DEV" > .clasp.json
           echo "scriptId: $(python3 -c "import json; print(json.load(open('.clasp.json'))['scriptId'][:8] + '...')")"
 
       - name: Push to DEV

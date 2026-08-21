@@ -111,7 +111,7 @@ function logFeedbackReason(knowledgeId, feedbackType, reason, context) {
 
   // ログIDを生成
   const logId = 'FB-' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMddHHmmss');
-  const user = Session.getActiveUser().getEmail();
+  const user = resolveCurrentUserEmail();
   const timestamp = new Date();
 
   logSheet.appendRow([

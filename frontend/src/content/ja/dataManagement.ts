@@ -1,0 +1,19 @@
+export const dataManagementCopy = {
+  title: '管理センター',
+  subtitle: 'スタッフ・データ・商品・外部連携を一か所で管理します。',
+  navigationLabel: '管理センターメニュー',
+  groupTitle: 'データ管理',
+  groupStaffManagement: 'スタッフ管理',
+  groupDataManagement: 'データ管理',
+  groupProductManagement: '商品管理',
+  groupExternalLinks: '外部連携',
+  leads: 'リード',
+  customers: '顧客',
+  quotes: '見積もり',
+  orders: '請求書',
+  sales: '売上',
+  inventory: '在庫',
+  productMaster: '商品マスタ',
+  googleDrive: 'Google Drive',
+  discord: 'Discord'
+} as const;

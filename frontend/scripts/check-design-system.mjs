@@ -1,0 +1,80 @@
+import { readdir, readFile } from 'node:fs/promises';
+import { resolve, relative, extname } from 'node:path';
+
+const frontendDir = resolve(import.meta.dirname, '..');
+const srcDir = resolve(frontendDir, 'src');
+const violations = [];
+async function files(directory) { const entries = await readdir(directory, { withFileTypes: true }); return (await Promise.all(entries.map((entry) => entry.isDirectory() ? files(resolve(directory, entry.name)) : [resolve(directory, entry.name)]))).flat(); }
+function hasRawDeclaration(source, property, allowed = []) { const pattern = new RegExp(`${property}\\s*:\\s*([^;}]+)`, 'gi'); return [...source.matchAll(pattern)].some((match) => { const value = match[1].trim(); return !value.startsWith('var(') && !allowed.includes(value) && value !== '0' && !value.startsWith('0 '); }); }
+const sourceFiles = await files(srcDir);
+for (const file of sourceFiles) { if (extname(file) !== '.css' || file.endsWith('/styles/palette.css')) continue; const source = await readFile(file, 'utf8'); const raw = /#[0-9a-f]{3,8}\b/i.test(source) || /\b(?:rgb|hsl)a?\(/i.test(source) || hasRawDeclaration(source, 'box-shadow', ['none']) || hasRawDeclaration(source, 'border-radius') || ['margin', 'padding', 'gap'].some((property) => hasRawDeclaration(source, property)); if (raw) violations.push(`raw design value: ${relative(frontendDir, file)}`); }
+for (const file of await files(resolve(srcDir, 'pages'))) { if (!['.ts', '.tsx'].includes(extname(file))) continue; if ((await readFile(file, 'utf8')).includes('palette.css')) violations.push(`page imports palette directly: ${relative(frontendDir, file)}`); }
+const navigationFile = resolve(srcDir, 'app/navigation.ts'); const navigationSource = await readFile(navigationFile, 'utf8'); const navigationRoutes = [...navigationSource.matchAll(/hash:\s*'([^']+)'/g)].map((match) => match[1]); for (const item of navigationRoutes) { for (const file of sourceFiles) { if (file === navigationFile || !['.ts', '.tsx'].includes(extname(file))) continue; if ((await readFile(file, 'utf8')).includes(`'${item}'`) || (await readFile(file, 'utf8')).includes(`"${item}"`)) violations.push(`navigation route duplicated outside navigation.ts: ${relative(frontendDir, file)}`); } }
+if (!navigationSource.includes('NAVIGATION_GROUPS') || !navigationSource.includes('NAVIGATION_ITEMS')) violations.push('navigation.ts does not export grouped navigation SSOT');
+if (/icon\s*:\s*['"][^'"]*[^\x00-\x7F][^'"]*['"]/.test(navigationSource)) violations.push('navigation.ts contains a Unicode symbol icon instead of a CRM_NAV_ICONS key');
+const uiIndexSource = await readFile(resolve(srcDir, 'components/ui/index.ts'), 'utf8'); const catalogSource = await readFile(resolve(srcDir, 'pages/catalog/ComponentCatalogPage.tsx'), 'utf8'); const exportedComponents = [...uiIndexSource.matchAll(/export\s+(?!type\s)\{\s*([A-Z][a-zA-Z]+)\s*\}\s+from/g)].map((m) => m[1]); if (exportedComponents.length === 0) violations.push('components/ui/index.ts has no exported components — regex may be broken'); for (const component of exportedComponents) { if (!catalogSource.includes(`<${component}`)) violations.push(`${component} is not registered in the component catalog`); }
+const sidebarNavSource = await readFile(resolve(srcDir, 'components/shell/SidebarNav.tsx'), 'utf8'); if (sidebarNavSource.includes('SidebarAccordion')) violations.push('SidebarNav still uses the removed inline SidebarAccordion pattern');
+const dataManagementSource = await readFile(resolve(srcDir, 'pages/data-management/DataManagementPage.tsx'), 'utf8'); if (!dataManagementSource.includes('<HubShell') || !dataManagementSource.includes('<SubMenu')) violations.push('Data management hub does not use HubShell and SubMenu');
+const nonHubIds = new Set(['dashboard', 'inbox', 'dataManagement', 'components']); const activeHubIds = [...navigationSource.matchAll(/\{\s*id:\s*'([^']+)'[^\n}]*state:\s*'(?:available|preview)'[^\n}]*\}/g)].map((m) => m[1]).filter((id) => !nonHubIds.has(id)); if (activeHubIds.length === 0) violations.push('hub route check: no active DATA_MANAGEMENT_ITEMS detected — regex may be broken or navigation.ts structure changed'); const appSource = await readFile(resolve(srcDir, 'App.tsx'), 'utf8'); const hubIndexMatch = appSource.match(/const hubIndexRoutes[^=]*=\s*\{([^}]+)\}/s); const registeredHubIds = hubIndexMatch ? [...hubIndexMatch[1].matchAll(/^\s*(\w+):/mg)].map((m) => m[1]) : []; for (const id of activeHubIds) { if (!registeredHubIds.includes(id)) violations.push(`hub route not registered in hubIndexRoutes: ${id}`); }
+const createListCacheSource = await readFile(resolve(srcDir, 'app/createListCache.tsx'), 'utf8');
+if (/from ['"].*gas\/client/.test(createListCacheSource)) violations.push('createListCache must not import from gas/client directly');
+const dashboardContractsSource = await readFile(resolve(srcDir, 'features/dashboard/contracts.ts'), 'utf8');
+const dashboardGasAdapterSource = await readFile(resolve(srcDir, 'features/dashboard/gasAdapter.ts'), 'utf8');
+const dashboardPageSource = await readFile(resolve(srcDir, 'pages/dashboard/DashboardPage.tsx'), 'utf8');
+if (!dashboardContractsSource.includes('DashboardRepository')) violations.push('dashboard feature does not declare DashboardRepository');
+if (!dashboardGasAdapterSource.includes('dashboardGasRepository')) violations.push('dashboard feature does not provide GAS repository');
+if (!dashboardGasAdapterSource.includes("from '../../gas/client'")) violations.push('dashboard GAS repository bypasses the typed GAS client');
+if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(dashboardPageSource) || !dashboardPageSource.includes('DashboardKpis')) violations.push('dashboard page bypasses the DashboardRepository boundary');
+const customerContractsSource = await readFile(resolve(srcDir, 'features/customers/contracts.ts'), 'utf8');
+const customerGasAdapterSource = await readFile(resolve(srcDir, 'features/customers/gasAdapter.ts'), 'utf8');
+const customerPageSources = await Promise.all(['pages/customers/CustomerListPage.tsx', 'pages/customers/CustomerDetailPage.tsx'].map((file) => readFile(resolve(srcDir, file), 'utf8')));
+if (!customerContractsSource.includes('CustomerRepository')) violations.push('customers feature does not declare CustomerRepository');
+if (!customerGasAdapterSource.includes('customerGasRepository')) violations.push('customers feature does not provide GAS repository');
+if (!customerGasAdapterSource.includes("from '../../gas/client'")) violations.push('customers GAS repository bypasses the typed GAS client');
+for (const source of customerPageSources) if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(source) || (!source.includes('CustomerRepository') && !source.includes('CustomerListCacheContext'))) violations.push('customers page bypasses the CustomerRepository boundary');
+const inboxContractsSource = await readFile(resolve(srcDir, 'features/inbox/contracts.ts'), 'utf8');
+const inboxPreviewSource = await readFile(resolve(srcDir, 'features/inbox/previewAdapter.ts'), 'utf8');
+const inboxPageSource = await readFile(resolve(srcDir, 'pages/inbox/InboxPreviewPage.tsx'), 'utf8');
+if (!inboxContractsSource.includes('InboxRepository')) violations.push('inbox feature does not declare InboxRepository');
+if (!inboxPreviewSource.includes('inboxPreviewRepository') || /google\.script\.run|gas\/client|localStorage|sessionStorage|fetch\(/.test(inboxPreviewSource)) violations.push('inbox preview adapter connects to a forbidden runtime dependency');
+if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(inboxPageSource) || !inboxPageSource.includes('InboxRepository')) violations.push('inbox page bypasses the InboxRepository boundary');
+const inventoryContractsSource = await readFile(resolve(srcDir, 'features/inventory/contracts.ts'), 'utf8');
+const inventoryGasAdapterSource = await readFile(resolve(srcDir, 'features/inventory/gasAdapter.ts'), 'utf8');
+const inventoryPageSource = await readFile(resolve(srcDir, 'pages/inventory/InventoryListPage.tsx'), 'utf8');
+if (!inventoryContractsSource.includes('InventoryRepository')) violations.push('inventory feature does not declare InventoryRepository');
+if (!inventoryGasAdapterSource.includes('inventoryGasRepository')) violations.push('inventory feature does not provide GAS repository');
+if (!inventoryGasAdapterSource.includes("from '../../gas/client'")) violations.push('inventory GAS repository bypasses the typed GAS client');
+if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(inventoryPageSource) || (!inventoryPageSource.includes('InventoryRepository') && !inventoryPageSource.includes('InventoryListCacheContext'))) violations.push('inventory page bypasses the InventoryRepository boundary');
+const orderContractsSource = await readFile(resolve(srcDir, 'features/orders/contracts.ts'), 'utf8');
+const orderGasAdapterSource = await readFile(resolve(srcDir, 'features/orders/gasAdapter.ts'), 'utf8');
+const orderPageSource = await readFile(resolve(srcDir, 'pages/orders/OrderListPage.tsx'), 'utf8');
+if (!orderContractsSource.includes('OrderRepository')) violations.push('orders feature does not declare OrderRepository');
+if (!orderGasAdapterSource.includes('orderGasRepository')) violations.push('orders feature does not provide GAS repository');
+if (!orderGasAdapterSource.includes("from '../../gas/client'")) violations.push('orders GAS repository bypasses the typed GAS client');
+if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(orderPageSource) || (!orderPageSource.includes('OrderRepository') && !orderPageSource.includes('OrderListCacheContext'))) violations.push('orders page bypasses the OrderRepository boundary');
+const leadContractsSource = await readFile(resolve(srcDir, 'features/leads/contracts.ts'), 'utf8');
+const leadGasAdapterSource = await readFile(resolve(srcDir, 'features/leads/gasAdapter.ts'), 'utf8');
+const leadEditorPageSource = await readFile(resolve(srcDir, 'pages/leads/LeadEditorPage.tsx'), 'utf8');
+if (!leadContractsSource.includes('LeadRepository')) violations.push('leads feature does not declare LeadRepository');
+if (!leadGasAdapterSource.includes('leadGasRepository')) violations.push('leads feature does not provide GAS repository');
+if (!leadGasAdapterSource.includes("from '../../gas/client'")) violations.push('leads GAS repository bypasses the typed GAS client');
+if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(leadEditorPageSource) || !leadEditorPageSource.includes('LeadRepository')) violations.push('lead editor page bypasses the LeadRepository boundary');
+const staffContractsSource = await readFile(resolve(srcDir, 'features/staff/contracts.ts'), 'utf8');
+const staffGasAdapterSource = await readFile(resolve(srcDir, 'features/staff/gasAdapter.ts'), 'utf8');
+const staffPageSource = await readFile(resolve(srcDir, 'pages/staff/StaffListPage.tsx'), 'utf8');
+if (!staffContractsSource.includes('StaffRepository')) violations.push('staff feature does not declare StaffRepository');
+if (!staffGasAdapterSource.includes('staffGasRepository')) violations.push('staff feature does not provide GAS repository');
+if (!staffGasAdapterSource.includes("from '../../gas/client'")) violations.push('staff GAS repository bypasses the typed GAS client');
+if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPageSource) || (!staffPageSource.includes('StaffRepository') && !staffPageSource.includes('StaffListCacheContext'))) violations.push('staff page bypasses the StaffRepository boundary');
+const quoteContractsSource = await readFile(resolve(srcDir, 'features/quotes/contracts.ts'), 'utf8');
+const quoteGasAdapterSource = await readFile(resolve(srcDir, 'features/quotes/gasAdapter.ts'), 'utf8');
+const quoteListPageSource = await readFile(resolve(srcDir, 'pages/quotes/QuoteListPage.tsx'), 'utf8');
+if (!quoteContractsSource.includes('QuoteRepository')) violations.push('quotes feature does not declare QuoteRepository');
+if (!quoteGasAdapterSource.includes('quoteGasRepository')) violations.push('quotes feature does not provide GAS repository');
+if (!quoteGasAdapterSource.includes("from '../../gas/client'")) violations.push('quotes GAS repository bypasses the typed GAS client');
+if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(quoteListPageSource) || (!quoteListPageSource.includes('QuoteRepository') && !quoteListPageSource.includes('QuoteListCacheContext'))) violations.push('quotes list page bypasses the QuoteRepository boundary');
+const copySourceFiles = [resolve(srcDir, 'components/ui/Button/Button.tsx'), resolve(srcDir, 'components/ui/Spinner/Spinner.tsx'), resolve(srcDir, 'components/ui/Skeleton/Skeleton.tsx'), resolve(srcDir, 'pages/dashboard/DashboardPage.tsx'), resolve(srcDir, 'pages/catalog/ComponentCatalogPage.tsx'), resolve(srcDir, 'app/navigation.ts'), resolve(srcDir, 'gas/client.ts'), resolve(srcDir, 'components/shell/SidebarNav.tsx'), resolve(srcDir, 'components/shell/MobileHeader.tsx')]; const copyLiterals = ['読み込み中', 'ダッシュボード', '金型カタログ', '共通金型の見本帳', 'サーバーとの通信に失敗しました。', 'Apps Script の画面として開いてください。', 'React POC navigation']; for (const file of copySourceFiles) { const source = await readFile(file, 'utf8'); for (const literal of copyLiterals) if (source.includes(literal)) violations.push(`copy literal outside content/ja: ${relative(frontendDir, file)}`); } for (const file of sourceFiles) { if (!file.includes('/components/ui/')) continue; if ((await readFile(file, 'utf8')).includes('/content/ja')) violations.push(`UI component imports copy content: ${relative(frontendDir, file)}`); }
+const japanese = /[\u3040-\u30ff\u3400-\u9fff]/u; const copyDir = resolve(srcDir, 'content/ja'); const rootErrorFile = resolve(srcDir, 'main.tsx'); for (const file of sourceFiles) { if (!['.ts', '.tsx'].includes(extname(file)) || file.startsWith(copyDir)) continue; const source = await readFile(file, 'utf8'); if (file === rootErrorFile) { const withoutRootError = source.replace(/throw new Error\('[^']*'\);/, ''); if (japanese.test(withoutRootError)) violations.push(`Japanese copy outside content/ja: ${relative(frontendDir, file)}`); continue; } if (japanese.test(source)) violations.push(`Japanese copy outside content/ja: ${relative(frontendDir, file)}`); }
+const artifact = resolve(frontendDir, '../src/ReactPoc.html'); const dist = resolve(frontendDir, 'dist/index.html'); const [artifactSource, distSource] = await Promise.all([readFile(artifact, 'utf8'), readFile(dist, 'utf8')]);
+if (artifactSource.includes('Warning: truncated output')) violations.push('generated artifact includes truncation warning'); if (artifactSource !== distSource) violations.push('generated artifact differs from frontend/dist/index.html'); if (/<(?:script|link)\b[^>]+(?:src|href)=/i.test(artifactSource)) violations.push('generated artifact references an external JS/CSS asset');
+if (violations.length) { console.error(violations.join('\n')); process.exit(1); } console.log('design-system checks passed');

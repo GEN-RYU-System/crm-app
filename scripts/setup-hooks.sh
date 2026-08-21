@@ -2,7 +2,7 @@
 # setup-hooks.sh — リポジトリをクローンした後に1回だけ実行する
 #
 # 用途: git config core.hooksPath を .githooks に向ける
-# 効果: .githooks/pre-push が有効になり、main への直 push がローカルで拒否される
+# 効果: .githooks/pre-push が有効になり、main / develop への直 push がローカルで拒否される
 #
 # 使い方:
 #   bash scripts/setup-hooks.sh
@@ -27,5 +27,5 @@ fi
 git config core.hooksPath .githooks
 echo "OK: git config core.hooksPath = $(git config core.hooksPath)"
 echo ""
-echo "設定完了。以降 'git push origin main' は .githooks/pre-push で拒否されます。"
+echo "設定完了。以降 'git push origin main' と 'git push origin develop' は .githooks/pre-push で拒否されます。"
 echo "--no-verify の使用は禁止（README.md 参照）"

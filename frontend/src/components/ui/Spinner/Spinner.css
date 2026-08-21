@@ -1,0 +1,5 @@
+.ui-spinner { display: inline-block; box-sizing: border-box; border-style: solid; border-color: currentColor; border-top-color: transparent; border-radius: var(--radius-pill); animation: ui-spinner-spin var(--spinner-duration) linear infinite; vertical-align: middle; }
+.ui-spinner--sm { width: var(--spinner-size-sm); height: var(--spinner-size-sm); border-width: var(--spinner-border-width-sm); }
+.ui-spinner--md { width: var(--spinner-size-md); height: var(--spinner-size-md); border-width: var(--spinner-border-width-md); }
+.ui-spinner--lg { width: var(--spinner-size-lg); height: var(--spinner-size-lg); border-width: var(--spinner-border-width-lg); }
+@keyframes ui-spinner-spin { to { transform: rotate(360deg); } }

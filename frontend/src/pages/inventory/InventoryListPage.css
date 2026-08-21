@@ -1,0 +1,6 @@
+.inventory-list-page__data-card { border-radius: var(--radius-data-table); overflow: hidden; padding: var(--space-none); }
+.inventory-list-page__data-state { padding: var(--space-xl); }
+
+.inventory-title-cell { display: flex; flex-direction: column; gap: var(--space-xs); }
+.inventory-title-cell__en { color: var(--color-text-primary); }
+.inventory-title-cell__ja { color: var(--color-text-muted); font-size: var(--font-xs); }

@@ -1,0 +1,4 @@
+.shell-root { min-height: 100vh; }
+.shell-canvas { min-height: 100vh; margin-left: var(--sidebar-width-collapsed); background: var(--app-canvas-gradient); transition: margin-left var(--motion-fast); }
+.shell-page-content { padding: var(--space-2xl) var(--layout-page-padding-x); }
+@media (max-width: 767px) { .shell-canvas { min-height: 0; margin-left: 0; } .shell-root--expanded .shell-canvas { margin-left: 0; } .shell-page-content { padding: var(--space-lg) var(--layout-page-padding-x-mobile); } }
