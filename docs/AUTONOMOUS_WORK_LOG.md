@@ -247,7 +247,7 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 - CI 通過（マージ後に確認）
 
 ### 戻し方
-`git revert d6d9f58`
+`git revert b58c3c0`
 
 ---
 
@@ -277,7 +277,7 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 
 ### 戻し方
 
-`git revert 54fa471`
+`git revert 125db38`
 
 ---
 
