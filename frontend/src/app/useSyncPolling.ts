@@ -23,7 +23,9 @@ export type DomainRefreshers = Partial<Record<keyof SyncSignals, () => Promise<v
  *
  * - Calls checkSyncSignals every 60s with ±10s jitter
  * - Fires refreshers only for domains whose signal value changed
- * - Pauses while document.hidden; immediately polls on tab visibility restore
+ * - Polls unconditionally regardless of tab visibility
+ *   (skipping when hidden caused missed polls while user works in other windows)
+ * - On tab restore, immediately polls before resuming the schedule
  * - On error, doubles interval (up to 10 min); resets to 60s on success
  */
 export function useSyncPolling(refreshers: DomainRefreshers): void {
@@ -35,11 +37,7 @@ export function useSyncPolling(refreshers: DomainRefreshers): void {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const poll = useCallback(async () => {
-    if (document.hidden) {
-      console.debug('[SyncPolling] skipped (tab hidden)', new Date().toISOString());
-      return;
-    }
-    console.debug('[SyncPolling] poll fired', new Date().toISOString(), { intervalMs: intervalRef.current });
+    console.debug('[SyncPolling] poll fired', new Date().toISOString(), { intervalMs: intervalRef.current, hidden: document.hidden });
 
     try {
       const signals = await checkSyncSignals();
