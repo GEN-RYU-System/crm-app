@@ -36,6 +36,47 @@
 
 ---
 
+## PR 作成・push のルール
+
+### PR の base ブランチ
+
+PR の base は必ず `develop` とすること。`main` へのマージは行わないこと。
+
+```bash
+# 必ず --base develop を明示する
+gh pr create --base develop ...
+
+# マージ前に base を確認する
+gh pr view <番号> --json baseRefName
+# → "develop" でなければマージしない。報告して指示を待つ
+```
+
+**理由**: このリポジトリのデフォルトブランチは `main`（PROD環境）であり、
+`--base develop` を省略すると `main` への PR が作成される。
+PR #319 でこの誤りが実際に発生した。
+
+### push が拒否された場合
+
+push が拒否された場合（non-fast-forward 等）、force push しないこと。  
+`--force` / `--force-with-lease` ともに禁止。  
+報告して指示を待つこと。
+
+```bash
+# ✗ やってはいけない
+git push --force-with-lease
+git push --force
+
+# ✓ やること: 止まって報告する
+# push が拒否された理由（既存ブランチ・別セッションの作業等）を調べて報告する
+```
+
+**理由**: push 拒否はブランチの競合・別セッションの作業が原因であることが多く、
+force push するとそれらの作業を消失させる。
+PR #319 の後処理でこの誤りが実際に発生した（PR #319 を作成したブランチを
+別セッションが force-with-lease で上書きした）。
+
+---
+
 ## 絶対にやらないこと
 
 - シートの列追加・削除・リネーム
