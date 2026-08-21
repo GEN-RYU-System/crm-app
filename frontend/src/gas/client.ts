@@ -560,6 +560,28 @@ export function getInventoryConditions(productId: string): Promise<readonly Inve
   });
 }
 
+export type SyncSignals = {
+  leads: string | null;
+  quotes: string | null;
+  orders: string | null;
+  inventory: string | null;
+  staff: string | null;
+  customers: string | null;
+};
+
+export function checkSyncSignals(): Promise<SyncSignals> {
+  const runner = window.google?.script?.run;
+  if (!runner) {
+    return Promise.resolve({ leads: null, quotes: null, orders: null, inventory: null, staff: null, customers: null });
+  }
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => resolve(value as SyncSignals))
+      .withFailureHandler((error) => reject(toError(error)))
+      .checkSyncSignals(getStoredSessionId());
+  });
+}
+
 export { OrderCreatePayload, OrderCreateResult };
 
 export function createCoreOrder(payload: OrderCreatePayload): Promise<OrderCreateResult> {
