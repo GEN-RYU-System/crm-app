@@ -31,8 +31,14 @@
 6. CI通過を確認
 7. squash マージ: `gh pr merge <番号> --squash`
 8. DEV配布完了を確認: `gh run list --workflow deploy-dev.yml --limit 1`
-9. `clasp run runCoreSchemaConformanceAudit`  
-   **総不一致0でなければ即座に revert**
+9. デプロイ済み SHA を照合する:
+   ```bash
+   clasp run getDeployedSha
+   git log --oneline origin/develop -1
+   ```
+   SHA が一致しない場合は停止して報告すること
+10. `clasp run runCoreSchemaConformanceAudit`  
+    **総不一致0でなければ即座に revert**
 
 ---
 
