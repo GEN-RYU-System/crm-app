@@ -426,3 +426,38 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 ### 誤報告の原因
 `devAuditPaymentDestinations()` の初期実行時に出力した `rowsWithCustomerId` の値を誤読した。
 実データは全行に顧客IDが存在しており、後続の `devCheckPaymentRowsByCustomerName` でも51件分のマッチが確認されている。
+
+---
+
+## 【PR1】受注管理サイドメニュー: 一覧APIにステータス追加
+
+**日付**: 2026-08-22
+**PR**: release/order-sidemenu-pr1
+
+### 変更前の状態
+- `CORE_ORDERS_CACHE_INDEX = 'CORE_ORDERS_CACHE_INDEX'`（実ファイル確認済み: src/28_CoreOrderReadApi.js line 6）
+- `CORE_ORDERS_CACHE_PREFIX = 'CORE_ORDERS_CACHE_'`（実ファイル確認済み: src/28_CoreOrderReadApi.js line 7）
+- `getCoreOrdersForFrontend` の読み取り列に `STATUS` なし
+- `OrderRecord` 型（frontend/src/gas/client.ts）に `status` フィールドなし
+
+### 変更内容（ファイル単位）
+- `src/28_CoreOrderReadApi.js`:
+  - キャッシュキーを V2 に変更（`CORE_ORDERS_CACHE_INDEX_V2`, `CORE_ORDERS_CACHE_V2_`）
+  - 読み取り列に `STATUS` を追加
+  - 返り値に `status: coreCustomerFrontendValue(row[orders.indexes.STATUS])` を追加
+- `frontend/src/gas/client.ts`:
+  - `OrderRecord` 型に `status: string` フィールドを追加
+
+### 変更理由
+フロントエンドのサイドメニュータブでステータス別絞り込みを実現するため、
+GAS API の返り値に `status` フィールドを追加する。
+キャッシュキーを V2 に変更することで旧キャッシュとの混在を防ぐ。
+
+### 検証結果
+- `npm run build:gas` 通過（typecheck → build → emit-gas-html → check:design-system）
+- CI: PR push後に確認予定
+- `clasp run runCoreSchemaConformanceAudit`: PR push後に確認予定
+- `clasp run getCoreOrdersForFrontend` での status キー確認: PR push後に確認予定
+
+### revert用SHA
+`git revert <SHA>` （PR merge後に確定）
