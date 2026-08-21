@@ -225,10 +225,10 @@ QuoteListPage は最初から絶対パスを使っており正常動作してい
 
 ---
 
-## 【9】受注管理一覧の列調整 — PR #TBD
+## 【9】受注管理一覧の列調整 — PR #372
 
-**マージ日時**: TBD
-**revert用SHA**: TBD（マージ後に更新）
+**マージ日時**: 2026-08-21T23:39:50Z
+**revert用SHA**: `b8c8dc1f39219dd664443e9db5950e3aa24c9b8d`
 
 ### 変更前
 
@@ -256,9 +256,9 @@ QuoteListPage は最初から絶対パスを使っており正常動作してい
 ### 検証結果
 
 - `npm run build:gas` 通過（TypeScript + Vite build + check:design-system）
-- CI 通過（PR マージ後に更新）
-- DEV デプロイ後の実機確認（PR マージ後に更新）
+- CI 通過: Frontend Check `success` (31s)、GAS Global Namespace Check `success`
+- Deploy to DEV 通過: `success` (56s)
 
 ### 戻し方
 
-`git revert TBD` で列定義・ページ変更を元に戻せる
+`git revert b8c8dc1f39219dd664443e9db5950e3aa24c9b8d` で列定義・ページ変更を元に戻せる
