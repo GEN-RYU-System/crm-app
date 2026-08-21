@@ -84,3 +84,10 @@ jobs:
 
       - name: Push to DEV
         run: clasp push --force
+
+      - name: Record deployed SHA
+        if: success()
+        continue-on-error: true
+        run: |
+          clasp run recordDeployedSha \
+            --params "[\"${{ steps.target.outputs.sha }}\"]"
