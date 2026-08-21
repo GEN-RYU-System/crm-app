@@ -241,7 +241,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
 
   const paymentOptions = customerAggregate?.paymentProfiles.map((p) => ({
     value: p.paymentProfileId,
-    label: [p.billingName, p.method, p.currency].filter(Boolean).join(' / '),
+    label: [p.billingName, p.country, p.method, p.currency].filter(Boolean).join(' / '),
   })) ?? [];
 
   const currencyOptions = currencies.map((c) => ({ value: c, label: c }));
