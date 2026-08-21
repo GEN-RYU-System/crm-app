@@ -78,7 +78,7 @@ export const ordersCopy = {
     unitPrice: '単価',
     subtotal: '小計',
     lines: '明細',
-    lineProduct: '商品',
+    lineProduct: '商品名',
     lineProductPlaceholder: '商品名で検索',
     lineProductNoResults: '商品が見つかりません',
     lineConditionPlaceholder: '商品を先に選択',

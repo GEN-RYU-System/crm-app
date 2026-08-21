@@ -269,7 +269,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
     conditionPlaceholder: ordersCopy.editor.lineConditionPlaceholder,
     quantity: ordersCopy.editor.quantity,
     unitPrice: ordersCopy.editor.unitPrice,
-    amount: ordersCopy.editor.subtotal,
+    amount: ordersCopy.editor.lineAmount,
     weight: ordersCopy.editor.lineWeight,
     remove: ordersCopy.editor.removeLine,
     conditionOptionLabel: ordersCopy.editor.lineConditionOptionLabel,
