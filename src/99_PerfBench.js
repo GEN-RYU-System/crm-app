@@ -1593,3 +1593,78 @@ function benchQuotesCacheThreeRounds() {
   Logger.log(result);
   return result;
 }
+
+/**
+ * 【調査用 / 認証なし / 書き込みなし】即時反映可否調査: 合図セル・CacheService 読み取り速度計測
+ *
+ * benchSignalCellRead()
+ *   合図セル（システム設定シートの1行目1列目）を 3 回読む。
+ *   ポーリング実装で「何か変わったか」を判定する最軽量シート読みの基準値。
+ *
+ * benchCacheSignalRead()
+ *   CacheService に時刻文字列を 1 件 put → 3 回 get。
+ *   シートすら読まない最軽量の確認手段の基準値。
+ */
+
+function benchSignalCellRead() {
+  var out = ['=== benchSignalCellRead ===', '実行: ' + new Date().toISOString(), ''];
+  var ss  = getSpreadsheet();
+
+  // システム設定シートの A1 を合図セルとして扱う（シート存在確認のみ、値は問わない）
+  var signalSheet = ss.getSheetByName('システム設定');
+  if (!signalSheet) {
+    out.push('[ERROR] システム設定 シートが見つかりません');
+    var r = out.join('\n'); Logger.log(r); return r;
+  }
+  out.push('対象シート: システム設定 / 対象セル: A1');
+  out.push('');
+
+  var ms = [];
+  for (var i = 0; i < 3; i++) {
+    var t0 = Date.now();
+    signalSheet.getRange(1, 1).getValue(); // 1 セルだけ読む
+    ms.push(Date.now() - t0);
+    out.push((i + 1) + '回目: ' + ms[i] + ' ms');
+  }
+
+  out.push('');
+  out.push('中央値: ' + ms.slice().sort(function(a,b){return a-b;})[1] + ' ms');
+  out.push('最大値: ' + Math.max.apply(null, ms) + ' ms');
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
+
+function benchCacheSignalRead() {
+  var SIGNAL_KEY = 'REALTIME_SYNC_SIGNAL_TEST';
+  var out = ['=== benchCacheSignalRead ===', '実行: ' + new Date().toISOString(), ''];
+  var cache = CacheService.getScriptCache();
+
+  // put: 現在時刻を書き込む（TTL 60秒）
+  var putVal = new Date().toISOString();
+  var tPut   = Date.now();
+  cache.put(SIGNAL_KEY, putVal, 60);
+  var putMs  = Date.now() - tPut;
+  out.push('put (' + SIGNAL_KEY + '): ' + putMs + ' ms');
+  out.push('');
+
+  var ms = [];
+  for (var i = 0; i < 3; i++) {
+    var t0 = Date.now();
+    cache.get(SIGNAL_KEY);
+    ms.push(Date.now() - t0);
+    out.push((i + 1) + '回目 get: ' + ms[i] + ' ms');
+  }
+
+  out.push('');
+  out.push('中央値: ' + ms.slice().sort(function(a,b){return a-b;})[1] + ' ms');
+  out.push('最大値: ' + Math.max.apply(null, ms) + ' ms');
+
+  // cleanup
+  cache.remove(SIGNAL_KEY);
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
