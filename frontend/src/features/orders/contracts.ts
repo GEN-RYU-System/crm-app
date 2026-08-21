@@ -1,6 +1,6 @@
-import type { OrderRecord } from '../../gas/client';
+import type { OrderRecord, OrderStatusOption } from '../../gas/client';
 
-export type { OrderRecord };
+export type { OrderRecord, OrderStatusOption };
 
 export type OrderLineInput = {
   productId: string;
@@ -47,6 +47,7 @@ export type InventoryConditionOption = {
 export type OrderRepository = {
   listOrders: (forceRefresh?: boolean) => Promise<readonly OrderRecord[]>;
   listCurrencySymbols: () => Promise<Record<string, string>>;
+  listStatusOptions: () => Promise<readonly OrderStatusOption[]>;
   createOrder: (payload: OrderCreatePayload) => Promise<OrderCreateResult>;
   listInventoryProducts: () => Promise<readonly InventoryProductOption[]>;
   listConditions: (productId: string) => Promise<readonly InventoryConditionOption[]>;

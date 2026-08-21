@@ -25,6 +25,8 @@ export const ordersCopy = {
   searchEmptyTitle: '検索条件に一致する請求書はありません',
   searchEmptyDescription: '検索語を変更またはクリアしてください。',
   tableLabel: '請求書一覧',
+  statusTabLabel: 'ステータスで絞り込む',
+  statusAllLabel: 'すべて',
   permissionsChecking: '請求書の表示権限を確認しています。',
   sortAscending: '昇順',
   sortDescending: '降順',

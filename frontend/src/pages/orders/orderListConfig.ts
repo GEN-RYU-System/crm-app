@@ -13,8 +13,10 @@ export type OrderRow = {
   paymentDueAt: string;
   paymentStatus: string;
   invoiceTotalJpy: number;
+  /** Sheet value for status (used for side-menu tab filtering; not shown in table) */
+  status: string;
 };
-export type OrderSortKey = Exclude<keyof OrderRow, 'orderId' | 'invoiceTotalJpy'>;
+export type OrderSortKey = Exclude<keyof OrderRow, 'orderId' | 'invoiceTotalJpy' | 'status'>;
 export type OrderSortDirection = 'ascending' | 'descending';
 export type OrderSort = { key: OrderSortKey; direction: OrderSortDirection };
 
@@ -68,6 +70,7 @@ export function toOrderRows(
         paymentDueAt:    formatDate(r.paymentDueAt),
         paymentStatus:   text(r.paymentStatus),
         invoiceTotalJpy: jpy,
+        status:          text(r.status),
       };
     })
     .sort((a, b) => compareRows(a, b, sort));
@@ -77,4 +80,10 @@ export function filterOrderRows(rows: readonly OrderRow[], query: string): reado
   const q = query.trim().toLocaleLowerCase('ja-JP');
   if (q === '') return rows;
   return rows.filter((row) => ORDER_LIST_SEARCH_COLUMNS.some((key) => row[key].toLocaleLowerCase('ja-JP').includes(q)));
+}
+
+/** Empty statusLabel means "all" — no filter applied. */
+export function filterOrderRowsByStatus(rows: readonly OrderRow[], statusLabel: string): readonly OrderRow[] {
+  if (statusLabel === '') return rows;
+  return rows.filter((row) => row.status === statusLabel);
 }
