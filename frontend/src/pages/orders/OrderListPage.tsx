@@ -1,13 +1,16 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CRM_SEARCH_ICON, CRM_SORT_ICONS } from '../../app/icons';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMessage, TextField, type DataTableColumn } from '../../components/ui';
 import { ordersCopy, PAYMENT_STATUS_BADGE_VARIANT } from '../../content/ja';
 import { filterOrderRows, ORDER_LIST_COLUMNS, ORDER_LIST_INITIAL_SORT, toOrderRows, type OrderRow, type OrderSort } from './orderListConfig';
 import { useOrderListCache } from './OrderListCacheContext';
+import { ORDER_ROUTE_SEGMENTS } from './orderEditorConfig';
 import './OrderListPage.css';
 
 export function OrderListPage() {
+  const navigate = useNavigate();
   const { items, symbolMap, error, loading, refreshing, ensureLoaded, refresh, retry } = useOrderListCache();
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<OrderSort>(ORDER_LIST_INITIAL_SORT);
@@ -49,7 +52,16 @@ export function OrderListPage() {
 
   return (
     <>
-      <PageHeader eyebrow={ordersCopy.eyebrow} title={ordersCopy.title} subtitle={ordersCopy.subtitle} />
+      <PageHeader
+        eyebrow={ordersCopy.eyebrow}
+        title={ordersCopy.title}
+        subtitle={ordersCopy.subtitle}
+        action={
+          <Button onClick={() => navigate(ORDER_ROUTE_SEGMENTS.create)}>
+            {ordersCopy.createOrder}
+          </Button>
+        }
+      />
       <PageToolbar
         start={<TextField aria-label={ordersCopy.searchLabel} placeholder={ordersCopy.searchPlaceholder} value={query} onChange={(e) => setQuery(e.target.value)} width="sm" startIcon={<CRM_SEARCH_ICON aria-hidden="true" />} />}
         end={<Button variant="secondary" onClick={() => void refresh()} loading={refreshing} loadingText={ordersCopy.refreshing}>{ordersCopy.refresh}</Button>}
