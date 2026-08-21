@@ -56,7 +56,13 @@ export type CustomerAggregateDto = {
   paymentProfiles: readonly PaymentProfileDto[];
 };
 
+export type CustomerAggregatesRecord = Readonly<Record<string, {
+  shippingAddresses: readonly ShippingAddressDto[];
+  paymentProfiles: readonly PaymentProfileDto[];
+}>>;
+
 export type CustomerRepository = {
   listCustomers: (forceRefresh?: boolean) => Promise<readonly CustomerSummaryDto[]>;
   getCustomer: (customerId: string) => Promise<CustomerAggregateDto | null>;
+  listCustomerAggregates: () => Promise<CustomerAggregatesRecord>;
 };

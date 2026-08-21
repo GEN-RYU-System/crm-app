@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, Combobox, LineItemEditor, PageHeader, Select, Skeleton, StatusMessage, TextField } from '../../components/ui';
 import { ordersCopy } from '../../content/ja/orders';
-import type { CustomerAggregateDto } from '../../features/customers/contracts';
-import type { CustomerRepository } from '../../features/customers/contracts';
+import type { ShippingAddressDto, PaymentProfileDto, CustomerRepository } from '../../features/customers/contracts';
+import { useCustomerAggregateCache } from '../../features/customers/CustomerAggregateCacheContext';
 import type { InventoryConditionOption, InventoryProductOption, OrderCreatePayload, OrderRepository } from '../../features/orders/contracts';
 import {
   calcInvoiceTotal,
@@ -34,10 +34,18 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
   const [saving, setSaving] = useState(false);
 
   const [customers, setCustomers] = useState<readonly { customerId: string; customerName: string }[]>([]);
-  const [customerAggregate, setCustomerAggregate] = useState<CustomerAggregateDto | null>(null);
+  const [customerAggregate, setCustomerAggregate] = useState<{
+    shippingAddresses: readonly ShippingAddressDto[];
+    paymentProfiles: readonly PaymentProfileDto[];
+  } | null>(null);
   const [inventoryProducts, setInventoryProducts] = useState<InventoryProductOption[]>([]);
   const [conditionsMap, setConditionsMap] = useState<Map<string, InventoryConditionOption[]>>(new Map());
   const [currencies, setCurrencies] = useState<string[]>(['USD', 'JPY', 'EUR', 'GBP']);
+  const [pendingCustomerId, setPendingCustomerId] = useState<string | null>(null);
+
+  const { state: aggregateCache } = useCustomerAggregateCache();
+  const customerRepositoryRef = useRef(customerRepository);
+  customerRepositoryRef.current = customerRepository;
 
   useEffect(() => {
     setMasterState('loading');
@@ -59,6 +67,40 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
       });
   }, [repository, customerRepository]);
 
+  const applyAggregate = useCallback((
+    customerId: string,
+    shippingAddresses: readonly ShippingAddressDto[],
+    paymentProfiles: readonly PaymentProfileDto[],
+  ) => {
+    setCustomerAggregate({ shippingAddresses, paymentProfiles });
+    const defaultShipping = shippingAddresses.find((a) => a.isDefault === '1' || a.isDefault === 'TRUE') ?? shippingAddresses[0];
+    const defaultPayment = paymentProfiles.find((p) => p.isDefault === '1' || p.isDefault === 'TRUE') ?? paymentProfiles[0];
+    setValues((prev) => ({
+      ...prev,
+      customerId,
+      shippingDestinationId: defaultShipping?.addressId ?? '',
+      paymentDestinationId: defaultPayment?.paymentProfileId ?? '',
+    }));
+  }, []);
+
+  // Resolve pending customer selection when aggregate cache becomes ready or errors out.
+  useEffect(() => {
+    if (!pendingCustomerId) return;
+    if (aggregateCache.status === 'ready') {
+      const cached = aggregateCache.data[pendingCustomerId];
+      if (cached) applyAggregate(pendingCustomerId, cached.shippingAddresses, cached.paymentProfiles);
+      setPendingCustomerId(null);
+    } else if (aggregateCache.status === 'error') {
+      // Cache failed: fall back to individual GAS call.
+      const id = pendingCustomerId;
+      setPendingCustomerId(null);
+      void customerRepositoryRef.current.getCustomer(id).then((agg) => {
+        if (!agg) return;
+        applyAggregate(id, agg.shippingAddresses, agg.paymentProfiles);
+      }).catch(() => {/* non-fatal */});
+    }
+  }, [aggregateCache, pendingCustomerId, applyAggregate]);
+
   const handleCustomerChange = (customerId: string) => {
     setValues((prev) => ({
       ...prev,
@@ -67,18 +109,27 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
       paymentDestinationId: '',
     }));
     setCustomerAggregate(null);
+    setPendingCustomerId(null);
     if (!customerId) return;
+
+    if (aggregateCache.status === 'ready') {
+      const cached = aggregateCache.data[customerId];
+      if (cached) {
+        applyAggregate(customerId, cached.shippingAddresses, cached.paymentProfiles);
+        return;
+      }
+    }
+
+    if (aggregateCache.status === 'loading') {
+      // Cache still loading: useEffect will resolve once it becomes ready.
+      setPendingCustomerId(customerId);
+      return;
+    }
+
+    // Cache idle or errored: use individual GAS call as fallback.
     void customerRepository.getCustomer(customerId).then((agg) => {
-      setCustomerAggregate(agg);
       if (!agg) return;
-      const defaultShipping = agg.shippingAddresses.find((a) => a.isDefault === '1' || a.isDefault === 'TRUE') ?? agg.shippingAddresses[0];
-      const defaultPayment = agg.paymentProfiles.find((p) => p.isDefault === '1' || p.isDefault === 'TRUE') ?? agg.paymentProfiles[0];
-      setValues((prev) => ({
-        ...prev,
-        customerId,
-        shippingDestinationId: defaultShipping?.addressId ?? '',
-        paymentDestinationId: defaultPayment?.paymentProfileId ?? '',
-      }));
+      applyAggregate(customerId, agg.shippingAddresses, agg.paymentProfiles);
     }).catch(() => {/* aggregate load failure is non-fatal */});
   };
 
@@ -321,7 +372,10 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
               />
 
               {values.customerId && (
-                <>
+                pendingCustomerId ? (
+                  <Skeleton variant="list" rows={2} label={ordersCopy.loading} />
+                ) : (
+                  <>
                   <Select
                     label={ordersCopy.editor.shippingDestination}
                     options={[
@@ -345,7 +399,8 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
                     width="md"
                     required
                   />
-                </>
+                  </>
+                )
               )}
 
               <Select
