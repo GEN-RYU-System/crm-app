@@ -426,3 +426,32 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 ### 誤報告の原因
 `devAuditPaymentDestinations()` の初期実行時に出力した `rowsWithCustomerId` の値を誤読した。
 実データは全行に顧客IDが存在しており、後続の `devCheckPaymentRowsByCustomerName` でも51件分のマッチが確認されている。
+
+---
+
+## 【PR4】受注管理サイドメニュー: グローバルナビに「受注管理」を配置
+
+**日付**: 2026-08-22
+**PR**: release/order-sidemenu-pr4
+
+### 変更前の状態
+- `navigationCopy` に `orders` キーが存在しなかった（実ファイル確認済み: navigation.ts）
+- `NAVIGATION_GROUPS` の `leads` グループに `inbox` のみ（受注管理なし）
+- `orders` は `DATA_MGMT_SUB_ITEMS` にのみ存在（state: 'preview'）
+
+### 変更内容（ファイル単位）
+- `frontend/src/content/ja/navigation.ts`: `orders: '受注管理'` を追加
+- `frontend/src/app/navigation.ts`: `leads` グループに `orders`（order:2, state:'preview', requiredPermission:'lead_view'）を追加
+
+### 変更理由
+- 受信箱の直下（order:2）に受注管理を配置
+- 権限キーは既存の `lead_view` を使用（新規権限キー追加なし）
+- `state: 'preview'` でサイドバーに表示
+
+### 検証結果
+- `npm run build:gas` 通過
+- CI: PR push後に確認予定
+- DEV実機確認（サイドバー表示・クリック遷移・権限制御）: PR push後に確認予定
+
+### revert用SHA
+`git revert <SHA>` （PR merge後に確定）
