@@ -1,5 +1,5 @@
 import { errorCopy, leadsCopy } from '../content/ja';
-import type { CustomerAggregateDto, CustomerSummaryDto } from '../features/customers/contracts';
+import type { CustomerAggregateDto, CustomerAggregatesRecord, CustomerSummaryDto } from '../features/customers/contracts';
 import type { OrderCreatePayload, OrderCreateResult } from '../features/orders/contracts';
 import type { StaffProfileDto, StaffSummaryDto } from '../features/staff/contracts';
 
@@ -183,6 +183,24 @@ export function getCoreCustomer(customerId: string): Promise<CustomerAggregateDt
       })
       .withFailureHandler((error) => reject(toError(error)))
       .getCoreCustomerForFrontend(getStoredSessionId(), customerId);
+  });
+}
+
+export function getCoreAllCustomerAggregates(): Promise<CustomerAggregatesRecord> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+          reject(new Error(errorCopy.communication));
+          return;
+        }
+        resolve(value as CustomerAggregatesRecord);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getCoreAllCustomerAggregatesForFrontend(getStoredSessionId());
   });
 }
 
