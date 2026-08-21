@@ -1,5 +1,5 @@
 import { readdir, readFile } from 'node:fs/promises';
-import { resolve, relative, extname } from 'node:path';
+import { resolve, relative, extname, dirname } from 'node:path';
 
 const frontendDir = resolve(import.meta.dirname, '..');
 const srcDir = resolve(frontendDir, 'src');
@@ -77,4 +77,33 @@ const copySourceFiles = [resolve(srcDir, 'components/ui/Button/Button.tsx'), res
 const japanese = /[\u3040-\u30ff\u3400-\u9fff]/u; const copyDir = resolve(srcDir, 'content/ja'); const rootErrorFile = resolve(srcDir, 'main.tsx'); for (const file of sourceFiles) { if (!['.ts', '.tsx'].includes(extname(file)) || file.startsWith(copyDir)) continue; const source = await readFile(file, 'utf8'); if (file === rootErrorFile) { const withoutRootError = source.replace(/throw new Error\('[^']*'\);/, ''); if (japanese.test(withoutRootError)) violations.push(`Japanese copy outside content/ja: ${relative(frontendDir, file)}`); continue; } if (japanese.test(source)) violations.push(`Japanese copy outside content/ja: ${relative(frontendDir, file)}`); }
 const artifact = resolve(frontendDir, '../src/ReactPoc.html'); const dist = resolve(frontendDir, 'dist/index.html'); const [artifactSource, distSource] = await Promise.all([readFile(artifact, 'utf8'), readFile(dist, 'utf8')]);
 if (artifactSource.includes('Warning: truncated output')) violations.push('generated artifact includes truncation warning'); if (artifactSource !== distSource) violations.push('generated artifact differs from frontend/dist/index.html'); if (/<(?:script|link)\b[^>]+(?:src|href)=/i.test(artifactSource)) violations.push('generated artifact references an external JS/CSS asset');
+// --- Unused source file detection ---
+const checkConfig = JSON.parse(await readFile(resolve(frontendDir, 'scripts/check-design-system-config.json'), 'utf8'));
+const unusedCfg = checkConfig.unusedFilesCheck ?? {};
+const unusedEntryPoints = new Set((unusedCfg.entryPoints ?? []).map((p) => resolve(frontendDir, p)));
+const tsSourceFiles = sourceFiles.filter((f) => {
+  const ext = extname(f);
+  return (ext === '.ts' || ext === '.tsx') && !f.endsWith('.d.ts');
+});
+const tsSourceFileSet = new Set(tsSourceFiles);
+const importedFiles = new Set();
+for (const file of tsSourceFiles) {
+  const src = await readFile(file, 'utf8');
+  const dir = dirname(file);
+  const paths = [
+    ...[...src.matchAll(/from\s+['"]([^'"]+)['"]/g)].map((m) => m[1]),
+    ...[...src.matchAll(/import\s*\(\s*['"]([^'"]+)['"]/g)].map((m) => m[1]),
+  ];
+  for (const p of paths) {
+    if (!p.startsWith('.')) continue;
+    const base = resolve(dir, p);
+    for (const suffix of ['', '.ts', '.tsx', '/index.ts', '/index.tsx']) {
+      if (tsSourceFileSet.has(base + suffix)) { importedFiles.add(base + suffix); break; }
+    }
+  }
+}
+for (const file of tsSourceFiles) {
+  if (importedFiles.has(file) || unusedEntryPoints.has(file)) continue;
+  violations.push(`unused source file (not imported from anywhere): ${relative(frontendDir, file)}`);
+}
 if (violations.length) { console.error(violations.join('\n')); process.exit(1); } console.log('design-system checks passed');
