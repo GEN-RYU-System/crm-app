@@ -214,6 +214,16 @@ const CORE_SCHEMA_V1_TABLES = {
   LEGACY_SALES: {
     sheetName: '📊売上データ', canonicalName: '📊売上データ', aliases: [], headerRowNumber: 4, sheetType: 'LEGACY_SALES', writeAllowed: false,
     headers: {}, primaryKey: null, referenceIds: []
+  },
+  DISPLAY_SETTINGS: {
+    sheetName: '表示設定マスタ', canonicalName: '表示設定マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['SETTING_KEY',   '設定キー'],
+      ['SETTING_VALUE', '設定値'],
+      ['TARGET_SCREEN', '対象画面'],
+      ['STAFF_ID',      '担当者ID']
+    ]), primaryKey: null,
+    referenceIds: [{ headerKey: 'STAFF_ID', targetTableKey: 'STAFF' }]
   }
 };
 
