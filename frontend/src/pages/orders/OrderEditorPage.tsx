@@ -4,7 +4,6 @@ import { Button, Card, Combobox, LineItemEditor, PageHeader, Select, Skeleton, S
 import { ordersCopy } from '../../content/ja/orders';
 import type { ShippingAddressDto, PaymentProfileDto, CustomerRepository } from '../../features/customers/contracts';
 import { useCustomerAggregateCache } from '../../features/customers/CustomerAggregateCacheContext';
-import { useCustomerListCache } from '../customers/CustomerListCacheContext';
 import type { InventoryConditionOption, InventoryProductOption, OrderCreatePayload, OrderRepository } from '../../features/orders/contracts';
 import {
   calcInvoiceTotal,
@@ -23,13 +22,18 @@ type Props = {
   customerRepository: CustomerRepository;
 };
 
+type MasterState = 'loading' | 'ready' | 'error';
+
 export function OrderEditorPage({ mode, repository, customerRepository }: Props) {
   const navigate = useNavigate();
 
   const [values, setValues] = useState<OrderEditorValues>(emptyOrderEditorValues());
+  const [masterState, setMasterState] = useState<MasterState>('loading');
+  const [masterError, setMasterError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const [customers, setCustomers] = useState<readonly { customerId: string; customerName: string }[]>([]);
   const [customerAggregate, setCustomerAggregate] = useState<{
     shippingAddresses: readonly ShippingAddressDto[];
     paymentProfiles: readonly PaymentProfileDto[];
@@ -39,30 +43,29 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
   const [currencies, setCurrencies] = useState<string[]>(['USD', 'JPY', 'EUR', 'GBP']);
   const [pendingCustomerId, setPendingCustomerId] = useState<string | null>(null);
 
-  const { customers: cachedCustomers, ensureLoaded: ensureCustomers } = useCustomerListCache();
   const { state: aggregateCache } = useCustomerAggregateCache();
   const customerRepositoryRef = useRef(customerRepository);
   customerRepositoryRef.current = customerRepository;
 
-  // Safety: ensure customer list is loaded (no-op when already cached by usePrefetch).
-  useEffect(() => { void ensureCustomers(); }, [ensureCustomers]);
-
-  // Load inventory products independently — does not block form display.
   useEffect(() => {
-    void repository.listInventoryProducts()
-      .then((products) => setInventoryProducts([...products]))
-      .catch(() => {/* non-fatal: products list stays empty until retry */});
-  }, [repository]);
-
-  // Load currency symbols independently — falls back to defaults on error.
-  useEffect(() => {
-    void repository.listCurrencySymbols()
-      .then((symbolMap) => {
+    setMasterState('loading');
+    void Promise.all([
+      customerRepository.listCustomers(),
+      repository.listInventoryProducts(),
+      repository.listCurrencySymbols(),
+    ])
+      .then(([customerList, products, symbolMap]) => {
+        setCustomers(customerList.map((c) => ({ customerId: c.customerId, customerName: c.customerName })));
+        setInventoryProducts([...products]);
         const codes = Object.keys(symbolMap);
         if (codes.length > 0) setCurrencies(codes);
+        setMasterState('ready');
       })
-      .catch(() => {/* non-fatal: default currencies remain */});
-  }, [repository]);
+      .catch((cause) => {
+        setMasterError(cause instanceof Error ? cause.message : ordersCopy.editor.masterLoadError);
+        setMasterState('error');
+      });
+  }, [repository, customerRepository]);
 
   const applyAggregate = useCallback((
     customerId: string,
@@ -271,7 +274,16 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
     }
   };
 
-  const customers = (cachedCustomers ?? []).map((c) => ({ customerId: c.customerId, customerName: c.customerName }));
+  if (masterState === 'error') {
+    return (
+      <StatusMessage variant="error">
+        {ordersCopy.editor.masterLoadError} {masterError}
+        <Button variant="outline" onClick={() => navigate(ORDER_EDITOR_PATHS.list)}>
+          {ordersCopy.editor.backToList}
+        </Button>
+      </StatusMessage>
+    );
+  }
 
   const shippingOptions = customerAggregate?.shippingAddresses.map((a) => ({
     value: a.addressId,
@@ -297,6 +309,8 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
     values.otherFee,
     values.discount,
   );
+
+  const isLoading = masterState === 'loading';
 
   const lineItemLabels = {
     product: ordersCopy.editor.lineProduct,
@@ -336,8 +350,14 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
         </StatusMessage>
       )}
 
-      <Card>
-        <div className="order-editor-page__form">
+      {isLoading ? (
+        <Card>
+          <Skeleton variant="list" rows={6} label={ordersCopy.loading} />
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <div className="order-editor-page__form">
               <Combobox
                 items={[...customers]}
                 getKey={(c) => c.customerId}
@@ -482,6 +502,8 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
               </div>
             </div>
           </Card>
+        </>
+      )}
     </>
   );
 }
