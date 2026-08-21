@@ -63,7 +63,7 @@ export function LeadEditorPage({ mode, canEdit, repository }: Props) {
     try {
       if (mode === 'create') await repository.create(toLeadCreateValues(values, leadType));
       else await repository.update(leadsCopy.form.sheetName, targetLeadId!, toLeadUpdateValues(values));
-      await refreshAll();
+      void refreshAll();
       navigate(LEAD_EDITOR_PATHS.list);
     } catch (cause) {
       setSaveError(cause instanceof Error ? cause.message : leadsCopy.saveErrorPrefix);
