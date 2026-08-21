@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, EmptyState, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField } from '../../components/ui';
 import { leadsCopy } from '../../content/ja';
@@ -20,7 +20,7 @@ export function LeadEditorPage({ mode, canEdit, repository }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const { leadId } = useParams();
-  const { refreshAll } = useLeadListCache();
+  const { refreshAll, recordsByType } = useLeadListCache();
   const requestedType = (location.state as NavigationState)?.leadType;
   const selectedType = isLeadType(requestedType) ? requestedType : LEAD_TYPE_TABS[0]!.type;
   const [leadType, setLeadType] = useState<LeadType>(selectedType);
@@ -29,9 +29,21 @@ export function LeadEditorPage({ mode, canEdit, repository }: Props) {
   const [loadError, setLoadError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
+  const recordsByTypeRef = useRef(recordsByType);
+  recordsByTypeRef.current = recordsByType;
 
   useEffect(() => {
     if (mode !== 'detail' || !leadId) return;
+    const cached = Object.values(recordsByTypeRef.current)
+      .flatMap((arr) => arr ?? [])
+      .find((r) => r[leadsCopy.fields.leadId] === leadId);
+    if (cached) {
+      setValues(toLeadEditorValues(cached));
+      const detailType = cached[leadsCopy.fields.leadType];
+      if (isLeadType(detailType)) setLeadType(detailType);
+      setDetailState('ready');
+      return;
+    }
     setDetailState('loading');
     setLoadError('');
     void repository.getDetail(leadId).then((record) => {
