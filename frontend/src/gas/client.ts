@@ -523,6 +523,7 @@ export function updateCoreQuote(quoteId: string, payload: QuotePayload, isDraft:
 export type InventoryProductOption = {
   productId: string;
   productName: string;
+  category: string;
 };
 
 export type InventoryConditionOption = {
