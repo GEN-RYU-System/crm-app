@@ -410,3 +410,19 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 ### 戻し方
 
 `git revert cb7cd00`
+
+---
+
+## 【訂正】支払先マスタ「顧客IDあり件数」の誤報告
+
+**訂正日**: 2026-08-22
+
+### 誤報告内容
+前セッションの調査報告で「51行のうち顧客IDが入っている件数: 15件」と報告した。
+
+### 正しい値
+全51件に顧客IDが入力されている（空欄 0 件）。
+
+### 誤報告の原因
+`devAuditPaymentDestinations()` の初期実行時に出力した `rowsWithCustomerId` の値を誤読した。
+実データは全行に顧客IDが存在しており、後続の `devCheckPaymentRowsByCustomerName` でも51件分のマッチが確認されている。
