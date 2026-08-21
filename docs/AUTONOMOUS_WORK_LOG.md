@@ -222,3 +222,43 @@ QuoteListPage は最初から絶対パスを使っており正常動作してい
 - CI 通過、DEV デプロイ完了
 - SHA 照合: deployedSha = `07b672ee...` = `origin/develop` HEAD ✓
 - conformance audit: 総不一致 0 → PASS
+
+---
+
+## 【9】受注管理一覧の列調整 — PR #TBD
+
+**マージ日時**: TBD
+**revert用SHA**: TBD（マージ後に更新）
+
+### 変更前
+
+- `frontend/src/pages/sales-orders/salesOrderListConfig.ts`: 列定義に `orderId` 列がなく、`SALES_ORDER_LIST_COLUMNS` は `customerName` から始まっていた
+- `SalesOrderListPage.tsx`: `columns` はタブ状態に関係なく常に同じ列セットを表示していた（`status` 列も全タブで表示）
+
+### 変更内容
+
+- `salesOrderListConfig.ts`:
+  - `SalesOrderColumnDef` 型を新規追加（`sortable?: boolean` フィールドを持つ）
+  - `SALES_ORDER_LIST_COLUMNS` の先頭に `orderId`（受注番号）列を追加（`sortable: false`）
+  - 列定義の `key` 型を `keyof SalesOrderRow` に拡張（`SalesOrderSortKey` 限定を解除）
+  - `SALES_ORDER_LIST_SEARCH_COLUMNS` の型も `keyof SalesOrderRow` に変更
+- `SalesOrderListPage.tsx`:
+  - `useCallback` で `changeSort` をメモ化
+  - `columns` を `useMemo` でラップし、`activeTabLabel` / `sort` に依存
+  - `status` 列は `activeTabLabel === null`（「すべて」タブ）のときのみ `columns` に含める
+  - ソート不可列（`orderId`）は `onSort` / `ariaSort` / `sortIcon` を付与しない
+
+### 変更理由
+
+- `orderId` は各行の一意識別子として最も重要な情報。一覧の左端に常時表示することで視認性を向上
+- 「すべて」タブ以外ではステータスがタブ名と同一になるため、重複する `status` 列を非表示にして列を絞り込む
+
+### 検証結果
+
+- `npm run build:gas` 通過（TypeScript + Vite build + check:design-system）
+- CI 通過（PR マージ後に更新）
+- DEV デプロイ後の実機確認（PR マージ後に更新）
+
+### 戻し方
+
+`git revert TBD` で列定義・ページ変更を元に戻せる
