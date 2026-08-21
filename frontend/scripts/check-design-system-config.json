@@ -7,5 +7,11 @@
     "ignorePatterns": [
       "**/*.d.ts"
     ]
+  },
+  "componentUsageCheck": {
+    "rules": [
+      { "component": "LineItemEditor", "pages": ["quotes", "orders"] },
+      { "component": "Combobox", "pages": ["quotes", "orders"] }
+    ]
   }
 }

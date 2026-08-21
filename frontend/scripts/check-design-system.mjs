@@ -106,4 +106,23 @@ for (const file of tsSourceFiles) {
   if (importedFiles.has(file) || unusedEntryPoints.has(file)) continue;
   violations.push(`unused source file (not imported from anywhere): ${relative(frontendDir, file)}`);
 }
+// --- Component usage registry check ---
+function importsComponentFromUI(source, component) {
+  const importRegex = /import\s+\{([^}]+)\}\s+from\s+['"][^'"]*components\/ui['"]/g;
+  return [...source.matchAll(importRegex)].some((m) =>
+    m[1].split(',').map((s) => s.trim()).includes(component)
+  );
+}
+const usageRules = (checkConfig.componentUsageCheck ?? {}).rules ?? [];
+for (const rule of usageRules) {
+  const { component, pages } = rule;
+  for (const pageName of pages) {
+    const pageDir = resolve(srcDir, 'pages', pageName);
+    const pageFiles = (await files(pageDir)).filter((f) => ['.ts', '.tsx'].includes(extname(f)));
+    const sources = await Promise.all(pageFiles.map((f) => readFile(f, 'utf8')));
+    if (!sources.some((src) => importsComponentFromUI(src, component))) {
+      violations.push(`component usage: ${component} is not imported in pages/${pageName}/ — update usage or component-usage config`);
+    }
+  }
+}
 if (violations.length) { console.error(violations.join('\n')); process.exit(1); } console.log('design-system checks passed');
