@@ -1,4 +1,46 @@
 /**
+ * DEV専用: getCoreCustomerForFrontend の支払先ロジックを auth なしで再現し、実際の戻り値を確認する
+ * 出力: paymentProfiles 配列（個人住所値は含む。DEV限定・書き込みなし）
+ *
+ * @param {string} customerId - 顧客ID（例: "CT-00035"）
+ */
+function devSimulatePaymentRead(customerId) {
+  if (getEnvironment() !== 'development') {
+    throw new Error('devSimulatePaymentRead is available only in development');
+  }
+  var spreadsheet = getSpreadsheet();
+  var normalizedId = coreCustomerFrontendValue(customerId);
+
+  var payments = coreCustomerFrontendReadTable(spreadsheet, 'PAYMENT_DESTINATIONS', [
+    'PAYMENT_DESTINATION_ID', 'CUSTOMER_ID', 'BILLING_NAME', 'ADDRESS_LINE_1',
+    'ADDRESS_LINE_2', 'ADDRESS_LINE_3', 'CITY', 'STATE', 'ZIP', 'COUNTRY',
+    'PAYMENT_METHOD', 'CURRENCY', 'IS_DEFAULT', 'IS_ACTIVE'
+  ]);
+
+  var matched = payments.rows.filter(function(row) {
+    return coreCustomerFrontendValue(row[payments.indexes.CUSTOMER_ID]) === normalizedId;
+  });
+
+  return {
+    customerId: normalizedId,
+    totalRows: payments.rows.length,
+    matchedCount: matched.length,
+    paymentProfiles: matched.map(function(row) {
+      return {
+        paymentProfileId: coreCustomerFrontendValue(row[payments.indexes.PAYMENT_DESTINATION_ID]),
+        billingName:      coreCustomerFrontendValue(row[payments.indexes.BILLING_NAME]),
+        country:          coreCustomerFrontendValue(row[payments.indexes.COUNTRY]),
+        address:          coreCustomerFrontendJoinAddress(row, payments.indexes),
+        method:           coreCustomerFrontendValue(row[payments.indexes.PAYMENT_METHOD]),
+        currency:         coreCustomerFrontendValue(row[payments.indexes.CURRENCY]),
+        isDefault:        coreCustomerFrontendValue(row[payments.indexes.IS_DEFAULT]),
+        isActive:         coreCustomerFrontendValue(row[payments.indexes.IS_ACTIVE]),
+      };
+    }),
+  };
+}
+
+/**
  * DEV専用: 支払先マスタの実データを読み取って件数を返す（シート書き込みなし）
  */
 function devAuditPaymentDestinations() {
