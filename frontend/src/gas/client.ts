@@ -1,5 +1,6 @@
 import { errorCopy, leadsCopy } from '../content/ja';
 import type { CustomerAggregateDto, CustomerSummaryDto } from '../features/customers/contracts';
+import type { OrderCreatePayload, OrderCreateResult } from '../features/orders/contracts';
 import type { StaffProfileDto, StaffSummaryDto } from '../features/staff/contracts';
 
 export type DashboardKpis = {
@@ -556,5 +557,24 @@ export function getInventoryConditions(productId: string): Promise<readonly Inve
       })
       .withFailureHandler((error) => reject(toError(error)))
       .getInventoryConditions(getStoredSessionId(), productId);
+  });
+}
+
+export { OrderCreatePayload, OrderCreateResult };
+
+export function createCoreOrder(payload: OrderCreatePayload): Promise<OrderCreateResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        const v = value as { success?: boolean; orderId?: string };
+        if (!v || v.success !== true || typeof v.orderId !== 'string') {
+          reject(new Error(errorCopy.communication)); return;
+        }
+        resolve(v as OrderCreateResult);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .createCoreOrderForFrontend(getStoredSessionId(), payload as unknown);
   });
 }
