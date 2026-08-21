@@ -1696,3 +1696,44 @@ function benchCheckSyncSignals() {
   Logger.log(result);
   return result;
 }
+
+/**
+ * 【調査用 / 認証なし】SYNC_SIGNAL_leads の書き込み・読み取り往復確認。
+ * writeSyncSignals_ を LEADS_CACHE_INDEX_ALL で直接呼び、
+ * 直後に CacheService から SYNC_SIGNAL_leads を読み返す。
+ * 値が Date.now() 形式（13桁数字）であることを確認する。
+ */
+function verifySyncSignalLeads() {
+  var out = ['=== verifySyncSignalLeads ===', '実行: ' + new Date().toISOString(), ''];
+
+  // 1. 書き込み前の値を確認
+  var cache = CacheService.getScriptCache();
+  var before = cache.get('SYNC_SIGNAL_leads');
+  out.push('書き込み前: ' + (before === null ? 'null (未記録)' : before));
+  out.push('');
+
+  // 2. writeSyncSignals_ を LEADS target で呼び出す
+  var fakeTarget = [{ indexKey: 'LEADS_CACHE_INDEX_ALL', prefix: 'LEADS_CACHE_' }];
+  writeSyncSignals_(fakeTarget);
+  out.push('writeSyncSignals_ 呼び出し完了');
+  out.push('');
+
+  // 3. 書き込み後の値を確認
+  var after = cache.get('SYNC_SIGNAL_leads');
+  out.push('書き込み後: ' + (after === null ? 'null (記録失敗)' : after));
+
+  // 4. 形式確認（13桁数字 = Date.now() 形式）
+  var isValid = after !== null && /^\d{13}$/.test(String(after));
+  out.push('Date.now() 形式 (13桁): ' + (isValid ? 'OK' : 'NG'));
+
+  if (isValid) {
+    var ts = new Date(Number(after));
+    out.push('タイムスタンプ解釈: ' + ts.toISOString());
+    var diffMs = Date.now() - Number(after);
+    out.push('書き込みからの経過: ' + diffMs + ' ms');
+  }
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
