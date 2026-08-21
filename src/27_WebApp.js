@@ -862,19 +862,23 @@ function updateLead(sessionId, sheetName, leadId, updateData) {
   return withSheetWrite_(
     { useLock: true, cacheTargets: LEADS_CACHE_TARGETS },
     () => {
-      // 更新データを適用
+      // 既存行をクローンして更新値を上書きし、setValues 1回で書き込む
+      const rowValues = data[targetRow - 1].slice();
+
       Object.entries(updateData).forEach(([key, value]) => {
         const colIndex = headers.indexOf(key);
         if (colIndex !== -1) {
-          sheet.getRange(targetRow, colIndex + 1).setValue(value);
+          rowValues[colIndex] = value;
         }
       });
 
       // 更新日を設定
       const updateDateIndex = headers.indexOf('シート更新日');
       if (updateDateIndex !== -1) {
-        sheet.getRange(targetRow, updateDateIndex + 1).setValue(new Date());
+        rowValues[updateDateIndex] = new Date();
       }
+
+      sheet.getRange(targetRow, 1, 1, headers.length).setValues([rowValues]);
 
       return leadId;
     }
