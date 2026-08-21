@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { canAccessNavigationItem, NAVIGATION_BY_ID, type NavigationPermissions } from './navigation';
-import { useSyncPolling, type DomainRefreshers } from './useSyncPolling';
 import { useLeadListCache } from '../pages/leads/LeadListCacheContext';
 import { useCustomerListCache } from '../pages/customers/CustomerListCacheContext';
 import { useInventoryListCache } from '../pages/inventory/InventoryListCacheContext';
@@ -9,12 +8,12 @@ import { useStaffListCache } from '../pages/staff/StaffListCacheContext';
 import { useQuoteListCache } from '../pages/quotes/QuoteListCacheContext';
 
 export function usePrefetch(permissions: NavigationPermissions | null): void {
-  const { ensureLoaded: ensureLeads, refreshAll: refreshLeads } = useLeadListCache();
-  const { ensureLoaded: ensureCustomers, refresh: refreshCustomers } = useCustomerListCache();
-  const { ensureLoaded: ensureInventory, refresh: refreshInventory } = useInventoryListCache();
-  const { ensureLoaded: ensureOrders, refresh: refreshOrders } = useOrderListCache();
-  const { ensureLoaded: ensureStaff, refresh: refreshStaff } = useStaffListCache();
-  const { ensureLoaded: ensureQuotes, refresh: refreshQuotes } = useQuoteListCache();
+  const { ensureLoaded: ensureLeads } = useLeadListCache();
+  const { ensureLoaded: ensureCustomers } = useCustomerListCache();
+  const { ensureLoaded: ensureInventory } = useInventoryListCache();
+  const { ensureLoaded: ensureOrders } = useOrderListCache();
+  const { ensureLoaded: ensureStaff } = useStaffListCache();
+  const { ensureLoaded: ensureQuotes } = useQuoteListCache();
   const hasRun = useRef(false);
 
   useEffect(() => {
@@ -42,15 +41,4 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
     return () => clearTimeout(timer);
   }, [permissions, ensureLeads, ensureCustomers, ensureInventory, ensureOrders, ensureStaff, ensureQuotes]);
 
-  // Real-time sync polling: detect signal changes per domain and refresh the cache
-  const refreshers = useMemo<DomainRefreshers>(() => ({
-    leads:     () => refreshLeads(),
-    customers: () => refreshCustomers(),
-    inventory: () => refreshInventory(),
-    orders:    () => refreshOrders(),
-    staff:     () => refreshStaff(),
-    quotes:    () => refreshQuotes(),
-  }), [refreshLeads, refreshCustomers, refreshInventory, refreshOrders, refreshStaff, refreshQuotes]);
-
-  useSyncPolling(refreshers);
 }
