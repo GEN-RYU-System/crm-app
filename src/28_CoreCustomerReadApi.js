@@ -8,6 +8,11 @@ const CUSTOMER_LIST_CACHE_PREFIX     = 'CUSTOMER_LIST_CACHE_';
 const CUSTOMER_LIST_CACHE_CHUNK_SIZE = 90000;
 const CUSTOMER_LIST_CACHE_TTL        = 600;
 
+const CUSTOMER_AGGREGATE_CACHE_INDEX      = 'CUSTOMER_AGGREGATE_CACHE_INDEX';
+const CUSTOMER_AGGREGATE_CACHE_PREFIX     = 'CUSTOMER_AGGREGATE_CACHE_';
+const CUSTOMER_AGGREGATE_CACHE_CHUNK_SIZE = 90000;
+const CUSTOMER_AGGREGATE_CACHE_TTL        = 600;
+
 /**
  * スプレッドシートから顧客一覧行を組み立てる（純粋データ変換）。
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
@@ -220,4 +225,69 @@ function coreCustomerFrontendValue(value) {
   if (value === null || value === undefined) return '';
   if (Object.prototype.toString.call(value) === '[object Date]') return value.toISOString();
   return String(value).trim();
+}
+
+/**
+ * 全顧客の配送先・支払先を一括取得するReactフロント専用API（先読み用）。
+ * 配送先マスタ・支払先マスタをそれぞれ1回読んで顧客IDで集約する。
+ * 戻り値: { [customerId]: { shippingAddresses: [...], paymentProfiles: [...] } }
+ */
+function getCoreAllCustomerAggregatesForFrontend(sessionId) {
+  setEmailFromSession(sessionId);
+  checkPermission('lead_view');
+
+  var cached = readCacheChunks_(CUSTOMER_AGGREGATE_CACHE_INDEX, CUSTOMER_AGGREGATE_CACHE_PREFIX);
+  if (cached !== null) return cached;
+
+  var spreadsheet = getSpreadsheet();
+
+  var shipping = coreCustomerFrontendReadTable(spreadsheet, 'SHIPPING_DESTINATIONS', [
+    'SHIPPING_DESTINATION_ID', 'CUSTOMER_ID', 'RECIPIENT_NAME', 'ADDRESS_LINE_1',
+    'ADDRESS_LINE_2', 'ADDRESS_LINE_3', 'CITY', 'STATE', 'ZIP', 'COUNTRY',
+    'PHONE', 'EMAIL', 'DISPLAY_NAME', 'IS_DEFAULT', 'IS_ACTIVE'
+  ]);
+  var payments = coreCustomerFrontendReadTable(spreadsheet, 'PAYMENT_DESTINATIONS', [
+    'PAYMENT_DESTINATION_ID', 'CUSTOMER_ID', 'BILLING_NAME', 'ADDRESS_LINE_1',
+    'ADDRESS_LINE_2', 'ADDRESS_LINE_3', 'CITY', 'STATE', 'ZIP', 'COUNTRY',
+    'PAYMENT_METHOD', 'CURRENCY', 'DISPLAY_NAME', 'IS_DEFAULT', 'IS_ACTIVE'
+  ]);
+
+  var result = {};
+
+  shipping.rows.forEach(function(row) {
+    var customerId = coreCustomerFrontendValue(row[shipping.indexes.CUSTOMER_ID]);
+    if (!customerId) return;
+    if (!result[customerId]) result[customerId] = { shippingAddresses: [], paymentProfiles: [] };
+    result[customerId].shippingAddresses.push({
+      addressId:    coreCustomerFrontendValue(row[shipping.indexes.SHIPPING_DESTINATION_ID]),
+      displayName:  coreCustomerFrontendValue(row[shipping.indexes.DISPLAY_NAME]),
+      recipient:    coreCustomerFrontendValue(row[shipping.indexes.RECIPIENT_NAME]),
+      country:      coreCustomerFrontendValue(row[shipping.indexes.COUNTRY]),
+      address:      coreCustomerFrontendJoinAddress(row, shipping.indexes),
+      phone:        coreCustomerFrontendValue(row[shipping.indexes.PHONE]),
+      emailAddress: coreCustomerFrontendValue(row[shipping.indexes.EMAIL]),
+      isDefault:    coreCustomerFrontendValue(row[shipping.indexes.IS_DEFAULT]),
+      isActive:     coreCustomerFrontendValue(row[shipping.indexes.IS_ACTIVE])
+    });
+  });
+
+  payments.rows.forEach(function(row) {
+    var customerId = coreCustomerFrontendValue(row[payments.indexes.CUSTOMER_ID]);
+    if (!customerId) return;
+    if (!result[customerId]) result[customerId] = { shippingAddresses: [], paymentProfiles: [] };
+    result[customerId].paymentProfiles.push({
+      paymentProfileId: coreCustomerFrontendValue(row[payments.indexes.PAYMENT_DESTINATION_ID]),
+      displayName:      coreCustomerFrontendValue(row[payments.indexes.DISPLAY_NAME]),
+      billingName:      coreCustomerFrontendValue(row[payments.indexes.BILLING_NAME]),
+      country:          coreCustomerFrontendValue(row[payments.indexes.COUNTRY]),
+      address:          coreCustomerFrontendJoinAddress(row, payments.indexes),
+      method:           coreCustomerFrontendValue(row[payments.indexes.PAYMENT_METHOD]),
+      currency:         coreCustomerFrontendValue(row[payments.indexes.CURRENCY]),
+      isDefault:        coreCustomerFrontendValue(row[payments.indexes.IS_DEFAULT]),
+      isActive:         coreCustomerFrontendValue(row[payments.indexes.IS_ACTIVE])
+    });
+  });
+
+  writeCacheChunks_(CUSTOMER_AGGREGATE_CACHE_INDEX, CUSTOMER_AGGREGATE_CACHE_PREFIX, result, CUSTOMER_AGGREGATE_CACHE_TTL, CUSTOMER_AGGREGATE_CACHE_CHUNK_SIZE);
+  return result;
 }
