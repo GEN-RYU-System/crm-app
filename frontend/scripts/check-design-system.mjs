@@ -45,6 +45,13 @@ if (!orderContractsSource.includes('OrderRepository')) violations.push('orders f
 if (!orderGasAdapterSource.includes('orderGasRepository')) violations.push('orders feature does not provide GAS repository');
 if (!orderGasAdapterSource.includes("from '../../gas/client'")) violations.push('orders GAS repository bypasses the typed GAS client');
 if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(orderPageSource) || (!orderPageSource.includes('OrderRepository') && !orderPageSource.includes('OrderListCacheContext'))) violations.push('orders page bypasses the OrderRepository boundary');
+const leadContractsSource = await readFile(resolve(srcDir, 'features/leads/contracts.ts'), 'utf8');
+const leadGasAdapterSource = await readFile(resolve(srcDir, 'features/leads/gasAdapter.ts'), 'utf8');
+const leadEditorPageSource = await readFile(resolve(srcDir, 'pages/leads/LeadEditorPage.tsx'), 'utf8');
+if (!leadContractsSource.includes('LeadRepository')) violations.push('leads feature does not declare LeadRepository');
+if (!leadGasAdapterSource.includes('leadGasRepository')) violations.push('leads feature does not provide GAS repository');
+if (!leadGasAdapterSource.includes("from '../../gas/client'")) violations.push('leads GAS repository bypasses the typed GAS client');
+if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(leadEditorPageSource) || !leadEditorPageSource.includes('LeadRepository')) violations.push('lead editor page bypasses the LeadRepository boundary');
 const staffContractsSource = await readFile(resolve(srcDir, 'features/staff/contracts.ts'), 'utf8');
 const staffGasAdapterSource = await readFile(resolve(srcDir, 'features/staff/gasAdapter.ts'), 'utf8');
 const staffPageSource = await readFile(resolve(srcDir, 'pages/staff/StaffListPage.tsx'), 'utf8');
