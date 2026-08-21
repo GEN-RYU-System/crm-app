@@ -120,8 +120,62 @@ function buildSharedInventoryRows_(ss) {
 }
 
 /**
+ * 表示設定マスタから在庫画面の display_mode を読む。
+ * 設定シートが存在しない・ヘッダーが見つからない等の例外は 'all' にフォールバックする。
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
+ * @returns {string} 'cheapest_one' | 'all'
+ */
+function readInventoryDisplayMode_(ss) {
+  try {
+    var tableKey = 'DISPLAY_SETTINGS';
+    var table    = getCoreSchemaV1Table(tableKey);
+    var sheet    = ss.getSheetByName(table.sheetName);
+    if (!sheet || sheet.getLastRow() <= table.headerRowNumber) return 'all';
+    var data    = sheet.getDataRange().getValues();
+    var headers = data[0].map(String);
+    var colKey    = headers.indexOf(getCoreSchemaV1HeaderName(tableKey, 'SETTING_KEY'));
+    var colValue  = headers.indexOf(getCoreSchemaV1HeaderName(tableKey, 'SETTING_VALUE'));
+    var colScreen = headers.indexOf(getCoreSchemaV1HeaderName(tableKey, 'TARGET_SCREEN'));
+    if (colKey === -1 || colValue === -1 || colScreen === -1) return 'all';
+    for (var i = 1; i < data.length; i++) {
+      var r = data[i];
+      if (String(r[colScreen]).trim() === 'inventory' && String(r[colKey]).trim() === 'display_mode') {
+        var v = String(r[colValue]).trim();
+        return v || 'all';
+      }
+    }
+    return 'all';
+  } catch (e) {
+    Logger.log('[readInventoryDisplayMode_] 設定読み取りエラー、all にフォールバック: ' + e.message);
+    return 'all';
+  }
+}
+
+/**
+ * display_mode に従って在庫行を集約する。
+ * cheapest_one: product_id × Condition ごとに Unit Price 最安の1行を採用。
+ * all:          集約しない（元の rows をそのまま返す）。
+ * @param {Object[]} rows buildSharedInventoryRows_ の返却値
+ * @param {string}   displayMode
+ * @returns {Object[]}
+ */
+function applyInventoryDisplayMode_(rows, displayMode) {
+  if (displayMode !== 'cheapest_one') return rows;
+  var groups = {};
+  rows.forEach(function(row) {
+    var key      = row.productId + '\x00' + row.condition;
+    var existing = groups[key];
+    if (!existing || row.unitPrice < existing.unitPrice) {
+      groups[key] = row;
+    }
+  });
+  return Object.keys(groups).map(function(k) { return groups[k]; });
+}
+
+/**
  * 共用在庫一覧をフロントエンド向けに返す
  * 共用在庫 → product_id → 商品マスタ同期 → 作品ID → 作品マスタ_共用在庫 の2段階結合
+ * display_mode に従って集約済みの行を返す。キャッシュは display_mode 別に保持する。
  * @param {string} sessionId
  * @param {boolean} [forceRefresh]
  */
@@ -129,13 +183,18 @@ function getSharedInventoryForFrontend(sessionId, forceRefresh) {
   setEmailFromSession(sessionId);
   checkPermission('lead_view');
 
+  var ss          = getSpreadsheet();
+  var displayMode = readInventoryDisplayMode_(ss);
+  var cacheIndex  = SHARED_INVENTORY_CACHE_INDEX + '_' + displayMode;
+  var cachePrefix = SHARED_INVENTORY_CACHE_PREFIX + displayMode + '_';
+
   if (forceRefresh !== true) {
-    var cached = readCacheChunks_(SHARED_INVENTORY_CACHE_INDEX, SHARED_INVENTORY_CACHE_PREFIX);
+    var cached = readCacheChunks_(cacheIndex, cachePrefix);
     if (cached !== null) return cached;
   }
 
-  var ss   = getSpreadsheet();
-  var rows = buildSharedInventoryRows_(ss);
-  writeCacheChunks_(SHARED_INVENTORY_CACHE_INDEX, SHARED_INVENTORY_CACHE_PREFIX, rows, SHARED_INVENTORY_CACHE_TTL, SHARED_INVENTORY_CACHE_CHUNK_SIZE);
-  return rows;
+  var rows   = buildSharedInventoryRows_(ss);
+  var result = applyInventoryDisplayMode_(rows, displayMode);
+  writeCacheChunks_(cacheIndex, cachePrefix, result, SHARED_INVENTORY_CACHE_TTL, SHARED_INVENTORY_CACHE_CHUNK_SIZE);
+  return result;
 }
