@@ -133,16 +133,58 @@ PR #319 の後処理でこの誤りが実際に発生した（PR #319 を作成�
 
 ## 画面確認（必須）
 
-画面に関わる変更の場合、以下の順に進むこと。
+**build が通っても画面が壊れている場合がある。PR 作成前に必ず Playwright で確認する。**
 
-1. 配布完了まで実施する（SHA照合・スキーマ監査を含む）
-2. 配布完了を PO（Shingo）に報告し、画面確認を待つ
+### `?preview` モードを使った確認手順
 
-★ CC側での Playwright 確認は必須としない  
-★ 配布完了報告までは CC が責任を持つ
+UI に関わる変更の場合、以下の手順を PR 作成前に実施すること。
 
-**build / check / CI / 監査がすべて通っても画面が壊れている場合がある。**  
-今回この抜けにより画面が真っ白になった（`usePrefetch` が Provider 外から呼ばれていたが build では検出されなかった）。
+1. dev サーバーを起動する
+   ```bash
+   cd frontend && npm run dev
+   ```
+
+2. `?preview` モードで対象画面を開く（GAS 認証不要）
+   ```
+   http://localhost:<port>/?preview#/<route>
+   ```
+
+3. Playwright MCP で以下を確認する
+
+   | 確認項目 | OK の基準 |
+   |---------|----------|
+   | 画面が表示される | ページ構造がスナップショットに存在する |
+   | React エラーなし | コンソールに `Error:` / `Uncaught` がない |
+   | 操作が動く | 対象機能（ボタン遷移・フォーム入力等）が機能する |
+
+4. dev サーバーを停止する
+   ```bash
+   kill <PID>
+   ```
+
+### `?preview` モードの仕組み
+
+`frontend/src/main.tsx` が `import.meta.env.DEV && ?preview` の条件で  
+`frontend/src/preview/gasRunnerMock.ts` の `installGASMock()` を呼ぶ。
+
+- `sessionStorage.setItem('crm_session_id', 'preview-mock-session')` → AuthContext が即座に authenticated になる
+- `window.google = { script: { run: mockRunner } }` → 全 GAS 呼び出しがモックデータを返す
+
+本番ビルドでは `import.meta.env.DEV = false` になるため、production バンドルに含まれない。
+
+### Playwright 確認をスキップできるケース
+
+- UI を持たない変更（GAS のみ / CI スクリプトのみ / ドキュメントのみ）
+- 既存の Playwright 自動テストがカバーしている変更
+
+スキップした場合はその理由を PR 本文に明記すること。
+
+### DEV 配布後の確認
+
+Playwright 確認後、配布完了を PO（Shingo）に報告し、DEV 実機での画面確認を依頼する。
+
+**背景:** PR #362 でビルド・CI が全通過したにも関わらず「オーダー新規作成画面が開かない」が  
+発生した（実際の原因は navigate バグだったが、事前の Playwright 確認があれば発見できた）。
 
 ---
 
