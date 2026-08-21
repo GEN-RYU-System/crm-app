@@ -1,0 +1,11 @@
+{
+  "unusedFilesCheck": {
+    "entryPoints": [
+      "src/main.tsx",
+      "src/App.tsx"
+    ],
+    "ignorePatterns": [
+      "**/*.d.ts"
+    ]
+  }
+}
