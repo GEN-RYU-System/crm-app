@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState, type PropsWithChildren } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { canAccessNavigationItem, DATA_MANAGEMENT_ITEMS, hasNavigationPermission, NAVIGATION_BY_ID, visibleDataManagementItems, visibleNavigationGroups, type NavigationItemId, type NavigationPermissions } from './app/navigation';
 import { usePrefetch } from './app/usePrefetch';
@@ -62,6 +62,11 @@ function StaffPermissionLoading() {
   return <StatusMessage variant="loading"><Spinner size="sm" aria-label={staffCopy.loading} />{staffCopy.loading}</StatusMessage>;
 }
 
+function AppShellWithPrefetch({ permissions, navigationGroups, children }: PropsWithChildren<{ permissions: NavigationPermissions | null; navigationGroups: ReturnType<typeof visibleNavigationGroups> }>) {
+  usePrefetch(permissions);
+  return <AppShell navigationGroups={navigationGroups}>{children}</AppShell>;
+}
+
 function AppContent() {
   const { state: authState } = useAuth();
 
@@ -108,7 +113,6 @@ function AppRouter() {
   useEffect(() => { void load(); void loadPermissions(); }, [load, loadPermissions]);
 
   const permissions = permissionState.status === 'ready' ? permissionState.permissions : null;
-  usePrefetch(permissions);
   const navigationGroups = visibleNavigationGroups(permissions);
   const dataManagementItems = visibleDataManagementItems(permissions);
   const canAccessLeads = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.leads, permissions);
@@ -168,7 +172,7 @@ function AppRouter() {
     ]
   };
 
-  return <HashRouter><LeadListCacheProvider><CustomerListCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><AppShell navigationGroups={navigationGroups}><Routes>
+  return <HashRouter><LeadListCacheProvider><CustomerListCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><AppShellWithPrefetch permissions={permissions} navigationGroups={navigationGroups}><Routes>
     <Route path={NAVIGATION_BY_ID.dashboard.hash} element={<DashboardPage kpis={kpis} state={state} error={error} onRefresh={() => void load()} />} />
     {DATA_MANAGEMENT_ITEMS
       .filter((item) => item.state !== 'planned' && hubIndexRoutes[item.id] != null)
@@ -186,5 +190,5 @@ function AppRouter() {
     <Route path={NAVIGATION_BY_ID.components.hash} element={<ComponentCatalogPage />} />
     <Route path="/change-password" element={<ChangePasswordPage />} />
     <Route path="*" element={<Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />} />
-  </Routes></AppShell></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></InventoryListCacheProvider></CustomerListCacheProvider></LeadListCacheProvider></HashRouter>;
+  </Routes></AppShellWithPrefetch></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></InventoryListCacheProvider></CustomerListCacheProvider></LeadListCacheProvider></HashRouter>;
 }
