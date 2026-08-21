@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { CRM_SEARCH_ICON, CRM_SORT_ICONS } from '../../app/icons';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMessage, TextField, type DataTableColumn } from '../../components/ui';
@@ -52,41 +52,55 @@ export function SalesOrderListPage() {
     return [all, ...rest];
   }, [allRows, statusOptions]);
 
-  const changeSort = (key: SalesOrderSort['key']) =>
+  const changeSort = useCallback((key: SalesOrderSort['key']) =>
     setSort((prev) =>
       prev.key === key
         ? { key, direction: prev.direction === 'ascending' ? 'descending' : 'ascending' }
         : { key, direction: 'ascending' },
-    );
+    ), []);
 
-  const columns: readonly DataTableColumn<SalesOrderRow>[] = SALES_ORDER_LIST_COLUMNS.map((column) => {
-    const ariaSort = sort.key === column.key ? sort.direction : 'none';
-    const direction =
-      ariaSort === 'none'
-        ? salesOrdersCopy.sortNone
-        : ariaSort === 'ascending'
-          ? salesOrdersCopy.sortAscending
-          : salesOrdersCopy.sortDescending;
-    const SortIcon = CRM_SORT_ICONS[ariaSort];
-    return {
-      key: column.key,
-      header: column.label,
-      renderCell:
-        column.key === 'status'
-          ? (row) => {
-              const label = row.status;
-              if (label === '-') return label;
-              const variant = SALES_ORDER_PAYMENT_STATUS_BADGE_VARIANT[label] ?? 'neutral';
-              return <Badge variant={variant}>{label}</Badge>;
-            }
-          : (row) => row[column.key],
-      ariaSort,
-      onSort: () => changeSort(column.key),
-      sortAriaLabel: salesOrdersCopy.sortLabel(column.label, direction),
-      sortIcon: <SortIcon aria-hidden="true" />,
-      cellAlignment: column.cellAlignment,
-    };
-  });
+  const columns: readonly DataTableColumn<SalesOrderRow>[] = useMemo(() => {
+    const isAllTab = activeTabLabel === null;
+    return SALES_ORDER_LIST_COLUMNS
+      .filter((column) => {
+        // hide status column on non-"all" tabs
+        if (column.key === 'status') return isAllTab;
+        return true;
+      })
+      .map((column) => {
+        const isSortable = column.sortable !== false;
+        const ariaSort = isSortable && sort.key === column.key ? sort.direction : 'none';
+        const direction =
+          ariaSort === 'none'
+            ? salesOrdersCopy.sortNone
+            : ariaSort === 'ascending'
+              ? salesOrdersCopy.sortAscending
+              : salesOrdersCopy.sortDescending;
+        const SortIcon = CRM_SORT_ICONS[ariaSort];
+        return {
+          key: column.key,
+          header: column.label,
+          renderCell:
+            column.key === 'status'
+              ? (row: SalesOrderRow) => {
+                  const label = row.status;
+                  if (label === '-') return label;
+                  const variant = SALES_ORDER_PAYMENT_STATUS_BADGE_VARIANT[label] ?? 'neutral';
+                  return <Badge variant={variant}>{label}</Badge>;
+                }
+              : (row: SalesOrderRow) => row[column.key],
+          ...(isSortable
+            ? {
+                ariaSort,
+                onSort: () => changeSort(column.key as SalesOrderSort['key']),
+                sortAriaLabel: salesOrdersCopy.sortLabel(column.label, direction),
+                sortIcon: <SortIcon aria-hidden="true" />,
+              }
+            : {}),
+          cellAlignment: column.cellAlignment,
+        };
+      });
+  }, [activeTabLabel, sort, changeSort]);
 
   const isLoading = loading || items === undefined;
   const isEmpty = !isLoading && error === undefined && filteredRows.length === 0;
