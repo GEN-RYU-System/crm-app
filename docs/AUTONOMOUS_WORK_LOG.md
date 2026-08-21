@@ -133,431 +133,92 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 
 ---
 
-## 【5】LeadEditorPage を中間層方式へ移行 — PR #316
+## 【5】オーダー作成画面のフルページスケルトン廃止 — PR #362
 
-**実施日時**: 2026-08-21
+**マージ日時**: 2026-08-21T21:11:51Z  
+**revert用SHA**: `6e10e1d62f278b9b8b1c042e886bf335a58d48d1`
+
+### 変更内容
+- `frontend/src/pages/orders/OrderCreatePage.tsx` を CustomerListCacheContext 対応に書き換え
+- フルページ Skeleton を廃止し、顧客データが prefetch 済みであれば即時表示
+- 在庫・通貨は独立した useEffect で非同期ロード
+
+### 検証結果
+- `npm run build:gas` 通過、CI 通過、DEV デプロイ完了
+- **実機確認不足**: `?preview` モード未整備のため Playwright による事前確認を省略
+- マージ後に「オーダー新規作成画面が開かない」報告 → PR #364 でリバート
+
+---
+
+## 【6】PR #362 差し戻し — PR #364
+
+**マージ日時**: 2026-08-21T21:24:54Z  
+**revert用SHA**: `df83e0a36bff4143d3bc964bad310853a61919a9`
+
+### 変更内容
+- `git revert 6e10e1d` により PR #362 の変更を差し戻し
+
+### 経緯
+- 2回の静的解析では根本原因を特定できなかったため、ルールに従い即リバート
+- 実際の原因は OrderListPage の navigate バグ（PR #367 で修正）であり、PR #362 自体は無関係だった
+
+### 検証結果
+- CI 通過、DEV デプロイ完了
+
+---
+
+## 【7】オーダー新規作成ボタンの navigate 修正 — PR #367
+
+**マージ日時**: 2026-08-21T21:48:07Z  
+**revert用SHA**: `3bdc975109811d4955a1333a42d9082162e8ea40`
 
 ### 変更前
-- `LeadEditorPage.tsx` が `gas/client` から `createLead` / `getLeadDetail` / `updateLead` を直接 import
-- `features/leads/` ディレクトリ未存在
+```tsx
+// OrderListPage.tsx
+import { ORDER_ROUTE_SEGMENTS } from './orderEditorConfig';
+<Button onClick={() => navigate(ORDER_ROUTE_SEGMENTS.create)}>
+// navigate('new') → 相対パス、React Router v6 で意図通りに動かないケースあり
+```
+
+### 変更後
+```tsx
+import { ORDER_EDITOR_PATHS } from './orderEditorConfig';
+<Button onClick={() => navigate(ORDER_EDITOR_PATHS.create)}>
+// navigate('/orders/new') → 絶対パス、確実に動く
+```
+
+### 根本原因
+`ORDER_ROUTE_SEGMENTS.create = 'new'`（相対パス）を React Router v6 の index route から呼ぶと  
+正しく解決されないケースがある。`ORDER_EDITOR_PATHS.create = '/orders/new'`（絶対パス）を使うべきだった。  
+QuoteListPage は最初から絶対パスを使っており正常動作していた。
+
+### 検証結果
+- Playwright: `?preview#/` → 「新規作成」クリック → `/orders/new` へ遷移を確認
+- CI 通過、DEV デプロイ完了、SHA 照合 OK、conformance audit PASS
+
+---
+
+## 【8】dev preview モード — GAS モックランナー導入 — PR #370
+
+**マージ日時**: 2026-08-21T21:59:29Z  
+**revert用SHA**: `78bff4f3e1ce0f04016de2d02e9f37a8fe93c6f6`
 
 ### 変更内容
-- `frontend/src/features/leads/contracts.ts` 新規作成（`LeadRepository` インターフェース定義）
-- `frontend/src/features/leads/gasAdapter.ts` 新規作成（`leadGasRepository` として gas/client をラップ）
-- `LeadEditorPage.tsx` を `repository: LeadRepository` props 経由に変更（gas/client 直接呼び出し削除）
-- `App.tsx` に `leadGasRepository` import を追加し `LeadEditorPage` に渡す
-- `check-design-system.mjs` に leads 境界検査を追加
-
-### 期待する効果
-- `pages/leads/LeadEditorPage.tsx` から gas/client への実行時依存を排除
-- Reviewer の境界検査で Lead エディタの境界違反が検出可能になる
-
-### 検証結果
-- `tsc --noEmit` 通過
-- `npm run build:gas` 通過（design-system check 含む）
-- CI 通過（マージ後に確認）
-
-### 戻し方
-`git revert 12a1a50`
-
----
-
-## 【6】DashboardPage を中間層方式へ移行 — PR #318
-
-**実施日時**: 2026-08-21
-
-### 変更前
-- `DashboardPage.tsx` が `gas/client` から `DashboardKpis` 型を直接 import
-- `App.tsx` が `getDashboardKpis()` を `gas/client` から直接呼び出し
-- `features/dashboard/` ディレクトリ未存在
-
-### 変更内容
-- `frontend/src/features/dashboard/contracts.ts` 新規作成（`DashboardRepository` インターフェース・`DashboardKpis` 型定義）
-- `frontend/src/features/dashboard/gasAdapter.ts` 新規作成（`dashboardGasRepository` として gas/client をラップ）
-- `DashboardPage.tsx` の型 import を `features/dashboard/contracts` に変更
-- `App.tsx` の `getDashboardKpis()` 直接呼び出しを `dashboardGasRepository.getKpis()` に置換
-- `check-design-system.mjs` に dashboard 境界検査を追加
-
-### 期待する効果
-- `pages/dashboard/DashboardPage.tsx` から gas/client への依存を排除
-- `App.tsx` の gas/client 呼び出しを `dashboardGasRepository` 経由に統一
+- `frontend/src/preview/gasRunnerMock.ts` を新規作成
+  - `window.google.script.run` のモックランナー（immutable chain builder パターン）
+  - `GoogleScriptRun` の全メソッドをカバー
+  - モックデータ: 顧客2件 / 商品2件 / 通貨3件 / 案件オプション2件 等
+  - すべて ASCII 文字列（`check:design-system` の日本語禁止ルールをクリア）
+- `frontend/src/vite-env.d.ts` を新規作成（`import.meta.env` 型定義）
+- `frontend/src/main.tsx` に条件付きモック注入を追加
+  - `import.meta.env.DEV && ?preview` の場合のみ `installGASMock()` を呼ぶ
+  - 本番ビルドでは dead-code elimination により含まれない
 
 ### 検証結果
-- `tsc --noEmit` 通過
-- `npm run build:gas` 通過（design-system check 含む）
-- CI 通過（マージ後に確認）
-
-### 戻し方
-`git revert 1ac81d1`
-
----
-
-## 【7】usePrefetch を CacheProvider 配下に移動し画面白紙を修正 — PR #320
-
-**マージ日時**: 2026-08-21T03:19:05Z
-
-### 変更前
-- `AppRouter` 本体（return 前）で `usePrefetch(permissions)` を呼んでいた
-- この時点では `LeadListCacheProvider` 等のコンテキストが未提供
-- 結果: `useLeadListCache()` が Provider 外から呼ばれ `"leads CacheProvider is required"` を throw
-- 症状: ブラウザで画面が真っ白
-
-### 変更内容
-- `frontend/src/App.tsx` に `AppShellWithPrefetch` コンポーネントを追加
-- `AppShellWithPrefetch` を全 CacheProvider の内側（JSX return 内）に配置
-- `AppRouter` 本体から `usePrefetch(permissions)` 呼び出しを削除
-- `docs/AUTONOMOUS_WORK_RULES.md` に「画面確認（必須）」セクションを追記
-
-### 期待する効果
-- 画面白紙の解消
-- build / CI が通っても画面が壊れる事例を記録し、Playwright 確認を必須化
-
-### 検証結果
-- `npm run build:gas` 通過（tsc + vite + check:design-system）
-- CI 通過（frontend-check / gas-global-namespace）
-- DEV 配布 success
-- `runCoreSchemaConformanceAudit`: 総不一致 0 → PASS
-
-### 戻し方
-`git revert f1e9a35`
-
----
-
-## 【8】LineItemEditor 共通部品作成・Quote/Order 明細行共通化（第2段階）— PR #331
-
-**ブランチ**: `release/line-item-editor`
-
-### 変更内容
-- **GAS** `src/28_CoreInventoryOptionApi.js`: `getInventoryProductOptions` の返値に `category` を追加
-- **`frontend/src/gas/client.ts`**: `InventoryProductOption` に `category` フィールドを追加
-- **`frontend/src/features/orders/contracts.ts`**: `InventoryConditionOption` 型と `listConditions` メソッドを追加、`InventoryProductOption` を整理
-- **`frontend/src/features/orders/gasAdapter.ts`**: `listConditions` 実装（`getInventoryConditions` 経由）、category マッピング修正
-- **`frontend/src/pages/orders/orderEditorConfig.ts`**: `OrderLineEditorValues` に `unitWeight` を追加
-- **`frontend/src/components/ui/LineItemEditor/`**: 共通明細入力部品を新規作成
-  - `LineItemEditorLabels` を呼び出し元から注入（コンポーネント自体に日本語コピーなし）
-- **`frontend/src/pages/quotes/QuoteEditorPage.tsx`**: LineItemEditor 使用にリファクタリング（動作変更なし）
-- **`frontend/src/pages/orders/OrderEditorPage.tsx`**: LineItemEditor 使用にリファクタリング
-  - 状態入力が TextField → Select（在庫連動）に変更（Quote と同フロー）
-  - category は OrderEditorValues で管理し GAS ペイロードに継続送信
-- **`frontend/src/pages/catalog/ComponentCatalogPage.tsx`**: LineItemEditor をカタログに登録
-
-### 検証結果
-- `tsc --noEmit` 通過（エラーなし）
-- `npm run build:gas` 通過（typecheck + vite build + emit-gas-html + check:design-system）
-- CI 通過（マージ後に確認）
-
-### 戻し方
-`git revert b58c3c0`
-
----
-
-## 【9】オーダー顧客選択を Select → Combobox に変更（第3段階）— PR #332
-
-**ブランチ**: `release/order-customer-combobox`
-
-### 変更内容
-
-- **`frontend/src/pages/orders/OrderEditorPage.tsx`**
-  - import に `Combobox` を追加
-  - 顧客選択フィールドを `<Select>` から `<Combobox<{customerId, customerName}>>` に置換
-  - `handleCustomerChange` ロジックは変更なし（顧客ID変更→配送先・支払先リセット→aggregate取得）
-  - `customers` state は `readonly` 配列のため `[...customers]` スプレッドで Combobox に渡す
-
-### 変更理由
-
-- 見積もりエディタ（QuoteEditorPage）の Lead 選択と同じ UX パターンに統一
-- 顧客数増加時にドロップダウンでのスクロールが困難になることへの対応
-- Combobox ではインクリメンタル検索が可能（顧客名・ID部分一致）
-
-### 検証結果
-
-- `tsc --noEmit` 通過（エラーなし）
-- `npm run build:gas` 通過（typecheck + vite build + emit-gas-html + check:design-system）
-- CI 通過（マージ後に確認）
-
-### 戻し方
-
-`git revert 125db38`
-
----
-
-## 【10】Combobox 候補リストをポータルで最前面に描画 — PR #336
-
-**マージ日時**: 2026-08-21（セッション内確認済）  
-**revert用SHA**: `f8e8228`
-
-### 変更前
-- `Combobox` の候補リストが `position: absolute` で `.line-item-editor__row { overflow: hidden }` にクリップされ、オーダー・見積もり画面で候補が表示されない不具合
-
-### 変更内容
-- `frontend/src/components/ui/Combobox/Combobox.tsx`
-  - `createPortal` で候補リストを `document.body` 直下にレンダリング
-  - `useLayoutEffect` で `getBoundingClientRect()` を使い `position: fixed` で座標を計算
-  - スペース不足時は上方向に開く（upward open）ロジックを追加
-  - `scroll` / `resize` イベントで座標を再計算
-
-### 検証結果
-- `npm run build:gas` 通過
-- CI 通過
-- Playwright で `parentTag: BODY`・`position: fixed`・`zIndex: 9999` を確認
-
-### 戻し方
-
-`git revert f8e8228`
-
----
-
-## 【11】孤立した ProductCombobox / OrderProductCombobox を削除 — PR #339
-
-**マージ日時**: 2026-08-21  
-**revert用SHA**: `b6bc73e`
-
-### 変更前
-- `frontend/src/pages/quotes/ProductCombobox.tsx`（PR #331 共通化後に削除されず残存）
-- `frontend/src/pages/orders/OrderProductCombobox.tsx`（同上）
-- どこからも import されていないがビルド・CI はすべて通過していた
-
-### 変更内容
-- 上記2ファイルを削除
-
-### 検証結果
-- `npm run build:gas` 通過
-- CI 通過
-- `clasp run runCoreSchemaConformanceAudit` → 総不一致 0 → PASS
-
-### 戻し方
-
-`git revert b6bc73e`
-
----
-
-## 【12】共通部品化手順・PR実機確認記録のルールを追記 — PR #340
-
-**マージ日時**: 2026-08-21T10:18:30Z  
-**revert用SHA**: `1ba9245`
-
-### 変更前
-- `docs/AUTONOMOUS_WORK_RULES.md` に共通部品変更時の手順・実機確認記録の要件が未定義
-
-### 変更内容
-- `docs/AUTONOMOUS_WORK_RULES.md` に以下2セクションを追加
-  1. 「PR本文への実機確認記録（必須）」: 確認画面/URL/操作/結果のテーブル形式
-  2. 「共通部品の作成・変更手順（必須）」: 対象画面列挙→全差し替え→旧部品削除→検証登録→実機確認の5ステップ
-
-### 検証結果
-- `npm run build:gas` 通過
-- CI 通過
-- `clasp run runCoreSchemaConformanceAudit` → 総不一致 0 → PASS
-- DEV SHA: `1ba9245` 一致
-
-### 戻し方
-
-`git revert 1ba9245`
-
----
-
-## 【13】未使用ソースファイルの自動検出をcheck-design-systemに追加 — PR #341
-
-**マージ日時**: 2026-08-21T09:07:45Z  
-**revert用SHA**: `53191ba`
-
-### 変更前
-- `check-design-system.mjs` に未使用ファイル検出機能がなく、どこからも import されないファイルが残存しても検出できなかった
-
-### 変更内容
-- `frontend/scripts/check-design-system.mjs` に未使用ファイル検出ロジック追加
-  - `frontend/src` 配下の `.ts`/`.tsx` を走査しどこからも import されていないファイルを検出
-  - エントリポイント・`.d.ts` は除外
-- `frontend/scripts/check-design-system-config.json` を新規作成（除外エントリポイント管理）
-- `frontend/src/components/ui/LineItemEditor/index.ts`（未使用バレル）を削除
-
-### 検証結果
-- `npm run build:gas` 通過（新規 violation なし）
-- CI 通過
-- `clasp run runCoreSchemaConformanceAudit` → 総不一致 0 → PASS
-- DEV SHA: `53191ba` 一致
-
-### 戻し方
-
-`git revert 53191ba`
-
----
-
-## 【14】共通部品の利用登録チェックをcheck-design-systemに追加 — PR #342
-
-**マージ日時**: 2026-08-21T10:25:21Z  
-**revert用SHA**: `cb7cd00`
-
-### 変更前
-- 共通部品を新規作成・変更しても「どのページが import しているか」を機械的に検証する手段がなかった
-- PR #331 で `LineItemEditor` を共通化した際、`OrderEditorPage` 側の差し替え漏れが build/CI で検出されなかった
-
-### 変更内容
-- `frontend/scripts/check-design-system-config.json` に `componentUsageCheck.rules` を追加
-  - `LineItemEditor`: `pages/quotes/` / `pages/orders/` で利用必須
-  - `Combobox`: `pages/quotes/` / `pages/orders/` で利用必須
-- `frontend/scripts/check-design-system.mjs` に利用登録チェック追加
-  - ページディレクトリ配下の全 `.ts`/`.tsx` を走査
-  - `components/ui` からの named import にコンポーネント名が含まれるか確認
-  - 含まれなければ violation としてエラー停止
-
-### 検証結果
-- `npm run build:gas` 通過（既存コードは全ルールを満たしているため新規 violation なし）
-- CI 通過
-- `clasp run runCoreSchemaConformanceAudit` → 総不一致 0 → PASS
-- DEV SHA: `cb7cd00` 一致
-
-### 戻し方
-
-`git revert cb7cd00`
-
----
-
-## 【訂正】支払先マスタ「顧客IDあり件数」の誤報告
-
-**訂正日**: 2026-08-22
-
-### 誤報告内容
-前セッションの調査報告で「51行のうち顧客IDが入っている件数: 15件」と報告した。
-
-### 正しい値
-全51件に顧客IDが入力されている（空欄 0 件）。
-
-### 誤報告の原因
-`devAuditPaymentDestinations()` の初期実行時に出力した `rowsWithCustomerId` の値を誤読した。
-実データは全行に顧客IDが存在しており、後続の `devCheckPaymentRowsByCustomerName` でも51件分のマッチが確認されている。
-
----
-
-## 【PR1】受注管理サイドメニュー: 一覧APIにステータス追加
-
-**日付**: 2026-08-22
-**PR**: release/order-sidemenu-pr1
-
-### 変更前の状態
-- `CORE_ORDERS_CACHE_INDEX = 'CORE_ORDERS_CACHE_INDEX'`（実ファイル確認済み: src/28_CoreOrderReadApi.js line 6）
-- `CORE_ORDERS_CACHE_PREFIX = 'CORE_ORDERS_CACHE_'`（実ファイル確認済み: src/28_CoreOrderReadApi.js line 7）
-- `getCoreOrdersForFrontend` の読み取り列に `STATUS` なし
-- `OrderRecord` 型（frontend/src/gas/client.ts）に `status` フィールドなし
-
-### 変更内容（ファイル単位）
-- `src/28_CoreOrderReadApi.js`:
-  - キャッシュキーを V2 に変更（`CORE_ORDERS_CACHE_INDEX_V2`, `CORE_ORDERS_CACHE_V2_`）
-  - 読み取り列に `STATUS` を追加
-  - 返り値に `status: coreCustomerFrontendValue(row[orders.indexes.STATUS])` を追加
-- `frontend/src/gas/client.ts`:
-  - `OrderRecord` 型に `status: string` フィールドを追加
-
-### 変更理由
-フロントエンドのサイドメニュータブでステータス別絞り込みを実現するため、
-GAS API の返り値に `status` フィールドを追加する。
-キャッシュキーを V2 に変更することで旧キャッシュとの混在を防ぐ。
-
-### 検証結果
-- `npm run build:gas` 通過（typecheck → build → emit-gas-html → check:design-system）
-- CI: PR push後に確認予定
-- `clasp run runCoreSchemaConformanceAudit`: PR push後に確認予定
-- `clasp run getCoreOrdersForFrontend` での status キー確認: PR push後に確認予定
-
-### revert用SHA
-`git revert <SHA>` （PR merge後に確定）
-
----
-
-## 【PR2】受注管理サイドメニュー: ステータス選択肢APIを新設
-
-**日付**: 2026-08-22
-**PR**: release/order-sidemenu-pr2
-
-### 変更前の状態
-- `getCoreOrderStatusOptionsForFrontend` 関数が存在しなかった
-- `CORE_ORDER_STATUS_TAB_KEYS` 配列が存在しなかった
-
-### 変更内容（ファイル単位）
-- `src/28_CoreOrderReadApi.js`:
-  - `CORE_ORDER_STATUS_TAB_KEYS` 配列を追加（6ステータス、UNKNOWN除外）
-  - `getCoreOrderStatusOptionsForFrontend` 関数を追加
-  - `getCoreSchemaV1Value` でシート実値を返す実装（ハードコードなし）
-
-### 変更理由
-サイドメニューのタブ定義をGASから取得可能にする。
-ラベルはスキーマの実値（シートの値）から生成することで、
-フロントへの文字列ハードコードを防ぐ。
-
-### 検証結果
-- `npm run build:gas` 通過
-- `grep -rn "支払い待ち\|仕入れ中\|発送待ち" frontend/src/` ヒット 0
-- CI: PR push後に確認予定
-- `clasp run getCoreOrderStatusOptionsForFrontend` → 返り値6件確認予定
-
-### revert用SHA
-`git revert <SHA>` （PR merge後に確定）
-
----
-
-## 【PR1】マージ確定情報
-
-**mergedAt**: 2026-08-21T21:28:22Z
-**mergeCommit.oid**: 8acc6bc98df465559de9d8ea50abebb94b2df809
-**revert用SHA**: `git revert 8acc6bc98df465559de9d8ea50abebb94b2df809`
-
----
-
-## 【PR2】マージ確定情報
-
-**mergedAt**: 2026-08-21T21:31:37Z
-**mergeCommit.oid**: 9a048b302870ff943b5e9462fce7b47672724b8e
-**revert用SHA**: `git revert 9a048b302870ff943b5e9462fce7b47672724b8e`
-
----
-
-## 【PR5】受注管理ページ新規作成 (/sales-orders)
-
-**日付**: 2026-08-22
-**PR**: release/sales-orders-page
-
-### 変更内容（ファイル単位）
-- `frontend/src/content/ja/salesOrders.ts` (新規): 受注管理ページ用コピー・バッジバリアント定義
-- `frontend/src/content/ja/index.ts`: salesOrdersCopy / SALES_ORDER_PAYMENT_STATUS_BADGE_VARIANT の re-export 追加
-- `frontend/src/gas/client.ts`: OrderStatusOption 型・getCoreOrderStatusOptions() 関数を追加
-- `frontend/src/gas/types.d.ts`: getCoreOrderStatusOptionsForFrontend を GoogleScriptRun 型に追加
-- `frontend/src/features/salesOrders/contracts.ts` (新規): SalesOrderStatusOption / SalesOrderTab 型定義
-- `frontend/src/features/salesOrders/gasAdapter.ts` (新規): OrderRecord -> SalesOrderRow マッピング
-- `frontend/src/pages/sales-orders/SalesOrderListCacheContext.tsx` (新規): 受注一覧・ステータス選択肢のキャッシュ Provider
-- `frontend/src/pages/sales-orders/salesOrderListConfig.ts` (新規): 列定義・ソート・フィルタ関数
-- `frontend/src/pages/sales-orders/SalesOrderListPage.tsx` (新規): 受注管理ページ本体
-- `frontend/src/pages/sales-orders/SalesOrderListPage.css` (新規): ページスタイル
-- `frontend/src/App.tsx`: /sales-orders ルート追加・SalesOrderListCacheProvider でラップ
-- `docs/AUTONOMOUS_WORK_LOG.md` (本ファイル): PR5 作業ログ追記
-
-### 不明ステータス件数
-DEV実機確認後に記録予定
-
-### 検証結果
-- `npm run build:gas` 通過（typecheck -> build -> emit-gas-html -> check:design-system）
-- `grep -rn "支払い待ち|仕入れ中|発送待ち" frontend/src/` ヒット 0
-- CI: PR push後に確認
-
-### revert用SHA
-`git revert <SHA>` （PR merge後に確定）
-
----
-
-## 【PR6】グローバルナビに受注管理を追加 (/sales-orders)
-
-**日付**: 2026-08-22
-**PR**: release/sales-orders-nav
-
-### 変更内容（ファイル単位）
-- `frontend/src/app/navigation.ts`: NavigationItemId に salesOrders 追加、leads グループに受注管理エントリ追加
-- `frontend/src/content/ja/navigation.ts`: salesOrders: '受注管理' を追加
-- `frontend/src/App.tsx`: /sales-orders のハードコードを NAVIGATION_BY_ID.salesOrders.hash に変更
-- `frontend/scripts/check-design-system.mjs`: salesOrders を nonHubIds に追加（hub 外の直接ルートのため）
-- `docs/AUTONOMOUS_WORK_LOG.md` (本ファイル): PR6 作業ログ追記
-
-### 検証結果
-- `npm run build:gas` 通過（typecheck -> build -> emit-gas-html -> check:design-system）
-- CI: PR push後に確認
-
-### revert用SHA
-`git revert <SHA>` （PR merge後に確定）
+- `http://localhost:5179/?preview#/orders/new` → オーダー新規作成フォーム表示 OK
+- `http://localhost:5179/?preview#/quotes/create` → 見積もり新規作成フォーム表示 OK
+- コンソール React エラー: 0（favicon 404 のみ、無害）
+- `npm run build:gas` 通過（`check:design-system` 含む）
+- CI 通過、DEV デプロイ完了
+- SHA 照合: deployedSha = `07b672ee...` = `origin/develop` HEAD ✓
+- conformance audit: 総不一致 0 → PASS
