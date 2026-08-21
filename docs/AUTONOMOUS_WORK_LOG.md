@@ -130,3 +130,32 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 
 ### 戻し方
 対象なし
+
+---
+
+## 【5】LeadEditorPage を中間層方式へ移行 — PR #NNN
+
+**実施日時**: 2026-08-21
+
+### 変更前
+- `LeadEditorPage.tsx` が `gas/client` から `createLead` / `getLeadDetail` / `updateLead` を直接 import
+- `features/leads/` ディレクトリ未存在
+
+### 変更内容
+- `frontend/src/features/leads/contracts.ts` 新規作成（`LeadRepository` インターフェース定義）
+- `frontend/src/features/leads/gasAdapter.ts` 新規作成（`leadGasRepository` として gas/client をラップ）
+- `LeadEditorPage.tsx` を `repository: LeadRepository` props 経由に変更（gas/client 直接呼び出し削除）
+- `App.tsx` に `leadGasRepository` import を追加し `LeadEditorPage` に渡す
+- `check-design-system.mjs` に leads 境界検査を追加
+
+### 期待する効果
+- `pages/leads/LeadEditorPage.tsx` から gas/client への実行時依存を排除
+- Reviewer の境界検査で Lead エディタの境界違反が検出可能になる
+
+### 検証結果
+- `tsc --noEmit` 通過
+- `npm run build:gas` 通過（design-system check 含む）
+- CI 通過（マージ後に確認）
+
+### 戻し方
+`git revert <このPRのSHA>`
