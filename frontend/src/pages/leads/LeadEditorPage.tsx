@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, EmptyState, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField } from '../../components/ui';
 import { leadsCopy } from '../../content/ja';
-import { createLead, getLeadDetail, updateLead, type LeadType } from '../../gas/client';
+import type { LeadRepository, LeadType } from '../../features/leads/contracts';
 import { useLeadListCache } from './LeadListCacheContext';
 import { emptyLeadEditorValues, LEAD_EDITOR_PATHS, toLeadCreateValues, toLeadEditorValues, toLeadUpdateValues, type LeadEditorValues } from './leadEditorConfig';
 import { LEAD_TYPE_TABS } from './leadListConfig';
 import './LeadEditorPage.css';
 
-type Props = { mode: 'create' | 'detail'; canEdit: boolean };
+type Props = { mode: 'create' | 'detail'; canEdit: boolean; repository: LeadRepository };
 type DetailState = 'loading' | 'ready' | 'missing' | 'error';
 type NavigationState = { leadType?: LeadType } | null;
 
@@ -16,7 +16,7 @@ function isLeadType(value: unknown): value is LeadType {
   return LEAD_TYPE_TABS.some(({ type }) => type === value);
 }
 
-export function LeadEditorPage({ mode, canEdit }: Props) {
+export function LeadEditorPage({ mode, canEdit, repository }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const { leadId } = useParams();
@@ -34,7 +34,7 @@ export function LeadEditorPage({ mode, canEdit }: Props) {
     if (mode !== 'detail' || !leadId) return;
     setDetailState('loading');
     setLoadError('');
-    void getLeadDetail(leadId).then((record) => {
+    void repository.getDetail(leadId).then((record) => {
       if (!record) {
         setDetailState('missing');
         return;
@@ -61,8 +61,8 @@ export function LeadEditorPage({ mode, canEdit }: Props) {
     setSaving(true);
     setSaveError('');
     try {
-      if (mode === 'create') await createLead(toLeadCreateValues(values, leadType));
-      else await updateLead(leadsCopy.form.sheetName, targetLeadId!, toLeadUpdateValues(values));
+      if (mode === 'create') await repository.create(toLeadCreateValues(values, leadType));
+      else await repository.update(leadsCopy.form.sheetName, targetLeadId!, toLeadUpdateValues(values));
       await refreshAll();
       navigate(LEAD_EDITOR_PATHS.list);
     } catch (cause) {
