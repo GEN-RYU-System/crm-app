@@ -1,7 +1,14 @@
-import { type ReactNode, useCallback, useEffect, useState, type PropsWithChildren } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { canAccessNavigationItem, DATA_MANAGEMENT_ITEMS, hasNavigationPermission, NAVIGATION_BY_ID, visibleDataManagementItems, visibleNavigationGroups, type NavigationItemId, type NavigationPermissions } from './app/navigation';
 import { usePrefetch } from './app/usePrefetch';
+import { useSyncPolling, type DomainRefreshers } from './app/useSyncPolling';
+import { useLeadListCache } from './pages/leads/LeadListCacheContext';
+import { useCustomerListCache } from './pages/customers/CustomerListCacheContext';
+import { useInventoryListCache } from './pages/inventory/InventoryListCacheContext';
+import { useOrderListCache } from './pages/orders/OrderListCacheContext';
+import { useStaffListCache } from './pages/staff/StaffListCacheContext';
+import { useQuoteListCache } from './pages/quotes/QuoteListCacheContext';
 import { AppShell } from './components/shell';
 import { Spinner, StatusMessage } from './components/ui';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -60,6 +67,32 @@ function CustomerPermissionLoading() {
 
 function StaffPermissionLoading() {
   return <StatusMessage variant="loading"><Spinner size="sm" aria-label={staffCopy.loading} />{staffCopy.loading}</StatusMessage>;
+}
+
+/**
+ * Polling component that lives for the entire authenticated session.
+ * Mounted inside all CacheProviders, alongside AppShellWithPrefetch.
+ * Unmounts with AppRouter on logout, so prevSignalsRef resets correctly on re-login.
+ */
+function SyncPoller() {
+  const { refreshAll: refreshLeads } = useLeadListCache();
+  const { refresh: refreshCustomers } = useCustomerListCache();
+  const { refresh: refreshInventory } = useInventoryListCache();
+  const { refresh: refreshOrders } = useOrderListCache();
+  const { refresh: refreshStaff } = useStaffListCache();
+  const { refresh: refreshQuotes } = useQuoteListCache();
+
+  const refreshers = useMemo<DomainRefreshers>(() => ({
+    leads:     () => refreshLeads(),
+    customers: () => refreshCustomers(),
+    inventory: () => refreshInventory(),
+    orders:    () => refreshOrders(),
+    staff:     () => refreshStaff(),
+    quotes:    () => refreshQuotes(),
+  }), [refreshLeads, refreshCustomers, refreshInventory, refreshOrders, refreshStaff, refreshQuotes]);
+
+  useSyncPolling(refreshers);
+  return null;
 }
 
 function AppShellWithPrefetch({ permissions, navigationGroups, children }: PropsWithChildren<{ permissions: NavigationPermissions | null; navigationGroups: ReturnType<typeof visibleNavigationGroups> }>) {
@@ -172,7 +205,7 @@ function AppRouter() {
     ]
   };
 
-  return <HashRouter><LeadListCacheProvider><CustomerListCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><AppShellWithPrefetch permissions={permissions} navigationGroups={navigationGroups}><Routes>
+  return <HashRouter><LeadListCacheProvider><CustomerListCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><><SyncPoller /><AppShellWithPrefetch permissions={permissions} navigationGroups={navigationGroups}><Routes>
     <Route path={NAVIGATION_BY_ID.dashboard.hash} element={<DashboardPage kpis={kpis} state={state} error={error} onRefresh={() => void load()} />} />
     {DATA_MANAGEMENT_ITEMS
       .filter((item) => item.state !== 'planned' && hubIndexRoutes[item.id] != null)
@@ -190,5 +223,5 @@ function AppRouter() {
     <Route path={NAVIGATION_BY_ID.components.hash} element={<ComponentCatalogPage />} />
     <Route path="/change-password" element={<ChangePasswordPage />} />
     <Route path="*" element={<Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />} />
-  </Routes></AppShellWithPrefetch></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></InventoryListCacheProvider></CustomerListCacheProvider></LeadListCacheProvider></HashRouter>;
+  </Routes></AppShellWithPrefetch></></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></InventoryListCacheProvider></CustomerListCacheProvider></LeadListCacheProvider></HashRouter>;
 }
