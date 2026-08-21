@@ -159,3 +159,33 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 
 ### 戻し方
 `git revert <このPRのSHA>`
+
+---
+
+## 【6】DashboardPage を中間層方式へ移行 — PR #NNN
+
+**実施日時**: 2026-08-21
+
+### 変更前
+- `DashboardPage.tsx` が `gas/client` から `DashboardKpis` 型を直接 import
+- `App.tsx` が `getDashboardKpis()` を `gas/client` から直接呼び出し
+- `features/dashboard/` ディレクトリ未存在
+
+### 変更内容
+- `frontend/src/features/dashboard/contracts.ts` 新規作成（`DashboardRepository` インターフェース・`DashboardKpis` 型定義）
+- `frontend/src/features/dashboard/gasAdapter.ts` 新規作成（`dashboardGasRepository` として gas/client をラップ）
+- `DashboardPage.tsx` の型 import を `features/dashboard/contracts` に変更
+- `App.tsx` の `getDashboardKpis()` 直接呼び出しを `dashboardGasRepository.getKpis()` に置換
+- `check-design-system.mjs` に dashboard 境界検査を追加
+
+### 期待する効果
+- `pages/dashboard/DashboardPage.tsx` から gas/client への依存を排除
+- `App.tsx` の gas/client 呼び出しを `dashboardGasRepository` 経由に統一
+
+### 検証結果
+- `tsc --noEmit` 通過
+- `npm run build:gas` 通過（design-system check 含む）
+- CI 通過（マージ後に確認）
+
+### 戻し方
+`git revert <このPRのSHA>`
