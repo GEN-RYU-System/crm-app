@@ -248,3 +248,33 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 
 ### 戻し方
 `git revert d6d9f58`
+
+---
+
+## 【9】オーダー顧客選択を Select → Combobox に変更（第3段階）— PR #332
+
+**ブランチ**: `release/order-customer-combobox`
+
+### 変更内容
+
+- **`frontend/src/pages/orders/OrderEditorPage.tsx`**
+  - import に `Combobox` を追加
+  - 顧客選択フィールドを `<Select>` から `<Combobox<{customerId, customerName}>>` に置換
+  - `handleCustomerChange` ロジックは変更なし（顧客ID変更→配送先・支払先リセット→aggregate取得）
+  - `customers` state は `readonly` 配列のため `[...customers]` スプレッドで Combobox に渡す
+
+### 変更理由
+
+- 見積もりエディタ（QuoteEditorPage）の Lead 選択と同じ UX パターンに統一
+- 顧客数増加時にドロップダウンでのスクロールが困難になることへの対応
+- Combobox ではインクリメンタル検索が可能（顧客名・ID部分一致）
+
+### 検証結果
+
+- `tsc --noEmit` 通過（エラーなし）
+- `npm run build:gas` 通過（typecheck + vite build + emit-gas-html + check:design-system）
+- CI 通過（マージ後に確認）
+
+### 戻し方
+
+`git revert 54fa471`
