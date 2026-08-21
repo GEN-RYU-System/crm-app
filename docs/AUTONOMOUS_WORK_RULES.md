@@ -68,6 +68,9 @@
 - 検証結果
 - revert用SHA
 
+**PR番号とSHAは実際の値を記載すること。`#NNN` や `<このPRのSHA>` などのプレースホルダのまま残さないこと。**  
+squash merge 後に `gh pr view <番号> --json mergedAt,mergeCommit` で SHA を取得してから記入する。
+
 ---
 
 ## 停止条件

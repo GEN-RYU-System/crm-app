@@ -133,7 +133,7 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 
 ---
 
-## 【5】LeadEditorPage を中間層方式へ移行 — PR #NNN
+## 【5】LeadEditorPage を中間層方式へ移行 — PR #316
 
 **実施日時**: 2026-08-21
 
@@ -155,14 +155,14 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 ### 検証結果
 - `tsc --noEmit` 通過
 - `npm run build:gas` 通過（design-system check 含む）
-- CI 通過（マージ後に確認）
+- CI 通過
 
 ### 戻し方
-`git revert <このPRのSHA>`
+`git revert 12a1a50`
 
 ---
 
-## 【6】DashboardPage を中間層方式へ移行 — PR #NNN
+## 【6】DashboardPage を中間層方式へ移行 — PR #318
 
 **実施日時**: 2026-08-21
 
@@ -185,7 +185,7 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 ### 検証結果
 - `tsc --noEmit` 通過
 - `npm run build:gas` 通過（design-system check 含む）
-- CI 通過（マージ後に確認）
+- CI 通過
 
 ### 戻し方
-`git revert <このPRのSHA>`
+`git revert 1ac81d1`
