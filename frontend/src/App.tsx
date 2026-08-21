@@ -221,7 +221,7 @@ function AppRouter() {
         </Route>
       ))}
     <Route path={NAVIGATION_BY_ID.inbox.hash} element={inboxRoute} />
-    <Route path="/sales-orders" element={salesOrdersRoute} />
+    <Route path={NAVIGATION_BY_ID.salesOrders.hash} element={salesOrdersRoute} />
     <Route path="/leads-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
     <Route path="/new-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
     <Route path="/route-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
