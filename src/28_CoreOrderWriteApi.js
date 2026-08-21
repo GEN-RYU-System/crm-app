@@ -10,9 +10,10 @@
  *   書き込み: deal_edit
  */
 
-/* global getCoreSchemaV1HeaderName, getCoreSchemaV1Value, withSheetWrite_,
+/* global getCoreSchemaV1HeaderName, getCoreSchemaV1Value, getCoreSchemaV1Sheet, withSheetWrite_,
    validateCoreSchemaV1TableForWrite, setEmailFromSession, checkPermission,
    validateQuoteLineInventory_, calculateOrderStatus, calculatePaymentStatus,
+   getCurrentExchangeRate,
    SpreadsheetApp, getSpreadsheet, LockService */
 
 /** オーダーID接頭辞: OD-00001 形式 */
@@ -31,6 +32,7 @@ var CORE_ORDER_WRITE_CACHE_TARGETS = [
 /**
  * オーダーを新規作成する（明細も同時登録）。
  * 金額はサーバーサイドで計算する（フロントの値を信用しない）。
+ * 為替レートは通貨マスタから取得する（フロントからの値は使わない）。
  *
  * @param {string} sessionId
  * @param {{
@@ -41,7 +43,6 @@ var CORE_ORDER_WRITE_CACHE_TARGETS = [
  *   paymentMethod: string,
  *   paymentDueAt: string,
  *   orderDate: string,
- *   exchangeRate?: string,
  *   shippingFee?: string,
  *   duty?: string,
  *   otherFee?: string,
@@ -83,8 +84,8 @@ function createCoreOrderForFrontend(sessionId, payload) {
   // 在庫バリデーション（condition / productId が指定された行のみ）
   validateQuoteLineInventory_(lines);
 
-  // 数値フィールドの正規化
-  var exchangeRate = coreOrderWriteNormalizeNumeric(payload.exchangeRate, 'exchangeRate') || 1;
+  // 為替レートは通貨マスタからサーバーサイドで取得する（フロントの値を使わない）
+  var exchangeRate = getCurrentExchangeRate(currency);
   var shippingFee = coreOrderWriteNormalizeNumeric(payload.shippingFee, 'shippingFee') || 0;
   var duty = coreOrderWriteNormalizeNumeric(payload.duty, 'duty') || 0;
   var otherFee = coreOrderWriteNormalizeNumeric(payload.otherFee, 'otherFee') || 0;
