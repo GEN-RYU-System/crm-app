@@ -35,17 +35,23 @@ export function useSyncPolling(refreshers: DomainRefreshers): void {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const poll = useCallback(async () => {
-    if (document.hidden) return;
+    if (document.hidden) {
+      console.debug('[SyncPolling] skipped (tab hidden)', new Date().toISOString());
+      return;
+    }
+    console.debug('[SyncPolling] poll fired', new Date().toISOString(), { intervalMs: intervalRef.current });
 
     try {
       const signals = await checkSyncSignals();
 
       const prev = prevSignalsRef.current;
+      console.debug('[SyncPolling] signals received', { prev, current: signals });
       if (prev !== null) {
         const domains = Object.keys(signals) as Array<keyof SyncSignals>;
         for (const domain of domains) {
           const changed = signals[domain] !== null && signals[domain] !== prev[domain];
           if (changed && refreshersRef.current[domain]) {
+            console.debug('[SyncPolling] refresh firing', { domain, prev: prev[domain], next: signals[domain] });
             void refreshersRef.current[domain]!();
           }
         }
@@ -59,6 +65,7 @@ export function useSyncPolling(refreshers: DomainRefreshers): void {
       } else {
         intervalRef.current = Math.min(intervalRef.current * 2, MAX_INTERVAL_MS);
       }
+      console.debug('[SyncPolling] error', { message: e.message, nextIntervalMs: intervalRef.current });
     }
   }, []);
 
