@@ -133,7 +133,7 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 
 ---
 
-## 【5】LeadEditorPage を中間層方式へ移行 — PR #NNN
+## 【5】LeadEditorPage を中間層方式へ移行 — PR #316
 
 **実施日時**: 2026-08-21
 
@@ -158,11 +158,11 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 - CI 通過（マージ後に確認）
 
 ### 戻し方
-`git revert <このPRのSHA>`
+`git revert 12a1a50`
 
 ---
 
-## 【6】DashboardPage を中間層方式へ移行 — PR #NNN
+## 【6】DashboardPage を中間層方式へ移行 — PR #318
 
 **実施日時**: 2026-08-21
 
@@ -188,4 +188,35 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 - CI 通過（マージ後に確認）
 
 ### 戻し方
-`git revert <このPRのSHA>`
+`git revert 1ac81d1`
+
+---
+
+## 【7】usePrefetch を CacheProvider 配下に移動し画面白紙を修正 — PR #320
+
+**マージ日時**: 2026-08-21T03:19:05Z
+
+### 変更前
+- `AppRouter` 本体（return 前）で `usePrefetch(permissions)` を呼んでいた
+- この時点では `LeadListCacheProvider` 等のコンテキストが未提供
+- 結果: `useLeadListCache()` が Provider 外から呼ばれ `"leads CacheProvider is required"` を throw
+- 症状: ブラウザで画面が真っ白
+
+### 変更内容
+- `frontend/src/App.tsx` に `AppShellWithPrefetch` コンポーネントを追加
+- `AppShellWithPrefetch` を全 CacheProvider の内側（JSX return 内）に配置
+- `AppRouter` 本体から `usePrefetch(permissions)` 呼び出しを削除
+- `docs/AUTONOMOUS_WORK_RULES.md` に「画面確認（必須）」セクションを追記
+
+### 期待する効果
+- 画面白紙の解消
+- build / CI が通っても画面が壊れる事例を記録し、Playwright 確認を必須化
+
+### 検証結果
+- `npm run build:gas` 通過（tsc + vite + check:design-system）
+- CI 通過（frontend-check / gas-global-namespace）
+- DEV 配布 success
+- `runCoreSchemaConformanceAudit`: 総不一致 0 → PASS
+
+### 戻し方
+`git revert f1e9a35`
