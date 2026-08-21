@@ -278,3 +278,135 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 ### 戻し方
 
 `git revert 54fa471`
+
+---
+
+## 【10】Combobox 候補リストをポータルで最前面に描画 — PR #336
+
+**マージ日時**: 2026-08-21（セッション内確認済）  
+**revert用SHA**: `f8e8228`
+
+### 変更前
+- `Combobox` の候補リストが `position: absolute` で `.line-item-editor__row { overflow: hidden }` にクリップされ、オーダー・見積もり画面で候補が表示されない不具合
+
+### 変更内容
+- `frontend/src/components/ui/Combobox/Combobox.tsx`
+  - `createPortal` で候補リストを `document.body` 直下にレンダリング
+  - `useLayoutEffect` で `getBoundingClientRect()` を使い `position: fixed` で座標を計算
+  - スペース不足時は上方向に開く（upward open）ロジックを追加
+  - `scroll` / `resize` イベントで座標を再計算
+
+### 検証結果
+- `npm run build:gas` 通過
+- CI 通過
+- Playwright で `parentTag: BODY`・`position: fixed`・`zIndex: 9999` を確認
+
+### 戻し方
+
+`git revert f8e8228`
+
+---
+
+## 【11】孤立した ProductCombobox / OrderProductCombobox を削除 — PR #339
+
+**マージ日時**: 2026-08-21  
+**revert用SHA**: `b6bc73e`
+
+### 変更前
+- `frontend/src/pages/quotes/ProductCombobox.tsx`（PR #331 共通化後に削除されず残存）
+- `frontend/src/pages/orders/OrderProductCombobox.tsx`（同上）
+- どこからも import されていないがビルド・CI はすべて通過していた
+
+### 変更内容
+- 上記2ファイルを削除
+
+### 検証結果
+- `npm run build:gas` 通過
+- CI 通過
+- `clasp run runCoreSchemaConformanceAudit` → 総不一致 0 → PASS
+
+### 戻し方
+
+`git revert b6bc73e`
+
+---
+
+## 【12】共通部品化手順・PR実機確認記録のルールを追記 — PR #340
+
+**マージ日時**: 2026-08-21T10:18:30Z  
+**revert用SHA**: `1ba9245`
+
+### 変更前
+- `docs/AUTONOMOUS_WORK_RULES.md` に共通部品変更時の手順・実機確認記録の要件が未定義
+
+### 変更内容
+- `docs/AUTONOMOUS_WORK_RULES.md` に以下2セクションを追加
+  1. 「PR本文への実機確認記録（必須）」: 確認画面/URL/操作/結果のテーブル形式
+  2. 「共通部品の作成・変更手順（必須）」: 対象画面列挙→全差し替え→旧部品削除→検証登録→実機確認の5ステップ
+
+### 検証結果
+- `npm run build:gas` 通過
+- CI 通過
+- `clasp run runCoreSchemaConformanceAudit` → 総不一致 0 → PASS
+- DEV SHA: `1ba9245` 一致
+
+### 戻し方
+
+`git revert 1ba9245`
+
+---
+
+## 【13】未使用ソースファイルの自動検出をcheck-design-systemに追加 — PR #341
+
+**マージ日時**: 2026-08-21T09:07:45Z  
+**revert用SHA**: `53191ba`
+
+### 変更前
+- `check-design-system.mjs` に未使用ファイル検出機能がなく、どこからも import されないファイルが残存しても検出できなかった
+
+### 変更内容
+- `frontend/scripts/check-design-system.mjs` に未使用ファイル検出ロジック追加
+  - `frontend/src` 配下の `.ts`/`.tsx` を走査しどこからも import されていないファイルを検出
+  - エントリポイント・`.d.ts` は除外
+- `frontend/scripts/check-design-system-config.json` を新規作成（除外エントリポイント管理）
+- `frontend/src/components/ui/LineItemEditor/index.ts`（未使用バレル）を削除
+
+### 検証結果
+- `npm run build:gas` 通過（新規 violation なし）
+- CI 通過
+- `clasp run runCoreSchemaConformanceAudit` → 総不一致 0 → PASS
+- DEV SHA: `53191ba` 一致
+
+### 戻し方
+
+`git revert 53191ba`
+
+---
+
+## 【14】共通部品の利用登録チェックをcheck-design-systemに追加 — PR #342
+
+**マージ日時**: 2026-08-21T10:25:21Z  
+**revert用SHA**: `cb7cd00`
+
+### 変更前
+- 共通部品を新規作成・変更しても「どのページが import しているか」を機械的に検証する手段がなかった
+- PR #331 で `LineItemEditor` を共通化した際、`OrderEditorPage` 側の差し替え漏れが build/CI で検出されなかった
+
+### 変更内容
+- `frontend/scripts/check-design-system-config.json` に `componentUsageCheck.rules` を追加
+  - `LineItemEditor`: `pages/quotes/` / `pages/orders/` で利用必須
+  - `Combobox`: `pages/quotes/` / `pages/orders/` で利用必須
+- `frontend/scripts/check-design-system.mjs` に利用登録チェック追加
+  - ページディレクトリ配下の全 `.ts`/`.tsx` を走査
+  - `components/ui` からの named import にコンポーネント名が含まれるか確認
+  - 含まれなければ violation としてエラー停止
+
+### 検証結果
+- `npm run build:gas` 通過（既存コードは全ルールを満たしているため新規 violation なし）
+- CI 通過
+- `clasp run runCoreSchemaConformanceAudit` → 総不一致 0 → PASS
+- DEV SHA: `cb7cd00` 一致
+
+### 戻し方
+
+`git revert cb7cd00`
