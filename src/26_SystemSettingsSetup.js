@@ -118,6 +118,12 @@ function seedSystemSettings() {
         value:       'true',
         valueType:   table.values.VALUE_TYPE.BOOLEAN,
         description: 'リマインダー通知の有効/無効フラグ'
+      },
+      {
+        key:         'オーダー支払期日日数',
+        value:       '2',
+        valueType:   table.values.VALUE_TYPE.NUMBER,
+        description: 'オーダーの支払期日（受注日からの日数）'
       }
     ];
 
