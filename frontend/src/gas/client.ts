@@ -1,6 +1,6 @@
 import { errorCopy, leadsCopy } from '../content/ja';
 import type { CustomerAggregateDto, CustomerAggregatesRecord, CustomerSummaryDto } from '../features/customers/contracts';
-import type { OrderCreatePayload, OrderCreateResult } from '../features/orders/contracts';
+import type { OrderCreatePayload, OrderCreateResult, OrderUpdatePayload, OrderUpdateResult } from '../features/orders/contracts';
 import type { StaffProfileDto, StaffSummaryDto } from '../features/staff/contracts';
 
 export type DashboardKpis = {
@@ -640,5 +640,22 @@ export function createCoreOrder(payload: OrderCreatePayload): Promise<OrderCreat
       })
       .withFailureHandler((error) => reject(toError(error)))
       .createCoreOrderForFrontend(getStoredSessionId(), payload as unknown);
+  });
+}
+
+export function updateCoreOrder(orderId: string, payload: OrderUpdatePayload): Promise<OrderUpdateResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        const v = value as { success?: boolean; orderId?: string };
+        if (!v || v.success !== true || typeof v.orderId !== 'string') {
+          reject(new Error(errorCopy.communication)); return;
+        }
+        resolve(v as OrderUpdateResult);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .updateCoreOrderForFrontend(getStoredSessionId(), orderId, payload as unknown);
   });
 }
