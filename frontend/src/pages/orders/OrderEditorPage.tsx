@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, Combobox, LineItemEditor, PageHeader, Select, Skeleton, StatusMessage, TextField } from '../../components/ui';
+import { Button, Card, Combobox, LineItemEditor, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField } from '../../components/ui';
 import { ordersCopy } from '../../content/ja/orders';
 import type { ShippingAddressDto, PaymentProfileDto, CustomerRepository } from '../../features/customers/contracts';
 import { useCustomerAggregateCache } from '../../features/customers/CustomerAggregateCacheContext';
@@ -250,6 +250,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
         duty: values.duty,
         otherFee: values.otherFee,
         discount: values.discount,
+        internalNote: values.internalNote,
         lines: values.lines.map((line) => ({
           productId: line.productId,
           productName: line.productName,
@@ -479,6 +480,19 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
                   {invoiceTotal != null ? invoiceTotal.toLocaleString() : '—'}
                 </span>
               </div>
+            </div>
+          </Card>
+
+          <Card>
+            <div className="order-editor-page__form">
+              <Textarea
+                label={ordersCopy.editor.internalNote}
+                helperText={ordersCopy.editor.internalNoteDescription}
+                value={values.internalNote}
+                onChange={(e) => updateValue('internalNote', e.target.value)}
+                rows={4}
+                fullWidth
+              />
             </div>
           </Card>
         </>
