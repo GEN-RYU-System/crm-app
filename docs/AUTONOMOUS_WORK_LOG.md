@@ -258,7 +258,61 @@ QuoteListPage は最初から絶対パスを使っており正常動作してい
 - `npm run build:gas` 通過（TypeScript + Vite build + check:design-system）
 - CI 通過: Frontend Check `success` (31s)、GAS Global Namespace Check `success`
 - Deploy to DEV 通過: `success` (56s)
+- SHA 照合: deployedSha = `b8c8dc1f...` = `origin/develop` HEAD ✓
+- conformance audit: 総不一致 0 → PASS
 
 ### 戻し方
 
 `git revert b8c8dc1f39219dd664443e9db5950e3aa24c9b8d` で列定義・ページ変更を元に戻せる
+
+---
+
+## 【10】オーダー受注日・支払期日をサーバー側で自動設定 — PR #377
+
+**マージ日時**: 2026-08-22T06:53:02Z
+**revert用SHA**: `56d9e125b877e35d536f66bb537ecfb02ac7162c`
+
+### 変更前
+
+- `OrderEditorPage.tsx` に受注日・支払期日の日付入力フィールドが存在していた
+- `createCoreOrderForFrontend` はフロントから `orderDate` / `paymentDueAt` / `paymentTerms` を受け取り、そのまま書き込んでいた
+
+### 変更内容
+
+**GAS サーバー側（`src/28_CoreOrderWriteApi.js`）**
+- `payload.orderDate` / `payload.paymentDueAt` の受け取りを廃止
+- `ORDER_DATE` ← `now`（今日の日付）を自動設定
+- `PAYMENT_DUE_AT` ← `now + N日`（システム設定「オーダー支払期日日数」の値、既定値 2）を自動計算
+- `PAYMENT_TERMS` ← `"N日後"` を自動生成（例: `"2日後"`）
+
+**GAS システム設定シード（`src/26_SystemSettingsSetup.js`）**
+- 種別: NUMBER / 設定キー: `オーダー支払期日日数` / 値: `2` をシード配列に追加
+- ※実行（`clasp run seedSystemSettings`）はユーザー指示を待つ
+
+**フロントエンド**
+- `OrderEditorValues` / `OrderCreatePayload` から `orderDate` / `paymentDueAt` フィールドを削除
+- `OrderEditorPage.tsx` の受注日・支払期日 TextField を削除
+- `content/ja/orders.ts` から未使用の `editor.paymentDueAt` / `editor.orderDate` コピー文字列を削除
+
+### 変更理由
+
+- 受注日はサーバー時刻が正確。フロント入力では時差・手入力ミスのリスクがある
+- 支払期日はビジネスルール（受注日 + N日）で一意に決まり、フロント入力は不要
+- 見積もり有効期限（`28_CoreQuoteApi.js`）と同じ自動設定パターンで統一
+
+### 根拠データ
+
+- 既存オーダー 172 件の支払サイト列: 全件「2日後」（`surveyOrderPaymentTerms` 実測）
+- → 既定値 2 日は実データと一致
+
+### 検証結果
+
+- `?preview` 確認: `/orders/new` で受注日・支払期日フィールドが消えていること、0 React エラー ✓
+- `npm run build:gas` 通過
+- CI 通過、DEV デプロイ完了
+- SHA 照合: deployedSha = `56d9e125...` = `origin/develop` HEAD ✓
+- conformance audit: 総不一致 0 → PASS
+
+### 戻し方
+
+`git revert 56d9e125` で GAS ロジック・フロント変更の両方を元に戻せる
