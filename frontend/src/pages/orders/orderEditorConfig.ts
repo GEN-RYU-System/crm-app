@@ -33,8 +33,6 @@ export type OrderEditorValues = {
   paymentDestinationId: string;
   currency: string;
   paymentMethod: string;
-  paymentDueAt: string;
-  orderDate: string;
   shippingFee: string;
   duty: string;
   otherFee: string;
@@ -61,8 +59,6 @@ export function emptyOrderEditorValues(): OrderEditorValues {
     paymentDestinationId: '',
     currency: 'USD',
     paymentMethod: 'WISE',
-    paymentDueAt: '',
-    orderDate: '',
     shippingFee: '',
     duty: '',
     otherFee: '',
