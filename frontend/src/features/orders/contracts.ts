@@ -21,6 +21,7 @@ export type OrderCreatePayload = {
   duty: string;
   otherFee: string;
   discount: string;
+  internalNote: string;
   lines: OrderLineInput[];
 };
 
