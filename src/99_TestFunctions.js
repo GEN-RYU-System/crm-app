@@ -1974,3 +1974,247 @@ function testSetGasGlobalState(val) {
 function testGetGasGlobalState() {
   return { value: _gasGlobalStateTest };
 }
+
+/**
+ * DEV 環境専用: 「支払い待ち」テストオーダー 1件 + 明細 1件 を投入する。
+ *
+ * 実行条件:
+ *   - ENVIRONMENT === 'development' であること
+ *   - ステータスが「支払い待ち」の行が既に0件であること（二重実行防止）
+ *
+ * 投入データ（オーダー管理 1行）:
+ *   - オーダーID: OD-XXXXX 形式（既存最大+1）
+ *   - 請求書番号: TEST-0001
+ *   - 請求書発行日: 実行日
+ *   - 支払期日: 実行日 +3日
+ *   - 支払確認日: 空
+ *   - 通貨: JPY
+ *   - 為替レート: 通貨マスタの JPY レート（取得失敗時は 1）
+ *   - ステータス: calculateOrderStatus() の戻り値
+ *   - 支払いステータス: calculatePaymentStatus() の戻り値
+ *   - 顧客ID / 配送先ID / 支払先ID / 源流リードID: 既存先頭行から取得
+ *   - 入金確認者ID: 空
+ *   - 入金確認元: 空
+ *   - 登録日 / 更新日: 実行日時
+ *
+ * 投入データ（オーダー明細 1行）:
+ *   - 明細ID: ODL-XXXXX 形式（既存最大+1）
+ *   - オーダーID: 上で採番した値
+ *   - 行番号: 1
+ *   - 商品名: テスト商品
+ *   - 数量: 1
+ *   - 単価: 10000
+ *   - 小計: 10000
+ *
+ * @returns {{ success: boolean, resultType: string, orderId?: string, orderLineId?: string }}
+ */
+function createDevTestUnpaidOrder() {
+  // ── 環境ガード ────────────────────────────────────────────────────────────
+  if (getEnvironment() !== 'development') {
+    throw new Error('createDevTestUnpaidOrder is available only in development');
+  }
+
+  // ── LockService ──────────────────────────────────────────────────────────
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+
+  try {
+    var ss = getSpreadsheet();
+
+    // ── 二重実行防止ガード ──────────────────────────────────────────────────
+    var awaitingPaymentValue = getCoreSchemaV1Value('ORDERS', 'STATUS', 'AWAITING_PAYMENT');
+    var ordersSheet = getCoreSchemaV1Sheet(ss, 'ORDERS');
+    var ordersLastRow = ordersSheet.getLastRow();
+    var existingAwaitingCount = 0;
+    if (ordersLastRow >= 2) {
+      var statusHeaderName = getCoreSchemaV1HeaderName('ORDERS', 'STATUS');
+      var ordersHeaders = ordersSheet.getRange(1, 1, 1, ordersSheet.getLastColumn()).getDisplayValues()[0];
+      var statusColIdx = ordersHeaders.indexOf(statusHeaderName);
+      if (statusColIdx !== -1) {
+        var statusValues = ordersSheet.getRange(2, statusColIdx + 1, ordersLastRow - 1, 1).getDisplayValues();
+        statusValues.forEach(function(row) {
+          if (row[0] === awaitingPaymentValue) existingAwaitingCount++;
+        });
+      }
+    }
+    if (existingAwaitingCount > 0) {
+      return {
+        success: false,
+        resultType: 'ABORT_DUPLICATE_AWAITING_PAYMENT',
+        existingAwaitingPaymentCount: existingAwaitingCount
+      };
+    }
+
+    // ── 既存先頭行から参照IDを取得 ──────────────────────────────────────────
+    var customerIdHeaderName         = getCoreSchemaV1HeaderName('ORDERS', 'CUSTOMER_ID');
+    var shippingDestIdHeaderName     = getCoreSchemaV1HeaderName('ORDERS', 'SHIPPING_DESTINATION_ID');
+    var paymentDestIdHeaderName      = getCoreSchemaV1HeaderName('ORDERS', 'PAYMENT_DESTINATION_ID');
+    var sourceLeadIdHeaderName       = getCoreSchemaV1HeaderName('ORDERS', 'SOURCE_LEAD_ID');
+
+    var ordersAllHeaders = ordersSheet.getLastColumn() > 0
+      ? ordersSheet.getRange(1, 1, 1, ordersSheet.getLastColumn()).getDisplayValues()[0]
+      : [];
+
+    function getIdxByHeaderName(headers, name) {
+      var idx = headers.indexOf(name);
+      if (idx === -1) throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING: ' + name);
+      return idx;
+    }
+
+    var custIdx     = getIdxByHeaderName(ordersAllHeaders, customerIdHeaderName);
+    var shipIdx     = getIdxByHeaderName(ordersAllHeaders, shippingDestIdHeaderName);
+    var payDestIdx  = getIdxByHeaderName(ordersAllHeaders, paymentDestIdHeaderName);
+    var leadIdx     = getIdxByHeaderName(ordersAllHeaders, sourceLeadIdHeaderName);
+
+    var customerId          = '';
+    var shippingDestId      = '';
+    var paymentDestId       = '';
+    var sourceLeadId        = '';
+
+    if (ordersLastRow >= 2) {
+      var firstDataRow = ordersSheet.getRange(2, 1, 1, ordersSheet.getLastColumn()).getValues()[0];
+      customerId     = String(firstDataRow[custIdx]    || '').trim();
+      shippingDestId = String(firstDataRow[shipIdx]    || '').trim();
+      paymentDestId  = String(firstDataRow[payDestIdx] || '').trim();
+      sourceLeadId   = String(firstDataRow[leadIdx]    || '').trim();
+    }
+
+    // ── オーダーID 採番（Core Schema V1 ベース）──────────────────────────────
+    var orderMaxNum = 0;
+    if (ordersLastRow >= 2) {
+      var orderIdHeaderName = getCoreSchemaV1HeaderName('ORDERS', 'ORDER_ID');
+      var orderIdColIdx = ordersAllHeaders.indexOf(orderIdHeaderName);
+      if (orderIdColIdx !== -1) {
+        var orderIdValues = ordersSheet.getRange(2, orderIdColIdx + 1, ordersLastRow - 1, 1).getValues();
+        orderIdValues.forEach(function(row) {
+          var m = String(row[0] || '').trim().match(/^OD-(\d+)$/);
+          if (m) {
+            var n = parseInt(m[1], 10);
+            if (n > orderMaxNum) orderMaxNum = n;
+          }
+        });
+      }
+    }
+    var orderId = 'OD-' + ('00000' + (orderMaxNum + 1)).slice(-5);
+
+    // ── 為替レート取得 ──────────────────────────────────────────────────────
+    var exchangeRate = 1;
+    try {
+      exchangeRate = getCurrentExchangeRate('JPY');
+    } catch (e) {
+      // JPY がマスタにない場合は 1 を使用
+    }
+
+    // ── 日付 ─────────────────────────────────────────────────────────────────
+    var now = new Date();
+    var paymentDueAt = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3);
+
+    // ── ステータス算出 ────────────────────────────────────────────────────────
+    var orderStatus = calculateOrderStatus(
+      {
+        cancellationReason: '',
+        status:             '',
+        paymentConfirmedAt: '',
+        invoiceNumber:      'TEST-0001'
+      },
+      [],
+      []
+    );
+
+    var paymentStatus = calculatePaymentStatus({
+      cancellationReason: '',
+      paymentConfirmedAt: '',
+      paymentDueAt:       paymentDueAt
+    });
+
+    // ── オーダー管理 書き込み ─────────────────────────────────────────────────
+    var ordersWriteTarget = validateCoreSchemaV1TableForWrite(ss, 'ORDERS');
+    var ordersHeaderIndexes = ordersWriteTarget.headerIndexes; // { '物理列名': 1-indexed列番号 }
+
+    function col(headerKey) {
+      var name = getCoreSchemaV1HeaderName('ORDERS', headerKey);
+      var idx  = ordersHeaderIndexes[name];
+      if (!idx) throw new Error('ORDERS header index not found: ' + headerKey);
+      return idx;
+    }
+
+    var ordersColCount = ordersSheet.getLastColumn();
+    var newOrderRow = new Array(ordersColCount);
+    for (var i = 0; i < newOrderRow.length; i++) { newOrderRow[i] = ''; }
+
+    newOrderRow[col('ORDER_ID')              - 1] = orderId;
+    newOrderRow[col('INVOICE_NUMBER')        - 1] = 'TEST-0001';
+    newOrderRow[col('CUSTOMER_ID')           - 1] = customerId;
+    newOrderRow[col('SHIPPING_DESTINATION_ID') - 1] = shippingDestId;
+    newOrderRow[col('PAYMENT_DESTINATION_ID') - 1] = paymentDestId;
+    newOrderRow[col('SOURCE_LEAD_ID')        - 1] = sourceLeadId;
+    newOrderRow[col('STATUS')                - 1] = orderStatus;
+    newOrderRow[col('CURRENCY')              - 1] = 'JPY';
+    newOrderRow[col('EXCHANGE_RATE')         - 1] = exchangeRate;
+    newOrderRow[col('INVOICE_ISSUED_AT')     - 1] = now;
+    newOrderRow[col('PAYMENT_DUE_AT')        - 1] = paymentDueAt;
+    newOrderRow[col('PAYMENT_CONFIRMED_AT')  - 1] = '';
+    newOrderRow[col('PAYMENT_CONFIRMATION_SOURCE') - 1] = '';
+    newOrderRow[col('PAYMENT_CONFIRMED_BY_ID') - 1] = '';
+    newOrderRow[col('PAYMENT_STATUS')        - 1] = paymentStatus;
+    newOrderRow[col('REGISTERED_AT')         - 1] = now;
+    newOrderRow[col('UPDATED_AT')            - 1] = now;
+
+    ordersSheet.appendRow(newOrderRow);
+
+    // ── オーダー明細 書き込み ──────────────────────────────────────────────────
+    var linesWriteTarget = validateCoreSchemaV1TableForWrite(ss, 'ORDER_LINES');
+    var linesSheet = linesWriteTarget.sheet;
+    var linesHeaderIndexes = linesWriteTarget.headerIndexes;
+
+    // 明細ID 採番
+    var linesLastRow = linesSheet.getLastRow();
+    var lineMaxNum = 0;
+    if (linesLastRow >= 2) {
+      var lineIdHeaderName = getCoreSchemaV1HeaderName('ORDER_LINES', 'ORDER_LINE_ID');
+      var linesAllHeaders = linesSheet.getRange(1, 1, 1, linesSheet.getLastColumn()).getDisplayValues()[0];
+      var lineIdColIdx = linesAllHeaders.indexOf(lineIdHeaderName);
+      if (lineIdColIdx !== -1) {
+        var lineIdValues = linesSheet.getRange(2, lineIdColIdx + 1, linesLastRow - 1, 1).getValues();
+        lineIdValues.forEach(function(row) {
+          var m = String(row[0] || '').trim().match(/^ODL-(\d+)$/);
+          if (m) {
+            var n = parseInt(m[1], 10);
+            if (n > lineMaxNum) lineMaxNum = n;
+          }
+        });
+      }
+    }
+    var orderLineId = 'ODL-' + ('00000' + (lineMaxNum + 1)).slice(-5);
+
+    function lineCol(headerKey) {
+      var name = getCoreSchemaV1HeaderName('ORDER_LINES', headerKey);
+      var idx  = linesHeaderIndexes[name];
+      if (!idx) throw new Error('ORDER_LINES header index not found: ' + headerKey);
+      return idx;
+    }
+
+    var linesColCount = linesSheet.getLastColumn();
+    var newLineRow = new Array(linesColCount);
+    for (var j = 0; j < newLineRow.length; j++) { newLineRow[j] = ''; }
+
+    newLineRow[lineCol('ORDER_LINE_ID')  - 1] = orderLineId;
+    newLineRow[lineCol('ORDER_ID')       - 1] = orderId;
+    newLineRow[lineCol('LINE_NUMBER')    - 1] = 1;
+    newLineRow[lineCol('PRODUCT_NAME')   - 1] = 'テスト商品';
+    newLineRow[lineCol('QUANTITY')       - 1] = 1;
+    newLineRow[lineCol('UNIT_PRICE')     - 1] = 10000;
+    newLineRow[lineCol('SUBTOTAL')       - 1] = 10000;
+
+    linesSheet.appendRow(newLineRow);
+
+    return {
+      success:     true,
+      resultType:  'DEV_TEST_UNPAID_ORDER_CREATED',
+      orderId:     orderId,
+      orderLineId: orderLineId
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
