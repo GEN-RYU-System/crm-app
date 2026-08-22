@@ -2,11 +2,13 @@ import { NAVIGATION_BY_ID } from '../../app/navigation';
 
 export const ORDER_ROUTE_SEGMENTS = {
   create: 'new',
+  edit: ':orderId',
 } as const;
 
 export const ORDER_EDITOR_PATHS = {
   list: NAVIGATION_BY_ID.orders.hash,
   create: `${NAVIGATION_BY_ID.orders.hash}/new`,
+  edit: (orderId: string) => `${NAVIGATION_BY_ID.orders.hash}/${orderId}`,
 } as const;
 
 export const PAYMENT_METHODS = ['WISE', 'PAYPAL'] as const;
@@ -39,6 +41,16 @@ export type OrderEditorValues = {
   discount: string;
   internalNote: string;
   lines: OrderLineEditorValues[];
+  // Always-editable fields
+  paymentConfirmedAt: string;
+  shippedAt: string;
+  trackingNumber: string;
+  shippingMethod: string;
+  note: string;
+  shippingNote: string;
+  transactionNote: string;
+  cancellationReason: string;
+  cancellationNote: string;
 };
 
 export function emptyOrderLine(): OrderLineEditorValues {
@@ -66,6 +78,15 @@ export function emptyOrderEditorValues(): OrderEditorValues {
     discount: '',
     internalNote: '',
     lines: [emptyOrderLine()],
+    paymentConfirmedAt: '',
+    shippedAt: '',
+    trackingNumber: '',
+    shippingMethod: '',
+    note: '',
+    shippingNote: '',
+    transactionNote: '',
+    cancellationReason: '',
+    cancellationNote: '',
   };
 }
 

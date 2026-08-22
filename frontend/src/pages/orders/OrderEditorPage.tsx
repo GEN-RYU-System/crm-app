@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, Combobox, LineItemEditor, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField } from '../../components/ui';
 import { ordersCopy } from '../../content/ja/orders';
 import type { ShippingAddressDto, PaymentProfileDto, CustomerRepository } from '../../features/customers/contracts';
 import { useCustomerAggregateCache } from '../../features/customers/CustomerAggregateCacheContext';
-import type { InventoryProductOption, OrderCreatePayload, OrderRepository } from '../../features/orders/contracts';
+import type { InventoryProductOption, OrderCreatePayload, OrderRepository, OrderUpdatePayload } from '../../features/orders/contracts';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
 import {
   calcInvoiceTotal,
@@ -15,10 +15,11 @@ import {
   toHalfwidthDigits,
   type OrderEditorValues,
 } from './orderEditorConfig';
+import { useOrderListCache } from './OrderListCacheContext';
 import './OrderEditorPage.css';
 
 type Props = {
-  mode: 'create';
+  mode: 'create' | 'edit';
   repository: OrderRepository;
   customerRepository: CustomerRepository;
 };
@@ -27,12 +28,14 @@ type MasterState = 'loading' | 'ready' | 'error';
 
 export function OrderEditorPage({ mode, repository, customerRepository }: Props) {
   const navigate = useNavigate();
+  const { orderId } = useParams<{ orderId: string }>();
 
   const [values, setValues] = useState<OrderEditorValues>(emptyOrderEditorValues());
   const [masterState, setMasterState] = useState<MasterState>('loading');
   const [masterError, setMasterError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [isAmountLocked, setIsAmountLocked] = useState(false);
 
   const [customers, setCustomers] = useState<readonly { customerId: string; customerName: string }[]>([]);
   const [customerAggregate, setCustomerAggregate] = useState<{
@@ -43,12 +46,14 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
   const [currencies, setCurrencies] = useState<string[]>(['USD', 'JPY', 'EUR', 'GBP']);
   const [pendingCustomerId, setPendingCustomerId] = useState<string | null>(null);
 
-  // Derive conditions from the prefetched inventory cache (no GAS call needed).
   const conditionsMap = useInventoryConditionsMap();
 
   const { state: aggregateCache } = useCustomerAggregateCache();
   const customerRepositoryRef = useRef(customerRepository);
   customerRepositoryRef.current = customerRepository;
+
+  // In edit mode: get existing data from OrderListCacheContext
+  const { items: orderItems } = useOrderListCache();
 
   useEffect(() => {
     setMasterState('loading');
@@ -69,6 +74,17 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
         setMasterState('error');
       });
   }, [repository, customerRepository]);
+
+  // In edit mode: set initial values once order list is loaded
+  useEffect(() => {
+    if (mode !== 'edit' || !orderId || !orderItems) return;
+    const record = orderItems.find((r) => r.orderId === orderId);
+    if (!record) return;
+    // Lock amount fields if invoice has been issued
+    setIsAmountLocked(!!record.invoiceIssuedAt);
+    // OrderRecord from the list does not include customerId; read-only fields are not shown in edit form
+    setValues((prev) => ({ ...prev }));
+  }, [mode, orderId, orderItems]);
 
   const applyAggregate = useCallback((
     customerId: string,
@@ -94,7 +110,6 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
       if (cached) applyAggregate(pendingCustomerId, cached.shippingAddresses, cached.paymentProfiles);
       setPendingCustomerId(null);
     } else if (aggregateCache.status === 'error') {
-      // Cache failed: fall back to individual GAS call.
       const id = pendingCustomerId;
       setPendingCustomerId(null);
       void customerRepositoryRef.current.getCustomer(id).then((agg) => {
@@ -124,12 +139,10 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
     }
 
     if (aggregateCache.status === 'loading') {
-      // Cache still loading: useEffect will resolve once it becomes ready.
       setPendingCustomerId(customerId);
       return;
     }
 
-    // Cache idle or errored: use individual GAS call as fallback.
     void customerRepository.getCustomer(customerId).then((agg) => {
       if (!agg) return;
       applyAggregate(customerId, agg.shippingAddresses, agg.paymentProfiles);
@@ -157,7 +170,6 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
           : line
       ),
     }));
-    // conditionsMap is derived synchronously from the prefetched cache — no GAS call needed.
   };
 
   const handleConditionSelect = (index: number, condition: string) => {
@@ -203,7 +215,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
   const removeLine = (index: number) =>
     setValues((prev) => ({ ...prev, lines: prev.lines.filter((_, i) => i !== index) }));
 
-  const validate = (): boolean => {
+  const validateCreate = (): boolean => {
     if (!values.customerId.trim()) {
       setSaveError(ordersCopy.editor.validation.customerRequired);
       return false;
@@ -237,37 +249,81 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
 
   const handleSave = async () => {
     setSaveError('');
-    if (!validate()) return;
-    setSaving(true);
-    try {
-      const payload: OrderCreatePayload = {
-        customerId: values.customerId,
-        shippingDestinationId: values.shippingDestinationId,
-        paymentDestinationId: values.paymentDestinationId,
-        currency: values.currency,
-        paymentMethod: values.paymentMethod,
-        shippingFee: values.shippingFee,
-        duty: values.duty,
-        otherFee: values.otherFee,
-        discount: values.discount,
-        internalNote: values.internalNote,
-        lines: values.lines.map((line) => ({
-          productId: line.productId,
-          productName: line.productName,
-          category: line.category,
-          status: line.condition,
-          quantity: toHalfwidthDigits(line.quantity),
-          unitPrice: toHalfwidthDigits(line.unitPrice),
-        })),
-      };
-      await repository.createOrder(payload);
-      navigate(ORDER_EDITOR_PATHS.list);
-    } catch (cause) {
-      setSaveError(
-        (cause instanceof Error ? cause.message : '') || ordersCopy.editor.saveErrorFallback
-      );
-    } finally {
-      setSaving(false);
+
+    if (mode === 'create') {
+      if (!validateCreate()) return;
+      setSaving(true);
+      try {
+        const payload: OrderCreatePayload = {
+          customerId: values.customerId,
+          shippingDestinationId: values.shippingDestinationId,
+          paymentDestinationId: values.paymentDestinationId,
+          currency: values.currency,
+          paymentMethod: values.paymentMethod,
+          shippingFee: values.shippingFee,
+          duty: values.duty,
+          otherFee: values.otherFee,
+          discount: values.discount,
+          internalNote: values.internalNote,
+          lines: values.lines.map((line) => ({
+            productId: line.productId,
+            productName: line.productName,
+            category: line.category,
+            status: line.condition,
+            quantity: toHalfwidthDigits(line.quantity),
+            unitPrice: toHalfwidthDigits(line.unitPrice),
+          })),
+        };
+        await repository.createOrder(payload);
+        navigate(ORDER_EDITOR_PATHS.list);
+      } catch (cause) {
+        setSaveError(
+          (cause instanceof Error ? cause.message : '') || ordersCopy.editor.saveErrorFallback
+        );
+      } finally {
+        setSaving(false);
+      }
+    } else {
+      // edit mode
+      if (!orderId) return;
+      setSaving(true);
+      try {
+        const payload: OrderUpdatePayload = {
+          paymentConfirmedAt: values.paymentConfirmedAt,
+          shippedAt: values.shippedAt,
+          trackingNumber: values.trackingNumber,
+          shippingMethod: values.shippingMethod,
+          note: values.note,
+          shippingNote: values.shippingNote,
+          transactionNote: values.transactionNote,
+          internalNote: values.internalNote,
+          cancellationReason: values.cancellationReason,
+          cancellationNote: values.cancellationNote,
+        };
+        // Include amount fields only before invoice is issued
+        if (!isAmountLocked) {
+          payload.shippingFee = values.shippingFee;
+          payload.duty = values.duty;
+          payload.otherFee = values.otherFee;
+          payload.discount = values.discount;
+          payload.lines = values.lines.map((line) => ({
+            productId: line.productId,
+            productName: line.productName,
+            category: line.category,
+            status: line.condition,
+            quantity: toHalfwidthDigits(line.quantity),
+            unitPrice: toHalfwidthDigits(line.unitPrice),
+          }));
+        }
+        await repository.updateOrder(orderId, payload);
+        navigate(ORDER_EDITOR_PATHS.list);
+      } catch (cause) {
+        setSaveError(
+          (cause instanceof Error ? cause.message : '') || ordersCopy.editor.saveErrorFallback
+        );
+      } finally {
+        setSaving(false);
+      }
     }
   };
 
@@ -309,6 +365,12 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
 
   const isLoading = masterState === 'loading';
 
+  const isEditMode = mode === 'edit';
+  const pageTitle = isEditMode ? ordersCopy.editor.editTitle : ordersCopy.editor.createTitle;
+  const pageSubtitle = isEditMode ? ordersCopy.editor.editSubtitle : ordersCopy.editor.createSubtitle;
+  const saveLabel = isEditMode ? ordersCopy.editor.updateOrder : ordersCopy.editor.saveOrder;
+  const savingLabel = isEditMode ? ordersCopy.editor.updating : ordersCopy.editor.saving;
+
   const lineItemLabels = {
     product: ordersCopy.editor.lineProduct,
     productPlaceholder: ordersCopy.editor.lineProductPlaceholder,
@@ -327,15 +389,15 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
     <>
       <PageHeader
         eyebrow={ordersCopy.eyebrow}
-        title={ordersCopy.editor.createTitle}
-        subtitle={ordersCopy.editor.createSubtitle}
+        title={pageTitle}
+        subtitle={pageSubtitle}
         action={
           <div className="order-editor-page__actions">
             <Button variant="outline" onClick={() => navigate(ORDER_EDITOR_PATHS.list)} disabled={saving}>
               {ordersCopy.editor.backToList}
             </Button>
-            <Button onClick={() => void handleSave()} loading={saving} loadingText={ordersCopy.editor.saving} disabled={saving}>
-              {ordersCopy.editor.saveOrder}
+            <Button onClick={() => void handleSave()} loading={saving} loadingText={savingLabel} disabled={saving}>
+              {saveLabel}
             </Button>
           </div>
         }
@@ -343,7 +405,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
 
       {saveError && (
         <StatusMessage variant="error">
-          {ordersCopy.editor.saveErrorPrefix} {saveError}
+          {isEditMode ? ordersCopy.editor.updateErrorPrefix : ordersCopy.editor.saveErrorPrefix} {saveError}
         </StatusMessage>
       )}
 
@@ -353,144 +415,226 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
         </Card>
       ) : (
         <>
-          <Card>
-            <div className="order-editor-page__form">
-              <Combobox
-                items={[...customers]}
-                getKey={(c) => c.customerId}
-                getLabel={(c) => c.customerName}
-                onSelect={(customer) => handleCustomerChange(customer?.customerId ?? '')}
-                value={values.customerId}
-                label={ordersCopy.editor.selectCustomer}
-                placeholder={ordersCopy.editor.customerPlaceholder}
-                noResultsText={ordersCopy.editor.customerNoResults}
-                width="md"
-                required
-              />
+          {!isEditMode && (
+            <Card>
+              <div className="order-editor-page__form">
+                <Combobox
+                  items={[...customers]}
+                  getKey={(c) => c.customerId}
+                  getLabel={(c) => c.customerName}
+                  onSelect={(customer) => handleCustomerChange(customer?.customerId ?? '')}
+                  value={values.customerId}
+                  label={ordersCopy.editor.selectCustomer}
+                  placeholder={ordersCopy.editor.customerPlaceholder}
+                  noResultsText={ordersCopy.editor.customerNoResults}
+                  width="md"
+                  required
+                />
 
-              {values.customerId && (
-                pendingCustomerId ? (
-                  <Skeleton variant="list" rows={2} label={ordersCopy.loading} />
-                ) : (
-                  <>
-                  <Select
-                    label={ordersCopy.editor.shippingDestination}
-                    options={[
-                      { value: '', label: ordersCopy.editor.shippingDestinationPlaceholder },
-                      ...shippingOptions,
-                    ]}
-                    value={values.shippingDestinationId}
-                    onChange={(e) => updateValue('shippingDestinationId', e.target.value)}
-                    width="md"
-                    required
-                  />
+                {values.customerId && (
+                  pendingCustomerId ? (
+                    <Skeleton variant="list" rows={2} label={ordersCopy.loading} />
+                  ) : (
+                    <>
+                    <Select
+                      label={ordersCopy.editor.shippingDestination}
+                      options={[
+                        { value: '', label: ordersCopy.editor.shippingDestinationPlaceholder },
+                        ...shippingOptions,
+                      ]}
+                      value={values.shippingDestinationId}
+                      onChange={(e) => updateValue('shippingDestinationId', e.target.value)}
+                      width="md"
+                      required
+                    />
 
-                  <Select
-                    label={ordersCopy.editor.paymentDestination}
-                    options={[
-                      { value: '', label: ordersCopy.editor.paymentDestinationPlaceholder },
-                      ...paymentOptions,
-                    ]}
-                    value={values.paymentDestinationId}
-                    onChange={(e) => updateValue('paymentDestinationId', e.target.value)}
-                    width="md"
-                    required
-                  />
-                  </>
-                )
-              )}
+                    <Select
+                      label={ordersCopy.editor.paymentDestination}
+                      options={[
+                        { value: '', label: ordersCopy.editor.paymentDestinationPlaceholder },
+                        ...paymentOptions,
+                      ]}
+                      value={values.paymentDestinationId}
+                      onChange={(e) => updateValue('paymentDestinationId', e.target.value)}
+                      width="md"
+                      required
+                    />
+                    </>
+                  )
+                )}
 
-              <Select
-                label={ordersCopy.editor.currency}
-                options={currencyOptions}
-                value={values.currency}
-                onChange={(e) => updateValue('currency', e.target.value)}
-                width="sm"
-              />
+                <Select
+                  label={ordersCopy.editor.currency}
+                  options={currencyOptions}
+                  value={values.currency}
+                  onChange={(e) => updateValue('currency', e.target.value)}
+                  width="sm"
+                />
 
-              <Select
-                label={ordersCopy.editor.paymentMethod}
-                options={paymentMethodOptions}
-                value={values.paymentMethod}
-                onChange={(e) => updateValue('paymentMethod', e.target.value)}
-                width="sm"
-              />
-
-            </div>
-          </Card>
-
-          <Card>
-            <div className="order-editor-page__lines-header">
-              <h2 className="order-editor-page__section-title">{ordersCopy.editor.lines}</h2>
-              <Button variant="outline" size="sm" onClick={addLine}>
-                {ordersCopy.editor.addLine}
-              </Button>
-            </div>
-
-            <LineItemEditor
-              products={inventoryProducts}
-              lines={values.lines}
-              conditionsMap={conditionsMap}
-              onProductSelect={handleProductSelect}
-              onConditionSelect={handleConditionSelect}
-              onQuantityChange={handleQuantityChange}
-              onUnitPriceChange={handleUnitPriceChange}
-              onRemove={removeLine}
-              labels={lineItemLabels}
-            />
-          </Card>
-
-          <Card>
-            <div className="order-editor-page__form">
-              <TextField
-                label={ordersCopy.editor.shippingFee}
-                value={values.shippingFee}
-                onChange={(e) => updateValue('shippingFee', e.target.value)}
-                width="sm"
-                placeholder="0"
-              />
-
-              <TextField
-                label={ordersCopy.editor.duty}
-                value={values.duty}
-                onChange={(e) => updateValue('duty', e.target.value)}
-                width="sm"
-                placeholder="0"
-              />
-
-              <TextField
-                label={ordersCopy.editor.otherFee}
-                value={values.otherFee}
-                onChange={(e) => updateValue('otherFee', e.target.value)}
-                width="sm"
-                placeholder="0"
-              />
-
-              <TextField
-                label={ordersCopy.editor.discount}
-                value={values.discount}
-                onChange={(e) => updateValue('discount', e.target.value)}
-                width="sm"
-                placeholder="0"
-              />
-
-              <div className="order-editor-page__invoice-total">
-                <span className="order-editor-page__invoice-total-label">{ordersCopy.editor.invoiceTotal}</span>
-                <span className="order-editor-page__invoice-total-value">
-                  {invoiceTotal != null ? invoiceTotal.toLocaleString() : '—'}
-                </span>
+                <Select
+                  label={ordersCopy.editor.paymentMethod}
+                  options={paymentMethodOptions}
+                  value={values.paymentMethod}
+                  onChange={(e) => updateValue('paymentMethod', e.target.value)}
+                  width="sm"
+                />
               </div>
-            </div>
-          </Card>
+            </Card>
+          )}
 
+          {/* Amount fields: editable only before invoice is issued */}
+          {isAmountLocked && (
+            <StatusMessage variant="empty">
+              {ordersCopy.editor.amountLocked} — {ordersCopy.editor.amountLockedDescription}
+            </StatusMessage>
+          )}
+
+          {!isAmountLocked && (
+            <>
+              <Card>
+                <div className="order-editor-page__lines-header">
+                  <h2 className="order-editor-page__section-title">{ordersCopy.editor.lines}</h2>
+                  <Button variant="outline" size="sm" onClick={addLine}>
+                    {ordersCopy.editor.addLine}
+                  </Button>
+                </div>
+
+                <LineItemEditor
+                  products={inventoryProducts}
+                  lines={values.lines}
+                  conditionsMap={conditionsMap}
+                  onProductSelect={handleProductSelect}
+                  onConditionSelect={handleConditionSelect}
+                  onQuantityChange={handleQuantityChange}
+                  onUnitPriceChange={handleUnitPriceChange}
+                  onRemove={removeLine}
+                  labels={lineItemLabels}
+                />
+              </Card>
+
+              <Card>
+                <div className="order-editor-page__form">
+                  <TextField
+                    label={ordersCopy.editor.shippingFee}
+                    value={values.shippingFee}
+                    onChange={(e) => updateValue('shippingFee', e.target.value)}
+                    width="sm"
+                    placeholder="0"
+                  />
+
+                  <TextField
+                    label={ordersCopy.editor.duty}
+                    value={values.duty}
+                    onChange={(e) => updateValue('duty', e.target.value)}
+                    width="sm"
+                    placeholder="0"
+                  />
+
+                  <TextField
+                    label={ordersCopy.editor.otherFee}
+                    value={values.otherFee}
+                    onChange={(e) => updateValue('otherFee', e.target.value)}
+                    width="sm"
+                    placeholder="0"
+                  />
+
+                  <TextField
+                    label={ordersCopy.editor.discount}
+                    value={values.discount}
+                    onChange={(e) => updateValue('discount', e.target.value)}
+                    width="sm"
+                    placeholder="0"
+                  />
+
+                  <div className="order-editor-page__invoice-total">
+                    <span className="order-editor-page__invoice-total-label">{ordersCopy.editor.invoiceTotal}</span>
+                    <span className="order-editor-page__invoice-total-value">
+                      {invoiceTotal != null ? invoiceTotal.toLocaleString() : '—'}
+                    </span>
+                  </div>
+                </div>
+              </Card>
+            </>
+          )}
+
+          {/* Always-editable fields */}
           <Card>
             <div className="order-editor-page__form">
+              <TextField
+                label={ordersCopy.editor.paymentConfirmedAt}
+                value={values.paymentConfirmedAt}
+                onChange={(e) => updateValue('paymentConfirmedAt', e.target.value)}
+                width="sm"
+                placeholder="YYYY-MM-DD"
+              />
+
+              <TextField
+                label={ordersCopy.editor.shippedAt}
+                value={values.shippedAt}
+                onChange={(e) => updateValue('shippedAt', e.target.value)}
+                width="sm"
+                placeholder="YYYY-MM-DD"
+              />
+
+              <TextField
+                label={ordersCopy.editor.trackingNumber}
+                value={values.trackingNumber}
+                onChange={(e) => updateValue('trackingNumber', e.target.value)}
+                width="md"
+              />
+
+              <TextField
+                label={ordersCopy.editor.shippingMethod}
+                value={values.shippingMethod}
+                onChange={(e) => updateValue('shippingMethod', e.target.value)}
+                width="md"
+              />
+
+              <Textarea
+                label={ordersCopy.editor.note}
+                value={values.note}
+                onChange={(e) => updateValue('note', e.target.value)}
+                rows={3}
+                fullWidth
+              />
+
+              <Textarea
+                label={ordersCopy.editor.shippingNote}
+                value={values.shippingNote}
+                onChange={(e) => updateValue('shippingNote', e.target.value)}
+                rows={3}
+                fullWidth
+              />
+
+              <Textarea
+                label={ordersCopy.editor.transactionNote}
+                value={values.transactionNote}
+                onChange={(e) => updateValue('transactionNote', e.target.value)}
+                rows={3}
+                fullWidth
+              />
+
               <Textarea
                 label={ordersCopy.editor.internalNote}
                 helperText={ordersCopy.editor.internalNoteDescription}
                 value={values.internalNote}
                 onChange={(e) => updateValue('internalNote', e.target.value)}
                 rows={4}
+                fullWidth
+              />
+
+              <TextField
+                label={ordersCopy.editor.cancellationReason}
+                value={values.cancellationReason}
+                onChange={(e) => updateValue('cancellationReason', e.target.value)}
+                width="md"
+              />
+
+              <Textarea
+                label={ordersCopy.editor.cancellationNote}
+                value={values.cancellationNote}
+                onChange={(e) => updateValue('cancellationNote', e.target.value)}
+                rows={3}
                 fullWidth
               />
             </div>

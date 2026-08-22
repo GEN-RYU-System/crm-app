@@ -170,6 +170,9 @@ function AppRouter() {
   const orderCreateRoute = canAccessOrders && canAddOrders
     ? <OrderEditorPage mode="create" repository={orderGasRepository} customerRepository={customerGasRepository} />
     : <Navigate to={canAccessOrders ? NAVIGATION_BY_ID.orders.hash : NAVIGATION_BY_ID.dashboard.hash} replace />;
+  const orderEditRoute = canAccessOrders
+    ? <OrderEditorPage mode="edit" repository={orderGasRepository} customerRepository={customerGasRepository} />
+    : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const canAddLeads = hasNavigationPermission(permissions, 'lead_add');
   const canEditLeads = hasNavigationPermission(permissions, 'lead_edit');
   const leadsRoute = permissionState.status === 'checking' ? <LeadPermissionLoading /> : canAccessLeads ? <LeadListPage canAdd={canAddLeads} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
@@ -206,7 +209,8 @@ function AppRouter() {
       <Route key="detail" path={QUOTE_ROUTE_SEGMENTS.detail} element={quoteDetailRoute} />
     ],
     orders: [
-      <Route key="create" path={ORDER_ROUTE_SEGMENTS.create} element={orderCreateRoute} />
+      <Route key="create" path={ORDER_ROUTE_SEGMENTS.create} element={orderCreateRoute} />,
+      <Route key="edit" path={ORDER_ROUTE_SEGMENTS.edit} element={orderEditRoute} />
     ]
   };
 
