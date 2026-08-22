@@ -280,9 +280,6 @@ function updateCoreQuoteForFrontend(sessionId, quoteId, quoteData, isDraft) {
       const { sheet: quoteSheet, headerIndexes: quoteHI } =
         validateCoreSchemaV1TableForWrite(ss, 'QUOTES');
 
-      const targetRow = coreQuoteFindRowById(quoteSheet, quoteHI, normalizedId);
-      if (targetRow === -1) throw new Error('QUOTE_NOT_FOUND');
-
       const lines  = Array.isArray(quoteData.lines) ? quoteData.lines : [];
       const totals = coreQuoteCalculateTotals(lines, quoteData);
 
@@ -303,11 +300,30 @@ function updateCoreQuoteForFrontend(sessionId, quoteId, quoteData, isDraft) {
         UPDATED_AT:       now
       };
 
+      // 全データ行を1回読み込み（行特定とクローンを兼ねる）
+      const quoteIdHeader = getCoreSchemaV1HeaderName('QUOTES', 'QUOTE_ID');
+      const quoteIdColIdx = quoteHI[quoteIdHeader]; // 1-based
+      const quoteLastRow  = quoteSheet.getLastRow();
+      if (quoteLastRow < 2) throw new Error('QUOTE_NOT_FOUND');
+      const quoteRowData  = quoteSheet.getRange(2, 1, quoteLastRow - 1, quoteSheet.getLastColumn()).getValues();
+      let targetDataIdx = -1;
+      for (let i = 0; i < quoteRowData.length; i++) {
+        if (String(quoteRowData[i][quoteIdColIdx - 1] || '').trim() === normalizedId) {
+          targetDataIdx = i;
+          break;
+        }
+      }
+      if (targetDataIdx === -1) throw new Error('QUOTE_NOT_FOUND');
+      const targetRow = targetDataIdx + 2; // 1-based（1行目がヘッダー）
+
+      // メモリ内で updateFields を反映し、setValues 1回で書き戻す（setValue×13 → setValues×1）
+      const rowValues = quoteRowData[targetDataIdx].slice();
       Object.keys(updateFields).forEach(function(headerKey) {
         const physicalHeader = getCoreSchemaV1HeaderName('QUOTES', headerKey);
-        const colIdx = quoteHI[physicalHeader];
-        if (colIdx) quoteSheet.getRange(targetRow, colIdx).setValue(updateFields[headerKey]);
+        const colIdx = quoteHI[physicalHeader]; // 1-based
+        if (colIdx) rowValues[colIdx - 1] = updateFields[headerKey];
       });
+      quoteSheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
 
       const { sheet: lineSheet, headerIndexes: lineHI } =
         validateCoreSchemaV1TableForWrite(ss, 'QUOTE_LINES');
