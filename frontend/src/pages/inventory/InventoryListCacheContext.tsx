@@ -1,4 +1,4 @@
-import { useCallback, type PropsWithChildren } from 'react';
+import { useMemo, useCallback, type PropsWithChildren } from 'react';
 import { createListCache, SINGLE_KEY, type SingleKey } from '../../app/createListCache';
 import type { InventoryRepository, SharedInventoryDto } from '../../features/inventory/contracts';
 
@@ -23,4 +23,32 @@ export function useInventoryListCache() {
     refresh: wrappedRefresh,
     retry: wrappedRetry,
   };
+}
+
+/**
+ * Derives a conditions map from the prefetched SharedInventoryDto[] cache.
+ * Maps productId -> { condition, quantity, unitPrice, unitWeight }[].
+ *
+ * Only rows with quantity > 0 are included.
+ * Returns an empty Map if the cache has not been loaded yet.
+ * No GAS call is made.
+ */
+export function useInventoryConditionsMap(): Map<string, { condition: string; quantity: number; unitPrice: number; unitWeight: number }[]> {
+  const { items } = useInventoryListCache();
+  return useMemo(() => {
+    const map = new Map<string, { condition: string; quantity: number; unitPrice: number; unitWeight: number }[]>();
+    if (!items) return map;
+    for (const item of items) {
+      if (item.quantity <= 0) continue;
+      const existing = map.get(item.productId) ?? [];
+      existing.push({
+        condition:  item.condition,
+        quantity:   item.quantity,
+        unitPrice:  item.unitPrice,
+        unitWeight: item.unitWeight,
+      });
+      map.set(item.productId, existing);
+    }
+    return map;
+  }, [items]);
 }
