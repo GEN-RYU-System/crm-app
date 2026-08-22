@@ -128,4 +128,30 @@ for (const rule of usageRules) {
     }
   }
 }
+// ─── Cache design template enforcement ────────────────────────────────────────
+// 対象外:
+//   features/customers/CustomerAggregateCacheContext.tsx は pages/*/ の外なので検査1の対象外。
+//   CustomerAggregateCacheProvider は *ListCacheProvider の命名でないため検査2・3の対象外。
+
+// 検査1: pages/*/*CacheContext.tsx はすべて createListCache を import していること
+const cacheContextFiles = (await files(resolve(srcDir, 'pages'))).filter((f) => f.endsWith('CacheContext.tsx'));
+if (cacheContextFiles.length === 0) violations.push('cache template check: no *CacheContext.tsx found under pages/ — directory structure may have changed');
+for (const file of cacheContextFiles) {
+  const source = await readFile(file, 'utf8');
+  if (!source.includes('createListCache')) violations.push(`CacheContext does not use createListCache: ${relative(frontendDir, file)}`);
+}
+
+// 検査2・3: App.tsx の *ListCacheProvider ごとに usePrefetch・SyncPoller への登録を確認する
+// Provider 名 → フック名: FooListCacheProvider → useFooListCache
+const prefetchSource = await readFile(resolve(srcDir, 'app/usePrefetch.ts'), 'utf8');
+const listCacheProviderNames = [...new Set([...appSource.matchAll(/<(\w+ListCacheProvider)[\s>/]/g)].map((m) => m[1]))];
+if (listCacheProviderNames.length === 0) violations.push('cache template check: no *ListCacheProvider found in App.tsx — regex may be broken');
+for (const providerName of listCacheProviderNames) {
+  const hookName = 'use' + providerName.replace('Provider', '');
+  // 検査2: usePrefetch.ts にフックが import されていること（prefetch steps への登録を保証）
+  if (!prefetchSource.includes(hookName)) violations.push(`${providerName} is not registered in usePrefetch steps (${hookName} not found in usePrefetch.ts)`);
+  // 検査3: App.tsx にフックが import されていること（SyncPoller refreshers への登録を保証）
+  if (!appSource.includes(hookName)) violations.push(`${providerName} is not registered in SyncPoller refreshers (${hookName} not found in App.tsx)`);
+}
+
 if (violations.length) { console.error(violations.join('\n')); process.exit(1); } console.log('design-system checks passed');
