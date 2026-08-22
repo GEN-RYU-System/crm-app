@@ -8,6 +8,7 @@ import type { SalesOrderTab } from '../../features/salesOrders/contracts';
 import {
   filterSalesOrderRows,
   filterSalesOrderRowsByTab,
+  PAYMENT_DUE_WARNING_DAYS,
   SALES_ORDER_LIST_COLUMNS,
   SALES_ORDER_LIST_INITIAL_SORT,
   sortSalesOrderRows,
@@ -15,6 +16,27 @@ import {
 } from './salesOrderListConfig';
 import { useSalesOrderListCache } from './SalesOrderListCacheContext';
 import './SalesOrderListPage.css';
+
+/** Renders the payment due date cell with a danger/warning badge when the date is overdue or approaching. Date-only comparison, ignores time. */
+function renderPaymentDueAtCell(row: SalesOrderRow) {
+  const raw = row.paymentDueAt;
+  if (!raw) return '-';
+  const due = new Date(raw);
+  if (Number.isNaN(due.getTime())) return '-';
+
+  const today = new Date();
+  const dueDate  = new Date(due.getFullYear(),   due.getMonth(),   due.getDate());
+  const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const formatted = due.toLocaleDateString('ja-JP');
+
+  if (dueDate < todayDate) return <Badge variant="danger">{formatted}</Badge>;
+
+  const warningDate = new Date(todayDate);
+  warningDate.setDate(todayDate.getDate() + PAYMENT_DUE_WARNING_DAYS);
+  if (dueDate <= warningDate) return <Badge variant="warning">{formatted}</Badge>;
+
+  return formatted;
+}
 
 export function SalesOrderListPage() {
   const { items, statusOptions, error, loading, refreshing, ensureLoaded, refresh, retry } = useSalesOrderListCache();
@@ -88,7 +110,9 @@ export function SalesOrderListPage() {
                   const variant = SALES_ORDER_PAYMENT_STATUS_BADGE_VARIANT[label] ?? 'neutral';
                   return <Badge variant={variant}>{label}</Badge>;
                 }
-              : (row: SalesOrderRow) => row[column.key],
+              : column.key === 'paymentDueAt'
+                ? renderPaymentDueAtCell
+                : (row: SalesOrderRow) => row[column.key],
           ...(isSortable
             ? {
                 ariaSort,

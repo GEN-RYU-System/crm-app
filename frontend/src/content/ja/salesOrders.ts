@@ -40,6 +40,7 @@ export const salesOrdersCopy = {
     shippingAddress: '発送先',
     currency:        '通貨',
     invoiceTotal:    '金額',
+    paymentDueAt:    '支払期日',
     status:          'ステータス',
     invoiceIssuedAt: '作成日',
   },
