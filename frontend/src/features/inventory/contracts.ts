@@ -3,6 +3,8 @@ export type SharedInventoryDto = {
   quantity: number;
   unitPrice: number;
   condition: string;
+  /** Unit weight in grams (Condition=Case uses Case weight; otherwise Box weight). 0 means not set. */
+  unitWeight: number;
   status: string;
   noteJa: string;
   noteEn: string;
