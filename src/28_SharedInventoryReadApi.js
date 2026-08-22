@@ -9,18 +9,20 @@ var SHARED_INVENTORY_CACHE_TTL        = 600;
  * @returns {Object[]}
  */
 function buildSharedInventoryRows_(ss) {
-  // ── 商品マスタ同期: product_id → { japaneseTitle, releaseDate, ipId } ──
+  // ── 商品マスタ同期: product_id → { japaneseTitle, releaseDate, ipId, boxWeight, caseWeight } ──
   var productMap  = {};
   var productSheet = ss.getSheetByName('商品マスタ同期');
   if (productSheet && productSheet.getLastRow() > 1) {
     var pData   = productSheet.getDataRange().getValues();
     var pH      = pData[0].map(String);
-    var pidIdx  = pH.indexOf('product_id');
-    var jaIdx   = pH.indexOf('Japanese Title');
-    var enIdx   = pH.indexOf('English Title');
-    var markIdx = pH.indexOf('Mark');
-    var rdIdx   = pH.indexOf('Release Date');
-    var ipIdx   = pH.indexOf('作品ID');
+    var pidIdx       = pH.indexOf('product_id');
+    var jaIdx        = pH.indexOf('Japanese Title');
+    var enIdx        = pH.indexOf('English Title');
+    var markIdx      = pH.indexOf('Mark');
+    var rdIdx        = pH.indexOf('Release Date');
+    var ipIdx        = pH.indexOf('作品ID');
+    var boxWeightIdx  = pH.indexOf('Box重量');
+    var caseWeightIdx = pH.indexOf('Case重量');
     if (pidIdx !== -1) {
       for (var i = 1; i < pData.length; i++) {
         var r   = pData[i];
@@ -35,7 +37,9 @@ function buildSharedInventoryRows_(ss) {
           englishTitle:  enIdx   !== -1 ? String(r[enIdx]   != null ? r[enIdx]   : '') : '',
           mark:          markIdx !== -1 ? String(r[markIdx]  != null ? r[markIdx] : '') : '',
           releaseDate:   releaseDate,
-          ipId:          ipIdx   !== -1 ? String(r[ipIdx]   != null ? r[ipIdx]   : '').trim() : ''
+          ipId:          ipIdx        !== -1 ? String(r[ipIdx]        != null ? r[ipIdx]        : '').trim() : '',
+          boxWeight:     boxWeightIdx  !== -1 ? (Number(r[boxWeightIdx])  || 0) : 0,
+          caseWeight:    caseWeightIdx !== -1 ? (Number(r[caseWeightIdx]) || 0) : 0
         };
       }
     }
@@ -88,19 +92,26 @@ function buildSharedInventoryRows_(ss) {
     throw new Error('共用在庫ヘッダー不足: ' + missing.join(', '));
   }
 
+  var CONDITION_CASE = CORE_SCHEMA_V1_TABLES['SHARED_INVENTORY'].values.CONDITION.CASE;
+
   var rows = [];
   for (var ri = 1; ri < invData.length; ri++) {
-    var row     = invData[ri];
-    var rowPid  = String(row[col.productId] != null ? row[col.productId] : '').trim();
-    var product = productMap[rowPid] || {};
-    var ipId    = product.ipId || '';
-    var ipName  = ipId ? (ipMap[ipId] || '') : '';
+    var row       = invData[ri];
+    var rowPid    = String(row[col.productId] != null ? row[col.productId] : '').trim();
+    var product   = productMap[rowPid] || {};
+    var ipId      = product.ipId || '';
+    var ipName    = ipId ? (ipMap[ipId] || '') : '';
+    var condition = String(row[col.condition] != null ? row[col.condition] : '');
+    var unitWeight = (condition === CONDITION_CASE)
+      ? (product.caseWeight || 0)
+      : (product.boxWeight  || 0);
 
     rows.push({
       series:          String(row[col.series]          != null ? row[col.series]          : ''),
       quantity:        Number(row[col.quantity])        || 0,
       unitPrice:       Number(row[col.unitPrice])       || 0,
-      condition:       String(row[col.condition]        != null ? row[col.condition]        : ''),
+      condition:       condition,
+      unitWeight:      unitWeight,
       status:          String(row[col.status]           != null ? row[col.status]           : ''),
       noteJa:          String(row[col.noteJa]           != null ? row[col.noteJa]           : ''),
       noteEn:          String(row[col.noteEn]           != null ? row[col.noteEn]           : ''),
