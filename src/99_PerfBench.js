@@ -2329,3 +2329,58 @@ function benchLeadSourceIdConversion() {
   Logger.log(result);
   return result;
 }
+
+/**
+ * 【読み取り専用】QUOTES / QUOTE_LINES シートの数式列を調査する。
+ * setValues 化（施策C）の適否判断用。
+ * 先頭5データ行の getFormulas() から数式が存在する列を列挙する。
+ *
+ * 使い方: clasp run readQuoteSheetFormulas
+ */
+function readQuoteSheetFormulas() {
+  var ss = getSpreadsheet();
+  var results = {};
+
+  ['QUOTES', 'QUOTE_LINES'].forEach(function(tableKey) {
+    var table = getCoreSchemaV1Table(tableKey);
+    var sheet = getCoreSchemaV1Sheet(ss, tableKey);
+    var lastRow = sheet.getLastRow();
+    var lastCol = sheet.getLastColumn();
+
+    if (lastRow < 2 || lastCol < 1) {
+      results[tableKey] = { error: 'データなし' };
+      return;
+    }
+
+    var headers   = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var checkRows = Math.min(lastRow - 1, 5);
+    var formulas  = sheet.getRange(2, 1, checkRows, lastCol).getFormulas();
+
+    var formulaColumns = [];
+    for (var row = 0; row < formulas.length; row++) {
+      for (var col = 0; col < formulas[row].length; col++) {
+        var f = formulas[row][col];
+        if (f) {
+          formulaColumns.push({
+            colIndex: col + 1,
+            header:   String(headers[col] || ''),
+            row:      row + 2,
+            formula:  f
+          });
+        }
+      }
+    }
+
+    results[tableKey] = {
+      sheetName:     table.sheetName,
+      totalCols:     lastCol,
+      checkedRows:   checkRows,
+      hasFormulas:   formulaColumns.length > 0,
+      formulaColumns: formulaColumns
+    };
+  });
+
+  var out = JSON.stringify(results, null, 2);
+  Logger.log(out);
+  return out;
+}
