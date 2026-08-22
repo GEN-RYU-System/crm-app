@@ -2161,3 +2161,171 @@ function applyNormalizeCardMarket() {
 
   return '変換完了: ' + result + '件（Card market → Card Market）';
 }
+
+/**
+ * 流入元マスタ ID化の方式比較（調査専用・既存データ変更なし）
+ *
+ * 案1（GAS側変換）: getLeadsByType 内で 流入元マスタを読み込み、
+ *   IDを名称に変換してからキャッシュ・返却する方式の追加コストを実測する。
+ *
+ * 計測項目:
+ *   A) 流入元マスタ8行の getValues() 時間（追加IO）
+ *   B) 流入元マスタ読み込み → Map構築 → 全リード行のIDルックアップ変換 の合計時間
+ *   C) ベースライン: リード管理シート全読み出し + フィルタ（≒ getLeads の再現）
+ *   D) 案1の合計コスト = C + A（IO） + B（ループ）の増分
+ *
+ * 各フェーズ 3回計測して平均を出す。
+ * 既存の getLeadsByType / リード管理シート は一切変更しない。
+ *
+ * 使い方: clasp run benchLeadSourceIdConversion
+ */
+function benchLeadSourceIdConversion() {
+  var RUNS         = 3;
+  var leadStatuses = CONFIG.LEAD_STATUSES;
+  var out          = ['=== benchLeadSourceIdConversion ===', '実行: ' + new Date().toISOString(), ''];
+
+  var ss         = getSpreadsheet();
+  var leadsSheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  if (!leadsSheet || leadsSheet.getLastRow() < 2) {
+    out.push('【エラー】リード管理シートにデータがありません');
+    var r = out.join('\n'); Logger.log(r); return r;
+  }
+
+  var sourceSheet = getCoreSchemaV1Sheet(ss, 'LEAD_SOURCES');
+  if (!sourceSheet || sourceSheet.getLastRow() < 2) {
+    out.push('【エラー】流入元マスタシートにデータがありません');
+    var r = out.join('\n'); Logger.log(r); return r;
+  }
+
+  // ── ヘッダー確認（タイミング外） ─────────────────────────────
+  var leadsHeaders = leadsSheet.getRange(1, 1, 1, leadsSheet.getLastColumn()).getValues()[0];
+  var typeIdx      = leadsHeaders.indexOf('リード種別');
+  var statIdx      = leadsHeaders.indexOf('リードステータス');
+  var srcIdx       = leadsHeaders.indexOf('流入経路');
+  out.push('リード管理 ヘッダー確認: リード種別=' + typeIdx + ' / リードステータス=' + statIdx + ' / 流入経路=' + srcIdx);
+  out.push('リード管理 総行数: ' + (leadsSheet.getLastRow() - 1) + '行');
+
+  var srcHeaders    = sourceSheet.getRange(1, 1, 1, sourceSheet.getLastColumn()).getValues()[0];
+  var srcIdIdx      = srcHeaders.indexOf('source_id');
+  var srcNameIdx    = srcHeaders.indexOf('名称');
+  out.push('流入元マスタ ヘッダー確認: source_id=' + srcIdIdx + ' / 名称=' + srcNameIdx);
+  out.push('流入元マスタ 行数: ' + (sourceSheet.getLastRow() - 1) + '行');
+  out.push('');
+
+  // ── A: 流入元マスタ getValues() のみの時間 ──────────────────────
+  out.push('--- A: 流入元マスタ getValues() のみ (追加IO) ---');
+  var timesA = [];
+  var masterRowCount = 0;
+  for (var run = 0; run < RUNS; run++) {
+    var t0 = Date.now();
+    var srcData = sourceSheet.getDataRange().getValues();
+    masterRowCount = srcData.length - 1;
+    timesA.push(Date.now() - t0);
+    out.push('  試行 ' + (run + 1) + ': ' + timesA[timesA.length - 1] + 'ms  (' + masterRowCount + '行)');
+  }
+  var sumA = 0; for (var i = 0; i < timesA.length; i++) sumA += timesA[i];
+  var avgA = Math.round(sumA / RUNS);
+  out.push('  平均: ' + avgA + 'ms');
+  out.push('');
+
+  // ── C: ベースライン（リード管理全読み出し + フィルタ） ───────────
+  // getLeads('lead', undefined) の再現。変換処理なし。
+  out.push('--- C: ベースライン (リード管理全読み出し + フィルタ, 変換なし) ---');
+  var timesC = [];
+  var baselineCount = 0;
+  for (var run = 0; run < RUNS; run++) {
+    var t0 = Date.now();
+    var data    = leadsSheet.getDataRange().getValues();
+    var headers = data[0];
+    var ti      = headers.indexOf('リード種別');
+    var si      = headers.indexOf('リードステータス');
+    var rows    = [];
+    for (var i = 1; i < data.length; i++) {
+      var row    = data[i];
+      var type   = ti >= 0 && row[ti] ? row[ti].toString().trim() : '';
+      var status = si >= 0 && row[si] ? row[si].toString().trim() : '';
+      if (!type) continue;
+      if (!leadStatuses.includes(status)) continue;
+      var lead = {};
+      for (var h = 0; h < headers.length; h++) {
+        var v = row[h];
+        lead[headers[h]] = (v instanceof Date) ? v.toISOString() : v;
+      }
+      rows.push(lead);
+    }
+    baselineCount = rows.length;
+    timesC.push(Date.now() - t0);
+    out.push('  試行 ' + (run + 1) + ': ' + timesC[timesC.length - 1] + 'ms  (' + baselineCount + '件)');
+  }
+  var sumC = 0; for (var i = 0; i < timesC.length; i++) sumC += timesC[i];
+  var avgC = Math.round(sumC / RUNS);
+  out.push('  平均: ' + avgC + 'ms');
+  out.push('');
+
+  // ── B: 流入元マスタ読み込み + Map構築 + 全行変換ループ ──────────
+  // 案1の「名称→ID変換」コストを再現。
+  // 実際には GAS側で source_id に変換して返す想定なので
+  // 名称→IDのMap（名称をキー、source_idを値）を構築する。
+  out.push('--- B: 案1 増分コスト (マスタ getValues + Map構築 + 全行ルックアップ) ---');
+  out.push('  ※ リード管理シートの全取得は済み済みとして、追加IOのみを計測');
+  var timesB = [];
+  var matchedCount = 0;
+  var unmatchedCount = 0;
+  for (var run = 0; run < RUNS; run++) {
+    var t0 = Date.now();
+
+    // ① 流入元マスタ getValues（案1で追加されるIO）
+    var srcData = sourceSheet.getDataRange().getValues();
+    var srcHdr  = srcData[0];
+    var idCol   = srcHdr.indexOf('source_id');
+    var nmCol   = srcHdr.indexOf('名称');
+
+    // ② メモリ内でMap構築（名称 → source_id）
+    var nameToId = {};
+    for (var si = 1; si < srcData.length; si++) {
+      var nm = srcData[si][nmCol] ? srcData[si][nmCol].toString().trim() : '';
+      var id = srcData[si][idCol] ? srcData[si][idCol].toString().trim() : '';
+      if (nm && id) nameToId[nm] = id;
+    }
+
+    // ③ リード管理シートの全行ループでルックアップ（シート読み出しは済み済み想定のため
+    //    ここでは最後に取得した data を再利用）
+    var data    = leadsSheet.getDataRange().getValues();
+    var headers = data[0];
+    var srcColIdx = headers.indexOf('流入経路');
+    var matched = 0, unmatched = 0;
+    for (var i = 1; i < data.length; i++) {
+      var srcVal = srcColIdx >= 0 && data[i][srcColIdx] ? data[i][srcColIdx].toString().trim() : '';
+      if (!srcVal) continue;
+      if (nameToId[srcVal] !== undefined) {
+        matched++;
+      } else {
+        unmatched++;
+      }
+    }
+    matchedCount   = matched;
+    unmatchedCount = unmatched;
+    timesB.push(Date.now() - t0);
+    out.push('  試行 ' + (run + 1) + ': ' + timesB[timesB.length - 1] + 'ms  (マッチ=' + matched + ' / 未マッチ=' + unmatched + ')');
+  }
+  var sumB = 0; for (var i = 0; i < timesB.length; i++) sumB += timesB[i];
+  var avgB = Math.round(sumB / RUNS);
+  out.push('  平均: ' + avgB + 'ms');
+  out.push('  ※ 未マッチ行はマスタ外値（Card Market未登録等）');
+  out.push('');
+
+  // ── サマリー ─────────────────────────────────────────────────
+  out.push('--- サマリー ---');
+  out.push('  C ベースライン (現状の getLeads 再現):    avg ' + avgC + 'ms  (' + baselineCount + '件)');
+  out.push('  A 追加IO (流入元マスタ getValues のみ):  avg ' + avgA + 'ms  (' + masterRowCount + '行)');
+  out.push('  B 案1 増分 (追加IO + Map + ループ):      avg ' + avgB + 'ms');
+  out.push('    → C + B で案1の合計コスト推定:         avg ' + (avgC + avgB) + 'ms');
+  out.push('  対ベースライン増分率: +' + (avgC > 0 ? Math.round(avgB / avgC * 100) : '?') + '%');
+  out.push('');
+  out.push('  ※ 案2（フロント変換）の場合、GAS側追加コスト = 0ms');
+  out.push('     ただし流入元マスタを別途フロントに返す API が必要（未実装）');
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
