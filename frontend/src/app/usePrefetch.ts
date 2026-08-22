@@ -5,6 +5,7 @@ import { useCustomerListCache } from '../pages/customers/CustomerListCacheContex
 import { useCustomerAggregateCache } from '../features/customers/CustomerAggregateCacheContext';
 import { useInventoryListCache } from '../pages/inventory/InventoryListCacheContext';
 import { useOrderListCache } from '../pages/orders/OrderListCacheContext';
+import { useSalesOrderListCache } from '../pages/sales-orders/SalesOrderListCacheContext';
 import { useStaffListCache } from '../pages/staff/StaffListCacheContext';
 import { useQuoteListCache } from '../pages/quotes/QuoteListCacheContext';
 
@@ -14,6 +15,7 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
   const { ensureLoaded: ensureAggregates } = useCustomerAggregateCache();
   const { ensureLoaded: ensureInventory } = useInventoryListCache();
   const { ensureLoaded: ensureOrders } = useOrderListCache();
+  const { ensureLoaded: ensureSalesOrders } = useSalesOrderListCache();
   const { ensureLoaded: ensureStaff } = useStaffListCache();
   const { ensureLoaded: ensureQuotes } = useQuoteListCache();
   const hasRun = useRef(false);
@@ -23,13 +25,14 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
     hasRun.current = true;
 
     const steps: Array<{ canAccess: boolean; load: () => Promise<void> }> = [
-      { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.leads,      permissions), load: () => ensureLeads('all') },
-      { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.customers,  permissions), load: () => ensureCustomers() },
-      { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.orders,     permissions), load: () => ensureAggregates() },
-      { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.inventory,  permissions), load: () => ensureInventory() },
-      { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.orders,     permissions), load: () => ensureOrders() },
-      { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.staff,      permissions), load: () => ensureStaff() },
-      { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.quotes,     permissions), load: () => ensureQuotes() },
+      { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.leads,       permissions), load: () => ensureLeads('all') },
+      { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.customers,   permissions), load: () => ensureCustomers() },
+      { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.orders,      permissions), load: () => ensureAggregates() },
+      { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.inventory,   permissions), load: () => ensureInventory() },
+      { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.orders,      permissions), load: () => ensureOrders() },
+      { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.salesOrders, permissions), load: () => ensureSalesOrders() },
+      { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.staff,       permissions), load: () => ensureStaff() },
+      { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.quotes,      permissions), load: () => ensureQuotes() },
     ];
 
     const timer = setTimeout(() => {
@@ -42,6 +45,6 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [permissions, ensureLeads, ensureCustomers, ensureAggregates, ensureInventory, ensureOrders, ensureStaff, ensureQuotes]);
+  }, [permissions, ensureLeads, ensureCustomers, ensureAggregates, ensureInventory, ensureOrders, ensureSalesOrders, ensureStaff, ensureQuotes]);
 
 }
