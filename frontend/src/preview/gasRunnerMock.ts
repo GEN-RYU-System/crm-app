@@ -242,6 +242,9 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     createCoreOrderForFrontend(_s: string | null, _payload: unknown) {
       succeed({ success: true, orderId: 'ORD-PREVIEW-0001' });
     },
+    updateCoreOrderForFrontend(_s: string | null, _orderId: string, _data: unknown) {
+      succeed({ success: true, orderId: _orderId });
+    },
     getCoreOrderStatusOptionsForFrontend(_s: string | null) { succeed([]); },
     checkSyncSignals(_s: string | null) { succeed(MOCK_SYNC_SIGNALS); },
   };
