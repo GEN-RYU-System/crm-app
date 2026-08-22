@@ -82,8 +82,14 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
     if (!record) return;
     // Lock amount fields if invoice has been issued
     setIsAmountLocked(!!record.invoiceIssuedAt);
-    // OrderRecord from the list does not include customerId; read-only fields are not shown in edit form
-    setValues((prev) => ({ ...prev }));
+    // Apply editable fields available in OrderRecord (list API)
+    // Note: shippingFee / duty / otherFee / discount are not included in the list API response;
+    // they remain empty and can be re-entered by the operator before invoice issuance.
+    setValues((prev) => ({
+      ...prev,
+      currency: record.currency || prev.currency,
+      paymentMethod: record.paymentMethod || prev.paymentMethod,
+    }));
   }, [mode, orderId, orderItems]);
 
   const applyAggregate = useCallback((

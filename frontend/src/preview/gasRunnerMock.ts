@@ -224,7 +224,36 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     getSharedInventoryForFrontend(_s: string | null, _force: boolean) { succeed(MOCK_SHARED_INVENTORY); },
     getCoreQuotesForFrontend(_s: string | null, _force: boolean) { succeed([]); },
     getCoreQuoteForFrontend(_s: string | null, _quoteId: string) { succeed(null); },
-    getCoreOrdersForFrontend(_s: string | null, _force: boolean) { succeed([]); },
+    getCoreOrdersForFrontend(_s: string | null, _force: boolean) {
+      succeed([
+        {
+          orderId: 'ORD-00001',
+          customerName: 'Preview Customer A',
+          invoiceNumber: 'INV-00001',
+          invoiceIssuedAt: '',
+          paymentMethod: 'WISE',
+          invoiceTotal: '20000',
+          currency: 'USD',
+          paymentDueAt: '',
+          paymentStatus: 'UNPAID',
+          invoiceTotalJpy: '3000000',
+          status: 'AWAITING_PAYMENT',
+        },
+        {
+          orderId: 'ORD-00002',
+          customerName: 'Preview Customer B',
+          invoiceNumber: 'INV-00002',
+          invoiceIssuedAt: '2026-01-15',
+          paymentMethod: 'PAYPAL',
+          invoiceTotal: '5000',
+          currency: 'USD',
+          paymentDueAt: '2026-02-15',
+          paymentStatus: 'PAID',
+          invoiceTotalJpy: '750000',
+          status: 'COMPLETED',
+        },
+      ]);
+    },
     getCoreCurrenciesForFrontend(_s: string | null) { succeed(MOCK_CURRENCIES); },
     getLeadOptionsForFrontend(_s: string | null) { succeed(MOCK_LEAD_OPTIONS); },
 
