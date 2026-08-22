@@ -2079,7 +2079,15 @@ function createDevTestUnpaidOrder() {
       sourceLeadId   = String(firstDataRow[leadIdx]    || '').trim();
     }
 
-    // ── オーダーID 採番（Core Schema V1 ベース）──────────────────────────────
+    // ── テスト注文3件の設定 ───────────────────────────────────────────────────
+    // paymentDueDayOffset: 実行日を基準とした支払期日のオフセット（日数）
+    var TEST_ORDER_CONFIGS = [
+      { invoiceNumber: 'TEST-0001', paymentDueDayOffset:  1 }, // 翌日  → 黄色バッジ
+      { invoiceNumber: 'TEST-0002', paymentDueDayOffset: -1 }, // 前日  → 赤バッジ
+      { invoiceNumber: 'TEST-0003', paymentDueDayOffset: 10 }, // 10日後 → 通常表示
+    ];
+
+    // ── オーダーID 採番ベース ─────────────────────────────────────────────────
     var orderMaxNum = 0;
     if (ordersLastRow >= 2) {
       var orderIdHeaderName = getCoreSchemaV1HeaderName('ORDERS', 'ORDER_ID');
@@ -2095,7 +2103,6 @@ function createDevTestUnpaidOrder() {
         });
       }
     }
-    var orderId = 'OD-' + ('00000' + (orderMaxNum + 1)).slice(-5);
 
     // ── 為替レート取得 ──────────────────────────────────────────────────────
     var exchangeRate = 1;
@@ -2105,31 +2112,11 @@ function createDevTestUnpaidOrder() {
       // JPY がマスタにない場合は 1 を使用
     }
 
-    // ── 日付 ─────────────────────────────────────────────────────────────────
     var now = new Date();
-    var paymentDueAt = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3);
 
-    // ── ステータス算出 ────────────────────────────────────────────────────────
-    var orderStatus = calculateOrderStatus(
-      {
-        cancellationReason: '',
-        status:             '',
-        paymentConfirmedAt: '',
-        invoiceNumber:      'TEST-0001'
-      },
-      [],
-      []
-    );
-
-    var paymentStatus = calculatePaymentStatus({
-      cancellationReason: '',
-      paymentConfirmedAt: '',
-      paymentDueAt:       paymentDueAt
-    });
-
-    // ── オーダー管理 書き込み ─────────────────────────────────────────────────
+    // ── オーダー管理 書き込みターゲット ──────────────────────────────────────
     var ordersWriteTarget = validateCoreSchemaV1TableForWrite(ss, 'ORDERS');
-    var ordersHeaderIndexes = ordersWriteTarget.headerIndexes; // { '物理列名': 1-indexed列番号 }
+    var ordersHeaderIndexes = ordersWriteTarget.headerIndexes;
 
     function col(headerKey) {
       var name = getCoreSchemaV1HeaderName('ORDERS', headerKey);
@@ -2139,35 +2126,12 @@ function createDevTestUnpaidOrder() {
     }
 
     var ordersColCount = ordersSheet.getLastColumn();
-    var newOrderRow = new Array(ordersColCount);
-    for (var i = 0; i < newOrderRow.length; i++) { newOrderRow[i] = ''; }
 
-    newOrderRow[col('ORDER_ID')              - 1] = orderId;
-    newOrderRow[col('INVOICE_NUMBER')        - 1] = 'TEST-0001';
-    newOrderRow[col('CUSTOMER_ID')           - 1] = customerId;
-    newOrderRow[col('SHIPPING_DESTINATION_ID') - 1] = shippingDestId;
-    newOrderRow[col('PAYMENT_DESTINATION_ID') - 1] = paymentDestId;
-    newOrderRow[col('SOURCE_LEAD_ID')        - 1] = sourceLeadId;
-    newOrderRow[col('STATUS')                - 1] = orderStatus;
-    newOrderRow[col('CURRENCY')              - 1] = 'JPY';
-    newOrderRow[col('EXCHANGE_RATE')         - 1] = exchangeRate;
-    newOrderRow[col('INVOICE_ISSUED_AT')     - 1] = now;
-    newOrderRow[col('PAYMENT_DUE_AT')        - 1] = paymentDueAt;
-    newOrderRow[col('PAYMENT_CONFIRMED_AT')  - 1] = '';
-    newOrderRow[col('PAYMENT_CONFIRMATION_SOURCE') - 1] = '';
-    newOrderRow[col('PAYMENT_CONFIRMED_BY_ID') - 1] = '';
-    newOrderRow[col('PAYMENT_STATUS')        - 1] = paymentStatus;
-    newOrderRow[col('REGISTERED_AT')         - 1] = now;
-    newOrderRow[col('UPDATED_AT')            - 1] = now;
-
-    ordersSheet.appendRow(newOrderRow);
-
-    // ── オーダー明細 書き込み ──────────────────────────────────────────────────
+    // ── オーダー明細 書き込みターゲット ──────────────────────────────────────
     var linesWriteTarget = validateCoreSchemaV1TableForWrite(ss, 'ORDER_LINES');
     var linesSheet = linesWriteTarget.sheet;
     var linesHeaderIndexes = linesWriteTarget.headerIndexes;
 
-    // 明細ID 採番
     var linesLastRow = linesSheet.getLastRow();
     var lineMaxNum = 0;
     if (linesLastRow >= 2) {
@@ -2185,7 +2149,6 @@ function createDevTestUnpaidOrder() {
         });
       }
     }
-    var orderLineId = 'ODL-' + ('00000' + (lineMaxNum + 1)).slice(-5);
 
     function lineCol(headerKey) {
       var name = getCoreSchemaV1HeaderName('ORDER_LINES', headerKey);
@@ -2195,24 +2158,62 @@ function createDevTestUnpaidOrder() {
     }
 
     var linesColCount = linesSheet.getLastColumn();
-    var newLineRow = new Array(linesColCount);
-    for (var j = 0; j < newLineRow.length; j++) { newLineRow[j] = ''; }
 
-    newLineRow[lineCol('ORDER_LINE_ID')  - 1] = orderLineId;
-    newLineRow[lineCol('ORDER_ID')       - 1] = orderId;
-    newLineRow[lineCol('LINE_NUMBER')    - 1] = 1;
-    newLineRow[lineCol('PRODUCT_NAME')   - 1] = 'テスト商品';
-    newLineRow[lineCol('QUANTITY')       - 1] = 1;
-    newLineRow[lineCol('UNIT_PRICE')     - 1] = 10000;
-    newLineRow[lineCol('SUBTOTAL')       - 1] = 10000;
+    // ── 3件ループ書き込み ─────────────────────────────────────────────────
+    var createdOrders = [];
+    for (var i = 0; i < TEST_ORDER_CONFIGS.length; i++) {
+      var config = TEST_ORDER_CONFIGS[i];
+      var orderId = 'OD-' + ('00000' + (orderMaxNum + 1 + i)).slice(-5);
+      var orderLineId = 'ODL-' + ('00000' + (lineMaxNum + 1 + i)).slice(-5);
+      var paymentDueAt = new Date(now.getFullYear(), now.getMonth(), now.getDate() + config.paymentDueDayOffset);
 
-    linesSheet.appendRow(newLineRow);
+      var orderStatus = calculateOrderStatus(
+        { cancellationReason: '', status: '', paymentConfirmedAt: '', invoiceNumber: config.invoiceNumber },
+        [], []
+      );
+      var paymentStatus = calculatePaymentStatus({
+        cancellationReason: '', paymentConfirmedAt: '', paymentDueAt: paymentDueAt
+      });
+
+      var newOrderRow = new Array(ordersColCount);
+      for (var j = 0; j < newOrderRow.length; j++) { newOrderRow[j] = ''; }
+      newOrderRow[col('ORDER_ID')              - 1] = orderId;
+      newOrderRow[col('INVOICE_NUMBER')        - 1] = config.invoiceNumber;
+      newOrderRow[col('CUSTOMER_ID')           - 1] = customerId;
+      newOrderRow[col('SHIPPING_DESTINATION_ID') - 1] = shippingDestId;
+      newOrderRow[col('PAYMENT_DESTINATION_ID') - 1] = paymentDestId;
+      newOrderRow[col('SOURCE_LEAD_ID')        - 1] = sourceLeadId;
+      newOrderRow[col('STATUS')                - 1] = orderStatus;
+      newOrderRow[col('CURRENCY')              - 1] = 'JPY';
+      newOrderRow[col('EXCHANGE_RATE')         - 1] = exchangeRate;
+      newOrderRow[col('INVOICE_ISSUED_AT')     - 1] = now;
+      newOrderRow[col('PAYMENT_DUE_AT')        - 1] = paymentDueAt;
+      newOrderRow[col('PAYMENT_CONFIRMED_AT')  - 1] = '';
+      newOrderRow[col('PAYMENT_CONFIRMATION_SOURCE') - 1] = '';
+      newOrderRow[col('PAYMENT_CONFIRMED_BY_ID') - 1] = '';
+      newOrderRow[col('PAYMENT_STATUS')        - 1] = paymentStatus;
+      newOrderRow[col('REGISTERED_AT')         - 1] = now;
+      newOrderRow[col('UPDATED_AT')            - 1] = now;
+      ordersSheet.appendRow(newOrderRow);
+
+      var newLineRow = new Array(linesColCount);
+      for (var k = 0; k < newLineRow.length; k++) { newLineRow[k] = ''; }
+      newLineRow[lineCol('ORDER_LINE_ID') - 1] = orderLineId;
+      newLineRow[lineCol('ORDER_ID')      - 1] = orderId;
+      newLineRow[lineCol('LINE_NUMBER')   - 1] = 1;
+      newLineRow[lineCol('PRODUCT_NAME')  - 1] = 'テスト商品';
+      newLineRow[lineCol('QUANTITY')      - 1] = 1;
+      newLineRow[lineCol('UNIT_PRICE')    - 1] = 10000;
+      newLineRow[lineCol('SUBTOTAL')      - 1] = 10000;
+      linesSheet.appendRow(newLineRow);
+
+      createdOrders.push({ orderId: orderId, orderLineId: orderLineId });
+    }
 
     return {
-      success:     true,
-      resultType:  'DEV_TEST_UNPAID_ORDER_CREATED',
-      orderId:     orderId,
-      orderLineId: orderLineId
+      success:       true,
+      resultType:    'DEV_TEST_UNPAID_ORDERS_CREATED',
+      orders:        createdOrders
     };
   } finally {
     lock.releaseLock();

@@ -2,6 +2,9 @@ import type { DataTableCellAlignment } from '../../components/ui';
 import { salesOrdersCopy } from '../../content/ja';
 import type { SalesOrderRow } from '../../features/salesOrders/gasAdapter';
 
+/** Days before the payment due date when a warning (yellow) badge is shown. Intended to be configurable from settings in the future. */
+export const PAYMENT_DUE_WARNING_DAYS = 1 as const;
+
 export type SalesOrderSortKey = Exclude<keyof SalesOrderRow, 'orderId'>;
 export type SalesOrderSortDirection = 'ascending' | 'descending';
 export type SalesOrderSort = { key: SalesOrderSortKey; direction: SalesOrderSortDirection };
@@ -22,11 +25,14 @@ export const SALES_ORDER_LIST_COLUMNS: readonly SalesOrderColumnDef[] = [
   { key: 'shippingAddress', label: salesOrdersCopy.columns.shippingAddress, cellAlignment: 'start'  },
   { key: 'currency',        label: salesOrdersCopy.columns.currency,        cellAlignment: 'center' },
   { key: 'invoiceTotal',    label: salesOrdersCopy.columns.invoiceTotal,    cellAlignment: 'center' },
+  { key: 'paymentDueAt',    label: salesOrdersCopy.columns.paymentDueAt,    cellAlignment: 'center' },
   { key: 'status',          label: salesOrdersCopy.columns.status,          cellAlignment: 'center' },
   { key: 'invoiceIssuedAt', label: salesOrdersCopy.columns.invoiceIssuedAt, cellAlignment: 'center' },
 ];
 
-export const SALES_ORDER_LIST_SEARCH_COLUMNS: readonly (keyof SalesOrderRow)[] = SALES_ORDER_LIST_COLUMNS.map(({ key }) => key);
+// Exclude paymentDueAt from search: it's a raw ISO string and does not match user-visible date text.
+export const SALES_ORDER_LIST_SEARCH_COLUMNS: readonly (keyof SalesOrderRow)[] =
+  SALES_ORDER_LIST_COLUMNS.filter((col) => col.key !== 'paymentDueAt').map(({ key }) => key);
 
 function compareRows(a: SalesOrderRow, b: SalesOrderRow, sort: SalesOrderSort): number {
   const dir = sort.direction === 'ascending' ? 1 : -1;
