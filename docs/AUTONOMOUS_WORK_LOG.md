@@ -316,3 +316,123 @@ QuoteListPage は最初から絶対パスを使っており正常動作してい
 ### 戻し方
 
 `git revert 56d9e125` で GAS ロジック・フロント変更の両方を元に戻せる
+
+---
+
+## 【11】在庫状態プルダウンをプリフェッチ化（商品選択時の待ち時間を除去） — PR #382
+
+**マージ日時**: 2026-08-22T17:15:57Z
+**revert用SHA**: `efad153df11b5217d6e351e10e936f0714693ac1`
+
+### 1-A 調査結果（明細状態即時化の調査）
+
+**待ち時間の原因**:
+- `OrderEditorPage.tsx` L159: `repository.listConditions(productId)` を商品選択時に GAS 呼び出し
+- `QuoteEditorPage.tsx` L126: `getInventoryConditions(productId)` を商品選択時に直接呼び出し
+- `usePrefetch.ts` には `ensureInventory`（SharedInventoryDto[] のプリフェッチ）が既に含まれていた
+- `SharedInventoryDto` には `productId`, `condition`, `quantity`, `unitPrice` が含まれていた
+- **欠如**: `SharedInventoryDto` に `unitWeight` がなかった（`getInventoryConditions` は商品マスタ同期の Box重量/Case重量から取得していた）
+
+**解決策**:
+- GAS の `buildSharedInventoryRows_` に `unitWeight` を追加（productMap に boxWeight/caseWeight を追加）
+- フロント型に `unitWeight` を追加
+- `useInventoryConditionsMap()` フックで SharedInventoryDto[] を Map に変換
+- OrderEditorPage / QuoteEditorPage で GAS 呼び出しを排除
+
+### 変更ファイルと変更内容
+
+| ファイル | 変更内容 |
+|--------|---------|
+| `src/28_SharedInventoryReadApi.js` | buildSharedInventoryRows_ に unitWeight を追加 |
+| `frontend/src/gas/client.ts` | SharedInventoryItem に unitWeight 追加 |
+| `frontend/src/features/inventory/contracts.ts` | SharedInventoryDto に unitWeight 追加 |
+| `frontend/src/pages/inventory/InventoryListCacheContext.tsx` | useInventoryConditionsMap() フック追加 |
+| `frontend/src/pages/orders/OrderEditorPage.tsx` | listConditions GAS 呼び出し削除、useInventoryConditionsMap() 使用 |
+| `frontend/src/pages/quotes/QuoteEditorPage.tsx` | getInventoryConditions GAS 呼び出し削除、useInventoryConditionsMap() 使用 |
+| `frontend/src/features/orders/contracts.ts` | OrderRepository から listConditions を削除 |
+| `frontend/src/features/orders/gasAdapter.ts` | listConditions 実装を削除 |
+| `frontend/src/preview/gasRunnerMock.ts` | getSharedInventoryForFrontend を MOCK_SHARED_INVENTORY で応答するよう更新 |
+
+### ?preview 確認結果
+
+- オーダー新規作成（`/?preview#/orders/new`）: 商品選択後に即座に「Sealed box（在庫: 5）」「Case（在庫: 3）」表示 ✓
+- 見積もり新規作成（`/?preview#/quotes/create`）: 同様に即座に表示 ✓
+- コンソールエラー: 0件（OrderListPage の既存警告は今回変更と無関係）
+
+### SHA照合
+
+- getDeployedSha: `efad153df11b5217d6e351e10e936f0714693ac1`
+- origin/develop HEAD: `efad153` ✓ 一致
+
+### conformance audit 結果
+
+**★FAIL**: 総不一致 1件
+- `ORDERS / オーダー管理`: 定義 40 列 / 実シート 42 列 → 差 2 列
+- 今回の変更はオーダー管理シートに一切触れていない（変更は SharedInventoryReadApi のみ）
+- PR #377 時点では audit PASS だった → この 2 列の乖離は今回マージ後に初めて検出
+
+**停止条件に該当**: AUTONOMOUS_WORK_RULES.md「runCoreSchemaConformanceAudit が FAIL → 即座に revert」
+→ ORDERS 列数不一致の原因調査のため報告して停止。PO の指示を待つ。
+
+### 戻し方
+
+```
+git revert efad153
+```
+
+---
+
+## 【12】複数提供者の在庫表示調査（調査のみ）— 実施済み
+
+**調査日時**: 2026-08-22
+
+### 1-B 調査結果
+
+**PR #313 の cheapest_one 集約ロジック**
+- ファイル: `src/28_SharedInventoryReadApi.js` L162-173
+- `applyInventoryDisplayMode_()` 関数が実装
+- `product_id × Condition` をキーにグループ化し、Unit Price が最安の 1 行のみ採用
+- 表示設定マスタ（DISPLAY_SETTINGS シート）から `inventory/display_mode` を読み取り
+  - 設定値: `cheapest_one`（在庫画面で最安1件のみ表示）または `all`
+  - 設定取得失敗時は `all` にフォールバック
+
+**現在の画面が表示する在庫数と単価**
+- display_mode = `cheapest_one` の場合: product_id × Condition ごとに最安1件のみ
+- SharedInventoryDto として返される量は集約後の数量
+
+**共用在庫シートの構造**
+- 同じ商品・同じ状態の行が複数存在し得る（複数の提供者が出す場合）
+- `cheapest_one` モードではその中から最安1行のみを採用
+- 件数の実測: 99_DisplaySettingsVerify.js で確認可能（PO 判断の範囲）
+
+---
+
+## 【13】社内メモ列の調査（調査のみ）— 実施済み
+
+**調査日時**: 2026-08-22
+
+### 1-C 調査結果
+
+**ORDERS シートの備考・メモ関連列（Core Schema V1 定義より）**
+
+| 列キー | 日本語列名 | 用途 |
+|-------|----------|------|
+| SHIPPING_NOTE | 発送時メモ | 発送時の注意事項（顧客向け） |
+| NOTE | 備考 | 一般備考 |
+| TRANSACTION_NOTE | 取引備考欄 | 取引に関する備考 |
+| CANCELLATION_NOTE | キャンセルメモ | キャンセル理由の詳細 |
+
+**GAS コード内の使われ方**
+- `SHIPPING_NOTE`（発送時メモ）: `35_SalesDataSyncService.js` L22-28 で「顧客発送時メモ」として使用。`buildComment()` 関数でコメント生成に使用
+- `NOTE`（備考）: `99_Phase5BConfirm.js` 等で仕入れ備考として使用
+- `TRANSACTION_NOTE`（取引備考欄）: `99_Phase5BConfirm.js` L279 で使用
+- `CANCELLATION_NOTE`（キャンセルメモ）: Core Schema 定義のみ
+
+**PDF への出力確認**
+- `27_WebApp.js` L7905: `customerShippingMemo`（SHIPPING_NOTE）が PDF 生成に使われている
+
+**「社内メモ」用途への適合性**
+- 既存列で請求書発行時の「社内メモ」として最も近いのは `NOTE`（備考）
+- ただし `NOTE` は複数用途に使われており、社内メモ専用ではない
+- 専用の「社内メモ」列が必要な場合は `INTERNAL_NOTE`（内部メモ）列の新設が適切
+- 列新設はシートへの列追加を伴うため、PO の判断が必要
