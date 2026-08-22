@@ -37,6 +37,7 @@ export type OrderEditorValues = {
   duty: string;
   otherFee: string;
   discount: string;
+  internalNote: string;
   lines: OrderLineEditorValues[];
 };
 
@@ -63,6 +64,7 @@ export function emptyOrderEditorValues(): OrderEditorValues {
     duty: '',
     otherFee: '',
     discount: '',
+    internalNote: '',
     lines: [emptyOrderLine()],
   };
 }

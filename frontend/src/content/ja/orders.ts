@@ -95,5 +95,7 @@ export const ordersCopy = {
       WISE: 'Wise',
       PAYPAL: 'PayPal',
     } as Record<string, string>,
+    internalNote: '内部メモ',
+    internalNoteDescription: '顧客には表示されません',
   },
 } as const;
