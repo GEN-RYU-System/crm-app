@@ -7,6 +7,7 @@ import { useLeadListCache } from './pages/leads/LeadListCacheContext';
 import { useCustomerListCache } from './pages/customers/CustomerListCacheContext';
 import { useInventoryListCache } from './pages/inventory/InventoryListCacheContext';
 import { useOrderListCache } from './pages/orders/OrderListCacheContext';
+import { useSalesOrderListCache } from './pages/sales-orders/SalesOrderListCacheContext';
 import { useStaffListCache } from './pages/staff/StaffListCacheContext';
 import { useQuoteListCache } from './pages/quotes/QuoteListCacheContext';
 import { AppShell } from './components/shell';
@@ -82,6 +83,7 @@ function SyncPoller() {
   const { refresh: refreshCustomers } = useCustomerListCache();
   const { refresh: refreshInventory } = useInventoryListCache();
   const { refresh: refreshOrders } = useOrderListCache();
+  const { refresh: refreshSalesOrders } = useSalesOrderListCache();
   const { refresh: refreshStaff } = useStaffListCache();
   const { refresh: refreshQuotes } = useQuoteListCache();
 
@@ -89,10 +91,10 @@ function SyncPoller() {
     leads:     () => refreshLeads(),
     customers: () => refreshCustomers(),
     inventory: () => refreshInventory(),
-    orders:    () => refreshOrders(),
+    orders:    () => Promise.all([refreshOrders(), refreshSalesOrders()]).then(() => undefined),
     staff:     () => refreshStaff(),
     quotes:    () => refreshQuotes(),
-  }), [refreshLeads, refreshCustomers, refreshInventory, refreshOrders, refreshStaff, refreshQuotes]);
+  }), [refreshLeads, refreshCustomers, refreshInventory, refreshOrders, refreshSalesOrders, refreshStaff, refreshQuotes]);
 
   useSyncPolling(refreshers);
   return null;
