@@ -13,7 +13,7 @@
 /* global getCoreSchemaV1HeaderName, getCoreSchemaV1Value, getCoreSchemaV1Sheet, withSheetWrite_,
    validateCoreSchemaV1TableForWrite, setEmailFromSession, checkPermission,
    validateQuoteLineInventory_, calculateOrderStatus, calculatePaymentStatus,
-   getCurrentExchangeRate,
+   getCurrentExchangeRate, getSettingValue,
    SpreadsheetApp, getSpreadsheet, LockService */
 
 /** オーダーID接頭辞: OD-00001 形式 */
@@ -33,6 +33,9 @@ var CORE_ORDER_WRITE_CACHE_TARGETS = [
  * オーダーを新規作成する（明細も同時登録）。
  * 金額はサーバーサイドで計算する（フロントの値を信用しない）。
  * 為替レートは通貨マスタから取得する（フロントからの値は使わない）。
+ * 受注日・支払期日はサーバー側で自動設定する（フロントから受け取らない）:
+ *   - 受注日  : 今日の日付
+ *   - 支払期日: 受注日 + 設定値「オーダー支払期日日数」日数（既定値 2）
  *
  * @param {string} sessionId
  * @param {{
@@ -41,8 +44,6 @@ var CORE_ORDER_WRITE_CACHE_TARGETS = [
  *   paymentDestinationId: string,
  *   currency: string,
  *   paymentMethod: string,
- *   paymentDueAt: string,
- *   orderDate: string,
  *   shippingFee?: string,
  *   duty?: string,
  *   otherFee?: string,
@@ -68,8 +69,6 @@ function createCoreOrderForFrontend(sessionId, payload) {
   var paymentDestinationId = coreOrderWriteValue(payload.paymentDestinationId);
   var currency = coreOrderWriteValue(payload.currency);
   var paymentMethod = coreOrderWriteValue(payload.paymentMethod);
-  var paymentDueAt = coreOrderWriteValue(payload.paymentDueAt);
-  var orderDate = coreOrderWriteValue(payload.orderDate);
   var lines = Array.isArray(payload.lines) ? payload.lines : [];
 
   if (!customerId) throw new Error('MISSING_CUSTOMER_ID');
@@ -77,8 +76,6 @@ function createCoreOrderForFrontend(sessionId, payload) {
   if (!paymentDestinationId) throw new Error('MISSING_PAYMENT_DESTINATION_ID');
   if (!currency) throw new Error('MISSING_CURRENCY');
   if (!paymentMethod) throw new Error('MISSING_PAYMENT_METHOD');
-  if (!paymentDueAt) throw new Error('MISSING_PAYMENT_DUE_AT');
-  if (!orderDate) throw new Error('MISSING_ORDER_DATE');
   if (!lines.length) throw new Error('MISSING_LINES');
 
   // 在庫バリデーション（condition / productId が指定された行のみ）
@@ -119,6 +116,13 @@ function createCoreOrderForFrontend(sessionId, payload) {
       var now = new Date();
       var newOrderId = coreOrderWriteGenerateNextOrderId(orderSheet, orderHI);
 
+      // 受注日・支払期日をサーバー側で自動計算する（フロントの値を使わない）
+      var dueDays = parseInt(getSettingValue('オーダー支払期日日数') || '2', 10);
+      if (isNaN(dueDays) || dueDays <= 0) dueDays = 2;
+      var paymentDueDate = new Date(now.getTime());
+      paymentDueDate.setDate(paymentDueDate.getDate() + dueDays);
+      var paymentTermsLabel = String(dueDays) + '\u65e5\u5f8c'; // "N日後"
+
       // 新規作成時のステータス判定（invoiceNumber も paymentConfirmedAt もない → 不明）
       var orderStatus = calculateOrderStatus(
         {
@@ -134,7 +138,7 @@ function createCoreOrderForFrontend(sessionId, payload) {
       var paymentStatus = calculatePaymentStatus({
         cancellationReason: '',
         paymentConfirmedAt: '',
-        paymentDueAt: paymentDueAt ? new Date(paymentDueAt) : null
+        paymentDueAt: paymentDueDate
       });
 
       // paymentMethod / currency は getCoreSchemaV1Value で解決
@@ -156,7 +160,7 @@ function createCoreOrderForFrontend(sessionId, payload) {
       setOrderCell('PAYMENT_DESTINATION_ID', paymentDestinationId);
       setOrderCell('SOURCE_LEAD_ID', sourceLeadId);
       setOrderCell('STATUS', orderStatus);
-      setOrderCell('ORDER_DATE', orderDate ? new Date(orderDate) : now);
+      setOrderCell('ORDER_DATE', now);
       setOrderCell('CURRENCY', currency);
       setOrderCell('EXCHANGE_RATE', exchangeRate);
       setOrderCell('LINE_TOTAL', lineTotal);
@@ -166,7 +170,8 @@ function createCoreOrderForFrontend(sessionId, payload) {
       setOrderCell('DISCOUNT', discount);
       setOrderCell('INVOICE_TOTAL', invoiceTotal);
       setOrderCell('PAYMENT_METHOD', paymentMethodValue);
-      setOrderCell('PAYMENT_DUE_AT', paymentDueAt ? new Date(paymentDueAt) : '');
+      setOrderCell('PAYMENT_DUE_AT', paymentDueDate);
+      setOrderCell('PAYMENT_TERMS', paymentTermsLabel);
       setOrderCell('REGISTERED_AT', now);
       setOrderCell('UPDATED_AT', now);
       setOrderCell('PAYMENT_STATUS', paymentStatus);

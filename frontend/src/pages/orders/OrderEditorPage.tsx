@@ -248,8 +248,6 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
         paymentDestinationId: values.paymentDestinationId,
         currency: values.currency,
         paymentMethod: values.paymentMethod,
-        paymentDueAt: values.paymentDueAt,
-        orderDate: values.orderDate,
         shippingFee: values.shippingFee,
         duty: values.duty,
         otherFee: values.otherFee,
@@ -419,23 +417,6 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
                 width="sm"
               />
 
-              <TextField
-                label={ordersCopy.editor.paymentDueAt}
-                type="date"
-                value={values.paymentDueAt}
-                onChange={(e) => updateValue('paymentDueAt', e.target.value)}
-                width="sm"
-                required
-              />
-
-              <TextField
-                label={ordersCopy.editor.orderDate}
-                type="date"
-                value={values.orderDate}
-                onChange={(e) => updateValue('orderDate', e.target.value)}
-                width="sm"
-                required
-              />
             </div>
           </Card>
 
