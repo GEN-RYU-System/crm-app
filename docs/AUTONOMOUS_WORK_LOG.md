@@ -407,6 +407,51 @@ git revert efad153
 
 ---
 
+## [2026-08-22] PR8 (#383): Registry にオーダー入金確認列を追加（42列実態合わせ）+ DEVテストデータ関数新設
+
+### 変更前の状態
+
+`src/00_CoreSchemaRegistry.js` の `ORDERS.headers` は40列を定義していたが、
+シートの実態は42列（入金確認元・入金確認者IDが手動追加済み）だった。
+
+### 変更内容（ファイル単位）
+
+- `src/00_CoreSchemaRegistry.js`: PAYMENT_CONFIRMATION_SOURCE を20列目（支払確認日の直後）に、
+  PAYMENT_CONFIRMED_BY_ID を29列目（受注担当IDの直後）に挿入。40列→42列に修正。
+  ORDERS.values に PAYMENT_CONFIRMATION_SOURCE グループ（手動 / PayPal自動）を追加。
+  ORDERS.referenceIds に `{ PAYMENT_CONFIRMED_BY_ID → STAFF }` を追加
+- `src/99_DevReferenceIntegrityAudit.js`: DEV_REFERENCE_INTEGRITY_RELATIONSHIPS 末尾に
+  `['担当者マスタ', '担当者ID', 'オーダー管理', '入金確認者ID', 'OPTIONAL']` を追加
+- `src/99_TestFunctions.js`: createDevTestUnpaidOrder を追記。
+  環境ガード・二重実行防止・LockService・物理ヘッダー名直書き禁止（getCoreSchemaV1HeaderName 使用）・
+  calculateOrderStatus / calculatePaymentStatus 使用・OD/ODL採番ロジックを実装
+
+### 変更理由
+
+DEVシートに手作業追加された2列（入金確認元・入金確認者ID）を Registry に追従させ、
+validateCoreSchemaV1TableForWrite を使う全関数がこれら列を認識できるようにするため。
+併せて DEV 環境でのテストデータ投入を可能にする関数を新設。
+
+### 検証結果
+
+- `clasp run runCoreSchemaConformanceAudit`: 総不一致 **0** （ORDERS 42列一致含む）
+- `clasp run runAndLogDevReferenceIntegrityAudit`: 孤立参照 **0** （全20リレーション）
+  - 入金確認者ID: 孤立参照数=0 / EMPTY_REFERENCE_ALLOWED（172件全て空欄）
+- CI: frontend-check pass / gas-global-namespace pass
+- Deploy to DEV: success（run #32587457370）
+
+### マージコミット SHA
+
+fd084eda2725ec7ba675afb947982fb0e0aa8e4c
+
+### 戻し方
+
+```
+git revert fd084eda2725ec7ba675afb947982fb0e0aa8e4c
+```
+
+---
+
 ## 【13】社内メモ列の調査（調査のみ）— 実施済み
 
 **調査日時**: 2026-08-22
