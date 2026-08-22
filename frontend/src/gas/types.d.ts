@@ -34,6 +34,7 @@ interface GoogleScriptRun {
   getInventoryProductOptions(sessionId: string | null): void;
   getInventoryConditions(sessionId: string | null, productId: string): void;
   createCoreOrderForFrontend(sessionId: string | null, payload: unknown): void;
+  updateCoreOrderForFrontend(sessionId: string | null, orderId: string, orderData: unknown): void;
   checkSyncSignals(sessionId: string | null): void;
 }
 

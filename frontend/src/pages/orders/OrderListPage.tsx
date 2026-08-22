@@ -93,6 +93,7 @@ export function OrderListPage() {
             rows={filteredRows}
             rowKey={(row) => row.orderId}
             surface="embedded"
+            onRowClick={(row) => navigate(ORDER_EDITOR_PATHS.edit(row.orderId))}
           />
         )}
       </Card>
