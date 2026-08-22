@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, EmptyState, LineItemEditor, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField } from '../../components/ui';
 import { quotesCopy } from '../../content/ja';
-import { createCoreQuote, getCoreQuoteDetail, getCoreCurrencies, getInventoryConditions, getInventoryProductOptions, getLeadOptionsForFrontend, updateCoreQuote, type CurrencyRecord, type InventoryConditionOption, type InventoryProductOption, type LeadOption } from '../../gas/client';
+import { createCoreQuote, getCoreQuoteDetail, getCoreCurrencies, getInventoryProductOptions, getLeadOptionsForFrontend, updateCoreQuote, type CurrencyRecord, type InventoryProductOption, type LeadOption } from '../../gas/client';
+import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
 import { emptyLineValues, emptyQuoteEditorValues, isValidDiscount, QUOTE_EDITOR_PATHS, toHalfwidthDigits, toQuoteEditorValues, toQuotePayload, type QuoteEditorValues, type QuoteLineEditorValues } from './quoteEditorConfig';
 import { LeadCombobox } from './LeadCombobox';
 import './QuoteEditorPage.css';
@@ -23,9 +24,11 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
   const [currencies, setCurrencies] = useState<CurrencyRecord[]>([]);
   const [leads, setLeads] = useState<LeadOption[]>([]);
   const [inventoryProducts, setInventoryProducts] = useState<InventoryProductOption[]>([]);
-  const [conditionsMap, setConditionsMap] = useState<Map<string, InventoryConditionOption[]>>(new Map());
   const [lineErrors, setLineErrors] = useState<Map<number, string>>(new Map());
   const [inventoryError, setInventoryError] = useState('');
+
+  // Derive conditions from the prefetched inventory cache (no GAS call needed).
+  const conditionsMap = useInventoryConditionsMap();
 
   useEffect(() => {
     setMasterState('loading');
@@ -58,29 +61,21 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
     });
   }, [quoteId, mode]);
 
+  // For detail mode: backfill unitWeight from the prefetched conditionsMap.
+  // Re-runs whenever conditionsMap updates (e.g. after the prefetch completes).
   useEffect(() => {
     if (mode !== 'detail' || detailState !== 'ready') return;
-    const productIds = [...new Set(values.lines.map((l) => l.productId).filter(Boolean))];
-    if (productIds.length === 0) return;
-    productIds.forEach((productId) => {
-      if (conditionsMap.has(productId)) return;
-      void getInventoryConditions(productId)
-        .then((conditions) => {
-          setConditionsMap((prev) => new Map(prev).set(productId, [...conditions]));
-          setValues((prev) => ({
-            ...prev,
-            lines: prev.lines.map((l) => {
-              if (l.productId !== productId || !l.condition) return l;
-              const found = conditions.find((c) => c.condition === l.condition);
-              return found ? { ...l, unitWeight: found.unitWeight } : l;
-            })
-          }));
-        })
-        .catch(() => {
-          setConditionsMap((prev) => new Map(prev).set(productId, []));
-        });
-    });
-  }, [mode, detailState]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (conditionsMap.size === 0) return;
+    setValues((prev) => ({
+      ...prev,
+      lines: prev.lines.map((l) => {
+        if (!l.productId || !l.condition) return l;
+        const conditions = conditionsMap.get(l.productId) ?? [];
+        const found = conditions.find((c) => c.condition === l.condition);
+        return found ? { ...l, unitWeight: found.unitWeight } : l;
+      })
+    }));
+  }, [mode, detailState, conditionsMap]);
 
   const editable = mode === 'create' || canEdit;
 
@@ -120,16 +115,7 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
       )
     }));
     setLineErrors((prev) => { const m = new Map(prev); m.delete(index); return m; });
-
-    if (!productId) return;
-    if (!conditionsMap.has(productId)) {
-      void getInventoryConditions(productId).then((conditions) => {
-        setConditionsMap((prev) => new Map(prev).set(productId, [...conditions]));
-      }).catch(() => {
-        setConditionsMap((prev) => new Map(prev).set(productId, []));
-        setInventoryError(quotesCopy.editor.conditionsLoadError);
-      });
-    }
+    // conditionsMap is derived synchronously from the prefetched cache — no GAS call needed.
   };
 
   const handleConditionSelect = (index: number, condition: string) => {

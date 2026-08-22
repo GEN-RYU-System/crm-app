@@ -118,15 +118,41 @@ const MOCK_PRODUCTS = [
   { productId: 'PM-0002', productName: 'Preview Product Beta',  category: 'Category B' },
 ];
 
-const MOCK_CONDITIONS: Record<string, unknown[]> = {
+const MOCK_CONDITIONS: Record<string, { condition: string; quantity: number; unitPrice: number; unitWeight: number }[]> = {
   'PM-0001': [
-    { condition: 'NEW',  quantity: 5,  unitPrice: 10000, unitWeight: 0.5 },
-    { condition: 'USED', quantity: 3,  unitPrice: 7000,  unitWeight: 0.5 },
+    { condition: 'Sealed box', quantity: 5,  unitPrice: 10000, unitWeight: 500 },
+    { condition: 'Case',       quantity: 3,  unitPrice: 7000,  unitWeight: 3000 },
   ],
   'PM-0002': [
-    { condition: 'NEW',  quantity: 10, unitPrice: 5000, unitWeight: 1.0 },
+    { condition: 'Sealed box', quantity: 10, unitPrice: 5000, unitWeight: 600 },
   ],
 };
+
+// Mock data for getSharedInventoryForFrontend (used by the prefetch cache).
+const MOCK_SHARED_INVENTORY = Object.entries(MOCK_CONDITIONS).flatMap(([productId, conditions]) => {
+  const product = MOCK_PRODUCTS.find((p) => p.productId === productId);
+  if (!product) return [];
+  return conditions.map((c) => ({
+    series: '',
+    quantity: c.quantity,
+    unitPrice: c.unitPrice,
+    condition: c.condition,
+    unitWeight: c.unitWeight,
+    status: 'In Stock',
+    noteJa: '',
+    noteEn: '',
+    supplier: 'Preview Supplier',
+    productId,
+    rawName: product.productName,
+    exclusionReason: '',
+    ipId: '',
+    ipName: '',
+    releaseDate: '',
+    japaneseTitle: product.productName,
+    englishTitle: product.productName,
+    mark: '',
+  }));
+});
 
 const MOCK_CURRENCIES = [
   { currencyCode: 'USD', symbol: '$',  name: 'US Dollar',      rateToJpy: 150 },
@@ -195,7 +221,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     logout(_sessionId: string) { succeed(null); },
     changeOwnPasswordForFrontend(_s: string | null, _c: string, _n: string) { succeed({ success: true }); },
 
-    getSharedInventoryForFrontend(_s: string | null, _force: boolean) { succeed([]); },
+    getSharedInventoryForFrontend(_s: string | null, _force: boolean) { succeed(MOCK_SHARED_INVENTORY); },
     getCoreQuotesForFrontend(_s: string | null, _force: boolean) { succeed([]); },
     getCoreQuoteForFrontend(_s: string | null, _quoteId: string) { succeed(null); },
     getCoreOrdersForFrontend(_s: string | null, _force: boolean) { succeed([]); },
