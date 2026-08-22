@@ -977,6 +977,55 @@ function listTriggersForClasp() {
 
 
 /**
+ * 【読み取り専用】オーダー管理「支払サイト」列の値分布を調査する
+ * 値は選択肢データのため出力可。個人データ（顧客名等）は出力しない。
+ */
+function surveyOrderPaymentTerms() {
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName('オーダー管理');
+  if (!sh) return '[NOT FOUND] オーダー管理';
+
+  var lastCol = sh.getLastColumn();
+  var lastRow = sh.getLastRow();
+  if (lastRow < 2) return '[空シート]';
+
+  var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var colIdx = headers.indexOf('支払サイト');
+  if (colIdx < 0) return '[NOT FOUND] 支払サイト列 (全' + lastCol + '列を検索)';
+
+  var dataRows = lastRow - 1;
+  var values = sh.getRange(2, colIdx + 1, dataRows, 1).getValues();
+
+  var dist = {};
+  var emptyCount = 0;
+  values.forEach(function(row) {
+    var v = String(row[0] || '').trim();
+    if (v === '') { emptyCount++; } else { dist[v] = (dist[v] || 0) + 1; }
+  });
+
+  var out = [
+    '=== surveyOrderPaymentTerms ===',
+    'シート: オーダー管理',
+    '支払サイト列: col' + (colIdx + 1),
+    '総データ行: ' + dataRows,
+    ''
+  ];
+
+  var sorted = Object.keys(dist).sort(function(a, b) { return dist[b] - dist[a]; });
+  if (sorted.length === 0) {
+    out.push('有値行: 0件（全行空欄）');
+  } else {
+    out.push('--- 値の分布（多い順）---');
+    sorted.forEach(function(k) { out.push('  ' + JSON.stringify(k) + ': ' + dist[k] + '件'); });
+  }
+  out.push('空欄: ' + emptyCount + '件');
+
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
+
+/**
  * リード管理シートの全ヘッダーを返す（clasp run 用）
  * 進捗ステータス列の実在確認を目的とする
  */
