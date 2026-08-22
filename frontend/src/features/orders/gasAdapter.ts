@@ -1,5 +1,5 @@
-import { createCoreOrder, getCoreOrders, getCoreCurrencies, getInventoryConditions, getInventoryProductOptions } from '../../gas/client';
-import type { OrderRepository, OrderCreatePayload, OrderCreateResult, InventoryProductOption, InventoryConditionOption } from './contracts';
+import { createCoreOrder, getCoreOrders, getCoreCurrencies, getInventoryProductOptions } from '../../gas/client';
+import type { OrderRepository, OrderCreatePayload, OrderCreateResult, InventoryProductOption } from './contracts';
 
 export const orderGasRepository: OrderRepository = {
   listOrders: (forceRefresh) => getCoreOrders(forceRefresh),
@@ -19,15 +19,6 @@ export const orderGasRepository: OrderRepository = {
       productId: p.productId,
       productName: p.productName,
       category: p.category,
-    }));
-  },
-  listConditions: async (productId: string): Promise<readonly InventoryConditionOption[]> => {
-    const conditions = await getInventoryConditions(productId);
-    return conditions.map((c) => ({
-      condition: c.condition,
-      quantity: c.quantity,
-      unitPrice: c.unitPrice,
-      unitWeight: c.unitWeight,
     }));
   },
 };

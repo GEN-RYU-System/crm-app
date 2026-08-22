@@ -4,7 +4,8 @@ import { Button, Card, Combobox, LineItemEditor, PageHeader, Select, Skeleton, S
 import { ordersCopy } from '../../content/ja/orders';
 import type { ShippingAddressDto, PaymentProfileDto, CustomerRepository } from '../../features/customers/contracts';
 import { useCustomerAggregateCache } from '../../features/customers/CustomerAggregateCacheContext';
-import type { InventoryConditionOption, InventoryProductOption, OrderCreatePayload, OrderRepository } from '../../features/orders/contracts';
+import type { InventoryProductOption, OrderCreatePayload, OrderRepository } from '../../features/orders/contracts';
+import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
 import {
   calcInvoiceTotal,
   emptyOrderEditorValues,
@@ -39,9 +40,11 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
     paymentProfiles: readonly PaymentProfileDto[];
   } | null>(null);
   const [inventoryProducts, setInventoryProducts] = useState<InventoryProductOption[]>([]);
-  const [conditionsMap, setConditionsMap] = useState<Map<string, InventoryConditionOption[]>>(new Map());
   const [currencies, setCurrencies] = useState<string[]>(['USD', 'JPY', 'EUR', 'GBP']);
   const [pendingCustomerId, setPendingCustomerId] = useState<string | null>(null);
+
+  // Derive conditions from the prefetched inventory cache (no GAS call needed).
+  const conditionsMap = useInventoryConditionsMap();
 
   const { state: aggregateCache } = useCustomerAggregateCache();
   const customerRepositoryRef = useRef(customerRepository);
@@ -154,12 +157,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
           : line
       ),
     }));
-    if (!productId) return;
-    if (!conditionsMap.has(productId)) {
-      void repository.listConditions(productId)
-        .then((conditions) => setConditionsMap((prev) => new Map(prev).set(productId, [...conditions])))
-        .catch(() => setConditionsMap((prev) => new Map(prev).set(productId, [])));
-    }
+    // conditionsMap is derived synchronously from the prefetched cache — no GAS call needed.
   };
 
   const handleConditionSelect = (index: number, condition: string) => {
