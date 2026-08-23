@@ -8,7 +8,7 @@ async function files(directory) { const entries = await readdir(directory, { wit
 function hasRawDeclaration(source, property, allowed = []) { const pattern = new RegExp(`${property}\\s*:\\s*([^;}]+)`, 'gi'); return [...source.matchAll(pattern)].some((match) => { const value = match[1].trim(); return !value.startsWith('var(') && !allowed.includes(value) && value !== '0' && !value.startsWith('0 '); }); }
 const sourceFiles = await files(srcDir);
 for (const file of sourceFiles) { if (extname(file) !== '.css' || file.endsWith('/styles/palette.css')) continue; const source = await readFile(file, 'utf8'); const raw = /#[0-9a-f]{3,8}\b/i.test(source) || /\b(?:rgb|hsl)a?\(/i.test(source) || hasRawDeclaration(source, 'box-shadow', ['none']) || hasRawDeclaration(source, 'border-radius') || ['margin', 'padding', 'gap'].some((property) => hasRawDeclaration(source, property)); if (raw) violations.push(`raw design value: ${relative(frontendDir, file)}`); }
-// 未定義 CSS トークン検査（対象: pages/sales-orders/ のみ）
+// 未定義 CSS トークン検査（対象: frontend/src/ 全体）
 const tokenDefinitionFiles = [
   resolve(frontendDir, 'src/styles/tokens.css'),
   resolve(frontendDir, 'src/styles/palette.css'),
@@ -18,13 +18,13 @@ for (const tf of tokenDefinitionFiles) {
   const src = await readFile(tf, 'utf8');
   for (const m of src.matchAll(/(--[\w-]+)\s*:/g)) definedTokens.add(m[1]);
 }
-const salesOrdersCssFiles = sourceFiles.filter(
-  (f) => extname(f) === '.css' && f.includes('/pages/sales-orders/')
-);
-for (const file of salesOrdersCssFiles) {
+// --ui-skeleton-table-columns: 呼び出し元が値を渡すコンポーネントAPIのため除外
+const INTENTIONALLY_UNDEFINED_TOKENS = new Set(['--ui-skeleton-table-columns']);
+const allCssFiles = sourceFiles.filter((f) => extname(f) === '.css');
+for (const file of allCssFiles) {
   const src = await readFile(file, 'utf8');
   for (const m of src.matchAll(/var\((--[\w-]+)/g)) {
-    if (!m[1].startsWith('--_') && !definedTokens.has(m[1]))
+    if (!m[1].startsWith('--_') && !INTENTIONALLY_UNDEFINED_TOKENS.has(m[1]) && !definedTokens.has(m[1]))
       violations.push(`undefined CSS token: ${m[1]} in ${relative(frontendDir, file)}`);
   }
 }
