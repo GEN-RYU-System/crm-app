@@ -812,7 +812,7 @@ git revert <マージコミットSHA>
 
 - 日時: 2026-08-24
 - ブランチ: release/discord-oauth-invite
-- PR: （PR作成後に記録）
+- PR: #459
 - マージコミット SHA: （マージ後に記録）
 - 戻し方: git revert <マージコミットSHA>
 
