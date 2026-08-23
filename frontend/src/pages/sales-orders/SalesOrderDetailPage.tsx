@@ -346,7 +346,7 @@ export function SalesOrderDetailPage() {
 
             {/* confirm payment dialog */}
             {confirmOpen && (
-              <div className="sales-order-detail-page__confirm-overlay" style={{ backgroundColor: 'color-mix(in srgb, black 50%, transparent)' }}>
+              <div className="sales-order-detail-page__confirm-overlay">
                 <div className="sales-order-detail-page__confirm-dialog">
                   <h3 className="sales-order-detail-page__section-title">{copy.confirmPaymentTitle}</h3>
                   <p style={{ whiteSpace: 'pre-line' }}>
