@@ -314,3 +314,55 @@ function inboxPlatformFromSource_(leadSource) {
   if (src.indexOf('discord')   !== -1) return 'discord';
   return 'messenger';
 }
+
+// ───────────────────────────────────────────────
+// DEV専用診断
+// ───────────────────────────────────────────────
+
+/**
+ * DEV専用: Phase 1 合格条件を検証する。
+ * - 会話ログシートのユニークリードID数
+ * - buildInboxConversations_ が返す件数
+ * - 指定リードIDのメッセージ件数
+ * セッション認証をバイパスして直接データを読む。
+ *
+ * @param {string} [sampleLeadId] 例: 'LDI-00002'
+ * @returns {{ sheetUniqueLeadCount: number, conversationListCount: number, sampleLeadId: string, sampleMessageCount: number }}
+ */
+function dryRunVerifyInboxPhase1(sampleLeadId) {
+  if (getEnvironment() !== 'development') {
+    throw new Error('dryRunVerifyInboxPhase1 は DEV 環境でのみ実行できます');
+  }
+
+  var ss = getSpreadsheet();
+
+  // ── 1. 会話ログシートのユニークリードID数を実測 ──
+  var convSheet = resolveConversationLogSheet_(ss);
+  var sheetUniqueLeadIds = {};
+  if (convSheet) {
+    var convData  = convSheet.getDataRange().getValues();
+    var headers   = convData[0];
+    var leadIdIdx = headers.indexOf('リードID');
+    if (leadIdIdx !== -1) {
+      for (var r = 1; r < convData.length; r++) {
+        var lid = String(convData[r][leadIdIdx] || '').trim();
+        if (lid) sheetUniqueLeadIds[lid] = true;
+      }
+    }
+  }
+  var sheetUniqueLeadCount = Object.keys(sheetUniqueLeadIds).length;
+
+  // ── 2. buildInboxConversations_ が返す件数を実測 ──
+  var conversations = buildInboxConversations_(ss);
+
+  // ── 3. 指定リードIDのメッセージ件数を実測 ──
+  var targetLeadId = sampleLeadId || Object.keys(sheetUniqueLeadIds)[0] || '';
+  var messages = targetLeadId ? readInboxMessages_(ss, targetLeadId) : [];
+
+  return {
+    sheetUniqueLeadCount:  sheetUniqueLeadCount,
+    conversationListCount: conversations.length,
+    sampleLeadId:          targetLeadId,
+    sampleMessageCount:    messages.length
+  };
+}
