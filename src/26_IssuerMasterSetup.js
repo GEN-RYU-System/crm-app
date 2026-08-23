@@ -56,9 +56,7 @@ function seedIssuerMaster() {
 
     var sheet = ss.getSheetByName(sheetName);
     if (!sheet) {
-      Logger.log('[seedIssuerMaster] シートが存在しないため先に setupIssuerMasterSheet を呼びます。');
-      setupIssuerMasterSheet();
-      sheet = ss.getSheetByName(sheetName);
+      throw new Error('CORE_SCHEMA_REQUIRED_TAB_MISSING: 発行元マスタ — setupIssuerMasterSheet() を先に実行してください');
     }
 
     var dataRowCount = sheet.getLastRow() - table.headerRowNumber;
