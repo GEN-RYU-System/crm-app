@@ -31,9 +31,7 @@ type ShippingEditValues = {
   shippedAt: string;
   trackingNumber: string;
   shippingMethod: string;
-  note: string;
   shippingNote: string;
-  transactionNote: string;
   internalNote: string;
   cancellationReason: string;
   cancellationNote: string;
@@ -57,9 +55,7 @@ function emptyShippingValues(): ShippingEditValues {
     shippedAt: '',
     trackingNumber: '',
     shippingMethod: '',
-    note: '',
     shippingNote: '',
-    transactionNote: '',
     internalNote: '',
     cancellationReason: '',
     cancellationNote: '',
@@ -506,7 +502,7 @@ export function OrderDetailPage({ repository }: Props) {
             />
             <Textarea
               label={ordersCopy.detail.shippingNote}
-              helperText={ordersCopy.editor.shippingNoteDescription}
+              helperText={ordersCopy.detail.shippingNoteDescription}
               value={shippingValues.shippingNote}
               onChange={(e) => setShippingValues((prev) => ({ ...prev, shippingNote: e.target.value }))}
               rows={3}
@@ -514,7 +510,7 @@ export function OrderDetailPage({ repository }: Props) {
             />
             <Textarea
               label={ordersCopy.detail.internalNote}
-              helperText={ordersCopy.editor.internalNoteDescription}
+              helperText={ordersCopy.detail.internalNoteDescription}
               value={shippingValues.internalNote}
               onChange={(e) => setShippingValues((prev) => ({ ...prev, internalNote: e.target.value }))}
               rows={4}
