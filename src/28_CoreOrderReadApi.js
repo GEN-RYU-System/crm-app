@@ -267,3 +267,28 @@ function readDetailSheet_(ss, tableKey, fieldKeys) {
     return obj;
   });
 }
+
+/**
+ * DEV専用: ORDER_ID を指定して ORDERS シートの STATUS / PAYMENT_STATUS 等を確認する。
+ * dryRunCheckOrderDetailLookup が PR15 で削除されたため復元。書き込みなし。
+ *
+ * @param {string} orderId 例: 'OD-00177'
+ * @returns {{ found: boolean, row: Object, total: number }}
+ */
+function dryRunGetOrderStatus(orderId) {
+  if (getEnvironment() !== 'development') {
+    throw new Error('dryRunGetOrderStatus は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+  var data = readDetailSheet_(ss, 'ORDERS', [
+    'ORDER_ID', 'STATUS', 'PAYMENT_STATUS', 'INVOICE_NUMBER',
+    'PAYMENT_CONFIRMED_AT', 'CANCELLATION_REASON'
+  ]);
+  var targetId = String(orderId || '').trim();
+  for (var i = 0; i < data.length; i++) {
+    if (String(data[i].ORDER_ID || '').trim() === targetId) {
+      return { found: true, row: data[i], total: data.length };
+    }
+  }
+  return { found: false, total: data.length };
+}

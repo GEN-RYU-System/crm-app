@@ -149,3 +149,35 @@ function devCheckPaymentRowsByCustomerName(customerNames) {
     };
   });
 }
+
+/**
+ * DEV専用: PAYMENT_DESTINATION_ID を指定して DISPLAY_NAME / BILLING_NAME の値を確認する。
+ * 請求先が「-」になる原因調査用。書き込みなし。
+ *
+ * @param {string} paymentDestinationId 例: 'PY-00012'
+ * @returns {{ found: boolean, PAYMENT_DESTINATION_ID: string, DISPLAY_NAME: string, BILLING_NAME: string }}
+ */
+function dryRunGetPaymentDestination(paymentDestinationId) {
+  if (getEnvironment() !== 'development') {
+    throw new Error('dryRunGetPaymentDestination は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+  var table = coreCustomerFrontendReadTable(ss, 'PAYMENT_DESTINATIONS', [
+    'PAYMENT_DESTINATION_ID', 'DISPLAY_NAME', 'BILLING_NAME', 'CUSTOMER_ID'
+  ]);
+  var targetId = String(paymentDestinationId || '').trim();
+  for (var i = 0; i < table.rows.length; i++) {
+    var row = table.rows[i];
+    var id = coreCustomerFrontendValue(row[table.indexes.PAYMENT_DESTINATION_ID]);
+    if (id === targetId) {
+      return {
+        found:                  true,
+        PAYMENT_DESTINATION_ID: id,
+        CUSTOMER_ID:            coreCustomerFrontendValue(row[table.indexes.CUSTOMER_ID]),
+        DISPLAY_NAME:           coreCustomerFrontendValue(row[table.indexes.DISPLAY_NAME]),
+        BILLING_NAME:           coreCustomerFrontendValue(row[table.indexes.BILLING_NAME]),
+      };
+    }
+  }
+  return { found: false, PAYMENT_DESTINATION_ID: targetId };
+}
