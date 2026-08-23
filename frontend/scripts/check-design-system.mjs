@@ -53,10 +53,10 @@ if (!customerGasAdapterSource.includes('customerGasRepository')) violations.push
 if (!customerGasAdapterSource.includes("from '../../gas/client'")) violations.push('customers GAS repository bypasses the typed GAS client');
 for (const source of customerPageSources) if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(source) || (!source.includes('CustomerRepository') && !source.includes('CustomerListCacheContext'))) violations.push('customers page bypasses the CustomerRepository boundary');
 const inboxContractsSource = await readFile(resolve(srcDir, 'features/inbox/contracts.ts'), 'utf8');
-const inboxPreviewSource = await readFile(resolve(srcDir, 'features/inbox/previewAdapter.ts'), 'utf8');
+const inboxGasAdapterSource = await readFile(resolve(srcDir, 'features/inbox/gasAdapter.ts'), 'utf8');
 const inboxPageSource = await readFile(resolve(srcDir, 'pages/inbox/InboxPreviewPage.tsx'), 'utf8');
 if (!inboxContractsSource.includes('InboxRepository')) violations.push('inbox feature does not declare InboxRepository');
-if (!inboxPreviewSource.includes('inboxPreviewRepository') || /google\.script\.run|gas\/client|localStorage|sessionStorage|fetch\(/.test(inboxPreviewSource)) violations.push('inbox preview adapter connects to a forbidden runtime dependency');
+if (!inboxGasAdapterSource.includes('inboxGasRepository')) violations.push('inbox feature does not provide GAS repository');
 if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(inboxPageSource) || !inboxPageSource.includes('InboxRepository')) violations.push('inbox page bypasses the InboxRepository boundary');
 const inventoryContractsSource = await readFile(resolve(srcDir, 'features/inventory/contracts.ts'), 'utf8');
 const inventoryGasAdapterSource = await readFile(resolve(srcDir, 'features/inventory/gasAdapter.ts'), 'utf8');
