@@ -50,12 +50,14 @@ import { inboxPreviewRepository } from './features/inbox/previewAdapter';
 import { inventoryGasRepository } from './features/inventory/gasAdapter';
 import { orderGasRepository } from './features/orders/gasAdapter';
 import { quoteGasRepository } from './features/quotes/gasAdapter';
+import { DiscordIntegrationPage } from './pages/discord-integration/DiscordIntegrationPage';
+import { discordIntegrationGasRepository } from './features/discordIntegration/gasAdapter';
 import { ChangePasswordPage } from './pages/auth/ChangePasswordPage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { SalesOrderListPage } from './pages/sales-orders/SalesOrderListPage';
 import { SalesOrderDetailPage } from './pages/sales-orders/SalesOrderDetailPage';
 import { SalesOrderListCacheProvider } from './pages/sales-orders/SalesOrderListCacheContext';
-import { customersCopy, errorCopy, inboxCopy, issuerCopy, leadsCopy, ordersCopy, quotesCopy, salesOrdersCopy, staffCopy } from './content/ja';
+import { customersCopy, discordIntegrationCopy, errorCopy, inboxCopy, issuerCopy, leadsCopy, ordersCopy, quotesCopy, salesOrdersCopy, staffCopy } from './content/ja';
 import { authCopy } from './content/ja/auth';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -179,6 +181,7 @@ function AppRouter() {
     ? <OrderDetailPage repository={orderGasRepository} />
     : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const canAccessIssuerMaster = permissionState.status === 'ready' && hasNavigationPermission(permissions, 'issuer_manage');
+  const canAccessDiscordIntegration = permissionState.status === 'ready' && hasNavigationPermission(permissions, 'admin_access');
   const canAddLeads = hasNavigationPermission(permissions, 'lead_add');
   const canEditLeads = hasNavigationPermission(permissions, 'lead_edit');
   const leadsRoute = permissionState.status === 'checking' ? <LeadPermissionLoading /> : canAccessLeads ? <LeadListPage canAdd={canAddLeads} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
@@ -200,6 +203,12 @@ function AppRouter() {
       ? <IssuerMasterPage canEdit={canAccessIssuerMaster} />
       : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
 
+  const discordIntegrationRoute = permissionState.status === 'checking'
+    ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={discordIntegrationCopy.permissionsChecking} />{discordIntegrationCopy.permissionsChecking}</StatusMessage>
+    : canAccessDiscordIntegration
+      ? <DiscordIntegrationPage repository={discordIntegrationGasRepository} />
+      : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+
   const hubIndexRoutes: Partial<Record<NavigationItemId, ReactNode>> = {
     leads: leadsRoute,
     customers: customersRoute,
@@ -207,7 +216,8 @@ function AppRouter() {
     orders: ordersRoute,
     inventory: inventoryRoute,
     staff: staffRoute,
-    issuerMaster: issuerMasterRoute
+    issuerMaster: issuerMasterRoute,
+    discordIntegration: discordIntegrationRoute
   };
   const hubExtraRoutes: Partial<Record<NavigationItemId, ReactNode[]>> = {
     leads: [

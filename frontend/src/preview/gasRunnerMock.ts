@@ -355,6 +355,26 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     updateCoreIssuerForFrontend(_s: string | null, _data: unknown) {
       succeed({ success: true });
     },
+
+    // Discord integration
+    saveDiscordBotToken(_s: string | null, _token: string) {
+      succeed({ success: true });
+    },
+    getDiscordConnectionStatusForFrontend(_s: string | null) {
+      succeed({
+        isTokenSet: false,
+        tokenMask: 'not-set',
+        botName: '',
+        botId: '',
+        connected: false,
+      });
+    },
+    saveDiscordChannels(_s: string | null, _channelIds: unknown) {
+      succeed({ success: true });
+    },
+    getDiscordChannelsForFrontend(_s: string | null) {
+      succeed({ channels: ['1234567890123456789'] });
+    },
   };
 
   return chain;
