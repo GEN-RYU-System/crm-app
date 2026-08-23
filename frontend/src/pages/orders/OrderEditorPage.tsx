@@ -1,17 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-
-function formatDate(value: unknown): string {
-  if (typeof value !== 'string' || value === '') return '';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('ja-JP');
-}
 import { Button, Card, Combobox, LineItemEditor, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField, TwoColumnLayout } from '../../components/ui';
 import { ordersCopy } from '../../content/ja/orders';
 import type { ShippingAddressDto, PaymentProfileDto, CustomerRepository } from '../../features/customers/contracts';
 import { useCustomerAggregateCache } from '../../features/customers/CustomerAggregateCacheContext';
 import type { InventoryProductOption, OrderCreatePayload, OrderRepository, OrderUpdatePayload } from '../../features/orders/contracts';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
+import { formatDate } from '../shared/dateFormat';
 import {
   calcInvoiceTotal,
   emptyOrderEditorValues,

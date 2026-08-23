@@ -7,6 +7,7 @@ import type { InventoryProductOption, OrderRepository, OrderUpdatePayload } from
 import { getCoreOrderDetail, type OrderDetailRecord } from '../../gas/client';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
 import { formatAmountWithJpy } from '../shared/amountFormat';
+import { formatDate } from '../shared/dateFormat';
 import {
   calcInvoiceTotal,
   emptyOrderLine,
@@ -16,12 +17,6 @@ import {
 } from './orderEditorConfig';
 import { useOrderListCache } from './OrderListCacheContext';
 import './OrderDetailPage.css';
-
-function formatDate(value: unknown): string {
-  if (typeof value !== 'string' || value === '') return '-';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('ja-JP');
-}
 
 function formatNumber(value: unknown): string {
   if (value === null || value === undefined || value === '') return '-';
@@ -104,11 +99,15 @@ export function OrderDetailPage({ repository }: Props) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [detail, setDetail] = useState<OrderDetailRecord | null | undefined>(undefined);
+  const [detailError, setDetailError] = useState(false);
 
   useEffect(() => {
     if (!orderId) return;
     setDetail(undefined);
-    void getCoreOrderDetail(orderId).then((d) => setDetail(d)).catch(() => setDetail(null));
+    setDetailError(false);
+    void getCoreOrderDetail(orderId)
+      .then((d) => setDetail(d))
+      .catch(() => { setDetail(null); setDetailError(true); });
   }, [orderId]);
 
   void ensureLoaded();
@@ -362,6 +361,8 @@ export function OrderDetailPage({ repository }: Props) {
           <h2 className="order-detail-page__section-title">{ordersCopy.detail.sectionLines}</h2>
           {detail === undefined ? (
             <Skeleton variant="list" rows={2} label={ordersCopy.loading} />
+          ) : detailError ? (
+            <StatusMessage variant="error">{ordersCopy.detail.saveErrorFallback}</StatusMessage>
           ) : detail === null || detail.lines.length === 0 ? (
             <p className="order-detail-page__lines-empty">{NA}</p>
           ) : (

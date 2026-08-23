@@ -2,12 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, EmptyState, LineItemEditor, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField, TwoColumnLayout } from '../../components/ui';
 import { quotesCopy } from '../../content/ja';
-
-function formatDate(value: unknown): string {
-  if (typeof value !== 'string' || value === '') return '';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('ja-JP');
-}
+import { formatDate } from '../shared/dateFormat';
 import { createCoreQuote, getCoreQuoteDetail, getCoreCurrencies, getInventoryProductOptions, getLeadOptionsForFrontend, updateCoreQuote, type CurrencyRecord, type InventoryProductOption, type LeadOption } from '../../gas/client';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
 import { emptyLineValues, emptyQuoteEditorValues, isValidDiscount, QUOTE_EDITOR_PATHS, toHalfwidthDigits, toQuoteEditorValues, toQuotePayload, type QuoteEditorValues, type QuoteLineEditorValues } from './quoteEditorConfig';
