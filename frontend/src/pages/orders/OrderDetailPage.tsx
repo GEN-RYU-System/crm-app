@@ -513,6 +513,7 @@ export function OrderDetailPage({ repository }: Props) {
             />
             <Textarea
               label={ordersCopy.detail.shippingNote}
+              helperText={ordersCopy.editor.shippingNoteDescription}
               value={shippingValues.shippingNote}
               onChange={(e) => setShippingValues((prev) => ({ ...prev, shippingNote: e.target.value }))}
               rows={3}
