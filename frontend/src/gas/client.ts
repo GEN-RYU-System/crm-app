@@ -780,10 +780,18 @@ export type LeadFormCountry = {
   postalRequired: boolean;
 };
 
+export type LeadSource = {
+  sourceId: string;
+  name: string;
+  isInbound: boolean;
+  isOutbound: boolean;
+};
+
 export type LeadFormOptions = {
   leadTypes: readonly string[];
   responseSpeeds: readonly string[];
   countries: readonly LeadFormCountry[];
+  leadSources: readonly LeadSource[];
 };
 
 export function getLeadFormOptions(): Promise<LeadFormOptions> {
