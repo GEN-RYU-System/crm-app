@@ -221,10 +221,11 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  background-color: color-mix(in srgb, var(--color-text-primary) 50%, transparent);
 }
 
 .sales-order-detail-page__confirm-dialog {
-  background: var(--color-surface-primary);
+  background: var(--color-surface);
   border-radius: var(--radius-md);
   padding: var(--space-xl);
   max-width: 480px;
