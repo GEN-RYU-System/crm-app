@@ -2384,3 +2384,139 @@ function readQuoteSheetFormulas() {
   Logger.log(out);
   return out;
 }
+
+/**
+ * getInventoryProductOptions に conditions[] を追加した場合の事前計測。
+ *
+ * 計測項目:
+ *   1. 現状相当（{ productId, productName, category }[]）の所要時間（3回）
+ *   2. conditions[] を付与した結果の JSON 文字数・分割数・商品数・平均 conditions 数
+ *   3. unitWeight の取得元確認（PRODUCTS.BOX_WEIGHT / CASE_WEIGHT）
+ *
+ * checkPermission を呼ばないため clasp run から実行可能。
+ * 書き込みなし・キャッシュなし
+ */
+function benchInventoryProductOptionsWithConditions() {
+  var ss         = getSpreadsheet();
+  var invSchema  = CORE_SCHEMA_V1_TABLES['SHARED_INVENTORY'];
+  var prodSchema = CORE_SCHEMA_V1_TABLES['PRODUCTS'];
+  var CHUNK      = 90000;   // 分割閾値（文字）
+  var CACHE_MAX  = 102400;  // CacheService 上限（文字）
+  var RUNS       = 3;
+  var CONDITION_CASE = invSchema.values.CONDITION.CASE;
+
+  var invSheet  = ss.getSheetByName(invSchema.sheetName);
+  var prodSheet = ss.getSheetByName(prodSchema.sheetName);
+
+  // ヘッダーインデックスを事前解決
+  var invData0  = invSheet.getDataRange().getValues();
+  var invH      = invData0[0].map(String);
+  var pidIdx    = invH.indexOf(invSchema.headers['PRODUCT_ID']);
+  var qtyIdx    = invH.indexOf(invSchema.headers['QUANTITY']);
+  var priceIdx  = invH.indexOf(invSchema.headers['UNIT_PRICE']);
+  var condIdx   = invH.indexOf(invSchema.headers['CONDITION']);
+
+  var prodData0    = prodSheet.getDataRange().getValues();
+  var prodH        = prodData0[0].map(String);
+  var prodPidIdx   = prodH.indexOf(prodSchema.headers['PRODUCT_ID']);
+  var jaIdx        = prodH.indexOf(prodSchema.headers['JAPANESE_TITLE']);
+  var catIdx       = prodH.indexOf(prodSchema.headers['CATEGORY']);
+  var boxWIdx      = prodH.indexOf(prodSchema.headers['BOX_WEIGHT']);
+  var caseWIdx     = prodH.indexOf(prodSchema.headers['CASE_WEIGHT']);
+
+  // ─── 1. 現状相当（productId/productName/category のみ）の所要時間 ──────────
+  // getInventoryProductOptions は checkPermission を持つため直接呼べない。
+  // 同等のシート読み取り + ジョインロジックを実行して計測する。
+  function buildCurrentResult(invData, prodData) {
+    var seenIds = {};
+    for (var i = 1; i < invData.length; i++) {
+      if ((Number(invData[i][qtyIdx]) || 0) <= 0) continue;
+      var pid = String(invData[i][pidIdx] != null ? invData[i][pidIdx] : '').trim();
+      if (pid) seenIds[pid] = true;
+    }
+    var results = [];
+    for (var j = 1; j < prodData.length; j++) {
+      var pid2 = String(prodData[j][prodPidIdx] != null ? prodData[j][prodPidIdx] : '').trim();
+      if (!pid2 || !seenIds[pid2]) continue;
+      results.push({
+        productId:   pid2,
+        productName: String(prodData[j][jaIdx]  != null ? prodData[j][jaIdx]  : '').trim(),
+        category:    catIdx >= 0 ? String(prodData[j][catIdx] != null ? prodData[j][catIdx] : '').trim() : ''
+      });
+    }
+    return results;
+  }
+
+  var timesMs = [];
+  for (var r = 0; r < RUNS; r++) {
+    var t0      = Date.now();
+    var invData = invSheet.getDataRange().getValues();
+    var pData   = prodSheet.getDataRange().getValues();
+    buildCurrentResult(invData, pData);
+    timesMs.push(Date.now() - t0);
+  }
+
+  // ─── 2. conditions[] 付き結果を組み立て（JSON サイズ計測） ──────────────────
+  // 商品マスタをマップ化
+  var prodMap = {};
+  for (var pi = 1; pi < prodData0.length; pi++) {
+    var ppid = String(prodData0[pi][prodPidIdx] != null ? prodData0[pi][prodPidIdx] : '').trim();
+    if (!ppid) continue;
+    prodMap[ppid] = {
+      productName: String(prodData0[pi][jaIdx] != null ? prodData0[pi][jaIdx] : '').trim(),
+      category:    catIdx >= 0 ? String(prodData0[pi][catIdx] != null ? prodData0[pi][catIdx] : '').trim() : '',
+      boxWeight:   boxWIdx >= 0 ? (Number(prodData0[pi][boxWIdx]) || 0) : 0,
+      caseWeight:  caseWIdx >= 0 ? (Number(prodData0[pi][caseWIdx]) || 0) : 0
+    };
+  }
+
+  // 在庫行を商品IDごとに集約
+  var condMap = {};
+  for (var i = 1; i < invData0.length; i++) {
+    var qty = Number(invData0[i][qtyIdx]) || 0;
+    if (qty <= 0) continue;
+    var pid = String(invData0[i][pidIdx] != null ? invData0[i][pidIdx] : '').trim();
+    if (!pid || !prodMap[pid]) continue;
+    if (!condMap[pid]) condMap[pid] = [];
+    var cond = String(invData0[i][condIdx] != null ? invData0[i][condIdx] : '');
+    var uw   = (cond === CONDITION_CASE) ? prodMap[pid].caseWeight : prodMap[pid].boxWeight;
+    condMap[pid].push({ condition: cond, quantity: qty, unitPrice: Number(invData0[i][priceIdx]) || 0, unitWeight: uw });
+  }
+
+  var combined = [];
+  Object.keys(condMap).forEach(function(pid) {
+    var p = prodMap[pid];
+    combined.push({ productId: pid, productName: p.productName, category: p.category, conditions: condMap[pid] });
+  });
+
+  var jsonStr   = JSON.stringify(combined);
+  var jsonLen   = jsonStr.length;
+  var chunks    = Math.ceil(jsonLen / CHUNK);
+  var overLimit = jsonLen > CACHE_MAX;
+
+  var totalCond = combined.reduce(function(s, p) { return s + p.conditions.length; }, 0);
+  var avgCond   = combined.length > 0 ? (totalCond / combined.length).toFixed(2) : 0;
+
+  // ─── 3. unitWeight 取得元の確認 ─────────────────────────────────────────────
+  var result = {
+    現状所要時間_ms: { run1: timesMs[0], run2: timesMs[1], run3: timesMs[2] },
+    JSON計測: {
+      商品数:           combined.length,
+      総conditions数:   totalCond,
+      平均conditions数: Number(avgCond),
+      JSON文字数:       jsonLen,
+      分割数_90000字:   chunks,
+      CacheMax超過:     overLimit,
+      CacheMax_102400:  CACHE_MAX
+    },
+    unitWeight取得元: {
+      note:         'SHARED_INVENTORY に重量列なし。PRODUCTS.BOX_WEIGHT (Condition≠Case) / PRODUCTS.CASE_WEIGHT (Condition=Case) を使用。',
+      BOX_WEIGHT列:   boxWIdx >= 0 ? prodH[boxWIdx] : '(not found)',
+      CASE_WEIGHT列:  caseWIdx >= 0 ? prodH[caseWIdx] : '(not found)'
+    }
+  };
+
+  var out = JSON.stringify(result, null, 2);
+  Logger.log(out);
+  return out;
+}
