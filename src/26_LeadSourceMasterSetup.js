@@ -22,17 +22,21 @@
  *   - LockService + withSheetWrite_ で保護
  */
 
-// 実データ準拠の正式マスタ（選択肢マスタ・リード管理実データに基づく）
-// X(旧Twitter) / Discord / メール は実リードデータに存在しないため除外
+// 確定マスタ9件（2026-08-23確定）
+// Market Place は Facebook Marketplace に改名済み前提で登録
+// Whatsapp は IN/OUT 両方 TRUE
+// X(旧Twitter) / その他 は削除
+// Discord / メール は残す
 var CORRECT_SEEDS = [
-  { id: 'SRC001', name: 'Instagram',    inbound: true,  outbound: false, active: true, order: 1 },
-  { id: 'SRC002', name: 'Facebook',     inbound: true,  outbound: false, active: true, order: 2 },
-  { id: 'SRC003', name: 'Market Place', inbound: true,  outbound: false, active: true, order: 3 },
-  { id: 'SRC004', name: 'Whatsapp',     inbound: true,  outbound: false, active: true, order: 4 },
-  { id: 'SRC005', name: '紹介',          inbound: true,  outbound: false, active: true, order: 5 },
-  { id: 'SRC006', name: 'Card Market',  inbound: false, outbound: true,  active: true, order: 6 },
-  { id: 'SRC007', name: 'eBay',         inbound: false, outbound: true,  active: true, order: 7 },
-  { id: 'SRC008', name: 'その他',        inbound: true,  outbound: true,  active: true, order: 8 }
+  { id: 'SRC001', name: 'Instagram',           inbound: true,  outbound: false, active: true, order: 1 },
+  { id: 'SRC002', name: 'Facebook',            inbound: true,  outbound: false, active: true, order: 2 },
+  { id: 'SRC003', name: 'Facebook Marketplace',inbound: true,  outbound: false, active: true, order: 3 },
+  { id: 'SRC004', name: 'Whatsapp',            inbound: true,  outbound: true,  active: true, order: 4 },
+  { id: 'SRC005', name: '紹介',                 inbound: true,  outbound: false, active: true, order: 5 },
+  { id: 'SRC006', name: 'Card Market',         inbound: false, outbound: true,  active: true, order: 6 },
+  { id: 'SRC007', name: 'eBay',                inbound: false, outbound: true,  active: true, order: 7 },
+  { id: 'SRC008', name: 'Discord',             inbound: true,  outbound: true,  active: true, order: 8 },
+  { id: 'SRC009', name: 'メール',              inbound: true,  outbound: true,  active: true, order: 9 }
 ];
 
 function setupLeadSourceMasterSheet() {
