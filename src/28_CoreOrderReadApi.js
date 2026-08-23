@@ -199,6 +199,39 @@ function getCoreOrderDetailForFrontend(sessionId, orderId) {
 }
 
 /**
+ * [DEV専用] readDetailSheet_ の動作確認用診断関数。
+ * ORDERS シートを読み、orderId 照合の結果を返す。書き込みは一切しない。
+ *
+ * @param {string} orderId 照合したい ORDER_ID（例: 'OD-00175'）
+ * @returns {{ total: number, matched: number, sampleKeys: string[], sampleRow: Object }}
+ */
+function dryRunCheckOrderDetailLookup(orderId) {
+  if (getEnvironment() !== 'development') {
+    throw new Error('dryRunCheckOrderDetailLookup は DEV 環境でのみ実行できます');
+  }
+
+  var ss = getSpreadsheet();
+  var data = readDetailSheet_(ss, 'ORDERS', ['ORDER_ID']);
+
+  var matched = 0;
+  for (var i = 0; i < data.length; i++) {
+    if (String(data[i].ORDER_ID || '').trim() === String(orderId || '').trim()) {
+      matched++;
+    }
+  }
+
+  var sampleRow  = data.length > 0 ? data[0] : null;
+  var sampleKeys = sampleRow !== null ? Object.keys(sampleRow) : [];
+
+  return {
+    total:      data.length,
+    matched:    matched,
+    sampleKeys: sampleKeys,
+    sampleRow:  sampleRow
+  };
+}
+
+/**
  * テーブルを1回だけ読み、論理フィールドキーをキーとするオブジェクト配列で返す。
  * readOrderStatusServiceSheet_ (26_OrderStatusService.js) と同じ方式。
  *
