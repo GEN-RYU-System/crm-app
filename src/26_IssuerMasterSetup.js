@@ -8,8 +8,12 @@
  *
  * seedIssuerMaster()
  *   - データが既に1行以上あれば何もしない
- *   - HIGH LIFE JAPAN の1行を投入
+ *   - HIGH LIFE JAPAN の1行を投入（住所分離型 18列構造）
  *   - LockService で保護
+ *
+ * buildAddressLines(addr)
+ *   - 住所オブジェクトから印刷用住所行を組み立てる共通関数
+ *   - 配送先マスタ・支払先マスタ・発行元マスタで共通利用可能
  *
  * ★ 実行は配布後に指示を待つこと
  */
@@ -82,6 +86,11 @@ function seedIssuerMaster() {
     var colContactName    = colOf('CONTACT_NAME');
     var colAddressLine1   = colOf('ADDRESS_LINE1');
     var colAddressLine2   = colOf('ADDRESS_LINE2');
+    var colAddressLine3   = colOf('ADDRESS_LINE3');
+    var colCity           = colOf('CITY');
+    var colState          = colOf('STATE');
+    var colZip            = colOf('ZIP');
+    var colCountry        = colOf('COUNTRY');
     var colPhone          = colOf('PHONE');
     var colEmail          = colOf('EMAIL');
     var colRegistrationNo = colOf('REGISTRATION_NO');
@@ -96,8 +105,13 @@ function seedIssuerMaster() {
     sheet.getRange(startRow, colIssuerId).setValue('ISS-00001');
     sheet.getRange(startRow, colCompanyName).setValue('HIGH LIFE JAPAN');
     sheet.getRange(startRow, colContactName).setValue('Shingo Tanizawa');
-    sheet.getRange(startRow, colAddressLine1).setValue('2F, Nishishinjuku Mizuma Building, 3-3-13 Nishishinjuku');
-    sheet.getRange(startRow, colAddressLine2).setValue('Shinjuku-ku, Tokyo, Japan 1600023');
+    sheet.getRange(startRow, colAddressLine1).setValue('2F, Nishishinjuku Mizuma Building');
+    sheet.getRange(startRow, colAddressLine2).setValue('3-3-13 Nishishinjuku');
+    sheet.getRange(startRow, colAddressLine3).setValue('');
+    sheet.getRange(startRow, colCity).setValue('Shinjuku-ku');
+    sheet.getRange(startRow, colState).setValue('Tokyo');
+    sheet.getRange(startRow, colZip).setValue('1600023');
+    sheet.getRange(startRow, colCountry).setValue('Japan');
     sheet.getRange(startRow, colPhone).setValue('+81 9060727767');
     sheet.getRange(startRow, colEmail).setValue('payment@treasureislandjp.com');
     sheet.getRange(startRow, colRegistrationNo).setValue('T3810449547408');
@@ -112,4 +126,37 @@ function seedIssuerMaster() {
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * 住所オブジェクトから印刷用住所行を組み立てる
+ * 配送先マスタ・支払先マスタ・発行元マスタで共通利用可能
+ *
+ * @param {Object} addr - 住所フィールドを含むオブジェクト
+ *   addr.line1, addr.line2, addr.line3, addr.city, addr.state, addr.zip, addr.country
+ * @returns {string[]} 空でない行の配列（最大2要素）
+ *   [0] "line1, line2, line3"（空欄省略・カンマ区切り）
+ *   [1] "city, state, country zip"（空欄省略）
+ *
+ * 例（発行元）:
+ *   line1="2F, Nishishinjuku Mizuma Building", line2="3-3-13 Nishishinjuku",
+ *   line3="", city="Shinjuku-ku", state="Tokyo", zip="1600023", country="Japan"
+ *   → ["2F, Nishishinjuku Mizuma Building, 3-3-13 Nishishinjuku",
+ *       "Shinjuku-ku, Tokyo, Japan 1600023"]
+ */
+function buildAddressLines(addr) {
+  var streetParts = [addr.line1, addr.line2, addr.line3].filter(function(v) {
+    return v && String(v).trim() !== '';
+  });
+  var line1 = streetParts.join(', ');
+
+  var cityStateParts = [addr.city, addr.state, addr.country].filter(function(v) {
+    return v && String(v).trim() !== '';
+  });
+  var line2 = cityStateParts.join(', ');
+  if (addr.zip && String(addr.zip).trim() !== '') {
+    line2 = line2 + ' ' + String(addr.zip).trim();
+  }
+
+  return [line1, line2.trim()].filter(function(v) { return v !== ''; });
 }
