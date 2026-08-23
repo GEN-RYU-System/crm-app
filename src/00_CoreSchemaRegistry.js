@@ -93,6 +93,25 @@ const CORE_SCHEMA_V1_TABLES = {
       { headerKey: 'STAFF_ID', targetTableKey: 'STAFF' }
     ]
   },
+  ISSUER: {
+    sheetName: '発行元マスタ', canonicalName: '発行元マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['ISSUER_ID', '発行元ID'],
+      ['COMPANY_NAME', '会社名'],
+      ['CONTACT_NAME', '担当者名'],
+      ['ADDRESS_LINE1', '住所1'],
+      ['ADDRESS_LINE2', '住所2'],
+      ['PHONE', '電話番号'],
+      ['EMAIL', 'メール'],
+      ['REGISTRATION_NO', '登録番号'],
+      ['PAYEE_NAME', '受取名義'],
+      ['PAYMENT_EMAIL', '受取先メール'],
+      ['PAYMENT_NOTE', '注記'],
+      ['CLOSING_MESSAGE', '結びの文'],
+      ['IS_ACTIVE', '有効'],
+    ]), primaryKey: 'ISSUER_ID',
+    referenceIds: []
+  },
   QUOTE_LINES: {
     sheetName: '見積もり明細', canonicalName: '見積もり明細', aliases: [], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
     headers: createCoreSchemaV1Headers([
