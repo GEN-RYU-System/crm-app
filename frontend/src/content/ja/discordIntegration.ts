@@ -37,4 +37,16 @@ export const discordIntegrationCopy = {
   connectionFailed: 'Discordへの接続に失敗しました。Botトークンを確認してください。',
   testFailed: 'テストに失敗しました',
   channelDuplicate: 'このチャンネルIDは既に登録されています',
+  // channel setup section
+  setupSection: 'チャンネルセットアップ',
+  setupStatusLoading: 'セットアップ状態を確認中...',
+  setupStatusDone: 'セットアップ済み',
+  setupStatusNotDone: '未セットアップ',
+  setupCategoryLabel: 'カテゴリID',
+  setupTicketLabel: 'ticket-startチャンネルID',
+  setupButton: 'チャンネルをセットアップする',
+  setupButtonRunning: 'セットアップ中...',
+  setupSuccess: 'セットアップが完了しました',
+  setupError: 'セットアップに失敗しました',
+  setupDisabledReason: '先にBot招待を完了してください',
 } as const;

@@ -15,9 +15,24 @@ export type DiscordSaveResult = {
   error?: string;
 };
 
+export type DiscordAutoSetupResult = {
+  success: boolean;
+  categoryId?: string;
+  ticketChannelId?: string;
+  error?: string;
+};
+
+export type DiscordSetupStatus = {
+  guildId: string | null;
+  categoryId: string | null;
+  ticketChannelId: string | null;
+};
+
 export type DiscordIntegrationRepository = {
   saveBotToken: (token: string) => Promise<DiscordSaveResult>;
   getConnectionStatus: () => Promise<DiscordConnectionStatus>;
   saveChannels: (channelIds: string[]) => Promise<DiscordSaveResult>;
   getChannels: () => Promise<DiscordChannelsResult>;
+  runAutoSetup: () => Promise<DiscordAutoSetupResult>;
+  getSetupStatus: () => Promise<DiscordSetupStatus>;
 };

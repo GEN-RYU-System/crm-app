@@ -3,6 +3,8 @@ import {
   getDiscordConnectionStatus,
   saveDiscordChannels,
   getDiscordChannels,
+  runDiscordAutoSetup,
+  getDiscordSetupStatus,
 } from '../../gas/client';
 import type { DiscordIntegrationRepository } from './contracts';
 
@@ -11,4 +13,6 @@ export const discordIntegrationGasRepository: DiscordIntegrationRepository = {
   getConnectionStatus: () => getDiscordConnectionStatus(),
   saveChannels: (channelIds) => saveDiscordChannels(channelIds),
   getChannels: () => getDiscordChannels(),
+  runAutoSetup: () => runDiscordAutoSetup(),
+  getSetupStatus: () => getDiscordSetupStatus(),
 };

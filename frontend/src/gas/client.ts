@@ -941,3 +941,49 @@ export function getDiscordChannels(): Promise<DiscordChannelsResult> {
       .getDiscordChannelsForFrontend(getStoredSessionId());
   });
 }
+
+// ============================================================
+// Discord channel setup (auto-setup)
+// ============================================================
+
+export type DiscordAutoSetupResult = {
+  success: boolean;
+  categoryId?: string;
+  ticketChannelId?: string;
+  error?: string;
+};
+
+export type DiscordSetupStatus = {
+  guildId: string | null;
+  categoryId: string | null;
+  ticketChannelId: string | null;
+};
+
+export function runDiscordAutoSetup(): Promise<DiscordAutoSetupResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => resolve(value as DiscordAutoSetupResult))
+      .withFailureHandler((error) => reject(toError(error)))
+      .runDiscordAutoSetup(getStoredSessionId());
+  });
+}
+
+export function getDiscordSetupStatus(): Promise<DiscordSetupStatus> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        const v = value as { guildId?: unknown; categoryId?: unknown; ticketChannelId?: unknown } | null;
+        resolve({
+          guildId: (v?.guildId as string | null) ?? null,
+          categoryId: (v?.categoryId as string | null) ?? null,
+          ticketChannelId: (v?.ticketChannelId as string | null) ?? null,
+        });
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getDiscordSetupStatus(getStoredSessionId());
+  });
+}
