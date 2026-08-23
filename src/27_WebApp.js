@@ -53,6 +53,12 @@ function doGet(e) {
     }
   }
 
+  // Discord OAuth コールバック（Botサーバー招待後のリダイレクト受信）
+  // state パラメータが存在する場合はDiscordからのコールバックと判断する
+  if (params.state) {
+    return handleDiscordOAuthCallback(params);
+  }
+
   // 旧画面プレビュー（移植作業の参考用・移植完了後に削除すること）
   if (params.page === 'legacy') {
     return HtmlService.createTemplateFromFile('index')
