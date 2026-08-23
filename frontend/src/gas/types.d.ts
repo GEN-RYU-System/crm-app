@@ -26,6 +26,7 @@ interface GoogleScriptRun {
   getCoreQuotesForFrontend(sessionId: string | null, forceRefresh: boolean): void;
   getCoreQuoteForFrontend(sessionId: string | null, quoteId: string): void;
   getCoreOrdersForFrontend(sessionId: string | null, forceRefresh: boolean): void;
+  getCoreOrderDetailForFrontend(sessionId: string | null, orderId: string): void;
   getCoreOrderStatusOptionsForFrontend(sessionId: string | null): void;
   getCoreCurrenciesForFrontend(sessionId: string | null): void;
   getLeadOptionsForFrontend(sessionId: string | null): void;
