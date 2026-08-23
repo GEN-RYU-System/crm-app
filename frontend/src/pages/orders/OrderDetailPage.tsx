@@ -541,6 +541,10 @@ export function OrderDetailPage({ repository }: Props) {
               <DetailRow label={ordersCopy.detail.shippedAt} value={NA} />
               <DetailRow label={ordersCopy.detail.trackingNumber} value={NA} />
               <DetailRow label={ordersCopy.detail.paymentConfirmedAt} value={NA} />
+              <DetailRow
+                label={ordersCopy.detail.shippingNote}
+                value={detail?.order.SHIPPING_NOTE || NA}
+              />
             </dl>
           </Card>
           <Card>

@@ -284,6 +284,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
           duty: values.duty,
           otherFee: values.otherFee,
           discount: values.discount,
+          shippingNote: values.shippingNote,
           internalNote: values.internalNote,
           lines: values.lines.map((line) => ({
             productId: line.productId,
@@ -631,16 +632,17 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
                 width="md"
               />
 
-              <Textarea
-                label={ordersCopy.editor.shippingNote}
-                helperText={ordersCopy.editor.shippingNoteDescription}
-                value={values.shippingNote}
-                onChange={(e) => updateValue('shippingNote', e.target.value)}
-                rows={3}
-                fullWidth
-              />
             </>
           )}
+
+          <Textarea
+            label={ordersCopy.editor.shippingNote}
+            helperText={ordersCopy.editor.shippingNoteDescription}
+            value={values.shippingNote}
+            onChange={(e) => updateValue('shippingNote', e.target.value)}
+            rows={3}
+            fullWidth
+          />
 
           <Textarea
             label={ordersCopy.editor.internalNote}
