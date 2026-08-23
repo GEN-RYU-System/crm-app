@@ -2975,3 +2975,118 @@ function benchLeadFormOptionsJson() {
   Logger.log(out);
   return out;
 }
+
+/**
+ * getLeadsByType の実所要時間を、変換処理追加後に計測する。
+ *
+ * 各タブ（ALL / INBOUND / OUTBOUND）について:
+ *   - 1回目: リードキャッシュ + 流入元マスタキャッシュを両方クリア → フル処理（miss）
+ *   - 2回目: キャッシュあり → readCacheChunks_ のみ（hit）
+ *   - 3回目: キャッシュあり → readCacheChunks_ のみ（hit）
+ *
+ * 比較ベースライン（変換処理追加前）:
+ *   ALL       507ms → 55ms
+ *   INBOUND   545ms → 67ms
+ *   OUTBOUND  540ms → 50ms
+ *
+ * 使い方: clasp run benchLeadsByTypeConversionCost
+ */
+function benchLeadsByTypeConversionCost() {
+  var leadStatuses = CONFIG.LEAD_STATUSES;
+  var out = ['=== benchLeadsByTypeConversionCost ===', '実行: ' + new Date().toISOString(), ''];
+
+  var ss = getSpreadsheet();
+  var leadsSheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  if (!leadsSheet || leadsSheet.getLastRow() < 2) {
+    out.push('【エラー】リード管理シートにデータがありません');
+    var r = out.join('\n'); Logger.log(r); return r;
+  }
+
+  // ヘッダー確認（タイミング外）
+  var sampleHdr = leadsSheet.getRange(1, 1, 1, leadsSheet.getLastColumn()).getValues()[0];
+  out.push('総行数: ' + (leadsSheet.getLastRow() - 1) + '行');
+  out.push('流入元ID列: ' + sampleHdr.indexOf('流入元ID'));
+  out.push('');
+
+  var tabs = [
+    { label: 'ALL（全件）',    type: '',             indexKey: LEADS_CACHE_INDEX_ALL,      prefix: LEADS_CACHE_PREFIX_ALL      },
+    { label: 'INBOUND',        type: 'インバウンド',   indexKey: LEADS_CACHE_INDEX_INBOUND,  prefix: LEADS_CACHE_PREFIX_INBOUND  },
+    { label: 'OUTBOUND',       type: 'アウトバウンド',  indexKey: LEADS_CACHE_INDEX_OUTBOUND, prefix: LEADS_CACHE_PREFIX_OUTBOUND }
+  ];
+
+  for (var t = 0; t < tabs.length; t++) {
+    var tab = tabs[t];
+    out.push('--- ' + tab.label + ' ---');
+
+    // ── 1回目: 両キャッシュをクリア → フル処理 ──────────────────────────────
+    clearCacheChunks_(tab.indexKey, tab.prefix);
+    clearCacheChunks_(LEAD_SOURCES_CACHE_INDEX, LEAD_SOURCES_CACHE_PREFIX);
+
+    var t1s = Date.now();
+
+    var data    = leadsSheet.getDataRange().getValues();
+    var headers = data[0];
+    var ti      = headers.indexOf('リード種別');
+    var si      = headers.indexOf('リードステータス');
+    var srcId   = headers.indexOf('流入元ID');
+
+    var idMap = srcId >= 0 ? getLeadSourceIdMap_() : {};
+
+    var rows = [];
+    for (var i = 1; i < data.length; i++) {
+      var row    = data[i];
+      var type   = ti >= 0 && row[ti] ? row[ti].toString().trim() : '';
+      var status = si >= 0 && row[si] ? row[si].toString().trim() : '';
+      if (!type) continue;
+      if (tab.type && type !== tab.type) continue;
+      if (!leadStatuses.includes(status)) continue;
+
+      var lead = {};
+      for (var h = 0; h < headers.length; h++) {
+        var v = data[i][h];
+        lead[headers[h]] = (v instanceof Date) ? v.toISOString() : v;
+      }
+      if (srcId >= 0) {
+        var rawId = String(lead['流入元ID'] || '').trim();
+        if (rawId && idMap[rawId]) {
+          lead['流入経路'] = idMap[rawId];
+        }
+      }
+      rows.push(lead);
+    }
+    writeCacheChunks_(tab.indexKey, tab.prefix, rows, LEADS_CACHE_TTL, LEADS_CACHE_CHUNK_SIZE);
+
+    var ms1 = Date.now() - t1s;
+    out.push('  1回目 (miss): ' + ms1 + 'ms (' + rows.length + '件)');
+
+    // ── 2回目: リードキャッシュヒット → readCacheChunks_ のみ ───────────────
+    var t2s     = Date.now();
+    var cached2 = readCacheChunks_(tab.indexKey, tab.prefix);
+    var ms2     = Date.now() - t2s;
+    out.push('  2回目 (hit):  ' + ms2 + 'ms (キャッシュ: ' + (cached2 !== null ? cached2.length + '件' : 'MISS') + ')');
+
+    // ── 3回目: 同じくキャッシュヒット ─────────────────────────────────────
+    var t3s     = Date.now();
+    var cached3 = readCacheChunks_(tab.indexKey, tab.prefix);
+    var ms3     = Date.now() - t3s;
+    out.push('  3回目 (hit):  ' + ms3 + 'ms (キャッシュ: ' + (cached3 !== null ? cached3.length + '件' : 'MISS') + ')');
+
+    out.push('');
+  }
+
+  // ── 流入元マスタキャッシュの状態確認 ─────────────────────────────────────
+  out.push('--- 流入元マスタキャッシュ確認 ---');
+  var lsCache = readCacheChunks_(LEAD_SOURCES_CACHE_INDEX, LEAD_SOURCES_CACHE_PREFIX);
+  if (lsCache !== null) {
+    out.push('  状態: HIT（' + Object.keys(lsCache).length + 'エントリ）');
+    out.push('  内容: ' + JSON.stringify(lsCache));
+  } else {
+    out.push('  状態: MISS（キャッシュ未保存）');
+  }
+  out.push('');
+
+  out.push('=== 完了 ===');
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}

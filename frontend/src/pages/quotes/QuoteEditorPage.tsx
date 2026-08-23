@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, EmptyState, LineItemEditor, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField, TwoColumnLayout } from '../../components/ui';
 import { quotesCopy } from '../../content/ja';
+import { formatDate } from '../shared/dateFormat';
 import { createCoreQuote, getCoreQuoteDetail, getCoreCurrencies, getInventoryProductOptions, getLeadOptionsForFrontend, updateCoreQuote, type CurrencyRecord, type InventoryProductOption, type LeadOption } from '../../gas/client';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
 import { emptyLineValues, emptyQuoteEditorValues, isValidDiscount, QUOTE_EDITOR_PATHS, toHalfwidthDigits, toQuoteEditorValues, toQuotePayload, type QuoteEditorValues, type QuoteLineEditorValues } from './quoteEditorConfig';
@@ -285,13 +286,13 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
               {quoteMetaInfo.issuedDate && (
                 <>
                   <dt className="quote-editor-page__meta-label">{quotesCopy.detail.issuedDate}</dt>
-                  <dd className="quote-editor-page__meta-value">{quoteMetaInfo.issuedDate}</dd>
+                  <dd className="quote-editor-page__meta-value">{formatDate(quoteMetaInfo.issuedDate)}</dd>
                 </>
               )}
               {quoteMetaInfo.expiryDate && (
                 <>
                   <dt className="quote-editor-page__meta-label">{quotesCopy.detail.expiryDate}</dt>
-                  <dd className="quote-editor-page__meta-value">{quoteMetaInfo.expiryDate}</dd>
+                  <dd className="quote-editor-page__meta-value">{formatDate(quoteMetaInfo.expiryDate)}</dd>
                 </>
               )}
             </dl>
