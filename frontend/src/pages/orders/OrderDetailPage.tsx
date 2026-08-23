@@ -505,13 +505,6 @@ export function OrderDetailPage({ repository }: Props) {
               width="md"
             />
             <Textarea
-              label={ordersCopy.detail.note}
-              value={shippingValues.note}
-              onChange={(e) => setShippingValues((prev) => ({ ...prev, note: e.target.value }))}
-              rows={3}
-              fullWidth
-            />
-            <Textarea
               label={ordersCopy.detail.shippingNote}
               helperText={ordersCopy.editor.shippingNoteDescription}
               value={shippingValues.shippingNote}
@@ -520,14 +513,8 @@ export function OrderDetailPage({ repository }: Props) {
               fullWidth
             />
             <Textarea
-              label={ordersCopy.detail.transactionNote}
-              value={shippingValues.transactionNote}
-              onChange={(e) => setShippingValues((prev) => ({ ...prev, transactionNote: e.target.value }))}
-              rows={3}
-              fullWidth
-            />
-            <Textarea
               label={ordersCopy.detail.internalNote}
+              helperText={ordersCopy.editor.internalNoteDescription}
               value={shippingValues.internalNote}
               onChange={(e) => setShippingValues((prev) => ({ ...prev, internalNote: e.target.value }))}
               rows={4}

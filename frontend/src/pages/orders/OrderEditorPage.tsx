@@ -634,26 +634,10 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
               />
 
               <Textarea
-                label={ordersCopy.editor.note}
-                value={values.note}
-                onChange={(e) => updateValue('note', e.target.value)}
-                rows={3}
-                fullWidth
-              />
-
-              <Textarea
                 label={ordersCopy.editor.shippingNote}
                 helperText={ordersCopy.editor.shippingNoteDescription}
                 value={values.shippingNote}
                 onChange={(e) => updateValue('shippingNote', e.target.value)}
-                rows={3}
-                fullWidth
-              />
-
-              <Textarea
-                label={ordersCopy.editor.transactionNote}
-                value={values.transactionNote}
-                onChange={(e) => updateValue('transactionNote', e.target.value)}
                 rows={3}
                 fullWidth
               />
