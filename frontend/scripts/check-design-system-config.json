@@ -17,7 +17,8 @@
   "componentUsageCheck": {
     "rules": [
       { "component": "LineItemEditor", "pages": ["quotes", "orders"] },
-      { "component": "Combobox", "pages": ["quotes", "orders"] }
+      { "component": "Combobox", "pages": ["quotes", "orders"] },
+      { "component": "TwoColumnLayout", "pages": ["quotes", "orders"] }
     ]
   }
 }
