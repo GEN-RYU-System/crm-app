@@ -21,7 +21,8 @@ var LEAD_FORM_OPTIONS_CACHE_CHUNK  = 90000;
  *   leadTypes: string[],
  *   responseSpeeds: string[],
  *   countries: { name: string, dialCode: string, stateRequired: boolean, postalRequired: boolean }[],
- *   leadSources: { sourceId: string, name: string, isInbound: boolean, isOutbound: boolean }[]
+ *   leadSources: { sourceId: string, name: string, isInbound: boolean, isOutbound: boolean }[],
+ *   ipTitles: { ipId: string, name: string }[]
  * }}
  */
 function getLeadFormOptions(sessionId) {
@@ -116,7 +117,31 @@ function getLeadFormOptions(sessionId) {
     });
   }
 
-  var result = { leadTypes: leadTypes, responseSpeeds: responseSpeeds, countries: countries, leadSources: leadSources };
+  // ── 作品マスタ_共用在庫（有効行のみ・別名優先）──────────────────────────
+  var ipTitles = [];
+  var ipMSheet = ss.getSheetByName('作品マスタ_共用在庫');
+  if (ipMSheet && ipMSheet.getLastRow() > 1) {
+    var imData    = ipMSheet.getDataRange().getValues();
+    var imH       = imData[0].map(String);
+    var imIdIdx   = imH.indexOf('ip_id');
+    var imNameIdx = imH.indexOf('作品名');
+    var imAltIdx  = imH.indexOf('別名');
+    var imActIdx  = imH.indexOf('有効');
+    if (imIdIdx >= 0 && imNameIdx >= 0) {
+      for (var ip = 1; ip < imData.length; ip++) {
+        var iRow  = imData[ip];
+        var isAct = imActIdx < 0 || String(iRow[imActIdx] != null ? iRow[imActIdx] : '').toUpperCase() !== 'FALSE';
+        if (!isAct) continue;
+        var ipId   = String(iRow[imIdIdx]   != null ? iRow[imIdIdx]   : '').trim();
+        if (!ipId) continue;
+        var ipName = String(iRow[imNameIdx]  != null ? iRow[imNameIdx] : '').trim();
+        var ipAlt  = imAltIdx >= 0 ? String(iRow[imAltIdx] != null ? iRow[imAltIdx] : '').trim() : '';
+        ipTitles.push({ ipId: ipId, name: ipAlt || ipName });
+      }
+    }
+  }
+
+  var result = { leadTypes: leadTypes, responseSpeeds: responseSpeeds, countries: countries, leadSources: leadSources, ipTitles: ipTitles };
 
   writeCacheChunks_(
     LEAD_FORM_OPTIONS_CACHE_INDEX,

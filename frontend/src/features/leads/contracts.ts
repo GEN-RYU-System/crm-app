@@ -1,4 +1,4 @@
-export type { LeadFormCountry, LeadFormOptions, LeadSource, LeadType } from '../../gas/client';
+export type { IpTitle, LeadFormCountry, LeadFormOptions, LeadSource, LeadType } from '../../gas/client';
 export type LeadDetail = Record<string, unknown>;
 export type LeadCreatePayload = Record<string, string>;
 export type LeadUpdatePayload = Record<string, string>;
