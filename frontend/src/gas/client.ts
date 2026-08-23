@@ -660,3 +660,30 @@ export function updateCoreOrder(orderId: string, payload: OrderUpdatePayload): P
       .updateCoreOrderForFrontend(getStoredSessionId(), orderId, payload as unknown);
   });
 }
+
+export type LeadFormCountry = {
+  name: string;
+  dialCode: string;
+  stateRequired: boolean;
+  postalRequired: boolean;
+};
+
+export type LeadFormOptions = {
+  leadTypes: readonly string[];
+  responseSpeeds: readonly string[];
+  countries: readonly LeadFormCountry[];
+};
+
+export function getLeadFormOptions(): Promise<LeadFormOptions> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (!value || typeof value !== 'object') { reject(new Error(errorCopy.communication)); return; }
+        resolve(value as LeadFormOptions);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getLeadFormOptions(getStoredSessionId());
+  });
+}

@@ -1,4 +1,4 @@
-import { createLead, getLeadDetail, updateLead } from '../../gas/client';
+import { createLead, getLeadDetail, getLeadFormOptions, updateLead } from '../../gas/client';
 import type { LeadRepository } from './contracts';
 
 export const leadGasRepository: LeadRepository = {
@@ -10,4 +10,5 @@ export const leadGasRepository: LeadRepository = {
   update: async (sheetName, leadId, payload) => {
     await updateLead(sheetName, leadId, payload);
   },
+  getFormOptions: getLeadFormOptions,
 };
