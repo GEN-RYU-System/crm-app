@@ -1,7 +1,7 @@
 /**
  * リード登録フォーム用 選択肢API
  *
- * getLeadFormOptions(sessionId) … リード種別 / 返信速度 / 国マスタを一括返却
+ * getLeadFormOptions(sessionId) … リード種別 / 返信速度 / 国マスタ / 流入元マスタを一括返却
  */
 
 var LEAD_FORM_OPTIONS_CACHE_INDEX  = 'LEAD_FORM_OPTIONS_CACHE_INDEX';
@@ -20,7 +20,8 @@ var LEAD_FORM_OPTIONS_CACHE_CHUNK  = 90000;
  * @returns {{
  *   leadTypes: string[],
  *   responseSpeeds: string[],
- *   countries: { name: string, dialCode: string, stateRequired: boolean, postalRequired: boolean }[]
+ *   countries: { name: string, dialCode: string, stateRequired: boolean, postalRequired: boolean }[],
+ *   leadSources: { sourceId: string, name: string, isInbound: boolean, isOutbound: boolean }[]
  * }}
  */
 function getLeadFormOptions(sessionId) {
@@ -81,7 +82,41 @@ function getLeadFormOptions(sessionId) {
     }
   }
 
-  var result = { leadTypes: leadTypes, responseSpeeds: responseSpeeds, countries: countries };
+  // ── 流入元マスタ（有効行のみ・表示順）──────────────────────────────────
+  var leadSources = [];
+  var lsTable  = getCoreSchemaV1Table('LEAD_SOURCES');
+  var lsSheet  = getCoreSchemaV1Sheet(ss, 'LEAD_SOURCES');
+  if (lsSheet && lsSheet.getLastRow() > lsTable.headerRowNumber) {
+    var lsData     = lsSheet.getDataRange().getValues();
+    var lsH        = lsData[lsTable.headerRowNumber - 1].map(String);
+    var lsIdIdx    = lsH.indexOf(getCoreSchemaV1HeaderName('LEAD_SOURCES', 'SOURCE_ID'));
+    var lsNameIdx  = lsH.indexOf(getCoreSchemaV1HeaderName('LEAD_SOURCES', 'NAME'));
+    var lsInIdx    = lsH.indexOf(getCoreSchemaV1HeaderName('LEAD_SOURCES', 'IS_INBOUND'));
+    var lsOutIdx   = lsH.indexOf(getCoreSchemaV1HeaderName('LEAD_SOURCES', 'IS_OUTBOUND'));
+    var lsActIdx   = lsH.indexOf(getCoreSchemaV1HeaderName('LEAD_SOURCES', 'IS_ACTIVE'));
+    var lsOrdIdx   = lsH.indexOf(getCoreSchemaV1HeaderName('LEAD_SOURCES', 'DISPLAY_ORDER'));
+    for (var s = lsTable.headerRowNumber; s < lsData.length; s++) {
+      var row      = lsData[s];
+      var isActive = lsActIdx < 0 || row[lsActIdx] === true || String(row[lsActIdx] || '').toUpperCase() === 'TRUE';
+      if (!isActive) continue;
+      var srcId   = String(row[lsIdIdx]   != null ? row[lsIdIdx]   : '').trim();
+      var srcName = String(row[lsNameIdx]  != null ? row[lsNameIdx] : '').trim();
+      if (!srcId || !srcName) continue;
+      leadSources.push({
+        sourceId:   srcId,
+        name:       srcName,
+        isInbound:  lsInIdx  >= 0 && (row[lsInIdx]  === true || String(row[lsInIdx]  || '').toUpperCase() === 'TRUE'),
+        isOutbound: lsOutIdx >= 0 && (row[lsOutIdx] === true || String(row[lsOutIdx] || '').toUpperCase() === 'TRUE'),
+        _order:     lsOrdIdx >= 0 ? (Number(row[lsOrdIdx]) || 0) : 0
+      });
+    }
+    leadSources.sort(function(a, b) { return a._order - b._order; });
+    leadSources = leadSources.map(function(ls) {
+      return { sourceId: ls.sourceId, name: ls.name, isInbound: ls.isInbound, isOutbound: ls.isOutbound };
+    });
+  }
+
+  var result = { leadTypes: leadTypes, responseSpeeds: responseSpeeds, countries: countries, leadSources: leadSources };
 
   writeCacheChunks_(
     LEAD_FORM_OPTIONS_CACHE_INDEX,
