@@ -136,27 +136,53 @@ function getCoreOrderDetailForFrontend(sessionId, orderId) {
   }, {});
   orderRow.customerName = customerNameById[orderRow.CUSTOMER_ID] || '';
 
-  // SHIPPING_DESTINATION → 表示名解決
-  var shippingDests = coreCustomerFrontendReadTable(ss, 'SHIPPING_DESTINATIONS', ['SHIPPING_DESTINATION_ID', 'DISPLAY_NAME', 'RECIPIENT_NAME']);
+  // SHIPPING_DESTINATION → 表示名・住所解決
+  var shippingDests = coreCustomerFrontendReadTable(ss, 'SHIPPING_DESTINATIONS', [
+    'SHIPPING_DESTINATION_ID', 'DISPLAY_NAME', 'RECIPIENT_NAME',
+    'ADDRESS_LINE_1', 'ADDRESS_LINE_2', 'ADDRESS_LINE_3',
+    'CITY', 'STATE', 'ZIP', 'COUNTRY'
+  ]);
   var shippingDestById = shippingDests.rows.reduce(function(map, row) {
-    var id   = coreCustomerFrontendValue(row[shippingDests.indexes.SHIPPING_DESTINATION_ID]);
-    var name = coreCustomerFrontendValue(row[shippingDests.indexes.DISPLAY_NAME])
-             || coreCustomerFrontendValue(row[shippingDests.indexes.RECIPIENT_NAME]);
-    if (id) map[id] = name;
+    var id = coreCustomerFrontendValue(row[shippingDests.indexes.SHIPPING_DESTINATION_ID]);
+    if (!id) return map;
+    map[id] = {
+      name:          coreCustomerFrontendValue(row[shippingDests.indexes.DISPLAY_NAME])
+                  || coreCustomerFrontendValue(row[shippingDests.indexes.RECIPIENT_NAME]),
+      addressLine1:  coreCustomerFrontendValue(row[shippingDests.indexes.ADDRESS_LINE_1]),
+      addressLine2:  coreCustomerFrontendValue(row[shippingDests.indexes.ADDRESS_LINE_2]),
+      addressLine3:  coreCustomerFrontendValue(row[shippingDests.indexes.ADDRESS_LINE_3]),
+      city:          coreCustomerFrontendValue(row[shippingDests.indexes.CITY]),
+      state:         coreCustomerFrontendValue(row[shippingDests.indexes.STATE]),
+      zip:           coreCustomerFrontendValue(row[shippingDests.indexes.ZIP]),
+      country:       coreCustomerFrontendValue(row[shippingDests.indexes.COUNTRY])
+    };
     return map;
   }, {});
-  orderRow.shippingDestinationName = shippingDestById[orderRow.SHIPPING_DESTINATION_ID] || '';
+  var shippingDest = shippingDestById[orderRow.SHIPPING_DESTINATION_ID] || {};
+  orderRow.shippingDestinationName  = shippingDest.name         || '';
+  orderRow.shippingAddressLine1     = shippingDest.addressLine1 || '';
+  orderRow.shippingAddressLine2     = shippingDest.addressLine2 || '';
+  orderRow.shippingAddressLine3     = shippingDest.addressLine3 || '';
+  orderRow.shippingCity             = shippingDest.city         || '';
+  orderRow.shippingState            = shippingDest.state        || '';
+  orderRow.shippingZip              = shippingDest.zip          || '';
+  orderRow.shippingCountry          = shippingDest.country      || '';
 
   // PAYMENT_DESTINATION → 表示名解決
-  var paymentDests = coreCustomerFrontendReadTable(ss, 'PAYMENT_DESTINATIONS', ['PAYMENT_DESTINATION_ID', 'DISPLAY_NAME', 'BILLING_NAME']);
+  var paymentDests = coreCustomerFrontendReadTable(ss, 'PAYMENT_DESTINATIONS', [
+    'PAYMENT_DESTINATION_ID', 'DISPLAY_NAME', 'BILLING_NAME'
+  ]);
   var paymentDestById = paymentDests.rows.reduce(function(map, row) {
-    var id   = coreCustomerFrontendValue(row[paymentDests.indexes.PAYMENT_DESTINATION_ID]);
-    var name = coreCustomerFrontendValue(row[paymentDests.indexes.DISPLAY_NAME])
-             || coreCustomerFrontendValue(row[paymentDests.indexes.BILLING_NAME]);
-    if (id) map[id] = name;
+    var id = coreCustomerFrontendValue(row[paymentDests.indexes.PAYMENT_DESTINATION_ID]);
+    if (!id) return map;
+    map[id] = {
+      name: coreCustomerFrontendValue(row[paymentDests.indexes.DISPLAY_NAME])
+         || coreCustomerFrontendValue(row[paymentDests.indexes.BILLING_NAME])
+    };
     return map;
   }, {});
-  orderRow.paymentDestinationName = paymentDestById[orderRow.PAYMENT_DESTINATION_ID] || '';
+  var paymentDest = paymentDestById[orderRow.PAYMENT_DESTINATION_ID] || {};
+  orderRow.paymentDestinationName = paymentDest.name || '';
 
   // ── ORDER_LINES ─────────────────────────────────────────────────────────────
   var lineFields = [
@@ -195,67 +221,6 @@ function getCoreOrderDetailForFrontend(sessionId, orderId) {
     lines:     lines,
     purchases: purchases,
     shipments: shipments
-  };
-}
-
-/**
- * [DEV専用] readDetailSheet_ の動作確認用診断関数。
- * ORDERS シートを読み、orderId 照合の結果を返す。書き込みは一切しない。
- *
- * @param {string} orderId 照合したい ORDER_ID（例: 'OD-00175'）
- * @returns {{ total: number, matched: number, sampleKeys: string[], sampleRow: Object }}
- */
-function dryRunCheckOrderDetailLookup(orderId) {
-  if (getEnvironment() !== 'development') {
-    throw new Error('dryRunCheckOrderDetailLookup は DEV 環境でのみ実行できます');
-  }
-
-  var ss = getSpreadsheet();
-
-  // フェーズ1: ['ORDER_ID'] だけで readDetailSheet_ を呼ぶ（照合確認）
-  var dataPhase1 = readDetailSheet_(ss, 'ORDERS', ['ORDER_ID']);
-  var matchedPhase1 = 0;
-  for (var i = 0; i < dataPhase1.length; i++) {
-    if (String(dataPhase1[i].ORDER_ID || '').trim() === String(orderId || '').trim()) {
-      matchedPhase1++;
-    }
-  }
-
-  // フェーズ2: getCoreOrderDetailForFrontend と同じ 33 フィールドで呼ぶ
-  var fullOrderFields = [
-    'ORDER_ID', 'INVOICE_NUMBER', 'ORDER_DATE', 'CUSTOMER_ID',
-    'INVOICE_ISSUED_AT', 'PAYMENT_DUE_AT', 'PAYMENT_METHOD',
-    'CURRENCY', 'EXCHANGE_RATE',
-    'LINE_TOTAL', 'SHIPPING_FEE', 'DUTY', 'DISCOUNT', 'OTHER_FEE', 'INVOICE_TOTAL', 'INVOICE_TOTAL_JPY',
-    'PAYMENT_STATUS', 'STATUS',
-    'PAYMENT_CONFIRMED_AT', 'PAYMENT_CONFIRMATION_SOURCE',
-    'SHIPPING_METHOD', 'SHIPPED_AT', 'TRACKING_NUMBER', 'SHIPPING_NOTE',
-    'NOTE', 'TRANSACTION_NOTE', 'INTERNAL_NOTE',
-    'SHIPPING_DESTINATION_ID', 'PAYMENT_DESTINATION_ID',
-    'CANCELLATION_REASON', 'CANCELLATION_NOTE',
-    'REGISTERED_AT', 'UPDATED_AT'
-  ];
-  var dataPhase2 = readDetailSheet_(ss, 'ORDERS', fullOrderFields);
-  var matchedPhase2 = 0;
-  var matchedRowPhase2 = null;
-  for (var j = 0; j < dataPhase2.length; j++) {
-    if (String(dataPhase2[j].ORDER_ID || '').trim() === String(orderId || '').trim()) {
-      matchedPhase2++;
-      matchedRowPhase2 = dataPhase2[j];
-    }
-  }
-
-  var sampleRow  = dataPhase1.length > 0 ? dataPhase1[0] : null;
-  var sampleKeys = sampleRow !== null ? Object.keys(sampleRow) : [];
-
-  return {
-    phase1_total:      dataPhase1.length,
-    phase1_matched:    matchedPhase1,
-    sampleKeys:        sampleKeys,
-    sampleRow:         sampleRow,
-    phase2_total:      dataPhase2.length,
-    phase2_matched:    matchedPhase2,
-    phase2_matchedRow: matchedRowPhase2
   };
 }
 

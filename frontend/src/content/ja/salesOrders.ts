@@ -96,5 +96,28 @@ export const salesOrdersCopy = {
     colShippedAt: '発送日',
     colShipmentTrackingNumber: '運送状番号',
     colPickupRequest: '集荷依頼',
+    // 配送先・請求先
+    labelShippingDestination: '配送先',
+    labelPaymentDestination: '請求先',
+    // サマリグリッド
+    labelPaymentDueAtSummary: '支払期日',
+    labelInvoiceTotalSummary: '請求総額',
+    labelPaymentMethodSummary: '決済手段',
+    labelInvoiceIssuedAtSummary: '請求書発行日',
+    // 金額明細
+    labelLineTotalDetail: '明細合計',
+    labelShippingFeeSummary: '送料',
+    labelDutySummary: '関税',
+    labelDiscountSummary: '値引き',
+    labelOtherFeeSummary: 'その他手数料',
+    labelInvoiceTotalDetail: '請求総額',
+    // ボタン
+    btnConfirmPayment: '入金確認',
+    btnAddShipment: '発送情報を追加',
+    btnAddPurchase: '仕入れを追加',
+    // セクション
+    sectionPaymentSummary: '支払いサマリ',
+    sectionDestinations: '配送先 / 請求先',
+    sectionAmountDetail: '金額詳細',
   },
 } as const;
