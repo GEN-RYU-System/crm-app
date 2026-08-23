@@ -52,3 +52,5 @@ FormFieldのモバイル最小高さに使うmedia queryは`max-width: 767px`で
 ConversationWorkspaceは、旧GASのチャット系画面に共通する一覧・会話・詳細の3領域をReact金型として分離します。業務データ、GAS呼出し、保存処理、Copyは持たず、呼出側から各領域を受け取ります。デスクトップは3列、`max-width: 1100px`は詳細を下段、`max-width: 767px`は1列にします。CSS変数をmedia query条件に使えないため、この2つは構造変更用の固定breakpointとして許可し、列幅・最小高・色・余白・角丸はtokenを使用します。
 
 Inbox Previewは`ConversationWorkspace`を再利用し、Sales Anchorの受信箱と同じく上部のステータスタブ、プラットフォーム絞り込み、検索、会話一覧、メッセージスレッド、顧客カルテを分離します。`InboxRepository`を通じてPreview adapterだけを参照し、GAS、storage、ポーリング、送信・保存へ接続しません。
+
+MultiSelectは複数値の選択を受け持つ純粋UI金型です。`items`・`getKey`・`getLabel`・`values`・`onChange`を呼出側から受け取り、業務データ・Copy・保存処理を持ちません。選択済みの値は入力欄内タグ（×ボタン付き）として表示し、タグをクリックまたはBackspaceで削除できます。`items`に存在しないIDが`values`に含まれる場合は`fallbackLabels`（`Record<string, string>`）のラベルでタグ表示し、ドロップダウンには出しません。入力欄はフィルタ文字列として機能し、候補はComboboxと同じポータルドロップダウンで表示します。幅は`width`prop（`sm`/`md`/`lg`）で指定し、`FormField.css`のトークンを使用します。キーボードフォーカスは`--focus-ring-shadow`を使用します。
