@@ -417,6 +417,10 @@ function getLeads(filter, leadType) {
   const typeIdx = headers.indexOf('リード種別');
   const statusIdx = headers.indexOf('リードステータス');
   const archivedAtIdx = headers.indexOf('アーカイブ日');
+  const sourceIdIdx = headers.indexOf('流入元ID');
+
+  // 流入元ID → 名称変換マップ（流入元ID列が存在する場合のみ取得）
+  const sourceIdMap = sourceIdIdx >= 0 ? getLeadSourceIdMap_() : {};
 
   console.log('getLeads: typeIdx=' + typeIdx + ', statusIdx=' + statusIdx);
   console.log('getLeads: LEAD_STATUSES=' + JSON.stringify(CONFIG.LEAD_STATUSES));
@@ -477,6 +481,17 @@ function getLeads(filter, leadType) {
       }
       lead[header] = value;
     });
+
+    // 流入元ID → 流入経路（名称）変換（移行期互換ルール）
+    // - 流入元IDが入っている行: マスタから名称に変換して流入経路フィールドを上書き
+    // - 流入元IDが空欄の行: 流入経路列の値をそのまま返す（テストデータ・未移行分）
+    if (sourceIdIdx >= 0) {
+      const rawId = String(lead['流入元ID'] || '').trim();
+      if (rawId && sourceIdMap[rawId]) {
+        lead['流入経路'] = sourceIdMap[rawId];
+      }
+    }
+
     leads.push(lead);
   }
 
@@ -501,6 +516,50 @@ const LEADS_CACHE_TARGETS = [
   { indexKey: LEADS_CACHE_INDEX_INBOUND,  prefix: LEADS_CACHE_PREFIX_INBOUND },
   { indexKey: LEADS_CACHE_INDEX_OUTBOUND, prefix: LEADS_CACHE_PREFIX_OUTBOUND }
 ];
+
+// ─── 流入元マスタキャッシュ定数 ──────────────────────────────────────────────
+const LEAD_SOURCES_CACHE_INDEX      = 'LEAD_SOURCES_CACHE_INDEX';
+const LEAD_SOURCES_CACHE_PREFIX     = 'LEAD_SOURCES_CACHE_';
+const LEAD_SOURCES_CACHE_TTL        = 600;
+const LEAD_SOURCES_CACHE_CHUNK_SIZE = 90000;
+
+/**
+ * 流入元マスタから source_id → 名称 のマップを返す（キャッシュ対応、TTL 600秒）。
+ * キャッシュヒット時はシートを読まない。
+ *
+ * @returns {Object.<string, string>}  例: { SRC001: 'Instagram', SRC002: 'Facebook', ... }
+ */
+function getLeadSourceIdMap_() {
+  const cached = readCacheChunks_(LEAD_SOURCES_CACHE_INDEX, LEAD_SOURCES_CACHE_PREFIX);
+  if (cached !== null) return cached;
+
+  const ss    = getSpreadsheet();
+  const table = getCoreSchemaV1Table('LEAD_SOURCES');
+  const sheet = getCoreSchemaV1Sheet(ss, 'LEAD_SOURCES');
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow <= table.headerRowNumber) {
+    writeCacheChunks_(LEAD_SOURCES_CACHE_INDEX, LEAD_SOURCES_CACHE_PREFIX, {}, LEAD_SOURCES_CACHE_TTL, LEAD_SOURCES_CACHE_CHUNK_SIZE);
+    return {};
+  }
+
+  const headers = sheet.getRange(table.headerRowNumber, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+  const idIdx   = headers.indexOf(getCoreSchemaV1HeaderName('LEAD_SOURCES', 'SOURCE_ID'));
+  const nameIdx = headers.indexOf(getCoreSchemaV1HeaderName('LEAD_SOURCES', 'NAME'));
+
+  if (idIdx < 0 || nameIdx < 0) return {};
+
+  const rows  = sheet.getRange(table.headerRowNumber + 1, 1, lastRow - table.headerRowNumber, sheet.getLastColumn()).getValues();
+  const idMap = {};
+  rows.forEach(function(row) {
+    const id   = String(row[idIdx]   || '').trim();
+    const name = String(row[nameIdx] || '').trim();
+    if (id && name) idMap[id] = name;
+  });
+
+  writeCacheChunks_(LEAD_SOURCES_CACHE_INDEX, LEAD_SOURCES_CACHE_PREFIX, idMap, LEAD_SOURCES_CACHE_TTL, LEAD_SOURCES_CACHE_CHUNK_SIZE);
+  return idMap;
+}
 
 /**
  * leadType からキャッシュキーペアを返す。
