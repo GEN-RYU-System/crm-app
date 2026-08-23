@@ -481,3 +481,65 @@ git revert fd084eda2725ec7ba675afb947982fb0e0aa8e4c
 - ただし `NOTE` は複数用途に使われており、社内メモ専用ではない
 - 専用の「社内メモ」列が必要な場合は `INTERNAL_NOTE`（内部メモ）列の新設が適切
 - 列新設はシートへの列追加を伴うため、PO の判断が必要
+
+---
+
+## 【14】支払期日バッジ表示改善 — PR #395
+
+**実施日時**: 2026-08-22
+
+### 変更前
+
+支払期日のセルに背景色をつけた Badge で日付を包んで表示していた。
+- `支払期日 < 今日` → `<Badge variant="danger">{日付}</Badge>`
+- `支払期日 <= 今日+1日` → `<Badge variant="warning">{日付}</Badge>`
+- それ以外 → 日付テキストのみ
+
+「今日」と「明日」が同じ warning 色で区別できず、文言もなかった。
+
+### 変更内容
+
+日付は通常テキスト、右隣にテキスト付きの状態バッジを追加。
+
+| 条件 | バッジ文言 | 色 |
+|------|----------|-----|
+| 支払期日 < 今日 | 期限超過 | danger（赤） |
+| 支払期日 = 今日 | 本日期日 | warning（黄） |
+| 支払期日 = 明日 | 期日1日前 | warning（黄） |
+| それ以降 | なし | - |
+| 空 | なし（「-」表示） | - |
+
+しきい値「明日」は既存の `PAYMENT_DUE_WARNING_DAYS = 1` を流用（新定数なし）。
+
+**変更ファイル（frontend のみ、3ファイル）:**
+- `frontend/src/content/ja/salesOrders.ts` — `paymentDueBadgeOverdue` / `paymentDueBadgeToday` / `paymentDueBadgeTomorrow` を追加
+- `frontend/src/pages/sales-orders/SalesOrderListPage.tsx` — `renderPaymentDueAtCell` を新ロジックに更新
+- `frontend/src/pages/sales-orders/SalesOrderListPage.css` — `.sales-order-list-page__payment-due-cell` を追加
+
+### 調査結果（変更なし）
+
+**A. OD-00174 が存在する理由**
+- 【事実】ORDERS テーブルには OD-00173（1件版シードで作成）と OD-00175/176/177（3件版シードで作成）の間に OD-00174 が存在する。
+- 【未確認】`getCoreOrdersForFrontend` は SESSION_REQUIRED のため `clasp run` では呼び出せず、登録日・請求書番号・ステータスをこのセッションから確認できていない。スプレッドシートを直接確認してください。
+
+**B. テストデータの金額が空になっている理由**
+- 【事実】`src/99_DevTestOrderSeed.js` が ORDERS シートに `appendRow` する際、`col('INVOICE_TOTAL')` および `col('INVOICE_TOTAL_JPY')` を一切呼んでいない（L191–207 に記述なし）。配列は空文字列で初期化されるため、これらの列は空のまま書き込まれる。
+- 【事実】`INVOICE_TOTAL` は `src/28_CoreOrderUpdateApi.js` の `updateCoreOrderForFrontend` 関数（L115–116）が明細合計＋各種費用から計算して書き込む。シードデータは `updateCoreOrderForFrontend` を呼ばず直接 `appendRow` するため、金額が設定されない。
+- 【結論】シードデータの金額が空なのは仕様通りの結果（シードは支払期日バッジの確認用であり、金額計算は対象外）。
+
+### 検証結果
+
+- `npm run build:gas` 通過（typecheck + vite build + emit-gas-html + design-system check）
+- `clasp run runCoreSchemaConformanceAudit` → 総不一致 **0**（GAS 変更なし）
+- CI: PR #395 で確認予定
+- PO 実機確認待ち: OD-00176 赤バッジ / OD-00175 黄バッジ / OD-00177 バッジなし
+
+### マージコミット SHA
+
+（マージ後に記録）
+
+### 戻し方
+
+```
+git revert <マージコミットSHA>
+```
