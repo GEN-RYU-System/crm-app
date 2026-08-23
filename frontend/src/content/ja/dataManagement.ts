@@ -17,5 +17,6 @@ export const dataManagementCopy = {
   productMaster: '商品マスタ',
   googleDrive: 'Google Drive',
   discord: 'Discord',
+  discordIntegration: 'Discord連携設定',
   issuerMaster: '発行元情報'
 } as const;
