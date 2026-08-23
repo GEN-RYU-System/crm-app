@@ -21,4 +21,23 @@
   --inbox-list-width: var(--palette-inbox-list-width);
   --inbox-details-width: var(--palette-inbox-details-width);
   --inbox-row-min-height: var(--palette-inbox-row-min-height);
+  /* document template tokens — color defaults from palette; layout values are unitless from palette */
+  --doc-bar-bg: var(--palette-doc-bar-bg);
+  --doc-bar-text: var(--palette-doc-bar-text);
+  --doc-brand-text: var(--palette-doc-brand-text);
+  --doc-title-text: var(--palette-doc-title-text);
+  --doc-thanks-text: var(--palette-doc-thanks-text);
+  --doc-band-bg: var(--palette-doc-band-bg);
+  --doc-ink: var(--palette-doc-ink);
+  --doc-ink-sub: var(--palette-doc-ink-sub);
+  --doc-line-color: var(--palette-doc-line-color);
+  --doc-line-strong-color: var(--palette-doc-line-strong-color);
+  --doc-w: var(--palette-doc-w);
+  --doc-h: var(--palette-doc-h);
+  --doc-mx: var(--palette-doc-mx);
+  --doc-row-h: var(--palette-doc-row-h);
+  --doc-gap-sm: var(--palette-doc-gap-sm);
+  --doc-gap-md: var(--palette-doc-gap-md);
+  --doc-gap-lg: var(--palette-doc-gap-lg);
+  --doc-radius: var(--palette-doc-radius);
 }

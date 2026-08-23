@@ -17,4 +17,23 @@
   --palette-inbox-list-width: 443px;
   --palette-inbox-details-width: 396px;
   --palette-inbox-row-min-height: 92px;
+  /* document template defaults */
+  --palette-doc-bar-bg: #2f4f4f;
+  --palette-doc-bar-text: #ffffff;
+  --palette-doc-brand-text: #2f4f4f;
+  --palette-doc-title-text: #2f4f4f;
+  --palette-doc-thanks-text: #2f4f4f;
+  --palette-doc-band-bg: #f2f6f5;
+  --palette-doc-ink: #1a1a1a;
+  --palette-doc-ink-sub: #5a5a5a;
+  --palette-doc-line-color: #cfcfcf;
+  --palette-doc-line-strong-color: #6b6b6b;
+  --palette-doc-w: 595pt;
+  --palette-doc-h: 842pt;
+  --palette-doc-mx: 30pt;
+  --palette-doc-row-h: 14pt;
+  --palette-doc-gap-sm: 6pt;
+  --palette-doc-gap-md: 12pt;
+  --palette-doc-gap-lg: 20pt;
+  --palette-doc-radius: 2pt;
 }
