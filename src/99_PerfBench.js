@@ -2331,35 +2331,47 @@ function benchLeadSourceIdConversion() {
 }
 
 /**
- * getLeads（実関数）を呼ぶことで、流入元ID変換処理を含んだ
+ * getLeads と同じロジック（変換処理含む）を auth なしで再現し、
  * キャッシュミス時・ヒット時の実コストを計測する。
  *
- * - 1回目: leads + 流入元マスタ 両方キャッシュなし（最悪ケース）
- * - 2回目: leads + 流入元マスタ 両方キャッシュあり（ヒット時）
- *   ★ キャッシュヒット時は getLeads が呼ばれないため readCacheChunks_ のみを計測
+ * getLeads は checkPermission() を呼ぶため clasp run から直接呼べない。
+ * そのため getLeads の内部ロジックを複製しつつ、実装と同一の
+ * getLeadSourceIdMap_() を呼ぶことで変換コストを忠実に計測する。
+ *
+ * 計測対象:
+ *   miss: シート全読み出し + getLeadSourceIdMap_()（キャッシュなし） + フィルタ + 変換 + cache write
+ *   hit : readCacheChunks_（leads キャッシュ済み）
  *
  * 実行方法: clasp run benchLeadSourceDisplay
  */
 function benchLeadSourceDisplay() {
-  var RUNS = 3;
-  var out  = ['=== benchLeadSourceDisplay ===', '実行: ' + new Date().toISOString(), ''];
+  var RUNS         = 3;
+  var leadStatuses = CONFIG.LEAD_STATUSES;
+  var out          = ['=== benchLeadSourceDisplay ===', '実行: ' + new Date().toISOString(), ''];
 
-  // ── 全キャッシュをクリア（leads 3種 + 流入元マスタ） ────────────────────
-  clearCacheChunks_(LEADS_CACHE_INDEX_ALL,      LEADS_CACHE_PREFIX_ALL);
-  clearCacheChunks_(LEADS_CACHE_INDEX_INBOUND,  LEADS_CACHE_PREFIX_INBOUND);
-  clearCacheChunks_(LEADS_CACHE_INDEX_OUTBOUND, LEADS_CACHE_PREFIX_OUTBOUND);
-  clearCacheChunks_(LEAD_SOURCES_CACHE_INDEX,   LEAD_SOURCES_CACHE_PREFIX);
-  out.push('全キャッシュクリア完了（leads 3種 + 流入元マスタ）');
+  // ── スプレッドシートとヘッダー確認（タイミング外） ───────────────────────
+  var ss         = getSpreadsheet();
+  var leadsSheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  if (!leadsSheet || leadsSheet.getLastRow() < 2) {
+    out.push('【エラー】リード管理シートにデータがありません');
+    var r = out.join('\n'); Logger.log(r); return r;
+  }
+  var sampleHdr  = leadsSheet.getRange(1, 1, 1, leadsSheet.getLastColumn()).getValues()[0];
+  var typeIdx    = sampleHdr.indexOf('リード種別');
+  var statIdx    = sampleHdr.indexOf('リードステータス');
+  var sourceIdIdx = sampleHdr.indexOf('流入元ID');
+  out.push('ヘッダー確認: リード種別=' + typeIdx + ' / リードステータス=' + statIdx + ' / 流入元ID=' + sourceIdIdx);
+  out.push('総行数: ' + (leadsSheet.getLastRow() - 1) + '行');
   out.push('');
 
   var targets = [
-    { label: 'ALL（全件）',    type: undefined,     indexKey: LEADS_CACHE_INDEX_ALL,      prefix: LEADS_CACHE_PREFIX_ALL      },
+    { label: 'ALL（全件）',    type: '',            indexKey: LEADS_CACHE_INDEX_ALL,      prefix: LEADS_CACHE_PREFIX_ALL      },
     { label: 'INBOUND',        type: 'インバウンド',  indexKey: LEADS_CACHE_INDEX_INBOUND,  prefix: LEADS_CACHE_PREFIX_INBOUND  },
     { label: 'OUTBOUND',       type: 'アウトバウンド', indexKey: LEADS_CACHE_INDEX_OUTBOUND, prefix: LEADS_CACHE_PREFIX_OUTBOUND }
   ];
 
   for (var t = 0; t < targets.length; t++) {
-    var tgt = targets[t];
+    var tgt   = targets[t];
     out.push('--- ' + tgt.label + ' ---');
 
     var missMs   = [];
@@ -2367,20 +2379,58 @@ function benchLeadSourceDisplay() {
     var lastRows = 0;
 
     for (var run = 0; run < RUNS; run++) {
-      // キャッシュクリア（本回の1回目を必ずキャッシュなしにする）
+      // キャッシュをクリア（本回を必ずキャッシュなしにする）
       clearCacheChunks_(tgt.indexKey, tgt.prefix);
       clearCacheChunks_(LEAD_SOURCES_CACHE_INDEX, LEAD_SOURCES_CACHE_PREFIX);
 
-      // ── キャッシュミス: getLeads を実際に呼ぶ（変換処理含む）──────────────
+      // ── キャッシュミス: getLeads 相当のロジック（変換処理含む） ─────────────
       var t1 = Date.now();
-      var rows = getLeads('lead', tgt.type);
+
+      // ① シート全読み出し
+      var data    = leadsSheet.getDataRange().getValues();
+      var headers = data[0];
+      var ti      = headers.indexOf('リード種別');
+      var si      = headers.indexOf('リードステータス');
+      var srcId   = headers.indexOf('流入元ID');
+
+      // ② getLeadSourceIdMap_()（実装と同一関数を呼ぶ）
+      var idMap = srcId >= 0 ? getLeadSourceIdMap_() : {};
+
+      // ③ フィルタ + オブジェクト構築 + 変換
+      var rows = [];
+      for (var i = 1; i < data.length; i++) {
+        var row    = data[i];
+        var type   = ti >= 0 && row[ti] ? row[ti].toString().trim() : '';
+        var status = si >= 0 && row[si] ? row[si].toString().trim() : '';
+        if (!type) continue;
+        if (tgt.type && type !== tgt.type) continue;
+        if (!leadStatuses.includes(status)) continue;
+
+        var lead = {};
+        for (var h = 0; h < headers.length; h++) {
+          var v = data[i][h];
+          lead[headers[h]] = (v instanceof Date) ? v.toISOString() : v;
+        }
+
+        // 変換処理（getLeads と同一ロジック）
+        if (srcId >= 0) {
+          var rawId = String(lead['流入元ID'] || '').trim();
+          if (rawId && idMap[rawId]) {
+            lead['流入経路'] = idMap[rawId];
+          }
+        }
+        rows.push(lead);
+      }
+
+      // ④ cache write
       writeCacheChunks_(tgt.indexKey, tgt.prefix, rows, LEADS_CACHE_TTL, LEADS_CACHE_CHUNK_SIZE);
+
       var ms1 = Date.now() - t1;
       missMs.push(ms1);
       lastRows = rows.length;
       out.push('  試行' + (run + 1) + ' miss: ' + ms1 + 'ms (' + lastRows + '件)');
 
-      // ── キャッシュヒット: readCacheChunks_ のみ（getLeads は呼ばれない） ──
+      // ── キャッシュヒット: readCacheChunks_ のみ ────────────────────────────
       var t2 = Date.now();
       readCacheChunks_(tgt.indexKey, tgt.prefix);
       var ms2 = Date.now() - t2;
