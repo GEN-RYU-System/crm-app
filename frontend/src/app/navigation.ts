@@ -10,7 +10,8 @@ export type NavigationPermission =
   | 'deal_view_own'
   | 'admin_access'
   | 'staff_manage'
-  | 'settings';
+  | 'settings'
+  | 'issuer_manage';
 export type NavigationPermissions = Partial<Record<NavigationPermission, boolean>>;
 export type NavigationItemId =
   | 'dashboard'
@@ -31,6 +32,7 @@ export type NavigationItemId =
   | 'productMaster'
   | 'googleDrive'
   | 'discord'
+  | 'issuerMaster'
   | 'components';
 export type NavigationItemState = 'available' | 'preview' | 'planned';
 export type NavigationItem = {
@@ -86,18 +88,24 @@ const EXTERNAL_LINK_SUB_ITEMS: readonly NavigationItem[] = [
   { id: 'discord', label: dataManagementCopy.discord, hash: '/discord', icon: 'chat', order: 2, state: 'planned', requiredPermission: 'admin_access' }
 ];
 
+const SYSTEM_SETTINGS_SUB_ITEMS: readonly NavigationItem[] = [
+  { id: 'issuerMaster', label: dataManagementCopy.issuerMaster, hash: '/issuer-master', icon: 'settings', order: 1, state: 'preview', requiredPermission: 'issuer_manage' }
+];
+
 export const DATA_MANAGEMENT_ITEMS: readonly NavigationItem[] = [
   ...STAFF_MANAGEMENT_ITEMS,
   ...DATA_MGMT_SUB_ITEMS,
   ...PRODUCT_MGMT_SUB_ITEMS,
-  ...EXTERNAL_LINK_SUB_ITEMS
+  ...EXTERNAL_LINK_SUB_ITEMS,
+  ...SYSTEM_SETTINGS_SUB_ITEMS
 ];
 
 export const DATA_MANAGEMENT_GROUP_DEFS: readonly DataManagementGroupDef[] = [
   { title: dataManagementCopy.groupStaffManagement, items: STAFF_MANAGEMENT_ITEMS },
   { title: dataManagementCopy.groupDataManagement, items: DATA_MGMT_SUB_ITEMS },
   { title: dataManagementCopy.groupProductManagement, items: PRODUCT_MGMT_SUB_ITEMS },
-  { title: dataManagementCopy.groupExternalLinks, items: EXTERNAL_LINK_SUB_ITEMS }
+  { title: dataManagementCopy.groupExternalLinks, items: EXTERNAL_LINK_SUB_ITEMS },
+  { title: dataManagementCopy.groupSystemSettings, items: SYSTEM_SETTINGS_SUB_ITEMS }
 ];
 
 export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [

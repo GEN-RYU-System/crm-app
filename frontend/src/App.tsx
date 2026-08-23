@@ -26,6 +26,7 @@ import { CustomerListPage } from './pages/customers/CustomerListPage';
 import { CUSTOMER_ROUTE_SEGMENTS } from './pages/customers/customerConfig';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { DataManagementPage } from './pages/data-management/DataManagementPage';
+import { IssuerMasterPage } from './pages/data-management/IssuerMasterPage';
 import { CustomerListCacheProvider } from './pages/customers/CustomerListCacheContext';
 import { LeadListCacheProvider } from './pages/leads/LeadListCacheContext';
 import { LeadEditorPage } from './pages/leads/LeadEditorPage';
@@ -54,7 +55,7 @@ import { LoginPage } from './pages/auth/LoginPage';
 import { SalesOrderListPage } from './pages/sales-orders/SalesOrderListPage';
 import { SalesOrderDetailPage } from './pages/sales-orders/SalesOrderDetailPage';
 import { SalesOrderListCacheProvider } from './pages/sales-orders/SalesOrderListCacheContext';
-import { customersCopy, errorCopy, inboxCopy, leadsCopy, ordersCopy, quotesCopy, salesOrdersCopy, staffCopy } from './content/ja';
+import { customersCopy, errorCopy, inboxCopy, issuerCopy, leadsCopy, ordersCopy, quotesCopy, salesOrdersCopy, staffCopy } from './content/ja';
 import { authCopy } from './content/ja/auth';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -177,6 +178,7 @@ function AppRouter() {
   const orderDetailRoute = canAccessOrders
     ? <OrderDetailPage repository={orderGasRepository} />
     : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+  const canAccessIssuerMaster = permissionState.status === 'ready' && hasNavigationPermission(permissions, 'issuer_manage');
   const canAddLeads = hasNavigationPermission(permissions, 'lead_add');
   const canEditLeads = hasNavigationPermission(permissions, 'lead_edit');
   const leadsRoute = permissionState.status === 'checking' ? <LeadPermissionLoading /> : canAccessLeads ? <LeadListPage canAdd={canAddLeads} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
@@ -192,13 +194,20 @@ function AppRouter() {
       ? <DataManagementPage navigationItems={dataManagementItems} />
       : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
 
+  const issuerMasterRoute = permissionState.status === 'checking'
+    ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={issuerCopy.loading} />{issuerCopy.loading}</StatusMessage>
+    : canAccessIssuerMaster
+      ? <IssuerMasterPage canEdit={canAccessIssuerMaster} />
+      : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+
   const hubIndexRoutes: Partial<Record<NavigationItemId, ReactNode>> = {
     leads: leadsRoute,
     customers: customersRoute,
     quotes: quotesRoute,
     orders: ordersRoute,
     inventory: inventoryRoute,
-    staff: staffRoute
+    staff: staffRoute,
+    issuerMaster: issuerMasterRoute
   };
   const hubExtraRoutes: Partial<Record<NavigationItemId, ReactNode[]>> = {
     leads: [
