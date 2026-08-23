@@ -39,6 +39,7 @@ import { QuoteListPage } from './pages/quotes/QuoteListPage';
 import { QuoteListCacheProvider } from './pages/quotes/QuoteListCacheContext';
 import { QUOTE_ROUTE_SEGMENTS } from './pages/quotes/quoteListConfig';
 import { OrderEditorPage } from './pages/orders/OrderEditorPage';
+import { OrderDetailPage } from './pages/orders/OrderDetailPage';
 import { OrderListPage } from './pages/orders/OrderListPage';
 import { OrderListCacheProvider } from './pages/orders/OrderListCacheContext';
 import { ORDER_ROUTE_SEGMENTS } from './pages/orders/orderEditorConfig';
@@ -172,8 +173,8 @@ function AppRouter() {
   const orderCreateRoute = canAccessOrders && canAddOrders
     ? <OrderEditorPage mode="create" repository={orderGasRepository} customerRepository={customerGasRepository} />
     : <Navigate to={canAccessOrders ? NAVIGATION_BY_ID.orders.hash : NAVIGATION_BY_ID.dashboard.hash} replace />;
-  const orderEditRoute = canAccessOrders
-    ? <OrderEditorPage mode="edit" repository={orderGasRepository} customerRepository={customerGasRepository} />
+  const orderDetailRoute = canAccessOrders
+    ? <OrderDetailPage repository={orderGasRepository} />
     : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const canAddLeads = hasNavigationPermission(permissions, 'lead_add');
   const canEditLeads = hasNavigationPermission(permissions, 'lead_edit');
@@ -212,7 +213,7 @@ function AppRouter() {
     ],
     orders: [
       <Route key="create" path={ORDER_ROUTE_SEGMENTS.create} element={orderCreateRoute} />,
-      <Route key="edit" path={ORDER_ROUTE_SEGMENTS.edit} element={orderEditRoute} />
+      <Route key="detail" path={ORDER_ROUTE_SEGMENTS.edit} element={orderDetailRoute} />
     ]
   };
 
