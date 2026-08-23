@@ -41,5 +41,5 @@ export const leadsCopy = {
   tableLabel: 'リード一覧',
   fields: { leadId: 'リードID', customerName: '顧客名', responseSpeed: '返信速度', updatedAt: 'シート更新日', csMemo: 'CSメモ', source: '流入経路', country: '国', productTitle: '取り扱いタイトル', leadType: 'リード種別', leadStatus: 'リード進捗' },
   columns: { customerName: '顧客名', responseSpeed: '返信速度', updatedAt: '更新日', csMemo: 'CSメモ', source: '流入元', country: '国', productTitle: '取り扱い商材' },
-  form: { sheetName: 'リード管理', customerName: '顧客名', leadType: 'リード種別', source: '流入元', country: '国', productTitle: '取り扱い商材', responseSpeed: '返信速度', csMemo: 'CSメモ' }
+  form: { sheetName: 'リード管理', customerName: '顧客名', leadType: 'リード種別', source: '流入元', country: '国', countryPlaceholder: '国を選択', countryNoResults: '該当する国がありません', productTitle: '取り扱い商材', responseSpeed: '返信速度', csMemo: 'CSメモ' }
 } as const;
