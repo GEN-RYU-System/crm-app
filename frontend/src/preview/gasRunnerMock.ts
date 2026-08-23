@@ -3,6 +3,7 @@
  * Installed by main.tsx when ?preview is in the URL and import.meta.env.DEV is true.
  * Never included in production builds.
  */
+import { ISSUER_HEADER } from '../content/ja/issuer';
 
 const MOCK_SESSION_ID = 'preview-mock-session';
 
@@ -29,6 +30,7 @@ const MOCK_PERMISSIONS = {
   admin_access: true,
   staff_manage: true,
   settings: true,
+  issuer_manage: true,
 };
 
 const MOCK_CUSTOMERS = [
@@ -279,6 +281,34 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     checkSyncSignals(_s: string | null) { succeed(MOCK_SYNC_SIGNALS); },
     getLeadFormOptions(_s: string | null) {
       succeed({ leadTypes: [], responseSpeeds: [], countries: [] });
+    },
+    getCoreIssuerForFrontend(_s: string | null) {
+      succeed({
+        success: true,
+        issuer: {
+          [ISSUER_HEADER.ISSUER_ID]:       'ISS-0001',
+          [ISSUER_HEADER.COMPANY_NAME]:    'Preview Company Ltd.',
+          [ISSUER_HEADER.CONTACT_NAME]:    'Preview Tanaka',
+          [ISSUER_HEADER.ADDRESS_LINE1]:   '1-2-3 Preview Street',
+          [ISSUER_HEADER.ADDRESS_LINE2]:   '',
+          [ISSUER_HEADER.ADDRESS_LINE3]:   '',
+          [ISSUER_HEADER.CITY]:            'Tokyo',
+          [ISSUER_HEADER.STATE]:           'Tokyo',
+          [ISSUER_HEADER.ZIP]:             '100-0001',
+          [ISSUER_HEADER.COUNTRY]:         'Japan',
+          [ISSUER_HEADER.PHONE]:           '+81-3-0000-0000',
+          [ISSUER_HEADER.EMAIL]:           'info@preview.example.com',
+          [ISSUER_HEADER.REGISTRATION_NO]: 'T1234567890123',
+          [ISSUER_HEADER.PAYEE_NAME]:      'Preview Company Ltd.',
+          [ISSUER_HEADER.PAYMENT_EMAIL]:   'payment@preview.example.com',
+          [ISSUER_HEADER.PAYMENT_NOTE]:    'Preview payment note.',
+          [ISSUER_HEADER.CLOSING_MESSAGE]: 'Thank you for your order.',
+          [ISSUER_HEADER.IS_ACTIVE]:       true,
+        },
+      });
+    },
+    updateCoreIssuerForFrontend(_s: string | null, _data: unknown) {
+      succeed({ success: true });
     },
   };
 

@@ -776,3 +776,41 @@ export function getLeadFormOptions(): Promise<LeadFormOptions> {
       .getLeadFormOptions(getStoredSessionId());
   });
 }
+
+export type IssuerRecord = Record<string, string | boolean | number>;
+
+export function getCoreIssuer(): Promise<IssuerRecord> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        const v = value as { success?: boolean; issuer?: IssuerRecord } | null;
+        if (!v || typeof v !== 'object' || v.success !== true || !v.issuer || typeof v.issuer !== 'object') {
+          reject(new Error(errorCopy.communication));
+          return;
+        }
+        resolve(v.issuer);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getCoreIssuerForFrontend(getStoredSessionId());
+  });
+}
+
+export function updateCoreIssuer(issuerData: IssuerRecord): Promise<void> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        const v = value as { success?: boolean } | null;
+        if (!v || v.success !== true) {
+          reject(new Error(errorCopy.communication));
+          return;
+        }
+        resolve();
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .updateCoreIssuerForFrontend(getStoredSessionId(), issuerData as unknown);
+  });
+}
