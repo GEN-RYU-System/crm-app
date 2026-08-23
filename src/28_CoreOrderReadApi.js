@@ -136,6 +136,9 @@ function getCoreOrderDetailForFrontend(sessionId, orderId) {
   }, {});
   orderRow.customerName = customerNameById[orderRow.CUSTOMER_ID] || '';
 
+  // AWAITING_PAYMENT ステータスの実値をフロントに渡す（日本語ハードコードを避けるため）
+  orderRow.awaitingPaymentStatus = getCoreSchemaV1Value('ORDERS', 'STATUS', 'AWAITING_PAYMENT');
+
   // SHIPPING_DESTINATION → 表示名・住所解決
   var shippingDests = coreCustomerFrontendReadTable(ss, 'SHIPPING_DESTINATIONS', [
     'SHIPPING_DESTINATION_ID', 'DISPLAY_NAME', 'RECIPIENT_NAME',
