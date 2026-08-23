@@ -30,17 +30,28 @@ function getCoreIssuerForFrontend(sessionId) {
     throw new Error('発行元マスタシートが見つかりません: ' + sheetName);
   }
 
-  var headerNames = Object.values(table.headers);
+  var lastCol     = sheet.getLastColumn();
   var lastRow     = sheet.getLastRow();
 
-  if (lastRow <= 1) {
+  var headerNames = lastCol > 0
+    ? sheet.getRange(table.headerRowNumber, 1, 1, lastCol).getDisplayValues()[0].map(function(h) { return String(h).trim(); })
+    : [];
+
+  function indexOf(headerKey) {
+    var name = getCoreSchemaV1HeaderName(tableKey, headerKey);
+    var idx  = headerNames.indexOf(name);
+    if (idx === -1) throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING:' + headerKey);
+    return idx;
+  }
+
+  var isActiveIdx = indexOf('IS_ACTIVE');
+
+  var dataRowCount = Math.max(0, lastRow - table.headerRowNumber);
+  if (dataRowCount === 0) {
     throw new Error('発行元マスタにデータがありません');
   }
 
-  var data = sheet.getRange(2, 1, lastRow - 1, headerNames.length).getValues();
-
-  var isActiveColName = getCoreSchemaV1HeaderName(tableKey, 'IS_ACTIVE');
-  var isActiveIdx     = headerNames.indexOf(isActiveColName);
+  var data = sheet.getRange(table.headerRowNumber + 1, 1, dataRowCount, lastCol).getValues();
 
   var activeIssuers = data.filter(function(row) {
     var val = row[isActiveIdx];
