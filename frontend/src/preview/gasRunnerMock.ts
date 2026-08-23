@@ -274,6 +274,9 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     updateCoreOrderForFrontend(_s: string | null, _orderId: string, _data: unknown) {
       succeed({ success: true, orderId: _orderId });
     },
+    confirmCoreOrderPaymentForFrontend(_s: string | null, _orderId: string) {
+      succeed({ success: false, reason: 'INVALID_STATUS' });
+    },
     getCoreOrderStatusOptionsForFrontend(_s: string | null) { succeed([]); },
     getCoreOrderDetailForFrontend(_s: string | null, _orderId: string) { succeed({ success: false }); },
     checkSyncSignals(_s: string | null) { succeed(MOCK_SYNC_SIGNALS); },
