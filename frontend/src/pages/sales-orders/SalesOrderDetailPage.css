@@ -1,0 +1,11 @@
+.sales-order-detail-page { display: flex; flex-direction: column; gap: var(--space-lg); }
+.sales-order-detail-page__back { margin-bottom: var(--space-xs); }
+.sales-order-detail-page__badges { display: flex; gap: var(--space-xs); flex-wrap: wrap; margin-top: calc(-1 * var(--space-sm)); margin-bottom: var(--space-xs); }
+.sales-order-detail-page__section-card { padding: var(--space-lg); }
+.sales-order-detail-page__section-title { font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); margin: 0 0 var(--space-md) 0; }
+.sales-order-detail-page__def-list { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm) var(--space-xl); margin: 0; }
+.sales-order-detail-page__def-row { display: contents; }
+.sales-order-detail-page__def-label { font-size: var(--font-size-sm); color: var(--color-text-secondary); margin: 0; }
+.sales-order-detail-page__def-value { font-size: var(--font-size-sm); color: var(--color-text-primary); margin: 0; }
+.sales-order-detail-page__due-with-badge { display: inline-flex; align-items: center; gap: var(--space-xs); }
+.sales-order-detail-page__table-card { border-radius: var(--radius-data-table); overflow: hidden; padding: var(--space-none); }

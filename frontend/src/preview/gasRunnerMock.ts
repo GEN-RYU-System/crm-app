@@ -275,6 +275,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
       succeed({ success: true, orderId: _orderId });
     },
     getCoreOrderStatusOptionsForFrontend(_s: string | null) { succeed([]); },
+    getCoreOrderDetailForFrontend(_s: string | null, _orderId: string) { succeed({ success: false }); },
     checkSyncSignals(_s: string | null) { succeed(MOCK_SYNC_SIGNALS); },
     getLeadFormOptions(_s: string | null) {
       succeed({ leadTypes: [], responseSpeeds: [], countries: [] });

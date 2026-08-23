@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CRM_SEARCH_ICON, CRM_SORT_ICONS } from '../../app/icons';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMessage, TextField, type DataTableColumn } from '../../components/ui';
@@ -56,6 +57,7 @@ function renderPaymentDueAtCell(row: SalesOrderRow) {
 }
 
 export function SalesOrderListPage() {
+  const navigate = useNavigate();
   const { items, statusOptions, error, loading, refreshing, ensureLoaded, refresh, retry } = useSalesOrderListCache();
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SalesOrderSort>(SALES_ORDER_LIST_INITIAL_SORT);
@@ -221,6 +223,7 @@ export function SalesOrderListPage() {
                 columns={columns}
                 rows={filteredRows as SalesOrderRow[]}
                 rowKey={(row) => row.orderId}
+                onRowClick={(row) => navigate(`/sales-orders/${row.orderId}`)}
                 surface="embedded"
               />
             )}

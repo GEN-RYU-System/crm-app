@@ -52,6 +52,7 @@ import { quoteGasRepository } from './features/quotes/gasAdapter';
 import { ChangePasswordPage } from './pages/auth/ChangePasswordPage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { SalesOrderListPage } from './pages/sales-orders/SalesOrderListPage';
+import { SalesOrderDetailPage } from './pages/sales-orders/SalesOrderDetailPage';
 import { SalesOrderListCacheProvider } from './pages/sales-orders/SalesOrderListCacheContext';
 import { customersCopy, errorCopy, inboxCopy, leadsCopy, ordersCopy, quotesCopy, salesOrdersCopy, staffCopy } from './content/ja';
 import { authCopy } from './content/ja/auth';
@@ -229,6 +230,7 @@ function AppRouter() {
       ))}
     <Route path={NAVIGATION_BY_ID.inbox.hash} element={inboxRoute} />
     <Route path={NAVIGATION_BY_ID.salesOrders.hash} element={salesOrdersRoute} />
+    <Route path="/sales-orders/:orderId" element={canAccessSalesOrders ? <SalesOrderDetailPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />} />
     <Route path="/leads-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
     <Route path="/new-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
     <Route path="/route-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
