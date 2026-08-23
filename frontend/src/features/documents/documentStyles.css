@@ -299,17 +299,34 @@
   color: var(--doc-ink-sub);
 }
 
-/* ── Print styles ── */
-@media print {
-  .doc-page {
-    margin: 0;
-    box-shadow: none;
-  }
+/* ── Print / screen styles ── */
+@page {
+  size: A4;
+  margin: 0;
 }
 
 @media screen {
+  .doc-print-root {
+    display: none;
+  }
+
   .doc-page {
     box-shadow: none;
     margin-bottom: 28pt;
+  }
+}
+
+@media print {
+  body > #root {
+    display: none !important;
+  }
+
+  body > .doc-print-root {
+    display: block !important;
+  }
+
+  .doc-page {
+    margin: 0;
+    box-shadow: none;
   }
 }

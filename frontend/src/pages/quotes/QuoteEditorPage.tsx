@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, EmptyState, LineItemEditor, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField, TwoColumnLayout } from '../../components/ui';
 import { quotesCopy } from '../../content/ja';
+import { ISSUER_HEADER } from '../../content/ja/issuer';
+import { QuoteDocument } from '../../features/documents/QuoteDocument';
 import { formatDate } from '../shared/dateFormat';
-import { createCoreQuote, getCoreQuoteDetail, getCoreCurrencies, getInventoryProductOptions, getLeadOptionsForFrontend, updateCoreQuote, type CurrencyRecord, type InventoryProductOption, type LeadOption } from '../../gas/client';
+import { createCoreQuote, getCoreIssuer, getCoreQuoteDetail, getCoreCurrencies, getInventoryProductOptions, getLeadOptionsForFrontend, updateCoreQuote, type CurrencyRecord, type InventoryProductOption, type IssuerRecord, type LeadOption } from '../../gas/client';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
 import { emptyLineValues, emptyQuoteEditorValues, isValidDiscount, QUOTE_EDITOR_PATHS, toHalfwidthDigits, toQuoteEditorValues, toQuotePayload, type QuoteEditorValues, type QuoteLineEditorValues } from './quoteEditorConfig';
 import { LeadCombobox } from './LeadCombobox';
@@ -12,6 +15,25 @@ import './QuoteEditorPage.css';
 type Props = { mode: 'create' | 'detail'; canEdit: boolean };
 type DetailState = 'loading' | 'ready' | 'missing' | 'error';
 type SavingState = 'idle' | 'draft' | 'issued';
+
+function buildIssuerInfo(rec: IssuerRecord) {
+  const get = (key: string): string => {
+    const val = rec[key];
+    return val === null || val === undefined ? '' : String(val);
+  };
+  return {
+    name: get(ISSUER_HEADER.COMPANY_NAME),
+    lines: [
+      get(ISSUER_HEADER.ADDRESS_LINE1),
+      get(ISSUER_HEADER.ADDRESS_LINE2),
+      get(ISSUER_HEADER.ADDRESS_LINE3),
+      [get(ISSUER_HEADER.CITY), get(ISSUER_HEADER.STATE), get(ISSUER_HEADER.ZIP)].filter(Boolean).join(' '),
+      get(ISSUER_HEADER.COUNTRY),
+      get(ISSUER_HEADER.PHONE),
+      get(ISSUER_HEADER.EMAIL),
+    ].filter(Boolean),
+  };
+}
 
 /** Calculate subtotal for a single line item (quantity x unit price). */
 function calcLineSubtotal(quantity: string, unitPrice: string): number | null {
@@ -55,7 +77,10 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
     quoteId: string;
     issuedDate: string;
     expiryDate: string;
+    customerName: string;
   } | null>(null);
+  const [showPrint, setShowPrint] = useState(false);
+  const [issuer, setIssuer] = useState<IssuerRecord | null>(null);
 
   // Derive conditions from the prefetched inventory cache (no GAS call needed).
   const conditionsMap = useInventoryConditionsMap();
@@ -91,6 +116,7 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
           quoteId: q.quoteId,
           issuedDate: q.issuedDate,
           expiryDate: q.expiryDate,
+          customerName: q.customerName,
         });
       }
       setDetailState('ready');
@@ -115,6 +141,16 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
       })
     }));
   }, [mode, detailState, conditionsMap]);
+
+  useEffect(() => {
+    void getCoreIssuer().then((data) => setIssuer(data)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!showPrint) return;
+    window.print();
+    setShowPrint(false);
+  }, [showPrint]);
 
   const editable = mode === 'create' || canEdit;
 
@@ -422,6 +458,11 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
         action={
           <div className="quote-editor-page__actions">
             <Button variant="outline" onClick={() => navigate(QUOTE_EDITOR_PATHS.list)} disabled={isSaving}>{quotesCopy.backToList}</Button>
+            {mode === 'detail' && !isLoading && quoteMetaInfo && issuer && (
+              <Button variant="outline" onClick={() => setShowPrint(true)}>
+                {quotesCopy.editor.printQuote}
+              </Button>
+            )}
             {editable && (
               <>
                 <Button
@@ -460,6 +501,44 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
       ) : (
         <TwoColumnLayout left={leftColumn} right={rightColumn} />
       )}
+
+      {showPrint && issuer && quoteMetaInfo && (() => {
+        const docLines = values.lines.map((l, i) => {
+          const sub = calcLineSubtotal(l.quantity, l.unitPrice);
+          return {
+            no: i + 1,
+            name: l.productName,
+            qty: l.quantity,
+            unitPrice: l.unitPrice,
+            amount: sub != null ? sub.toLocaleString() : '',
+          };
+        });
+        const docSubtotal = values.lines.reduce<number>((sum, l) => {
+          const sub = calcLineSubtotal(l.quantity, l.unitPrice);
+          return sub != null ? sum + sub : sum;
+        }, 0);
+        return createPortal(
+          <div className="doc-print-root">
+            <QuoteDocument
+              issuer={buildIssuerInfo(issuer)}
+              quoteId={quoteMetaInfo.quoteId}
+              date={quoteMetaInfo.issuedDate}
+              validUntil={quoteMetaInfo.expiryDate}
+              registrationNumber={String(issuer[ISSUER_HEADER.REGISTRATION_NO] ?? '') || undefined}
+              customerName={quoteMetaInfo.customerName}
+              lines={docLines}
+              subtotal={docSubtotal.toLocaleString()}
+              shippingFee={values.shippingFee}
+              discount={values.discount}
+              total={quoteTotal != null ? quoteTotal.toLocaleString() : ''}
+              currency={values.currency}
+              paymentTermsNote={String(issuer[ISSUER_HEADER.PAYMENT_NOTE] ?? '') || undefined}
+              thanksMessage={String(issuer[ISSUER_HEADER.CLOSING_MESSAGE] ?? '') || undefined}
+            />
+          </div>,
+          document.body
+        );
+      })()}
     </>
   );
 }

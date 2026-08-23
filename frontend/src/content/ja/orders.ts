@@ -118,6 +118,7 @@ export const ordersCopy = {
     subtitle: '受注・請求書の詳細情報を確認します。',
     editShipping: '発送情報を編集',
     editAmount: '金額を編集',
+    printInvoice: '印刷 / PDF保存',
     save: '保存',
     saving: '保存中...',
     cancel: 'キャンセル',
