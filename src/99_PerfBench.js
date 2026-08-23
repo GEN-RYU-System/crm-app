@@ -3006,6 +3006,7 @@ function benchLeadsByTypeConversionCost() {
   var sampleHdr = leadsSheet.getRange(1, 1, 1, leadsSheet.getLastColumn()).getValues()[0];
   out.push('総行数: ' + (leadsSheet.getLastRow() - 1) + '行');
   out.push('流入元ID列: ' + sampleHdr.indexOf('流入元ID'));
+  out.push('作品ID列: '   + sampleHdr.indexOf('作品ID'));
   out.push('');
 
   var tabs = [
@@ -3018,9 +3019,10 @@ function benchLeadsByTypeConversionCost() {
     var tab = tabs[t];
     out.push('--- ' + tab.label + ' ---');
 
-    // ── 1回目: 両キャッシュをクリア → フル処理 ──────────────────────────────
+    // ── 1回目: 全キャッシュをクリア → フル処理（流入元マスタ＋作品マスタ含む） ──
     clearCacheChunks_(tab.indexKey, tab.prefix);
     clearCacheChunks_(LEAD_SOURCES_CACHE_INDEX, LEAD_SOURCES_CACHE_PREFIX);
+    clearCacheChunks_(IP_MASTER_CACHE_INDEX,     IP_MASTER_CACHE_PREFIX);
 
     var t1s = Date.now();
 
@@ -3029,8 +3031,10 @@ function benchLeadsByTypeConversionCost() {
     var ti      = headers.indexOf('リード種別');
     var si      = headers.indexOf('リードステータス');
     var srcId   = headers.indexOf('流入元ID');
+    var ipIdx   = headers.indexOf('作品ID');
 
-    var idMap = srcId >= 0 ? getLeadSourceIdMap_() : {};
+    var idMap    = srcId >= 0 ? getLeadSourceIdMap_() : {};
+    var ipMap    = ipIdx  >= 0 ? getIpMasterMap_()     : {};
 
     var rows = [];
     for (var i = 1; i < data.length; i++) {
@@ -3050,6 +3054,16 @@ function benchLeadsByTypeConversionCost() {
         var rawId = String(lead['流入元ID'] || '').trim();
         if (rawId && idMap[rawId]) {
           lead['流入経路'] = idMap[rawId];
+        }
+      }
+      if (ipIdx >= 0) {
+        var rawIds = String(lead['作品ID'] || '').trim();
+        if (rawIds) {
+          var names = rawIds.split(',').map(function(id) {
+            var tid = id.trim();
+            return ipMap[tid] || tid;
+          });
+          lead['取り扱いタイトル'] = names.join(', ');
         }
       }
       rows.push(lead);
@@ -3080,6 +3094,17 @@ function benchLeadsByTypeConversionCost() {
   if (lsCache !== null) {
     out.push('  状態: HIT（' + Object.keys(lsCache).length + 'エントリ）');
     out.push('  内容: ' + JSON.stringify(lsCache));
+  } else {
+    out.push('  状態: MISS（キャッシュ未保存）');
+  }
+  out.push('');
+
+  // ── 作品マスタキャッシュの状態確認 ──────────────────────────────────────
+  out.push('--- 作品マスタキャッシュ確認 ---');
+  var ipCache = readCacheChunks_(IP_MASTER_CACHE_INDEX, IP_MASTER_CACHE_PREFIX);
+  if (ipCache !== null) {
+    out.push('  状態: HIT（' + Object.keys(ipCache).length + 'エントリ）');
+    out.push('  内容: ' + JSON.stringify(ipCache));
   } else {
     out.push('  状態: MISS（キャッシュ未保存）');
   }
