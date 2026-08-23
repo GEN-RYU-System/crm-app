@@ -439,6 +439,13 @@ export type OrderDetailRecord = {
     CUSTOMER_ID: string;
     customerName: string;
     shippingDestinationName: string;
+    shippingAddressLine1: string;
+    shippingAddressLine2: string;
+    shippingAddressLine3: string;
+    shippingCity: string;
+    shippingState: string;
+    shippingZip: string;
+    shippingCountry: string;
     paymentDestinationName: string;
     INVOICE_ISSUED_AT: string;
     PAYMENT_DUE_AT: string;
