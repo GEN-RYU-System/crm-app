@@ -333,3 +333,34 @@ function migrateV37ConversationLog() {
 
   Logger.log('v37マイグレーション完了');
 }
+
+/**
+ * リード管理シートに「流入元ID」列を追加する（冪等）。
+ *
+ * - 既存の「流入経路」列の直後に挿入する。
+ * - 列がすでに存在する場合は何もしない。
+ * - clasp run addLeadSourceIdColumn で直接呼び出す。
+ */
+function addLeadSourceIdColumn() {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('リード管理');
+  if (!sheet) throw new Error('リード管理シートが見つかりません');
+
+  var lastCol  = sheet.getLastColumn();
+  var headers  = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(String);
+
+  if (headers.indexOf('流入元ID') !== -1) {
+    Logger.log('列既存: 流入元ID（スキップ）');
+    return '列既存: 流入元ID';
+  }
+
+  var sourceIdx = headers.indexOf('流入経路');
+  if (sourceIdx === -1) throw new Error('「流入経路」列が見つかりません');
+
+  // insertColumnAfter は 1-based
+  sheet.insertColumnAfter(sourceIdx + 1);
+  sheet.getRange(1, sourceIdx + 2).setValue('流入元ID');
+
+  Logger.log('列追加完了: 流入元ID（流入経路 の直後）');
+  return '列追加完了: 流入元ID';
+}
