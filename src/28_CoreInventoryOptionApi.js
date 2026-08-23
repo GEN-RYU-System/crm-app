@@ -1,24 +1,40 @@
 /**
  * 在庫連動見積もり明細 オプションAPI
  *
- * getInventoryProductOptions  … 在庫のある商品候補一覧
- * getInventoryConditions       … 指定商品の在庫のある状態一覧
+ * getInventoryProductOptions  … 在庫のある商品候補一覧（conditions[] 含む）
+ * getInventoryConditions       … 指定商品の在庫のある状態一覧（後方互換用に残存）
  */
+
+var INVENTORY_PRODUCT_OPTIONS_CACHE_INDEX  = 'INVENTORY_PRODUCT_OPTIONS_CACHE_INDEX_V2';
+var INVENTORY_PRODUCT_OPTIONS_CACHE_PREFIX = 'INVENTORY_PRODUCT_OPTIONS_CACHE_V2_';
+var INVENTORY_PRODUCT_OPTIONS_CACHE_TTL    = 600;
+var INVENTORY_PRODUCT_OPTIONS_CACHE_CHUNK  = 90000;
 
 /**
  * 在庫のある商品の候補一覧を返す。
  * 共用在庫に Quantity > 0 の行が1件以上ある商品のみ。
  * 商品名は商品マスタ同期の Japanese Title を使う。
+ * conditions には当該商品の Quantity > 0 な在庫行を全件返す。
+ * unitWeight: Condition = 'Case' → Case重量、それ以外 → Box重量（PRODUCTS テーブルから取得）
  *
  * @param {string} sessionId
- * @returns {{ productId: string, productName: string }[]}
+ * @returns {{ productId: string, productName: string, category: string,
+ *             conditions: { condition: string, quantity: number, unitPrice: number, unitWeight: number }[] }[]}
  */
 function getInventoryProductOptions(sessionId) {
   setEmailFromSession(sessionId);
   checkPermission('lead_view');
 
-  var ss        = getSpreadsheet();
-  var invSchema = CORE_SCHEMA_V1_TABLES['SHARED_INVENTORY'];
+  var cached = readCacheChunks_(
+    INVENTORY_PRODUCT_OPTIONS_CACHE_INDEX,
+    INVENTORY_PRODUCT_OPTIONS_CACHE_PREFIX
+  );
+  if (cached !== null) return cached;
+
+  var ss         = getSpreadsheet();
+  var invSchema  = CORE_SCHEMA_V1_TABLES['SHARED_INVENTORY'];
+  var prodSchema = CORE_SCHEMA_V1_TABLES['PRODUCTS'];
+  var CONDITION_CASE = invSchema.values.CONDITION.CASE;
 
   var invSheet = ss.getSheetByName(invSchema.sheetName);
   if (!invSheet || invSheet.getLastRow() <= 1) return [];
@@ -27,20 +43,13 @@ function getInventoryProductOptions(sessionId) {
   var invH     = invData[0].map(String);
   var pidIdx   = invH.indexOf(invSchema.headers['PRODUCT_ID']);
   var qtyIdx   = invH.indexOf(invSchema.headers['QUANTITY']);
-  if (pidIdx < 0 || qtyIdx < 0) throw new Error('共用在庫ヘッダー不足: PRODUCT_ID / QUANTITY');
-
-  // Collect unique product_ids with Quantity > 0
-  var seenIds = {};
-  for (var i = 1; i < invData.length; i++) {
-    var qty = Number(invData[i][qtyIdx]) || 0;
-    if (qty <= 0) continue;
-    var pid = String(invData[i][pidIdx] != null ? invData[i][pidIdx] : '').trim();
-    if (pid) seenIds[pid] = true;
+  var priceIdx = invH.indexOf(invSchema.headers['UNIT_PRICE']);
+  var condIdx  = invH.indexOf(invSchema.headers['CONDITION']);
+  if (pidIdx < 0 || qtyIdx < 0 || priceIdx < 0 || condIdx < 0) {
+    throw new Error('共用在庫ヘッダー不足: PRODUCT_ID / QUANTITY / UNIT_PRICE / CONDITION');
   }
 
-  // Join to 商品マスタ同期 to get Japanese Title
-  var prodSchema = CORE_SCHEMA_V1_TABLES['PRODUCTS'];
-  var prodSheet  = ss.getSheetByName(prodSchema.sheetName);
+  var prodSheet = ss.getSheetByName(prodSchema.sheetName);
   if (!prodSheet || prodSheet.getLastRow() <= 1) return [];
 
   var prodData    = prodSheet.getDataRange().getValues();
@@ -48,16 +57,65 @@ function getInventoryProductOptions(sessionId) {
   var prodPidIdx  = prodH.indexOf(prodSchema.headers['PRODUCT_ID']);
   var jaIdx       = prodH.indexOf(prodSchema.headers['JAPANESE_TITLE']);
   var catIdx      = prodH.indexOf(prodSchema.headers['CATEGORY']);
-  if (prodPidIdx < 0 || jaIdx < 0) throw new Error('商品マスタ同期ヘッダー不足: product_id / Japanese Title');
+  var boxWIdx     = prodH.indexOf(prodSchema.headers['BOX_WEIGHT']);
+  var caseWIdx    = prodH.indexOf(prodSchema.headers['CASE_WEIGHT']);
+  if (prodPidIdx < 0 || jaIdx < 0) {
+    throw new Error('商品マスタ同期ヘッダー不足: product_id / Japanese Title');
+  }
 
+  // 商品マスタをマップ化（pid → meta）
+  var prodMap = {};
+  for (var pi = 1; pi < prodData.length; pi++) {
+    var ppid = String(prodData[pi][prodPidIdx] != null ? prodData[pi][prodPidIdx] : '').trim();
+    if (!ppid) continue;
+    prodMap[ppid] = {
+      productName: String(prodData[pi][jaIdx]  != null ? prodData[pi][jaIdx]  : '').trim(),
+      category:    catIdx >= 0 ? String(prodData[pi][catIdx] != null ? prodData[pi][catIdx] : '').trim() : '',
+      boxWeight:   boxWIdx  >= 0 ? (Number(prodData[pi][boxWIdx])  || 0) : 0,
+      caseWeight:  caseWIdx >= 0 ? (Number(prodData[pi][caseWIdx]) || 0) : 0
+    };
+  }
+
+  // 在庫行を商品IDごとに集約（QUANTITY > 0 のみ）
+  var condMap = {};
+  for (var i = 1; i < invData.length; i++) {
+    var qty = Number(invData[i][qtyIdx]) || 0;
+    if (qty <= 0) continue;
+    var pid = String(invData[i][pidIdx] != null ? invData[i][pidIdx] : '').trim();
+    if (!pid || !prodMap[pid]) continue;
+    if (!condMap[pid]) condMap[pid] = [];
+    var cond = String(invData[i][condIdx] != null ? invData[i][condIdx] : '');
+    var uw   = (cond === CONDITION_CASE) ? prodMap[pid].caseWeight : prodMap[pid].boxWeight;
+    condMap[pid].push({
+      condition:  cond,
+      quantity:   qty,
+      unitPrice:  Number(invData[i][priceIdx]) || 0,
+      unitWeight: uw
+    });
+  }
+
+  // PRODUCTS の行順を維持して結果を組み立て
   var results = [];
   for (var j = 1; j < prodData.length; j++) {
     var pid2 = String(prodData[j][prodPidIdx] != null ? prodData[j][prodPidIdx] : '').trim();
-    if (!pid2 || !seenIds[pid2]) continue;
-    var jaTitle  = String(prodData[j][jaIdx]  != null ? prodData[j][jaIdx]  : '').trim();
-    var category = catIdx >= 0 ? String(prodData[j][catIdx] != null ? prodData[j][catIdx] : '').trim() : '';
-    results.push({ productId: pid2, productName: jaTitle, category: category });
+    if (!pid2 || !condMap[pid2]) continue;
+    var p = prodMap[pid2];
+    results.push({
+      productId:   pid2,
+      productName: p.productName,
+      category:    p.category,
+      conditions:  condMap[pid2]
+    });
   }
+
+  writeCacheChunks_(
+    INVENTORY_PRODUCT_OPTIONS_CACHE_INDEX,
+    INVENTORY_PRODUCT_OPTIONS_CACHE_PREFIX,
+    results,
+    INVENTORY_PRODUCT_OPTIONS_CACHE_TTL,
+    INVENTORY_PRODUCT_OPTIONS_CACHE_CHUNK
+  );
+
   return results;
 }
 
@@ -65,6 +123,8 @@ function getInventoryProductOptions(sessionId) {
  * 指定商品の、在庫のある状態の一覧を返す。
  * Quantity が 0 の行は除外。
  * unitWeight: Condition === 'Case' → Case重量、それ以外 → Box重量（取得不可の場合 0）
+ * ※ getInventoryProductOptions の conditions[] で取得できるが、
+ *    件数増加時に個別取得へ戻せるよう残存させる。
  *
  * @param {string} sessionId
  * @param {string} productId

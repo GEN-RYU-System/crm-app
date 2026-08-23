@@ -565,6 +565,7 @@ export type InventoryProductOption = {
   productId: string;
   productName: string;
   category: string;
+  conditions: readonly InventoryConditionOption[];
 };
 
 export type InventoryConditionOption = {
