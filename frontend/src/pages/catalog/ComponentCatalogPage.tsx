@@ -10,6 +10,7 @@ import {
   EmptyState,
   HubShell,
   LineItemEditor,
+  MultiSelect,
   PageHeader,
   PageToolbar,
   Select,
@@ -47,6 +48,7 @@ export function ComponentCatalogPage() {
     { id: "b", label: catalogCopy.optionTwo },
   ];
   const [comboboxValue, setComboboxValue] = useState("");
+  const [multiSelectValues, setMultiSelectValues] = useState<string[]>([]);
   const [lineItems, setLineItems] = useState<LineItemValue[]>([
     { productId: "PM0001", productName: catalogCopy.lineItemSampleProductA, condition: "New", quantity: "2", unitPrice: "1000", unitWeight: 200 },
   ]);
@@ -370,6 +372,20 @@ export function ComponentCatalogPage() {
             label={catalogCopy.comboboxLabel}
             placeholder={catalogCopy.comboboxPlaceholder}
             noResultsText={catalogCopy.comboboxNoResults}
+          />
+        </Card>
+        <Card>
+          <h2 className="catalog-page__heading">{catalogCopy.multiSelect}</h2>
+          <MultiSelect
+            items={comboboxItems}
+            getKey={(item) => item.id}
+            getLabel={(item) => item.label}
+            values={multiSelectValues}
+            onChange={setMultiSelectValues}
+            label={catalogCopy.multiSelectLabel}
+            placeholder={catalogCopy.multiSelectPlaceholder}
+            noResultsText={catalogCopy.multiSelectNoResults}
+            getRemoveLabel={catalogCopy.multiSelectRemove}
           />
         </Card>
         <Card>

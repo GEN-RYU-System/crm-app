@@ -662,6 +662,55 @@ git revert <マージコミットSHA>
 
 ---
 
+## 【19】PR18: デザイントークン実態調査・sales-orders 検査追加
+
+- 日時: 2026-08-24
+- PR: #（マージ後に記録）
+- マージコミットSHA: （マージ後に記録）
+- 戻し方: git revert <マージコミットSHA>
+
+### 根本原因
+
+`var(--undefined-token)` は CSS として有効な構文のため、ビルド・CI・check:design-system をすべて通過する。ブラウザはフォールバック値（継承値または初期値）を使用するため、画面が壊れていても静的解析では検出できない。
+
+### 再発防止
+
+`check-design-system.mjs` に未定義トークン検査を追加（sales-orders 対象、段階的に他ページへ拡大予定）。未定義トークンの参照は `undefined CSS token: <name> in <file>` として build:gas を失敗させるようになった。
+
+### 調査結果サマリ
+
+**調査A: 定義トークン総数**: 329件（tokens.css + palette.css 合計）
+
+**調査B: sales-orders の未定義トークン（修正前）**
+
+| トークン名 | 件数 | 対象ファイル | 修正後 |
+|------------|------|--------------|--------|
+| `--font-size-xl` | 1 | SalesOrderDetailPage.css | `--page-header-title-size` |
+| `--font-size-sm` | 7 | Detail + List | `--font-sm` |
+| `--font-size-xs` | 3 | Detail + List | `--font-xs` |
+| `--font-size-md` | 3 | SalesOrderDetailPage.css | `--font-md` |
+| `--color-text-secondary` | 8 | Detail + List | `--color-text-muted` |
+| `--color-text-tertiary` | 1 | SalesOrderListPage.css | `--color-text-muted` |
+| `--radius-md` | 1 | SalesOrderDetailPage.css | `--radius-surface` |
+| `--radius-sm` | 1 | SalesOrderListPage.css | `--radius-button` |
+| `--color-surface-hover` | 1 | SalesOrderListPage.css | `--color-tab-surface-hover` |
+| `--color-surface-selected` | 1 | SalesOrderListPage.css | `--color-tab-surface-active` |
+| `--font-weight-medium` | 1 | SalesOrderListPage.css | `--font-weight-semibold` |
+
+**調査B: sales-orders 以外の未定義トークン（修正対象外）**: 352件（コードベース全体の精査対象）。100件超のため修正は今スプリントのスコープ外。
+
+**調査C: raw値使用**: font-size raw px/rem = 0件、border-radius raw px = 0件、color hex/rgb = 0件（すべてトークン経由）。
+
+**調査D: font-size値の使用分布**: `--font-sm`が18件（最多）。`--font-md`が4件。生値0件。border-radius は全件トークン経由。
+
+### 検証結果
+
+- `npm run build:gas` → design-system checks passed
+- `clasp run runCoreSchemaConformanceAudit` → 総不一致 0 → PASS
+- PO実機確認待ち: sales-orders 一覧・詳細ページのフォントサイズ・色・角丸が意図通り見えること
+
+---
+
 ## 【18】PR13: 受注管理詳細ページ（読み取り専用）
 
 - PR番号: #406
