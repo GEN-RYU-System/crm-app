@@ -724,7 +724,36 @@ git revert <マージコミットSHA>
 
 ---
 
-## 【20】PR19: デザイントークン6件追加・未定義参照解消・検査を全体に拡張 — PR #448
+## 【20】管理センター Discord連携設定ページ — PR #438
+
+- PR番号: #438
+- マージコミットSHA: `b7fb2bd00f73ef0e02637f24049eeeec68aeb335`
+- mergedAt: 2026-08-23T22:05:36Z
+- 対象: 管理センター > 外部連携 > Discord連携設定（/discord-integration）
+- 新規ファイル:
+  - `src/34_DiscordSettingsApi.js`（GAS API 4関数）
+  - `frontend/src/features/discordIntegration/contracts.ts`
+  - `frontend/src/features/discordIntegration/gasAdapter.ts`
+  - `frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx`
+  - `frontend/src/content/ja/discordIntegration.ts`
+- 変更ファイル:
+  - `frontend/src/app/navigation.ts`（discordIntegration ページ追加、state: 'preview'）
+  - `frontend/src/gas/client.ts`（4関数追加）
+  - `src/27_WebApp.js`（getPermissionsByRole に discordIntegration 追加）
+- 戻し方: `git revert b7fb2bd00f73ef0e02637f24049eeeec68aeb335`
+- Deploy to DEV: completed / success（2026-08-23T22:05:38Z、1m9s）
+- U1〜U4確定:
+  - U1: testDiscordConnection() — 引数なし、{success, botInfo:{username, id, discriminator}} — src/33_DiscordIntegrationService.js:23-87
+  - U2: 管理センターグループ = EXTERNAL_LINK_SUB_ITEMS、admin_access — frontend/src/app/navigation.ts:86-89
+  - U3: スクリプトプロパティ DISCORD_CHANNEL_IDS にJSON配列保存（saveNotificationSettings方式踏襲）
+  - U4: .claspignore — 34_DiscordSettingsApi.js は除外なし
+- S1〜S4: 全合格（Logger.logにトークンなし・フロント返却はマスクのみ・全関数checkPermission・実値ハードコードなし）
+- V1〜V4: Playwright 全11 AC PASS・build:gas 成功・未設定時エラー表示確認済み・権限ガード実装済み
+- スコープ外（次PR）: 受信箱への実データ同期（inbox gasAdapter実装）
+
+---
+
+## 【21】PR19: デザイントークン6件追加・未定義参照解消・検査を全体に拡張 — PR #448
 
 - 日時: 2026-08-24
 - PR: #448
