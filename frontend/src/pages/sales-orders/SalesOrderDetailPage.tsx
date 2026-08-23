@@ -106,9 +106,9 @@ export function SalesOrderDetailPage() {
     try {
       const result = await confirmCoreOrderPayment(orderId);
       if (result.success) {
-        setConfirmOpen(false);
         const updated = await getCoreOrderDetail(orderId);
         setDetail(updated);
+        setConfirmOpen(false);
         void refresh();
       } else {
         const reason = result.reason;
