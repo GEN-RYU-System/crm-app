@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, Combobox, EmptyState, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField } from '../../components/ui';
 import { leadsCopy } from '../../content/ja';
-import type { LeadRepository, LeadType } from '../../features/leads/contracts';
-import type { LeadFormCountry, LeadFormOptions } from '../../features/leads/contracts';
+import type { LeadFormCountry, LeadFormOptions, LeadSource, LeadRepository, LeadType } from '../../features/leads/contracts';
 import { useLeadListCache } from './LeadListCacheContext';
 import { emptyLeadEditorValues, LEAD_EDITOR_PATHS, toLeadCreateValues, toLeadEditorValues, toLeadUpdateValues, type LeadEditorValues } from './leadEditorConfig';
 import { LEAD_TYPE_TABS } from './leadListConfig';
@@ -23,6 +22,22 @@ function toSelectOptions(masterOptions: readonly string[], currentValue: string)
   return currentValue && !masterOptions.includes(currentValue)
     ? [...base, { value: currentValue, label: currentValue }]
     : base;
+}
+
+/** Filters lead sources by leadType. Appends currentSourceId as fallback if not in filtered list. */
+function toSourceSelectOptions(
+  sources: readonly LeadSource[],
+  leadType: LeadType,
+  currentSourceId: string,
+  currentSourceName: string
+) {
+  const isInbound = leadType === leadsCopy.leadTypes.inbound;
+  const filtered = sources.filter((s) => (isInbound ? s.isInbound : s.isOutbound));
+  const base = filtered.map((s) => ({ value: s.sourceId, label: s.name }));
+  if (currentSourceId && !base.some((o) => o.value === currentSourceId)) {
+    return [...base, { value: currentSourceId, label: currentSourceName || currentSourceId }];
+  }
+  return base;
 }
 
 export function LeadEditorPage({ mode, canEdit, repository }: Props) {
@@ -83,6 +98,15 @@ export function LeadEditorPage({ mode, canEdit, repository }: Props) {
   const updateValue = (key: keyof LeadEditorValues, value: string) =>
     setValues((previous) => ({ ...previous, [key]: value }));
 
+  const handleSourceChange = (newSourceId: string) => {
+    const source = formOptions?.leadSources.find((s) => s.sourceId === newSourceId);
+    setValues((previous) => ({
+      ...previous,
+      sourceId: newSourceId,
+      sourceName: source?.name ?? previous.sourceName
+    }));
+  };
+
   const save = async () => {
     if (!values.customerName.trim()) {
       setSaveError(leadsCopy.customerNameRequired);
@@ -133,6 +157,14 @@ export function LeadEditorPage({ mode, canEdit, repository }: Props) {
   const leadTypeOptions = optionsReady
     ? toSelectOptions(formOptions.leadTypes, leadType)
     : [{ value: leadType, label: leadType }];
+
+  // Lead source options: filtered by leadType (isInbound / isOutbound)
+  // Loading: show current sourceId/sourceName as single option (or empty)
+  const sourceOptions = optionsReady
+    ? toSourceSelectOptions(formOptions.leadSources, leadType, values.sourceId, values.sourceName)
+    : values.sourceId
+      ? [{ value: values.sourceId, label: values.sourceName || values.sourceId }]
+      : [];
 
   // Response speed options: show current value only while loading (empty if blank)
   const responseSpeedOptions = optionsReady
@@ -188,12 +220,15 @@ export function LeadEditorPage({ mode, canEdit, repository }: Props) {
             disabled={!editable}
           />
 
-          <TextField
+          {/* Lead source: Select (filtered by leadType, preserves current value if not in filtered list) */}
+          <Select
             label={leadsCopy.form.source}
-            value={values.source}
-            onChange={(event) => updateValue('source', event.target.value)}
+            options={sourceOptions}
+            value={values.sourceId}
+            onChange={(event) => handleSourceChange(event.target.value)}
             width="sm"
-            disabled={!editable}
+            disabled={!editable || !optionsReady}
+            placeholder={!optionsReady ? leadsCopy.loading : leadsCopy.form.sourcePlaceholder}
           />
 
           {/* Country: Combobox (fallbackDisplayText preserves values not in master) */}
