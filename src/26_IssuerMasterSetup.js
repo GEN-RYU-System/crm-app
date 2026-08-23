@@ -16,7 +16,7 @@
 
 function setupIssuerMasterSheet() {
   var lock = LockService.getScriptLock();
-  lock.waitLock(5000);
+  lock.waitLock(30000);
   try {
     var ss        = getSpreadsheet();
     var tableKey  = 'ISSUER';
@@ -47,7 +47,7 @@ function setupIssuerMasterSheet() {
 
 function seedIssuerMaster() {
   var lock = LockService.getScriptLock();
-  lock.waitLock(5000);
+  lock.waitLock(30000);
   try {
     var ss       = getSpreadsheet();
     var tableKey = 'ISSUER';
