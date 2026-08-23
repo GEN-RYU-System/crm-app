@@ -175,7 +175,7 @@ function dryRunIpIdsMigration() {
     Logger.log('  行' + row.rowNumber + ' / ' + row.leadId);
     Logger.log('    元の値 : "' + row.original + '"');
     Logger.log('    変換後 : "' + row.ids + '"');
-    row.detail.forEach(function(d) { Logger.log('    照合  : ' + d); });
+    Logger.log('    照合  : ' + row.detail);
   });
   Logger.log('');
   Logger.log('【マスタに無い値: ' + unknownList.length + '件】');
