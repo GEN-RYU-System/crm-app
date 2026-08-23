@@ -1,0 +1,315 @@
+/* ==========================================================================
+   Document Template Styles — A4 print layout
+   Colors are injected via CSS variables from React inline style.
+   Raw hex / rgb / hsl are forbidden in this file (check-design-system constraint).
+   gap / border-radius / box-shadow / margin / padding use CSS variables only.
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* ── Page container ── */
+.doc-page {
+  width: var(--doc-w);
+  min-height: var(--doc-h);
+  background: var(--doc-bar-text);
+  padding-top: 34pt;
+  padding-right: var(--doc-mx);
+  padding-bottom: 30pt;
+  padding-left: var(--doc-mx);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  font-family: "Helvetica Neue", Arial, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  font-size: 8pt;
+  color: var(--doc-ink);
+  line-height: 1.35;
+  break-after: page;
+}
+
+.doc-page + .doc-page {
+  margin-top: 0;
+}
+
+/* ── Numeric variant ── */
+.doc-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Head section ── */
+.doc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.doc-issuer-name {
+  font-size: 15pt;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--doc-brand-text);
+}
+
+.doc-issuer-line {
+  font-size: 7.5pt;
+  color: var(--doc-ink-sub);
+}
+
+.doc-title {
+  font-size: 20pt;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: right;
+  color: var(--doc-title-text);
+}
+
+.doc-meta {
+  margin-top: var(--doc-gap-sm);
+}
+
+.doc-meta-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--doc-gap-sm);
+  font-size: 7.5pt;
+}
+
+.doc-meta-row dt {
+  color: var(--doc-ink-sub);
+}
+
+.doc-meta-row dd {
+  min-width: 80pt;
+  text-align: right;
+}
+
+/* ── Parties section ── */
+.doc-parties {
+  display: flex;
+  gap: var(--doc-gap-lg);
+  margin-top: 14pt;
+}
+
+.doc-party {
+  flex: 1;
+}
+
+.doc-party-heading {
+  font-size: 8pt;
+  font-weight: 600;
+  background: var(--doc-bar-bg);
+  color: var(--doc-bar-text);
+  padding-top: 3pt;
+  padding-right: 6pt;
+  padding-bottom: 3pt;
+  padding-left: 6pt;
+}
+
+.doc-party-body {
+  background: var(--doc-band-bg);
+  padding-top: 5pt;
+  padding-right: 6pt;
+  padding-bottom: 5pt;
+  padding-left: 6pt;
+}
+
+.doc-party-body p {
+  font-size: 7.5pt;
+  color: var(--doc-ink-sub);
+}
+
+/* ── Items table ── */
+.doc-items {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 14pt;
+  table-layout: fixed;
+}
+
+.doc-items thead th {
+  font-size: 7.5pt;
+  font-weight: 600;
+  text-align: left;
+  padding-top: 3.5pt;
+  padding-right: 4pt;
+  padding-bottom: 3.5pt;
+  padding-left: 4pt;
+  background: var(--doc-bar-bg);
+  color: var(--doc-bar-text);
+}
+
+.doc-items td {
+  font-size: 7.5pt;
+  padding-top: 1pt;
+  padding-right: 4pt;
+  padding-bottom: 1pt;
+  padding-left: 4pt;
+  height: var(--doc-row-h);
+  border-bottom: 0.5pt solid var(--doc-line-color);
+  vertical-align: middle;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.doc-col-no {
+  width: 18pt;
+  color: var(--doc-ink-sub);
+  text-align: right;
+}
+
+.doc-col-name {
+  width: auto;
+}
+
+.doc-col-qty {
+  width: 42pt;
+  text-align: right;
+}
+
+.doc-col-price {
+  width: 60pt;
+  text-align: right;
+}
+
+.doc-col-amount {
+  width: 72pt;
+  text-align: right;
+}
+
+.doc-items th.doc-col-qty,
+.doc-items th.doc-col-price,
+.doc-items th.doc-col-amount {
+  text-align: right;
+}
+
+/* ── Foot section ── */
+.doc-foot {
+  display: flex;
+  gap: var(--doc-gap-lg);
+  margin-top: var(--doc-gap-md);
+}
+
+.doc-note-box {
+  flex: 1;
+}
+
+.doc-note-box h2 {
+  font-size: 8pt;
+  font-weight: 600;
+  margin-bottom: 3pt;
+}
+
+.doc-note-box-content {
+  border: 0.5pt solid var(--doc-line-color);
+  border-radius: var(--doc-radius);
+  min-height: 40pt;
+  padding-top: 5pt;
+  padding-right: 6pt;
+  padding-bottom: 5pt;
+  padding-left: 6pt;
+  font-size: 7.5pt;
+  color: var(--doc-ink-sub);
+  white-space: pre-wrap;
+}
+
+.doc-fx {
+  font-size: 7.5pt;
+  color: var(--doc-ink-sub);
+  margin-top: var(--doc-gap-sm);
+}
+
+/* ── Totals ── */
+.doc-totals {
+  width: 180pt;
+}
+
+.doc-totals dl {
+  display: flex;
+  justify-content: space-between;
+  font-size: 7.5pt;
+  padding-top: 2.5pt;
+  padding-bottom: 2.5pt;
+}
+
+.doc-totals dt {
+  color: var(--doc-ink-sub);
+  letter-spacing: 0.03em;
+}
+
+.doc-totals-grand {
+  border-top: 0.75pt solid var(--doc-line-strong-color);
+  margin-top: 3pt;
+  padding-top: 5pt;
+}
+
+.doc-totals-grand dt,
+.doc-totals-grand dd {
+  font-size: 11pt;
+  font-weight: 600;
+  color: var(--doc-ink);
+}
+
+/* ── Terms section ── */
+.doc-terms {
+  margin-top: 14pt;
+  padding-top: 9pt;
+  border-top: 0.5pt solid var(--doc-line-color);
+}
+
+.doc-terms h2 {
+  font-size: 8pt;
+  font-weight: 600;
+  margin-bottom: 2pt;
+}
+
+.doc-terms p {
+  font-size: 7.5pt;
+  color: var(--doc-ink-sub);
+  line-height: 1.45;
+}
+
+.doc-terms-gap {
+  margin-top: 8pt;
+}
+
+/* ── Thanks ── */
+.doc-thanks {
+  text-align: center;
+  font-size: 17pt;
+  font-weight: 600;
+  color: var(--doc-thanks-text);
+  margin-top: 16pt;
+  letter-spacing: 0.02em;
+}
+
+/* ── Spacer / pager ── */
+.doc-spacer {
+  flex: 1;
+}
+
+.doc-pager {
+  position: absolute;
+  right: var(--doc-mx);
+  bottom: 14pt;
+  font-size: 7.5pt;
+  color: var(--doc-ink-sub);
+}
+
+/* ── Print styles ── */
+@media print {
+  .doc-page {
+    margin: 0;
+    box-shadow: none;
+  }
+}
+
+@media screen {
+  .doc-page {
+    box-shadow: none;
+    margin-bottom: 28pt;
+  }
+}
