@@ -845,3 +845,68 @@ export function updateCoreIssuer(issuerData: IssuerRecord): Promise<void> {
       .updateCoreIssuerForFrontend(getStoredSessionId(), issuerData as unknown);
   });
 }
+
+// ============================================================
+// Discord integration settings
+// ============================================================
+
+export type DiscordSaveResult = { success: boolean; error?: string };
+export type DiscordConnectionStatus = {
+  isTokenSet: boolean;
+  tokenMask: string;
+  botName: string;
+  botId: string;
+  connected: boolean;
+};
+export type DiscordChannelsResult = { channels: string[] };
+
+export function saveDiscordBotToken(token: string): Promise<DiscordSaveResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => resolve(value as DiscordSaveResult))
+      .withFailureHandler((error) => reject(toError(error)))
+      .saveDiscordBotToken(getStoredSessionId(), token);
+  });
+}
+
+export function getDiscordConnectionStatus(): Promise<DiscordConnectionStatus> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => resolve(value as DiscordConnectionStatus))
+      .withFailureHandler((error) => reject(toError(error)))
+      .getDiscordConnectionStatusForFrontend(getStoredSessionId());
+  });
+}
+
+export function saveDiscordChannels(channelIds: string[]): Promise<DiscordSaveResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => resolve(value as DiscordSaveResult))
+      .withFailureHandler((error) => reject(toError(error)))
+      .saveDiscordChannels(getStoredSessionId(), channelIds as unknown);
+  });
+}
+
+export function getDiscordChannels(): Promise<DiscordChannelsResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        const v = value as { channels?: unknown } | null;
+        if (!v || !Array.isArray(v.channels)) {
+          resolve({ channels: [] });
+          return;
+        }
+        resolve({ channels: v.channels as string[] });
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getDiscordChannelsForFrontend(getStoredSessionId());
+  });
+}
