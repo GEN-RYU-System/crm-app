@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { CRM_NAV_ICONS, CRM_SORT_ICONS } from "../../app/icons";
+import { InvoiceDocument } from "../../features/documents/InvoiceDocument";
+import { QuoteDocument } from "../../features/documents/QuoteDocument";
+import type { DocLine, IssuerInfo } from "../../features/documents/DocumentParts";
 import {
   Badge,
   Button,
@@ -129,6 +132,37 @@ export function ComponentCatalogPage() {
       cellAlignment: "center",
     },
   ];
+
+  // ── Document template sample data ──────────────────────────────────────────
+  const sampleIssuer: IssuerInfo = {
+    name: 'SAMPLE COMPANY LTD.',
+    lines: [
+      'Taro Yamada',
+      '2F, Sample Building, 1-2-3 Shinjuku',
+      'Shinjuku-ku, Tokyo, Japan 160-0000',
+      'Phone: +81-90-0000-0000',
+      'E-mail: billing@example.com',
+    ],
+  };
+  const sampleBilledTo = {
+    name: 'SAMPLE CLIENT CO.',
+    lines: ['1 Example Street', 'Sample City, SC 10000', 'Country', 'TAX ID: XX-000000'],
+  };
+  const sampleShipTo = {
+    name: 'SAMPLE CLIENT CO.',
+    lines: ['1 Example Street', 'Sample City, SC 10000'],
+  };
+  const makeLines = (count: number, currency: string): DocLine[] =>
+    Array.from({ length: count }, (_, i) => ({
+      no: i + 1,
+      name: `Sample Product ${String.fromCharCode(65 + (i % 26))}`,
+      qty: String((i % 5) + 1),
+      unitPrice: currency === 'USD' ? `$${((i + 1) * 50).toLocaleString()}.00` : `\u00a5${((i + 1) * 5000).toLocaleString()}`,
+      amount: currency === 'USD' ? `$${(((i % 5) + 1) * (i + 1) * 50).toLocaleString()}.00` : `\u00a5${(((i % 5) + 1) * (i + 1) * 5000).toLocaleString()}`,
+    }));
+  const sampleLines5 = makeLines(5, 'JPY');
+  const sampleLines25 = makeLines(25, 'JPY');
+  const sampleLinesUsd = makeLines(5, 'USD');
 
   return (
     <>
@@ -547,6 +581,90 @@ export function ComponentCatalogPage() {
                 <li><code>{catalogCopy.pageTemplateRefFile6}</code></li>
               </ul>
             </section>
+          </div>
+        </Card>
+        <Card>
+          <h2 className="catalog-page__heading">{catalogCopy.documentTemplates}</h2>
+          <div className="catalog-page__stack">
+            <p className="catalog-page__copy">{catalogCopy.documentInvoice1Page}</p>
+            <InvoiceDocument
+              issuer={sampleIssuer}
+              invoiceNumber="#INV-0001"
+              date="2026/08/24"
+              dueDate="2026/09/07"
+              registrationNumber="T3810449547408"
+              billedTo={sampleBilledTo}
+              shipTo={sampleShipTo}
+              lines={sampleLines5}
+              subtotal="\u00a5125,000"
+              shippingFee="\u00a53,200"
+              duty="\u00a50"
+              otherFee="\u00a50"
+              discount="\u00a50"
+              total="\u00a5128,200"
+              currency="JPY"
+              notes="Sample invoice with 5 line items."
+              paymentMethod="Bank Transfer"
+              paymentTermsNote="Please ensure payment arrives by the due date."
+            />
+            <p className="catalog-page__copy">{catalogCopy.documentInvoice2Page}</p>
+            <InvoiceDocument
+              issuer={sampleIssuer}
+              invoiceNumber="#INV-0002"
+              date="2026/08/24"
+              dueDate="2026/09/07"
+              registrationNumber="T3810449547408"
+              billedTo={sampleBilledTo}
+              shipTo={sampleShipTo}
+              lines={sampleLines25}
+              subtotal="\u00a51,625,000"
+              shippingFee="\u00a512,400"
+              duty="\u00a50"
+              otherFee="\u00a50"
+              discount="\u00a55,000"
+              total="\u00a51,632,400"
+              currency="JPY"
+              notes="Sample invoice spanning 2 pages (25 line items)."
+              paymentMethod="Bank Transfer"
+            />
+            <p className="catalog-page__copy">{catalogCopy.documentInvoiceUsd}</p>
+            <InvoiceDocument
+              issuer={sampleIssuer}
+              invoiceNumber="#INV-0003"
+              date="2026/08/24"
+              dueDate="2026/09/07"
+              registrationNumber="T3810449547408"
+              billedTo={sampleBilledTo}
+              shipTo={sampleShipTo}
+              lines={sampleLinesUsd}
+              subtotal="$3,000.00"
+              shippingFee="$48.00"
+              duty="$0.00"
+              otherFee="$0.00"
+              discount="$0.00"
+              total="$3,048.00"
+              currency="USD"
+              exchangeRate="1 USD = 150.00 JPY"
+              notes="Sample invoice in USD with exchange rate."
+              paymentMethod="Wise (E-mail transfer)"
+            />
+            <p className="catalog-page__copy">{catalogCopy.documentQuote}</p>
+            <QuoteDocument
+              issuer={sampleIssuer}
+              quoteId="QT-00001"
+              date="2026/08/24"
+              validUntil="2026/09/23"
+              registrationNumber="T3810449547408"
+              customerName="SAMPLE CLIENT CO."
+              lines={sampleLines5}
+              subtotal="\u00a5125,000"
+              shippingFee="\u00a53,200"
+              discount="\u00a50"
+              total="\u00a5128,200"
+              currency="JPY"
+              notes="Sample quotation with 5 line items."
+              paymentMethod="Bank Transfer"
+            />
           </div>
         </Card>
       </div>
