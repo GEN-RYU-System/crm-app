@@ -4,8 +4,10 @@ import { Button, Card, LineItemEditor, PageHeader, Skeleton, StatusMessage, Text
 import { Badge } from '../../components/ui/Badge/Badge';
 import { ordersCopy, PAYMENT_STATUS_BADGE_VARIANT } from '../../content/ja';
 import type { InventoryProductOption, OrderRepository, OrderUpdatePayload } from '../../features/orders/contracts';
+import { getCoreOrderDetail, type OrderDetailRecord } from '../../gas/client';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
 import { formatAmountWithJpy } from '../shared/amountFormat';
+import { formatDate } from '../shared/dateFormat';
 import {
   calcInvoiceTotal,
   emptyOrderLine,
@@ -15,6 +17,12 @@ import {
 } from './orderEditorConfig';
 import { useOrderListCache } from './OrderListCacheContext';
 import './OrderDetailPage.css';
+
+function formatNumber(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '-';
+  const n = Number(value);
+  return Number.isNaN(n) ? String(value) : n.toLocaleString();
+}
 
 type EditPanel = 'none' | 'shipping' | 'amount';
 
@@ -90,6 +98,17 @@ export function OrderDetailPage({ repository }: Props) {
   const [productsLoading, setProductsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [detail, setDetail] = useState<OrderDetailRecord | null | undefined>(undefined);
+  const [detailError, setDetailError] = useState(false);
+
+  useEffect(() => {
+    if (!orderId) return;
+    setDetail(undefined);
+    setDetailError(false);
+    void getCoreOrderDetail(orderId)
+      .then((d) => setDetail(d))
+      .catch(() => { setDetail(null); setDetailError(true); });
+  }, [orderId]);
 
   void ensureLoaded();
 
@@ -329,12 +348,49 @@ export function OrderDetailPage({ repository }: Props) {
             }
           />
           <DetailRow label={ordersCopy.detail.customerName} value={record?.customerName || NA} />
-          <DetailRow label={ordersCopy.detail.invoiceIssuedAt} value={record?.invoiceIssuedAt || NA} />
-          <DetailRow label={ordersCopy.detail.paymentDueAt} value={record?.paymentDueAt || NA} />
+          <DetailRow label={ordersCopy.detail.invoiceIssuedAt} value={formatDate(record?.invoiceIssuedAt) || NA} />
+          <DetailRow label={ordersCopy.detail.paymentDueAt} value={formatDate(record?.paymentDueAt) || NA} />
           <DetailRow label={ordersCopy.detail.paymentMethod} value={paymentMethodLabel} />
           <DetailRow label={ordersCopy.detail.billingName} value={NA} />
         </dl>
       </Card>
+
+      {/* Line items section (read mode) */}
+      {editPanel !== 'amount' && (
+        <Card>
+          <h2 className="order-detail-page__section-title">{ordersCopy.detail.sectionLines}</h2>
+          {detail === undefined ? (
+            <Skeleton variant="list" rows={2} label={ordersCopy.loading} />
+          ) : detailError ? (
+            <StatusMessage variant="error">{ordersCopy.detail.saveErrorFallback}</StatusMessage>
+          ) : detail === null || detail.lines.length === 0 ? (
+            <p className="order-detail-page__lines-empty">{NA}</p>
+          ) : (
+            <table className="order-detail-page__lines-table">
+              <thead>
+                <tr>
+                  <th className="order-detail-page__lines-th">{ordersCopy.editor.lineProduct}</th>
+                  <th className="order-detail-page__lines-th">{ordersCopy.editor.condition}</th>
+                  <th className="order-detail-page__lines-th order-detail-page__lines-th--num">{ordersCopy.editor.quantity}</th>
+                  <th className="order-detail-page__lines-th order-detail-page__lines-th--num">{ordersCopy.editor.unitPrice}</th>
+                  <th className="order-detail-page__lines-th order-detail-page__lines-th--num">{ordersCopy.editor.subtotal}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detail.lines.map((line) => (
+                  <tr key={line.ORDER_LINE_ID} className="order-detail-page__lines-tr">
+                    <td className="order-detail-page__lines-td">{line.PRODUCT_NAME || NA}</td>
+                    <td className="order-detail-page__lines-td">{line.STATUS || NA}</td>
+                    <td className="order-detail-page__lines-td order-detail-page__lines-td--num">{formatNumber(line.QUANTITY)}</td>
+                    <td className="order-detail-page__lines-td order-detail-page__lines-td--num">{formatNumber(line.UNIT_PRICE)}</td>
+                    <td className="order-detail-page__lines-td order-detail-page__lines-td--num">{formatNumber(line.SUBTOTAL)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
 
       {/* Line items / Amount section */}
       {editPanel === 'amount' ? (
