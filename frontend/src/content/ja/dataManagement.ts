@@ -7,6 +7,7 @@ export const dataManagementCopy = {
   groupDataManagement: 'データ管理',
   groupProductManagement: '商品管理',
   groupExternalLinks: '外部連携',
+  groupSystemSettings: 'システム設定',
   leads: 'リード',
   customers: '顧客',
   quotes: '見積もり',
@@ -15,5 +16,6 @@ export const dataManagementCopy = {
   inventory: '在庫',
   productMaster: '商品マスタ',
   googleDrive: 'Google Drive',
-  discord: 'Discord'
+  discord: 'Discord',
+  issuerMaster: '発行元情報'
 } as const;

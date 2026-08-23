@@ -752,7 +752,8 @@ const PERMISSION_DEFINITIONS = {
   staff_manage: { name: '担当者管理', category: '管理機能' },
   settings: { name: '設定変更', category: '管理機能' },
   admin_access: { name: '管理者設定アクセス', category: '管理機能' },
-  force_reset: { name: '強制リセット', category: '管理機能' }
+  force_reset: { name: '強制リセット', category: '管理機能' },
+  issuer_manage: { name: '発行元情報管理', category: '管理機能' }
 };
 
 /**
@@ -775,7 +776,8 @@ const DEFAULT_ROLES = {
     staff_manage: true,
     settings: true,
     admin_access: true,
-    force_reset: true
+    force_reset: true,
+    issuer_manage: true
   },
   'システム管理者': {
     dashboard_view: true,
@@ -793,7 +795,8 @@ const DEFAULT_ROLES = {
     staff_manage: true,
     settings: true,
     admin_access: true,
-    force_reset: false
+    force_reset: false,
+    issuer_manage: false
   },
   'リーダー': {
     dashboard_view: true,
@@ -811,7 +814,8 @@ const DEFAULT_ROLES = {
     staff_manage: true,
     settings: false,
     admin_access: false,
-    force_reset: false
+    force_reset: false,
+    issuer_manage: false
   },
   '営業': {
     dashboard_view: true,
@@ -829,7 +833,8 @@ const DEFAULT_ROLES = {
     staff_manage: false,
     settings: false,
     admin_access: false,
-    force_reset: false
+    force_reset: false,
+    issuer_manage: false
   },
   'CS': {
     dashboard_view: true,
@@ -847,7 +852,8 @@ const DEFAULT_ROLES = {
     staff_manage: false,
     settings: false,
     admin_access: false,
-    force_reset: false
+    force_reset: false,
+    issuer_manage: false
   }
 };
 

@@ -39,6 +39,8 @@ interface GoogleScriptRun {
   confirmCoreOrderPaymentForFrontend(sessionId: string | null, orderId: string): void;
   checkSyncSignals(sessionId: string | null): void;
   getLeadFormOptions(sessionId: string | null): void;
+  getCoreIssuerForFrontend(sessionId: string | null): void;
+  updateCoreIssuerForFrontend(sessionId: string | null, issuerData: unknown): void;
 }
 
 interface Window {
