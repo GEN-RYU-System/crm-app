@@ -37,4 +37,15 @@ export const discordIntegrationCopy = {
   connectionFailed: 'Discordへの接続に失敗しました。Botトークンを確認してください。',
   testFailed: 'テストに失敗しました',
   channelDuplicate: 'このチャンネルIDは既に登録されています',
+  // Bot招待セクション
+  inviteSection: 'Bot招待',
+  inviteDescription: 'DiscordサーバーへのBotの招待と、Guild連携状態を管理します。',
+  inviteButton: 'Discordサーバーに招待する',
+  invitingBot: '招待URL取得中...',
+  guildLinked: 'サーバー連携済み（Guild ID: ',
+  guildNotLinked: '未連携',
+  refreshStatus: '状態を確認する',
+  refreshingStatus: '確認中...',
+  inviteError: '招待URLの取得に失敗しました',
+  clientIdNotSet: 'DISCORD_CLIENT_IDが未設定です。スクリプトプロパティを確認してください。',
 } as const;
