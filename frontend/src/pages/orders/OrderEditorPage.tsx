@@ -313,9 +313,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
           shippedAt: values.shippedAt,
           trackingNumber: values.trackingNumber,
           shippingMethod: values.shippingMethod,
-          note: values.note,
           shippingNote: values.shippingNote,
-          transactionNote: values.transactionNote,
           internalNote: values.internalNote,
           cancellationReason: values.cancellationReason,
           cancellationNote: values.cancellationNote,
@@ -601,59 +599,48 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
       {/* Memo / notes section */}
       <Card>
         <div className="order-editor-page__form">
-          <TextField
-            label={ordersCopy.editor.paymentConfirmedAt}
-            value={values.paymentConfirmedAt}
-            onChange={(e) => updateValue('paymentConfirmedAt', e.target.value)}
-            width="sm"
-            placeholder="YYYY-MM-DD"
-          />
+          {isEditMode && (
+            <>
+              <TextField
+                label={ordersCopy.editor.paymentConfirmedAt}
+                value={values.paymentConfirmedAt}
+                onChange={(e) => updateValue('paymentConfirmedAt', e.target.value)}
+                width="sm"
+                placeholder="YYYY-MM-DD"
+              />
 
-          <TextField
-            label={ordersCopy.editor.shippedAt}
-            value={values.shippedAt}
-            onChange={(e) => updateValue('shippedAt', e.target.value)}
-            width="sm"
-            placeholder="YYYY-MM-DD"
-          />
+              <TextField
+                label={ordersCopy.editor.shippedAt}
+                value={values.shippedAt}
+                onChange={(e) => updateValue('shippedAt', e.target.value)}
+                width="sm"
+                placeholder="YYYY-MM-DD"
+              />
 
-          <TextField
-            label={ordersCopy.editor.trackingNumber}
-            value={values.trackingNumber}
-            onChange={(e) => updateValue('trackingNumber', e.target.value)}
-            width="md"
-          />
+              <TextField
+                label={ordersCopy.editor.trackingNumber}
+                value={values.trackingNumber}
+                onChange={(e) => updateValue('trackingNumber', e.target.value)}
+                width="md"
+              />
 
-          <TextField
-            label={ordersCopy.editor.shippingMethod}
-            value={values.shippingMethod}
-            onChange={(e) => updateValue('shippingMethod', e.target.value)}
-            width="md"
-          />
+              <TextField
+                label={ordersCopy.editor.shippingMethod}
+                value={values.shippingMethod}
+                onChange={(e) => updateValue('shippingMethod', e.target.value)}
+                width="md"
+              />
 
-          <Textarea
-            label={ordersCopy.editor.note}
-            value={values.note}
-            onChange={(e) => updateValue('note', e.target.value)}
-            rows={3}
-            fullWidth
-          />
-
-          <Textarea
-            label={ordersCopy.editor.shippingNote}
-            value={values.shippingNote}
-            onChange={(e) => updateValue('shippingNote', e.target.value)}
-            rows={3}
-            fullWidth
-          />
-
-          <Textarea
-            label={ordersCopy.editor.transactionNote}
-            value={values.transactionNote}
-            onChange={(e) => updateValue('transactionNote', e.target.value)}
-            rows={3}
-            fullWidth
-          />
+              <Textarea
+                label={ordersCopy.editor.shippingNote}
+                helperText={ordersCopy.editor.shippingNoteDescription}
+                value={values.shippingNote}
+                onChange={(e) => updateValue('shippingNote', e.target.value)}
+                rows={3}
+                fullWidth
+              />
+            </>
+          )}
 
           <Textarea
             label={ordersCopy.editor.internalNote}
@@ -664,20 +651,24 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
             fullWidth
           />
 
-          <TextField
-            label={ordersCopy.editor.cancellationReason}
-            value={values.cancellationReason}
-            onChange={(e) => updateValue('cancellationReason', e.target.value)}
-            width="md"
-          />
+          {isEditMode && (
+            <>
+              <TextField
+                label={ordersCopy.editor.cancellationReason}
+                value={values.cancellationReason}
+                onChange={(e) => updateValue('cancellationReason', e.target.value)}
+                width="md"
+              />
 
-          <Textarea
-            label={ordersCopy.editor.cancellationNote}
-            value={values.cancellationNote}
-            onChange={(e) => updateValue('cancellationNote', e.target.value)}
-            rows={3}
-            fullWidth
-          />
+              <Textarea
+                label={ordersCopy.editor.cancellationNote}
+                value={values.cancellationNote}
+                onChange={(e) => updateValue('cancellationNote', e.target.value)}
+                rows={3}
+                fullWidth
+              />
+            </>
+          )}
         </div>
       </Card>
     </>
