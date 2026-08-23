@@ -1,7 +1,7 @@
 /**
  * 在庫連動見積もり明細 オプションAPI
  *
- * getInventoryProductOptions  … 在庫のある商品候補一覧（conditions[] 含む）
+ * getInventoryProductOptions  … 在庫のある商品候補一覧
  * getInventoryConditions       … 指定商品の在庫のある状態一覧（後方互換用に残存）
  */
 
@@ -14,12 +14,9 @@ var INVENTORY_PRODUCT_OPTIONS_CACHE_CHUNK  = 90000;
  * 在庫のある商品の候補一覧を返す。
  * 共用在庫に Quantity > 0 の行が1件以上ある商品のみ。
  * 商品名は商品マスタ同期の Japanese Title を使う。
- * conditions には当該商品の Quantity > 0 な在庫行を全件返す。
- * unitWeight: Condition = 'Case' → Case重量、それ以外 → Box重量（PRODUCTS テーブルから取得）
  *
  * @param {string} sessionId
- * @returns {{ productId: string, productName: string, category: string,
- *             conditions: { condition: string, quantity: number, unitPrice: number, unitWeight: number }[] }[]}
+ * @returns {{ productId: string, productName: string, category: string }[]}
  */
 function getInventoryProductOptions(sessionId) {
   setEmailFromSession(sessionId);
@@ -34,7 +31,6 @@ function getInventoryProductOptions(sessionId) {
   var ss         = getSpreadsheet();
   var invSchema  = CORE_SCHEMA_V1_TABLES['SHARED_INVENTORY'];
   var prodSchema = CORE_SCHEMA_V1_TABLES['PRODUCTS'];
-  var CONDITION_CASE = invSchema.values.CONDITION.CASE;
 
   var invSheet = ss.getSheetByName(invSchema.sheetName);
   if (!invSheet || invSheet.getLastRow() <= 1) return [];
@@ -43,10 +39,8 @@ function getInventoryProductOptions(sessionId) {
   var invH     = invData[0].map(String);
   var pidIdx   = invH.indexOf(invSchema.headers['PRODUCT_ID']);
   var qtyIdx   = invH.indexOf(invSchema.headers['QUANTITY']);
-  var priceIdx = invH.indexOf(invSchema.headers['UNIT_PRICE']);
-  var condIdx  = invH.indexOf(invSchema.headers['CONDITION']);
-  if (pidIdx < 0 || qtyIdx < 0 || priceIdx < 0 || condIdx < 0) {
-    throw new Error('共用在庫ヘッダー不足: PRODUCT_ID / QUANTITY / UNIT_PRICE / CONDITION');
+  if (pidIdx < 0 || qtyIdx < 0) {
+    throw new Error('共用在庫ヘッダー不足: PRODUCT_ID / QUANTITY');
   }
 
   var prodSheet = ss.getSheetByName(prodSchema.sheetName);
@@ -57,8 +51,6 @@ function getInventoryProductOptions(sessionId) {
   var prodPidIdx  = prodH.indexOf(prodSchema.headers['PRODUCT_ID']);
   var jaIdx       = prodH.indexOf(prodSchema.headers['JAPANESE_TITLE']);
   var catIdx      = prodH.indexOf(prodSchema.headers['CATEGORY']);
-  var boxWIdx     = prodH.indexOf(prodSchema.headers['BOX_WEIGHT']);
-  var caseWIdx    = prodH.indexOf(prodSchema.headers['CASE_WEIGHT']);
   if (prodPidIdx < 0 || jaIdx < 0) {
     throw new Error('商品マスタ同期ヘッダー不足: product_id / Japanese Title');
   }
@@ -70,41 +62,30 @@ function getInventoryProductOptions(sessionId) {
     if (!ppid) continue;
     prodMap[ppid] = {
       productName: String(prodData[pi][jaIdx]  != null ? prodData[pi][jaIdx]  : '').trim(),
-      category:    catIdx >= 0 ? String(prodData[pi][catIdx] != null ? prodData[pi][catIdx] : '').trim() : '',
-      boxWeight:   boxWIdx  >= 0 ? (Number(prodData[pi][boxWIdx])  || 0) : 0,
-      caseWeight:  caseWIdx >= 0 ? (Number(prodData[pi][caseWIdx]) || 0) : 0
+      category:    catIdx >= 0 ? String(prodData[pi][catIdx] != null ? prodData[pi][catIdx] : '').trim() : ''
     };
   }
 
-  // 在庫行を商品IDごとに集約（QUANTITY > 0 のみ）
-  var condMap = {};
+  // 在庫あり商品IDを収集（QUANTITY > 0 のみ）
+  var hasCond = {};
   for (var i = 1; i < invData.length; i++) {
     var qty = Number(invData[i][qtyIdx]) || 0;
     if (qty <= 0) continue;
     var pid = String(invData[i][pidIdx] != null ? invData[i][pidIdx] : '').trim();
     if (!pid || !prodMap[pid]) continue;
-    if (!condMap[pid]) condMap[pid] = [];
-    var cond = String(invData[i][condIdx] != null ? invData[i][condIdx] : '');
-    var uw   = (cond === CONDITION_CASE) ? prodMap[pid].caseWeight : prodMap[pid].boxWeight;
-    condMap[pid].push({
-      condition:  cond,
-      quantity:   qty,
-      unitPrice:  Number(invData[i][priceIdx]) || 0,
-      unitWeight: uw
-    });
+    hasCond[pid] = true;
   }
 
   // PRODUCTS の行順を維持して結果を組み立て
   var results = [];
   for (var j = 1; j < prodData.length; j++) {
     var pid2 = String(prodData[j][prodPidIdx] != null ? prodData[j][prodPidIdx] : '').trim();
-    if (!pid2 || !condMap[pid2]) continue;
+    if (!pid2 || !hasCond[pid2]) continue;
     var p = prodMap[pid2];
     results.push({
       productId:   pid2,
       productName: p.productName,
-      category:    p.category,
-      conditions:  condMap[pid2]
+      category:    p.category
     });
   }
 
@@ -123,8 +104,7 @@ function getInventoryProductOptions(sessionId) {
  * 指定商品の、在庫のある状態の一覧を返す。
  * Quantity が 0 の行は除外。
  * unitWeight: Condition === 'Case' → Case重量、それ以外 → Box重量（取得不可の場合 0）
- * ※ getInventoryProductOptions の conditions[] で取得できるが、
- *    件数増加時に個別取得へ戻せるよう残存させる。
+ * ※ 個別商品の状態詳細を取得する用途で残存させる。
  *
  * @param {string} sessionId
  * @param {string} productId
