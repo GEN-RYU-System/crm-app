@@ -6,6 +6,7 @@
  *
  * 公開関数:
  *   createCoreOrderForFrontend(sessionId, payload)
+ *   confirmCoreOrderPaymentForFrontend(sessionId, orderId)
  * 権限キー:
  *   書き込み: deal_edit
  */
@@ -13,7 +14,8 @@
 /* global getCoreSchemaV1HeaderName, getCoreSchemaV1Value, getCoreSchemaV1Sheet, withSheetWrite_,
    validateCoreSchemaV1TableForWrite, setEmailFromSession, checkPermission,
    validateQuoteLineInventory_, calculateOrderStatus, calculatePaymentStatus,
-   getCurrentExchangeRate, getSettingValue,
+   getCurrentExchangeRate, getSettingValue, getSessionUser, recalculateOrderStatusById,
+   readDetailSheet_,
    SpreadsheetApp, getSpreadsheet, LockService */
 
 /** オーダーID接頭辞: OD-00001 形式 */
@@ -327,4 +329,96 @@ function coreOrderWriteGetSourceLeadId(ss, customerId) {
     }
   }
   return '';
+}
+
+/**
+ * オーダーの入金を確認する。
+ * STATUS が「支払い待ち」のオーダーにのみ適用する。
+ *
+ * @param {string} sessionId
+ * @param {string} orderId
+ * @returns {{ success: true, status: string, paymentStatus: string }
+ *          | { success: false, reason: 'INVALID_STATUS' | 'NOT_FOUND' }}
+ */
+function confirmCoreOrderPaymentForFrontend(sessionId, orderId) {
+  setEmailFromSession(sessionId);
+  checkPermission('deal_edit');
+
+  var ss = getSpreadsheet();
+
+  // 現在のオーダー状態を読む（ロック外）
+  var orderData = readDetailSheet_(ss, 'ORDERS', [
+    'ORDER_ID', 'STATUS', 'PAYMENT_DUE_AT', 'CANCELLATION_REASON'
+  ]);
+  var orderRow = null;
+  for (var i = 0; i < orderData.length; i++) {
+    if (String(orderData[i].ORDER_ID || '').trim() === String(orderId || '').trim()) {
+      orderRow = orderData[i];
+      break;
+    }
+  }
+  if (!orderRow) return { success: false, reason: 'NOT_FOUND' };
+
+  var awaitingPaymentStatus = getCoreSchemaV1Value('ORDERS', 'STATUS', 'AWAITING_PAYMENT');
+  if (String(orderRow.STATUS || '').trim() !== awaitingPaymentStatus) {
+    return { success: false, reason: 'INVALID_STATUS' };
+  }
+
+  // セッションから担当者IDを取得
+  var sessionUser = getSessionUser(sessionId);
+  if (!sessionUser) throw new Error('SESSION_INVALID');
+  var staffId = sessionUser.staffId;
+
+  // ロック外で書き込み値を確定する
+  var now = new Date();
+  var newPaymentStatus = calculatePaymentStatus({
+    cancellationReason: orderRow.CANCELLATION_REASON || '',
+    paymentConfirmedAt: now,
+    paymentDueAt:       orderRow.PAYMENT_DUE_AT || ''
+  });
+  var confirmationSource = getCoreSchemaV1Value('ORDERS', 'PAYMENT_CONFIRMATION_SOURCE', 'MANUAL');
+
+  // ロック内で書き込む
+  withSheetWrite_(
+    { useLock: true, cacheTargets: CORE_ORDER_WRITE_CACHE_TARGETS },
+    function() {
+      var ordersResult = validateCoreSchemaV1TableForWrite(ss, 'ORDERS');
+      var orderSheet   = ordersResult.sheet;
+      var orderHI      = ordersResult.headerIndexes;
+
+      var orderIdPhysical = getCoreSchemaV1HeaderName('ORDERS', 'ORDER_ID');
+      var orderIdColIdx   = orderHI[orderIdPhysical];
+      if (!orderIdColIdx) throw new Error('ORDER_ID 列が見つかりません');
+
+      var lastRow = orderSheet.getLastRow();
+      var targetSheetRow = -1;
+      if (lastRow >= 2) {
+        var idValues = orderSheet.getRange(2, orderIdColIdx, lastRow - 1, 1).getValues();
+        for (var r = 0; r < idValues.length; r++) {
+          if (String(idValues[r][0] || '').trim() === String(orderId || '').trim()) {
+            targetSheetRow = r + 2;
+            break;
+          }
+        }
+      }
+      if (targetSheetRow < 0) throw new Error('ORDER_NOT_FOUND: ' + orderId);
+
+      function setOrderCell(colKey, value) {
+        var header = getCoreSchemaV1HeaderName('ORDERS', colKey);
+        var idx    = orderHI[header];
+        if (idx) orderSheet.getRange(targetSheetRow, idx).setValue(value);
+      }
+
+      setOrderCell('PAYMENT_CONFIRMED_AT',         now);
+      setOrderCell('PAYMENT_CONFIRMED_BY_ID',       staffId);
+      setOrderCell('PAYMENT_CONFIRMATION_SOURCE',   confirmationSource);
+      setOrderCell('PAYMENT_STATUS',                newPaymentStatus);
+      setOrderCell('UPDATED_AT',                    now);
+    }
+  );
+
+  // ロック解放後にSTATUSを再計算・書き込む
+  var newStatus = recalculateOrderStatusById(orderId);
+
+  return { success: true, status: newStatus, paymentStatus: newPaymentStatus };
 }

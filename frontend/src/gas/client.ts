@@ -528,6 +528,21 @@ export function getCoreOrderDetail(orderId: string): Promise<OrderDetailRecord |
   });
 }
 
+export type ConfirmPaymentResult =
+  | { success: true; status: string; paymentStatus: string }
+  | { success: false; reason: string };
+
+export function confirmCoreOrderPayment(orderId: string): Promise<ConfirmPaymentResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as ConfirmPaymentResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .confirmCoreOrderPaymentForFrontend(getStoredSessionId(), orderId);
+  });
+}
+
 export function getCoreOrders(forceRefresh?: boolean): Promise<readonly OrderRecord[]> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
