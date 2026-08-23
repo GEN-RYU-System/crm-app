@@ -294,7 +294,7 @@ function readDetailSheet_(ss, tableKey, fieldKeys) {
     var obj = {};
     fieldKeys.forEach(function(fieldKey) {
       var idx = fieldIdxMap[fieldKey];
-      obj[fieldKey] = (idx !== undefined) ? row[idx] : '';
+      obj[fieldKey] = (idx !== undefined) ? coreCustomerFrontendValue(row[idx]) : '';
     });
     return obj;
   });
