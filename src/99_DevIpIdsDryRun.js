@@ -25,8 +25,8 @@ function dryRunIpIdsMigration() {
   var ss = getSpreadsheet();
 
   // ── 作品マスタを読み込む ──────────────────────────────────────────────────
-  var masterSheet = ss.getSheetByName('作品マスタ');
-  if (!masterSheet) throw new Error('作品マスタシートが見つかりません');
+  var masterSheet = ss.getSheetByName('作品マスタ_共用在庫');
+  if (!masterSheet) throw new Error('作品マスタ_共用在庫シートが見つかりません');
 
   var masterLastRow = masterSheet.getLastRow();
   var masterLastCol = masterSheet.getLastColumn();
