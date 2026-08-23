@@ -124,6 +124,37 @@ function seedSystemSettings() {
         value:       '2',
         valueType:   table.values.VALUE_TYPE.NUMBER,
         description: 'オーダーの支払期日（受注日からの日数）'
+      },
+      // 帳票テンプレート配色
+      {
+        key:         '帳票_バー背景色',
+        value:       '#2f4f4f',
+        valueType:   table.values.VALUE_TYPE.TEXT,
+        description: '帳票ヘッダーバー・明細ヘッダーの背景色（例: #2f4f4f）'
+      },
+      {
+        key:         '帳票_バー文字色',
+        value:       '#ffffff',
+        valueType:   table.values.VALUE_TYPE.TEXT,
+        description: '帳票ヘッダーバー・明細ヘッダーの文字色（例: #ffffff）'
+      },
+      {
+        key:         '帳票_会社名色',
+        value:       '#2f4f4f',
+        valueType:   table.values.VALUE_TYPE.TEXT,
+        description: '帳票の会社名テキスト色（例: #2f4f4f）'
+      },
+      {
+        key:         '帳票_タイトル色',
+        value:       '#2f4f4f',
+        valueType:   table.values.VALUE_TYPE.TEXT,
+        description: '帳票のドキュメントタイトル（Invoice / Quotation）の色（例: #2f4f4f）'
+      },
+      {
+        key:         '帳票_結び文色',
+        value:       '#2f4f4f',
+        valueType:   table.values.VALUE_TYPE.TEXT,
+        description: '帳票末尾の "Thank you for your business!" の文字色（例: #2f4f4f）'
       }
     ];
 

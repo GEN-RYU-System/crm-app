@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Invoice / Quotation A4 template</title>
+<style>
+  :root{
+    /* ===== 配色（ここだけ差し替えれば全体が変わる） ===== */
+    --bar-bg:      #2f4f4f;
+    --bar-text:    #ffffff;
+    --brand-text:  #2f4f4f;
+    --title-text:  #2f4f4f;
+    --thanks-text: #2f4f4f;
+    --band-bg:     #f2f6f5;
+
+    /* ===== 寸法 ===== */
+    --doc-w: 595pt;
+    --doc-h: 842pt;
+    --mx: 30pt;
+    --fs-base: 8pt;
+    --fs-small: 7.5pt;
+    --fs-label: 8pt;
+    --fs-title: 20pt;
+    --fs-total: 11pt;
+    --fs-thanks: 17pt;
+    --line: 0.5pt solid #cfcfcf;
+    --line-strong: 0.75pt solid #6b6b6b;
+    --ink: #1a1a1a;
+    --ink-sub: #5a5a5a;
+    --row-h: 14pt;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  body{
+    background:#e9e9e9;
+    font-family:"Helvetica Neue", Arial, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    font-size:var(--fs-base); color:var(--ink); line-height:1.35;
+    padding:24pt 0;
+  }
+
+  .caption{ width:var(--doc-w); margin:0 auto 6pt; font-size:9pt; color:#666; }
+
+  .page{
+    width:var(--doc-w); min-height:var(--doc-h);
+    margin:0 auto 28pt; background:#fff;
+    padding:34pt var(--mx) 30pt;
+    position:relative; display:flex; flex-direction:column;
+  }
+
+  .num{ font-variant-numeric:tabular-nums; }
+
+  .head{ display:flex; justify-content:space-between; align-items:flex-start; }
+  .issuer-name{ font-size:15pt; font-weight:600; letter-spacing:.02em; color:var(--brand-text); }
+  .issuer-line{ font-size:var(--fs-small); color:var(--ink-sub); }
+  .doc-title{ font-size:var(--fs-title); font-weight:600; letter-spacing:.04em; text-align:right; color:var(--title-text); }
+  .meta{ margin-top:6pt; }
+  .meta-row{ display:flex; justify-content:flex-end; gap:10pt; font-size:var(--fs-small); }
+  .meta-row dt{ color:var(--ink-sub); }
+  .meta-row dd{ min-width:80pt; text-align:right; }
+
+  .parties{ display:flex; gap:20pt; margin-top:14pt; }
+  .party{ flex:1; }
+  .party h2{ font-size:var(--fs-label); font-weight:600; background:var(--bar-bg); color:var(--bar-text); padding:3pt 6pt; }
+  .party .body{ background:var(--band-bg); padding:5pt 6pt; }
+  .party p{ font-size:var(--fs-small); color:var(--ink-sub); }
+
+  .items{ width:100%; border-collapse:collapse; margin-top:14pt; table-layout:fixed; }
+  .items thead th{ font-size:var(--fs-small); font-weight:600; text-align:left; padding:3.5pt 4pt; background:var(--bar-bg); color:var(--bar-text); }
+  .items td{ font-size:var(--fs-small); padding:1pt 4pt; height:var(--row-h); border-bottom:var(--line); vertical-align:middle; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .col-no{ width:18pt; color:var(--ink-sub); text-align:right; }
+  .col-name{ width:auto; }
+  .col-qty{ width:42pt; text-align:right; }
+  .col-price{ width:60pt; text-align:right; }
+  .col-amount{ width:72pt; text-align:right; }
+  .items th.col-qty, .items th.col-price, .items th.col-amount{ text-align:right; }
+
+  .foot{ display:flex; gap:20pt; margin-top:12pt; }
+  .note-box{ flex:1; }
+  .note-box h2{ font-size:var(--fs-label); font-weight:600; margin-bottom:3pt; }
+  .note-box .box{ border:var(--line); border-radius:2pt; min-height:40pt; padding:5pt 6pt; font-size:var(--fs-small); color:var(--ink-sub); white-space:pre-wrap; }
+  .fx{ font-size:var(--fs-small); color:var(--ink-sub); margin-top:6pt; }
+
+  .totals{ width:180pt; }
+  .totals dl{ display:flex; justify-content:space-between; font-size:var(--fs-small); padding:2.5pt 0; }
+  .totals dt{ color:var(--ink-sub); letter-spacing:.03em; }
+  .totals .grand{ border-top:var(--line-strong); margin-top:3pt; padding-top:5pt; }
+  .totals .grand dt, .totals .grand dd{ font-size:var(--fs-total); font-weight:600; color:var(--ink); }
+
+  .terms{ margin-top:14pt; padding-top:9pt; border-top:var(--line); }
+  .terms h2{ font-size:var(--fs-label); font-weight:600; margin-bottom:2pt; }
+  .terms p{ font-size:var(--fs-small); color:var(--ink-sub); line-height:1.45; }
+  .terms .gap{ margin-top:8pt; }
+
+  .thanks{ text-align:center; font-size:var(--fs-thanks); font-weight:600; color:var(--thanks-text); margin-top:16pt; letter-spacing:.02em; }
+
+  .spacer{ flex:1; }
+  .pager{ position:absolute; right:var(--mx); bottom:14pt; font-size:var(--fs-small); color:var(--ink-sub); }
+
+  .theme-navy{ --bar-bg:#1f3864; --bar-text:#ffffff; --brand-text:#1f3864; --title-text:#1f3864; --thanks-text:#1f3864; --band-bg:#f4f6fa; }
+  .theme-c{ --bar-bg:#3a3a3a; --bar-text:#ffffff; --brand-text:#b8860b; --title-text:#3a3a3a; --thanks-text:#b8860b; --band-bg:#f6f5f2; }
+
+  @page{ size:A4; margin:0; }
+  @media print{
+    body{ background:#fff; padding:0; }
+    .caption{ display:none; }
+    .page{ margin:0; box-shadow:none; page-break-after:always; }
+    .page:last-child{ page-break-after:auto; }
+  }
+  @media screen{ .page{ box-shadow:0 1px 4px rgba(0,0,0,.18); } }
+</style>
+</head>
+<body>
+
+<p class="caption">A ── 1枚で収まる場合（明細20行以内）</p>
+
+<section class="page">
+  <div class="head">
+    <div>
+      <p class="issuer-name">HIGH LIFE JAPAN</p>
+      <p class="issuer-line">Shingo Tanizawa</p>
+      <p class="issuer-line">2F, Nishishinjuku Mizuma Building, 3-3-13 Nishishinjuku</p>
+      <p class="issuer-line">Shinjuku-ku, Tokyo, Japan 1600023</p>
+      <p class="issuer-line">Phone number: 000-0000-0000</p>
+      <p class="issuer-line">E-mail: billing@example.com</p>
+    </div>
+    <div>
+      <p class="doc-title">Invoice</p>
+      <div class="meta">
+        <dl class="meta-row"><dt>Date</dt><dd class="num">2026/08/23</dd></dl>
+        <dl class="meta-row"><dt>Due date</dt><dd class="num">2026/08/25</dd></dl>
+        <dl class="meta-row"><dt>Invoice #</dt><dd class="num">#0922</dd></dl>
+        <dl class="meta-row"><dt>Registration number</dt><dd class="num">T0000000000000</dd></dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="parties">
+    <div class="party">
+      <h2>Billed to</h2>
+      <div class="body">
+        <p>ARSEL SLU</p>
+        <p>Carrer Hort de Godo 11, Edifici Tintorell</p>
+        <p>Ground Floor, 2nd Door</p>
+        <p>Encamp, Andorra AD200</p>
+        <p>Phone number: 376367830</p>
+        <p>E-mail: customer@example.com</p>
+        <p>TAX ID: L-718880-G</p>
+      </div>
+    </div>
+    <div class="party">
+      <h2>Ship to</h2>
+      <div class="body">
+        <p>ARSEL SLU</p>
+        <p>Carrer Hort de Godo 11, Edifici Tintorell</p>
+        <p>Ground Floor, 2nd Door</p>
+        <p>Encamp, Andorra AD200</p>
+        <p>Phone number: 376367830</p>
+        <p>E-mail: customer@example.com</p>
+        <p>TAX ID: L-718880-G</p>
+      </div>
+    </div>
+  </div>
+
+  <table class="items">
+    <thead>
+      <tr><th class="col-no">#</th><th class="col-name">Production</th><th class="col-qty">Qty</th><th class="col-price">Unit Price</th><th class="col-amount">Amount</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="col-no num">1</td><td class="col-name">Pokemon M3 MEGA Dream ex Sealed box</td><td class="col-qty num">4</td><td class="col-price num">¥9,700</td><td class="col-amount num">¥38,800</td></tr>
+      <tr><td class="col-no num">2</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">3</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">4</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">5</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">6</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">7</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">8</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">9</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">10</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">11</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">12</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">13</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">14</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">15</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">16</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">17</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">18</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">19</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">20</td><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <div class="foot">
+    <div class="note-box">
+      <h2>Notes</h2>
+      <div class="box">取引備考欄の内容がここに入ります。</div>
+    </div>
+    <div class="totals">
+      <dl><dt>SUBTOTAL</dt><dd class="num">¥38,800</dd></dl>
+      <dl><dt>SHIPPING</dt><dd class="num">¥3,200</dd></dl>
+      <dl><dt>CUSTOMS DUTY</dt><dd class="num">¥0</dd></dl>
+      <dl><dt>OTHER FEES</dt><dd class="num">¥0</dd></dl>
+      <dl><dt>DISCOUNT</dt><dd class="num">¥0</dd></dl>
+      <dl class="grand"><dt>TOTAL</dt><dd class="num">¥42,000</dd></dl>
+    </div>
+  </div>
+
+  <div class="terms">
+    <h2>Payment Terms</h2>
+    <p>Method: Wise (E-mail transfer) &nbsp;·&nbsp; Please send the payment to: billing@example.com</p>
+    <p>Currency: JPY</p>
+    <p>Payment deadline: 2026/08/25</p>
+    <p>All bank/transfer fees on the buyer's side.</p>
+    <div class="gap">
+      <h2>Please Note</h2>
+      <p>Our Wise account is registered under the name Hitoshi Morimoto, who is responsible for financial and billing operations within our company. This is the official and authorized payment account for all transactions of Treasure Island Japan / HIGH LIFE JAPAN.</p>
+    </div>
+    <p class="thanks">Thank you for your business!</p>
+  </div>
+
+  <p class="pager num">Page 1 / 1</p>
+</section>
+
+
+<p class="caption">B ── 2枚に分かれる場合 / 1枚目は明細のみ</p>
+
+<section class="page">
+  <div class="head">
+    <div>
+      <p class="issuer-name">HIGH LIFE JAPAN</p>
+      <p class="issuer-line">Shingo Tanizawa</p>
+      <p class="issuer-line">2F, Nishishinjuku Mizuma Building, 3-3-13 Nishishinjuku</p>
+      <p class="issuer-line">Shinjuku-ku, Tokyo, Japan 1600023</p>
+      <p class="issuer-line">Phone number: 000-0000-0000</p>
+      <p class="issuer-line">E-mail: billing@example.com</p>
+    </div>
+    <div>
+      <p class="doc-title">Invoice</p>
+      <div class="meta">
+        <dl class="meta-row"><dt>Date</dt><dd class="num">2026/08/23</dd></dl>
+        <dl class="meta-row"><dt>Due date</dt><dd class="num">2026/08/25</dd></dl>
+        <dl class="meta-row"><dt>Invoice #</dt><dd class="num">#0923</dd></dl>
+        <dl class="meta-row"><dt>Registration number</dt><dd class="num">T0000000000000</dd></dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="parties">
+    <div class="party">
+      <h2>Billed to</h2>
+      <div class="body">
+        <p>ARSEL SLU</p>
+        <p>Carrer Hort de Godo 11, Edifici Tintorell</p>
+        <p>Encamp, Andorra AD200</p>
+        <p>TAX ID: L-718880-G</p>
+      </div>
+    </div>
+    <div class="party">
+      <h2>Ship to</h2>
+      <div class="body">
+        <p>ARSEL SLU</p>
+        <p>Carrer Hort de Godo 11, Edifici Tintorell</p>
+        <p>Encamp, Andorra AD200</p>
+        <p>TAX ID: L-718880-G</p>
+      </div>
+    </div>
+  </div>
+
+  <table class="items">
+    <thead>
+      <tr><th class="col-no">#</th><th class="col-name">Production</th><th class="col-qty">Qty</th><th class="col-price">Unit Price</th><th class="col-amount">Amount</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="col-no num">1</td><td class="col-name">Pokemon M3 MEGA Dream ex Sealed box</td><td class="col-qty num">4</td><td class="col-price num">¥9,700</td><td class="col-amount num">¥38,800</td></tr>
+      <tr><td class="col-no num">2</td><td class="col-name">Pokemon card 151 Booster Box</td><td class="col-qty num">10</td><td class="col-price num">¥8,200</td><td class="col-amount num">¥82,000</td></tr>
+      <tr><td class="col-no num">3</td><td class="col-name">Pokemon card SAR Card</td><td class="col-qty num">300</td><td class="col-price num">¥660</td><td class="col-amount num">¥198,000</td></tr>
+      <tr><td class="col-no num">4</td><td class="col-name">メガブレイブ Sealed box</td><td class="col-qty num">6</td><td class="col-price num">¥11,500</td><td class="col-amount num">¥69,000</td></tr>
+      <tr><td class="col-no num">5</td><td class="col-name">メガシンフォニア Sealed box</td><td class="col-qty num">6</td><td class="col-price num">¥11,500</td><td class="col-amount num">¥69,000</td></tr>
+      <tr><td class="col-no num">6</td><td class="col-name">サン&amp;ムーン Sealed box</td><td class="col-qty num">2</td><td class="col-price num">¥186,000</td><td class="col-amount num">¥372,000</td></tr>
+      <tr><td class="col-no num">7</td><td class="col-name">Battle Partners Box</td><td class="col-qty num">1</td><td class="col-price num">¥8,000</td><td class="col-amount num">¥8,000</td></tr>
+      <tr><td class="col-no num">8</td><td class="col-name">Battle Partners Box</td><td class="col-qty num">1</td><td class="col-price num">¥8,000</td><td class="col-amount num">¥8,000</td></tr>
+      <tr><td class="col-no num">9</td><td class="col-name">Battle Partners Box</td><td class="col-qty num">1</td><td class="col-price num">¥8,000</td><td class="col-amount num">¥8,000</td></tr>
+      <tr><td class="col-no num">10</td><td class="col-name">Battle Partners Box</td><td class="col-qty num">1</td><td class="col-price num">¥8,000</td><td class="col-amount num">¥8,000</td></tr>
+      <tr><td class="col-no num">11</td><td class="col-name">Battle Partners Box</td><td class="col-qty num">1</td><td class="col-price num">¥8,000</td><td class="col-amount num">¥8,000</td></tr>
+      <tr><td class="col-no num">12</td><td class="col-name">Battle Partners Box</td><td class="col-qty num">1</td><td class="col-price num">¥8,000</td><td class="col-amount num">¥8,000</td></tr>
+      <tr><td class="col-no num">13</td><td class="col-name">Battle Partners Box</td><td class="col-qty num">1</td><td class="col-price num">¥8,000</td><td class="col-amount num">¥8,000</td></tr>
+      <tr><td class="col-no num">14</td><td class="col-name">Battle Partners Box</td><td class="col-qty num">1</td><td class="col-price num">¥8,000</td><td class="col-amount num">¥8,000</td></tr>
+      <tr><td class="col-no num">15</td><td class="col-name">Battle Partners Box</td><td class="col-qty num">1</td><td class="col-price num">¥8,000</td><td class="col-amount num">¥8,000</td></tr>
+      <tr><td class="col-no num">16</td><td class="col-name">Battle Partners Box</td><td class="col-qty num">1</td><td class="col-price num">¥8,000</td><td class="col-amount num">¥8,000</td></tr>
+      <tr><td class="col-no num">17</td><td class="col-name">Battle Partners Box</td><td class="col-qty num">1</td><td class="col-price num">¥8,000</td><td class="col-amount num">¥8,000</td></tr>
+      <tr><td class="col-no num">18</td><td class="col-name">Battle Partners Box</td><td class="col-qty num">1</td><td class="col-price num">¥8,000</td><td class="col-amount num">¥8,000</td></tr>
+      <tr><td class="col-no num">19</td><td class="col-name">Battle Partners Box</td><td class="col-qty num">1</td><td class="col-price num">¥8,000</td><td class="col-amount num">¥8,000</td></tr>
+      <tr><td class="col-no num">20</td><td class="col-name">Battle Partners Box</td><td class="col-qty num">1</td><td class="col-price num">¥8,000</td><td class="col-amount num">¥8,000</td></tr>
+    </tbody>
+  </table>
+
+  <div class="spacer"></div>
+  <p class="pager num">Page 1 / 2</p>
+</section>
+
+
+<p class="caption">B ── 2枚目 / 明細の続き + 集約情報</p>
+
+<section class="page">
+  <div class="head">
+    <div>
+      <p class="issuer-name">HIGH LIFE JAPAN</p>
+      <p class="issuer-line">Shingo Tanizawa</p>
+    </div>
+    <div>
+      <p class="doc-title">Invoice</p>
+      <div class="meta">
+        <dl class="meta-row"><dt>Invoice #</dt><dd class="num">#0923</dd></dl>
+      </div>
+    </div>
+  </div>
+
+  <table class="items">
+    <thead>
+      <tr><th class="col-no">#</th><th class="col-name">Production</th><th class="col-qty">Qty</th><th class="col-price">Unit Price</th><th class="col-amount">Amount</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="col-no num">21</td><td class="col-name">Pokemon card Battle Partners Boxes</td><td class="col-qty num">12</td><td class="col-price num">¥8,000</td><td class="col-amount num">¥96,000</td></tr>
+      <tr><td class="col-no num">22</td><td class="col-name">Pokemon card 151 Booster Box</td><td class="col-qty num">3</td><td class="col-price num">¥8,200</td><td class="col-amount num">¥24,600</td></tr>
+      <tr><td class="col-no num">23</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">24</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">25</td><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <div class="foot">
+    <div class="note-box">
+      <h2>Notes</h2>
+      <div class="box">取引備考欄の内容がここに入ります。</div>
+    </div>
+    <div class="totals">
+      <dl><dt>SUBTOTAL</dt><dd class="num">¥1,090,400</dd></dl>
+      <dl><dt>SHIPPING</dt><dd class="num">¥12,400</dd></dl>
+      <dl><dt>CUSTOMS DUTY</dt><dd class="num">¥0</dd></dl>
+      <dl><dt>OTHER FEES</dt><dd class="num">¥0</dd></dl>
+      <dl><dt>DISCOUNT</dt><dd class="num">¥5,000</dd></dl>
+      <dl class="grand"><dt>TOTAL</dt><dd class="num">¥1,097,800</dd></dl>
+    </div>
+  </div>
+
+  <div class="terms">
+    <h2>Payment Terms</h2>
+    <p>Method: Wise (E-mail transfer) &nbsp;·&nbsp; Please send the payment to: billing@example.com</p>
+    <p>Currency: JPY</p>
+    <p>Payment deadline: 2026/08/25</p>
+    <p>All bank/transfer fees on the buyer's side.</p>
+    <div class="gap">
+      <h2>Please Note</h2>
+      <p>Our Wise account is registered under the name Hitoshi Morimoto, who is responsible for financial and billing operations within our company. This is the official and authorized payment account for all transactions of Treasure Island Japan / HIGH LIFE JAPAN.</p>
+    </div>
+    <p class="thanks">Thank you for your business!</p>
+  </div>
+
+  <p class="pager num">Page 2 / 2</p>
+</section>
+
+
+<p class="caption">C ── 外貨（USD）の場合 / Exchange Rate が出る</p>
+
+<section class="page">
+  <div class="head">
+    <div>
+      <p class="issuer-name">HIGH LIFE JAPAN</p>
+      <p class="issuer-line">Shingo Tanizawa</p>
+      <p class="issuer-line">2F, Nishishinjuku Mizuma Building, 3-3-13 Nishishinjuku</p>
+      <p class="issuer-line">Shinjuku-ku, Tokyo, Japan 1600023</p>
+      <p class="issuer-line">Phone number: 000-0000-0000</p>
+      <p class="issuer-line">E-mail: billing@example.com</p>
+    </div>
+    <div>
+      <p class="doc-title">Invoice</p>
+      <div class="meta">
+        <dl class="meta-row"><dt>Date</dt><dd class="num">2026/08/23</dd></dl>
+        <dl class="meta-row"><dt>Due date</dt><dd class="num">2026/08/25</dd></dl>
+        <dl class="meta-row"><dt>Invoice #</dt><dd class="num">#0924</dd></dl>
+        <dl class="meta-row"><dt>Registration number</dt><dd class="num">T0000000000000</dd></dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="parties">
+    <div class="party">
+      <h2>Billed to</h2>
+      <div class="body">
+        <p>Adam P Opens</p>
+        <p>4/60 Hedley Avenue</p>
+        <p>Nundah, QLD, Australia 4012</p>
+      </div>
+    </div>
+    <div class="party">
+      <h2>Ship to</h2>
+      <div class="body">
+        <p>Adam P Opens</p>
+        <p>4/60 Hedley Avenue</p>
+        <p>Nundah, QLD, Australia 4012</p>
+      </div>
+    </div>
+  </div>
+
+  <table class="items">
+    <thead>
+      <tr><th class="col-no">#</th><th class="col-name">Production</th><th class="col-qty">Qty</th><th class="col-price">Unit Price</th><th class="col-amount">Amount</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="col-no num">1</td><td class="col-name">Pokemon card 151 Booster Box</td><td class="col-qty num">20</td><td class="col-price num">$78.00</td><td class="col-amount num">$1,560.00</td></tr>
+      <tr><td class="col-no num">2</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">3</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">4</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">5</td><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <div class="foot">
+    <div class="note-box">
+      <h2>Notes</h2>
+      <div class="box">取引備考欄の内容がここに入ります。</div>
+      <p class="fx num">Exchange Rate: 1 USD = 159.62 JPY</p>
+    </div>
+    <div class="totals">
+      <dl><dt>SUBTOTAL</dt><dd class="num">$1,560.00</dd></dl>
+      <dl><dt>SHIPPING</dt><dd class="num">$48.00</dd></dl>
+      <dl><dt>CUSTOMS DUTY</dt><dd class="num">$0.00</dd></dl>
+      <dl><dt>OTHER FEES</dt><dd class="num">$0.00</dd></dl>
+      <dl><dt>DISCOUNT</dt><dd class="num">$0.00</dd></dl>
+      <dl class="grand"><dt>TOTAL</dt><dd class="num">$1,608.00</dd></dl>
+    </div>
+  </div>
+
+  <div class="terms">
+    <h2>Payment Terms</h2>
+    <p>Method: Wise (E-mail transfer) &nbsp;·&nbsp; Please send the payment to: billing@example.com</p>
+    <p>Currency: USD</p>
+    <p>Payment deadline: 2026/08/25</p>
+    <p>All bank/transfer fees on the buyer's side.</p>
+    <div class="gap">
+      <h2>Please Note</h2>
+      <p>Our Wise account is registered under the name Hitoshi Morimoto, who is responsible for financial and billing operations within our company. This is the official and authorized payment account for all transactions of Treasure Island Japan / HIGH LIFE JAPAN.</p>
+    </div>
+    <p class="thanks">Thank you for your business!</p>
+  </div>
+
+  <p class="pager num">Page 1 / 1</p>
+</section>
+
+
+<p class="caption">D ── 見積書（既定配色）</p>
+
+<section class="page">
+  <div class="head">
+    <div>
+      <p class="issuer-name">HIGH LIFE JAPAN</p>
+      <p class="issuer-line">Shingo Tanizawa</p>
+      <p class="issuer-line">2F, Nishishinjuku Mizuma Building, 3-3-13 Nishishinjuku</p>
+      <p class="issuer-line">Shinjuku-ku, Tokyo, Japan 1600023</p>
+      <p class="issuer-line">Phone number: 000-0000-0000</p>
+      <p class="issuer-line">E-mail: billing@example.com</p>
+    </div>
+    <div>
+      <p class="doc-title">Quotation</p>
+      <div class="meta">
+        <dl class="meta-row"><dt>Date</dt><dd class="num">2026/08/23</dd></dl>
+        <dl class="meta-row"><dt>Valid until</dt><dd class="num">2026/09/22</dd></dl>
+        <dl class="meta-row"><dt>Quotation #</dt><dd class="num">QT-00001</dd></dl>
+        <dl class="meta-row"><dt>Registration number</dt><dd class="num">T0000000000000</dd></dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="parties">
+    <div class="party">
+      <h2>To</h2>
+      <div class="body"><p>ARSEL SLU</p></div>
+    </div>
+  </div>
+
+  <table class="items">
+    <thead>
+      <tr><th class="col-no">#</th><th class="col-name">Production</th><th class="col-qty">Qty</th><th class="col-price">Unit Price</th><th class="col-amount">Amount</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="col-no num">1</td><td class="col-name">Pokemon card 151 Booster Box</td><td class="col-qty num">20</td><td class="col-price num">¥8,200</td><td class="col-amount num">¥164,000</td></tr>
+      <tr><td class="col-no num">2</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">3</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">4</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">5</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">6</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">7</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">8</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">9</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">10</td><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <div class="foot">
+    <div class="note-box">
+      <h2>Notes</h2>
+      <div class="box">取引備考欄の内容がここに入ります。</div>
+    </div>
+    <div class="totals">
+      <dl><dt>SUBTOTAL</dt><dd class="num">¥164,000</dd></dl>
+      <dl><dt>SHIPPING</dt><dd class="num">¥3,200</dd></dl>
+      <dl><dt>DISCOUNT</dt><dd class="num">¥0</dd></dl>
+      <dl class="grand"><dt>TOTAL</dt><dd class="num">¥167,200</dd></dl>
+    </div>
+  </div>
+
+  <div class="terms">
+    <h2>Payment Terms</h2>
+    <p>Method: Wise (E-mail transfer) &nbsp;·&nbsp; Please send the payment to: billing@example.com</p>
+    <p>Currency: JPY</p>
+    <p>Valid until: 2026/09/22</p>
+    <p>All bank/transfer fees on the buyer's side.</p>
+    <div class="gap">
+      <h2>Please Note</h2>
+      <p>Our Wise account is registered under the name Hitoshi Morimoto, who is responsible for financial and billing operations within our company. This is the official and authorized payment account for all transactions of Treasure Island Japan / HIGH LIFE JAPAN.</p>
+    </div>
+    <p class="thanks">Thank you for your business!</p>
+  </div>
+
+  <p class="pager num">Page 1 / 1</p>
+</section>
+
+
+<p class="caption">E ── 配色パターン（紺）</p>
+
+<section class="page theme-navy">
+  <div class="head">
+    <div>
+      <p class="issuer-name">HIGH LIFE JAPAN</p>
+      <p class="issuer-line">Shingo Tanizawa</p>
+      <p class="issuer-line">2F, Nishishinjuku Mizuma Building, 3-3-13 Nishishinjuku</p>
+      <p class="issuer-line">Shinjuku-ku, Tokyo, Japan 1600023</p>
+      <p class="issuer-line">Phone number: 000-0000-0000</p>
+      <p class="issuer-line">E-mail: billing@example.com</p>
+    </div>
+    <div>
+      <p class="doc-title">Invoice</p>
+      <div class="meta">
+        <dl class="meta-row"><dt>Date</dt><dd class="num">2026/08/23</dd></dl>
+        <dl class="meta-row"><dt>Due date</dt><dd class="num">2026/08/25</dd></dl>
+        <dl class="meta-row"><dt>Invoice #</dt><dd class="num">#0925</dd></dl>
+        <dl class="meta-row"><dt>Registration number</dt><dd class="num">T0000000000000</dd></dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="parties">
+    <div class="party">
+      <h2>Billed to</h2>
+      <div class="body"><p>ARSEL SLU</p><p>Carrer Hort de Godo 11</p><p>Encamp, Andorra AD200</p></div>
+    </div>
+    <div class="party">
+      <h2>Ship to</h2>
+      <div class="body"><p>ARSEL SLU</p><p>Carrer Hort de Godo 11</p><p>Encamp, Andorra AD200</p></div>
+    </div>
+  </div>
+
+  <table class="items">
+    <thead>
+      <tr><th class="col-no">#</th><th class="col-name">Production</th><th class="col-qty">Qty</th><th class="col-price">Unit Price</th><th class="col-amount">Amount</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="col-no num">1</td><td class="col-name">Pokemon card SAR Card</td><td class="col-qty num">300</td><td class="col-price num">¥660</td><td class="col-amount num">¥198,000</td></tr>
+      <tr><td class="col-no num">2</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">3</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">4</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">5</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">6</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">7</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">8</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">9</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="col-no num">10</td><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <div class="foot">
+    <div class="note-box">
+      <h2>Notes</h2>
+      <div class="box">取引備考欄の内容がここに入ります。</div>
+    </div>
+    <div class="totals">
+      <dl><dt>SUBTOTAL</dt><dd class="num">¥198,000</dd></dl>
+      <dl><dt>SHIPPING</dt><dd class="num">¥6,800</dd></dl>
+      <dl><dt>CUSTOMS DUTY</dt><dd class="num">¥0</dd></dl>
+      <dl><dt>OTHER FEES</dt><dd class="num">¥0</dd></dl>
+      <dl><dt>DISCOUNT</dt><dd class="num">¥0</dd></dl>
+      <dl class="grand"><dt>TOTAL</dt><dd class="num">¥204,800</dd></dl>
+    </div>
+  </div>
+
+  <div class="terms">
+    <h2>Payment Terms</h2>
+    <p>Method: Wise (E-mail transfer) &nbsp;·&nbsp; Please send the payment to: billing@example.com</p>
+    <p>Currency: JPY</p>
+    <p>Payment deadline: 2026/08/25</p>
+    <p>All bank/transfer fees on the buyer's side.</p>
+    <div class="gap">
+      <h2>Please Note</h2>
+      <p>Our Wise account is registered under the name Hitoshi Morimoto, who is responsible for financial and billing operations within our company. This is the official and authorized payment account for all transactions of Treasure Island Japan / HIGH LIFE JAPAN.</p>
+    </div>
+    <p class="thanks">Thank you for your business!</p>
+  </div>
+
+  <p class="pager num">Page 1 / 1</p>
+</section>
+
+</body>
+</html>
