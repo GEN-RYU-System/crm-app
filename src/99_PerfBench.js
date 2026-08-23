@@ -3090,3 +3090,135 @@ function benchLeadsByTypeConversionCost() {
   Logger.log(result);
   return result;
 }
+
+/**
+ * 流入元プルダウン実装後の書き込み検証。
+ *
+ * 1. getLeadFormOptions が leadSources を返すか確認
+ *    （LEAD_FORM_OPTIONS_CACHE をクリアしてから読み直す）
+ * 2. createLead 相当: テスト行を追加 → 「流入元ID」「流入経路」両列を読み返し → 削除
+ * 3. updateLead 相当: 先頭データ行の両列を上書き → 読み返し → 元の値に復元
+ *
+ * 使い方: clasp run verifyLeadSourceWrite
+ */
+function verifyLeadSourceWrite() {
+  var out = ['=== verifyLeadSourceWrite ===', '実行: ' + new Date().toISOString(), ''];
+  var ss  = getSpreadsheet();
+
+  // ─── 1. leadSources の読み取り確認 ───────────────────────────────────────
+  out.push('--- [1] leadSources 読み取り確認 ---');
+  clearCacheChunks_(LEAD_FORM_OPTIONS_CACHE_INDEX, LEAD_FORM_OPTIONS_CACHE_PREFIX);
+  out.push('  LEAD_FORM_OPTIONS_CACHE をクリア済み');
+
+  var lsTable  = getCoreSchemaV1Table('LEAD_SOURCES');
+  var lsSheet  = getCoreSchemaV1Sheet(ss, 'LEAD_SOURCES');
+  var leadSources = [];
+  if (lsSheet && lsSheet.getLastRow() > lsTable.headerRowNumber) {
+    var lsData    = lsSheet.getDataRange().getValues();
+    var lsH       = lsData[lsTable.headerRowNumber - 1].map(String);
+    var lsIdIdx   = lsH.indexOf(getCoreSchemaV1HeaderName('LEAD_SOURCES', 'SOURCE_ID'));
+    var lsNameIdx = lsH.indexOf(getCoreSchemaV1HeaderName('LEAD_SOURCES', 'NAME'));
+    var lsInIdx   = lsH.indexOf(getCoreSchemaV1HeaderName('LEAD_SOURCES', 'IS_INBOUND'));
+    var lsOutIdx  = lsH.indexOf(getCoreSchemaV1HeaderName('LEAD_SOURCES', 'IS_OUTBOUND'));
+    var lsActIdx  = lsH.indexOf(getCoreSchemaV1HeaderName('LEAD_SOURCES', 'IS_ACTIVE'));
+    var lsOrdIdx  = lsH.indexOf(getCoreSchemaV1HeaderName('LEAD_SOURCES', 'DISPLAY_ORDER'));
+    for (var s = lsTable.headerRowNumber; s < lsData.length; s++) {
+      var lsRow    = lsData[s];
+      var isActive = lsActIdx < 0 || lsRow[lsActIdx] === true || String(lsRow[lsActIdx] || '').toUpperCase() === 'TRUE';
+      if (!isActive) continue;
+      var srcId   = String(lsRow[lsIdIdx]   != null ? lsRow[lsIdIdx]   : '').trim();
+      var srcName = String(lsRow[lsNameIdx]  != null ? lsRow[lsNameIdx] : '').trim();
+      if (!srcId || !srcName) continue;
+      leadSources.push({
+        sourceId:   srcId,
+        name:       srcName,
+        isInbound:  lsInIdx  >= 0 && (lsRow[lsInIdx]  === true || String(lsRow[lsInIdx]  || '').toUpperCase() === 'TRUE'),
+        isOutbound: lsOutIdx >= 0 && (lsRow[lsOutIdx] === true || String(lsRow[lsOutIdx] || '').toUpperCase() === 'TRUE'),
+        _order:     lsOrdIdx >= 0 ? (Number(lsRow[lsOrdIdx]) || 0) : 0
+      });
+    }
+    leadSources.sort(function(a, b) { return a._order - b._order; });
+  }
+  out.push('  件数: ' + leadSources.length + '件');
+  leadSources.forEach(function(ls) {
+    out.push('  ' + ls.sourceId + ' / ' + ls.name + ' / isInbound=' + ls.isInbound + ' / isOutbound=' + ls.isOutbound);
+  });
+  var check1 = leadSources.length > 0 ? 'OK' : 'NG (0件)';
+  out.push('  → 判定: ' + check1);
+  out.push('');
+
+  // ─── 2. createLead 相当: テスト行追加 → 両列確認 → 削除 ─────────────────
+  out.push('--- [2] createLead 相当（テスト行追加・読み返し・削除）---');
+  var leadsSheet    = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  var headers       = leadsSheet.getRange(1, 1, 1, leadsSheet.getLastColumn()).getValues()[0];
+  var srcIdColIdx   = headers.indexOf('流入元ID');
+  var srcNameColIdx = headers.indexOf('流入経路');
+  if (srcIdColIdx < 0 || srcNameColIdx < 0) {
+    out.push('  【停止】列が見つかりません: 流入元ID=' + srcIdColIdx + ' / 流入経路=' + srcNameColIdx);
+    var r0 = out.join('\n'); Logger.log(r0); return r0;
+  }
+
+  // フロントが送るペイロードと同じ構造（toLeadWriteValues の出力をそのまま想定）
+  var testPayload = {
+    '顧客名':           '【VERIFY_TEST 削除済】',
+    '流入元ID':         'SRC002',
+    '流入経路':         'Facebook',
+    'リード種別':       'インバウンド',
+    'リードステータス': '新規リード',
+    'リードID':         'VERIFY_TEMP_001'
+  };
+  var newRow = [];
+  headers.forEach(function(header) {
+    newRow.push(testPayload[header] != null ? testPayload[header] : '');
+  });
+  leadsSheet.appendRow(newRow);
+  var addedRowIdx = leadsSheet.getLastRow();
+  var addedData   = leadsSheet.getRange(addedRowIdx, 1, 1, headers.length).getValues()[0];
+  var gotSrcId    = String(addedData[srcIdColIdx]   || '');
+  var gotSrcName  = String(addedData[srcNameColIdx] || '');
+  leadsSheet.deleteRow(addedRowIdx);
+  out.push('  ペイロード: 流入元ID="SRC002" / 流入経路="Facebook"');
+  out.push('  読み返し:   流入元ID="' + gotSrcId + '" / 流入経路="' + gotSrcName + '"');
+  var check2Id   = gotSrcId   === 'SRC002'   ? 'OK' : 'NG';
+  var check2Name = gotSrcName === 'Facebook' ? 'OK' : 'NG';
+  out.push('  → 流入元ID: ' + check2Id + ' / 流入経路: ' + check2Name);
+  out.push('  → テスト行 (行 ' + addedRowIdx + ') を削除しました');
+  out.push('');
+
+  // ─── 3. updateLead 相当: 先頭データ行を対象に両列を上書き → 確認 → 復元 ─
+  out.push('--- [3] updateLead 相当（既存行上書き・確認・復元）---');
+  var targetRowIdx = 2;
+  var targetData   = leadsSheet.getRange(targetRowIdx, 1, 1, headers.length).getValues()[0];
+  var origSrcId    = String(targetData[srcIdColIdx]   || '');
+  var origSrcName  = String(targetData[srcNameColIdx] || '');
+  out.push('  対象行 ' + targetRowIdx + ' 現在値: 流入元ID="' + origSrcId + '" / 流入経路="' + origSrcName + '"');
+
+  var updatePayload = { '流入元ID': 'SRC003', '流入経路': 'Facebook Marketplace' };
+  var updatedRow    = targetData.slice();
+  Object.keys(updatePayload).forEach(function(key) {
+    var idx = headers.indexOf(key);
+    if (idx >= 0) updatedRow[idx] = updatePayload[key];
+  });
+  leadsSheet.getRange(targetRowIdx, 1, 1, headers.length).setValues([updatedRow]);
+  var afterData    = leadsSheet.getRange(targetRowIdx, 1, 1, headers.length).getValues()[0];
+  var afterSrcId   = String(afterData[srcIdColIdx]   || '');
+  var afterSrcName = String(afterData[srcNameColIdx] || '');
+
+  // 元に戻す
+  var restoredRow = updatedRow.slice();
+  restoredRow[srcIdColIdx]   = origSrcId;
+  restoredRow[srcNameColIdx] = origSrcName;
+  leadsSheet.getRange(targetRowIdx, 1, 1, headers.length).setValues([restoredRow]);
+
+  out.push('  上書き後:   流入元ID="' + afterSrcId + '" / 流入経路="' + afterSrcName + '"');
+  var check3Id   = afterSrcId   === 'SRC003'                ? 'OK' : 'NG';
+  var check3Name = afterSrcName === 'Facebook Marketplace'  ? 'OK' : 'NG';
+  out.push('  → 流入元ID: ' + check3Id + ' / 流入経路: ' + check3Name);
+  out.push('  → 元の値 (流入元ID="' + origSrcId + '" / 流入経路="' + origSrcName + '") に復元しました');
+  out.push('');
+
+  out.push('=== 完了 ===');
+  var finalResult = out.join('\n');
+  Logger.log(finalResult);
+  return finalResult;
+}
