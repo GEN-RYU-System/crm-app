@@ -6,6 +6,7 @@ import type { ShippingAddressDto, PaymentProfileDto, CustomerRepository } from '
 import { useCustomerAggregateCache } from '../../features/customers/CustomerAggregateCacheContext';
 import type { InventoryProductOption, OrderCreatePayload, OrderRepository, OrderUpdatePayload } from '../../features/orders/contracts';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
+import { formatDate } from '../shared/dateFormat';
 import {
   calcInvoiceTotal,
   emptyOrderEditorValues,
@@ -422,13 +423,13 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
               {invoiceInfo.invoiceIssuedAt && (
                 <>
                   <dt className="order-editor-page__meta-label">{ordersCopy.detail.invoiceIssuedAt}</dt>
-                  <dd className="order-editor-page__meta-value">{invoiceInfo.invoiceIssuedAt}</dd>
+                  <dd className="order-editor-page__meta-value">{formatDate(invoiceInfo.invoiceIssuedAt)}</dd>
                 </>
               )}
               {invoiceInfo.paymentDueAt && (
                 <>
                   <dt className="order-editor-page__meta-label">{ordersCopy.detail.paymentDueAt}</dt>
-                  <dd className="order-editor-page__meta-value">{invoiceInfo.paymentDueAt}</dd>
+                  <dd className="order-editor-page__meta-value">{formatDate(invoiceInfo.paymentDueAt)}</dd>
                 </>
               )}
             </dl>
