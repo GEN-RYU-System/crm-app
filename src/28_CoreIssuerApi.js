@@ -6,8 +6,10 @@
  *
  * 公開関数:
  *   getCoreIssuerForFrontend(sessionId)
+ *   updateCoreIssuerForFrontend(sessionId, issuerData)
  * 権限キー:
- *   dashboard_view — 最低限の権限チェック
+ *   dashboard_view — getCoreIssuerForFrontend（最低限の権限チェック）
+ *   issuer_manage  — updateCoreIssuerForFrontend
  */
 
 /**
@@ -69,4 +71,62 @@ function getCoreIssuerForFrontend(sessionId) {
   });
 
   return { success: true, issuer: result };
+}
+
+/**
+ * 発行元マスタの最初の有効行を更新する
+ *
+ * @param {string} sessionId
+ * @param {Object} issuerData  — { [japaneseName]: value } の形式
+ * @returns {{ success: true }}
+ */
+function updateCoreIssuerForFrontend(sessionId, issuerData) {
+  setEmailFromSession(sessionId);
+  checkPermission('issuer_manage');
+
+  var ss       = getSpreadsheet();
+  var tableKey = 'ISSUER';
+  var table    = getCoreSchemaV1Table(tableKey);
+  var sheet    = ss.getSheetByName(table.sheetName);
+
+  if (!sheet) {
+    throw new Error('発行元マスタシートが見つかりません: ' + table.sheetName);
+  }
+
+  var lastCol = sheet.getLastColumn();
+  var lastRow = sheet.getLastRow();
+
+  if (lastRow <= table.headerRowNumber) {
+    throw new Error('発行元マスタにデータがありません');
+  }
+
+  var rawHeaders = sheet.getRange(table.headerRowNumber, 1, 1, lastCol).getValues()[0];
+
+  function colOf(headerKey) {
+    var name = getCoreSchemaV1HeaderName(tableKey, headerKey);
+    var idx  = rawHeaders.indexOf(name);
+    if (idx === -1) throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING:' + headerKey);
+    return idx + 1; // 1-indexed
+  }
+
+  var dataRow = table.headerRowNumber + 1;
+
+  var updatableKeys = [
+    'COMPANY_NAME', 'CONTACT_NAME',
+    'ADDRESS_LINE1', 'ADDRESS_LINE2', 'ADDRESS_LINE3',
+    'CITY', 'STATE', 'ZIP', 'COUNTRY',
+    'PHONE', 'EMAIL', 'REGISTRATION_NO',
+    'PAYEE_NAME', 'PAYMENT_EMAIL', 'PAYMENT_NOTE', 'CLOSING_MESSAGE',
+    'IS_ACTIVE'
+  ];
+
+  updatableKeys.forEach(function(key) {
+    var jaName = getCoreSchemaV1HeaderName(tableKey, key);
+    if (issuerData.hasOwnProperty(jaName)) {
+      sheet.getRange(dataRow, colOf(key)).setValue(issuerData[jaName]);
+    }
+  });
+
+  SpreadsheetApp.flush();
+  return { success: true };
 }
