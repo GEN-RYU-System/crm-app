@@ -463,6 +463,7 @@ export type OrderDetailRecord = {
     PAYMENT_STATUS: string;
     STATUS: string;
     PAYMENT_CONFIRMED_AT: string;
+    SHIPPING_NOTE: string;
     NOTE: string;
     TRANSACTION_NOTE: string;
     INTERNAL_NOTE: string;
