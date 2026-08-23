@@ -139,5 +139,46 @@ function surveyLeadSourceUrls() {
 
   Logger.log('=== 調査完了（書き込みなし）===');
 
-  return results;
+  // clasp run は深いネストを [Object] で切るため、フラット文字列配列で返す
+  var lines = [];
+
+  // ヘッダー一覧
+  lines.push('=== ヘッダー一覧 (' + lastCol + '列) ===');
+  headers.forEach(function(h, i) { lines.push('col' + (i + 1) + ': ' + h); });
+  lines.push('URL系列列: ' + urlColIndices.map(function(c) { return 'col' + (c.colIdx + 1) + '(' + c.name + ')'; }).join(', '));
+
+  // 各流入経路
+  targetSources.forEach(function(src) {
+    var rowCount = allData.filter(function(r) { return String(r[sourceIdx] || '').trim() === src; }).length;
+    lines.push('');
+    lines.push('=== 流入経路: ' + src + ' (' + rowCount + '件) ===');
+
+    urlColIndices.forEach(function(col) {
+      var bucket = results[src][col.name];
+      var domains = Object.keys(bucket.domainCounts).sort(function(a, b) {
+        return bucket.domainCounts[b] - bucket.domainCounts[a];
+      });
+      lines.push('[' + col.name + ']');
+      if (domains.length === 0 && bucket.nonUrlList.length === 0) {
+        lines.push('  URL値あり: 0件');
+      } else {
+        domains.forEach(function(d) { lines.push('  ' + d + ': ' + bucket.domainCounts[d] + '件'); });
+        if (bucket.nonUrlList.length > 0) {
+          lines.push('  (非URL形式): ' + bucket.nonUrlList.length + '件');
+          bucket.nonUrlList.slice(0, 20).forEach(function(item) {
+            lines.push('    行' + item.rowNum + ': ' + item.value);
+          });
+          if (bucket.nonUrlList.length > 20) {
+            lines.push('    ... 他' + (bucket.nonUrlList.length - 20) + '件');
+          }
+        }
+      }
+      lines.push('  空欄: ' + bucket.blankCount + '件');
+    });
+  });
+
+  lines.push('');
+  lines.push('=== 調査完了（書き込みなし）===');
+
+  return lines;
 }
