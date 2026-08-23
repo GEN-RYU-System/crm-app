@@ -22,6 +22,7 @@ import {
   Tabs,
   Textarea,
   TextField,
+  TwoColumnLayout,
   type DataTableColumn,
   type LineItemValue,
 } from "../../components/ui";
@@ -454,6 +455,25 @@ export function ComponentCatalogPage() {
             description={catalogCopy.helper}
             action={
               <Button variant="secondary">{commonCopy.actionExample}</Button>
+            }
+          />
+        </Card>
+        <Card>
+          <h2 className="catalog-page__heading">TwoColumnLayout</h2>
+          <p className="catalog-page__copy">
+            usedIn: orders, quotes — Two-column layout skeleton: left column (main content) and right column (sticky summary panel).
+            Collapses to a single column on narrow screens (max-width: 900px).
+          </p>
+          <TwoColumnLayout
+            left={
+              <Card variant="outlined">
+                <p className="catalog-page__copy">Left column (main content)</p>
+              </Card>
+            }
+            right={
+              <div style={{ background: "var(--color-surface)", border: "var(--border-width) solid var(--color-border)", borderRadius: "var(--radius-surface)", padding: "var(--space-xl)" }}>
+                <p className="catalog-page__copy">Right column (sticky summary)</p>
+              </div>
             }
           />
         </Card>
