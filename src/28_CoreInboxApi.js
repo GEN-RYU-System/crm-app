@@ -126,7 +126,7 @@ function getInboxConversationDetailForFrontend(sessionId, leadId) {
     platform:     inboxPlatformFromSource_(leadSource),
     status:       inboxStatus,
     summary:      convSummary || (messages.length > 0 ? messages[0].body : ''),
-    updatedAt:    lastConvAt || (messages.length > 0 ? messages[0].sentAt : ''),
+    updatedAt:    lastConvAt || (messages.length > 0 ? messages[messages.length - 1].sentAt : ''),
     unread:       false
   };
 
@@ -206,7 +206,7 @@ function buildInboxConversations_(spreadsheet) {
   // ── 2. リード管理から会話要約・ステータスを取得 ──
   var leads = coreCustomerFrontendReadTable(spreadsheet, 'LEADS', [
     'LEAD_ID', 'CUSTOMER_NAME', 'LEAD_SOURCE', 'LEAD_PROGRESS',
-    'CONVERSATION_SUMMARY', 'LAST_CONVERSATION_AT', 'LEAD_STATUS'
+    'CONVERSATION_SUMMARY', 'LAST_CONVERSATION_AT'
   ]);
 
   var rows = [];
