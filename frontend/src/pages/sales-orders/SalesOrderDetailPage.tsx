@@ -5,7 +5,12 @@ import { Badge } from '../../components/ui/Badge/Badge';
 import { Button, DataTable, EmptyState, StatusMessage } from '../../components/ui';
 import type { DataTableColumn } from '../../components/ui';
 import { salesOrdersCopy, SALES_ORDER_PAYMENT_STATUS_BADGE_VARIANT } from '../../content/ja';
-import { getCoreOrderDetail, type OrderDetailRecord } from '../../gas/client';
+import {
+  getCoreOrderDetail,
+  confirmCoreOrderPayment,
+  type OrderDetailRecord,
+} from '../../gas/client';
+import { useSalesOrderListCache } from './SalesOrderListCacheContext';
 import { PAYMENT_DUE_WARNING_DAYS } from './salesOrderListConfig';
 import './SalesOrderDetailPage.css';
 
@@ -71,6 +76,13 @@ export function SalesOrderDetailPage() {
   const [detail, setDetail] = useState<OrderDetail | null | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
 
+  // confirm payment state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | undefined>(undefined);
+
+  const { refresh } = useSalesOrderListCache();
+
   useEffect(() => {
     if (!orderId) return;
     setDetail(undefined);
@@ -84,6 +96,34 @@ export function SalesOrderDetailPage() {
 
   const order = detail?.order;
   const statusVariant = order ? (SALES_ORDER_PAYMENT_STATUS_BADGE_VARIANT[order.PAYMENT_STATUS] ?? 'neutral') : 'neutral';
+
+  const canConfirmPayment = order?.STATUS === '\u652f\u6255\u3044\u5f85\u3061';
+
+  const handleConfirmPayment = async () => {
+    if (!orderId) return;
+    setConfirming(true);
+    setConfirmError(undefined);
+    try {
+      const result = await confirmCoreOrderPayment(orderId);
+      if (result.success) {
+        setConfirmOpen(false);
+        const updated = await getCoreOrderDetail(orderId);
+        setDetail(updated);
+        void refresh();
+      } else {
+        const reason = result.reason;
+        setConfirmError(
+          reason === 'INVALID_STATUS'
+            ? copy.confirmPaymentErrorInvalidStatus
+            : copy.confirmPaymentErrorGeneric
+        );
+      }
+    } catch (e: unknown) {
+      setConfirmError(e instanceof Error ? e.message : copy.confirmPaymentErrorGeneric);
+    } finally {
+      setConfirming(false);
+    }
+  };
 
   return (
     <div className="sales-order-detail-page">
@@ -149,7 +189,11 @@ export function SalesOrderDetailPage() {
                 </p>
               </div>
               <div className="sales-order-detail-page__header-right">
-                <Button variant="primary" disabled>
+                <Button
+                  variant="primary"
+                  disabled={!canConfirmPayment || confirming}
+                  onClick={() => setConfirmOpen(true)}
+                >
                   {copy.btnConfirmPayment}
                 </Button>
               </div>
@@ -301,6 +345,39 @@ export function SalesOrderDetailPage() {
                 </div>
               </div>
             </div>
+
+            {/* confirm payment dialog */}
+            {confirmOpen && (
+              <div className="sales-order-detail-page__confirm-overlay" style={{ backgroundColor: 'color-mix(in srgb, black 50%, transparent)' }}>
+                <div className="sales-order-detail-page__confirm-dialog">
+                  <h3 className="sales-order-detail-page__section-title">{copy.confirmPaymentTitle}</h3>
+                  <p style={{ whiteSpace: 'pre-line' }}>
+                    {copy.confirmPaymentBody(
+                      o.INVOICE_NUMBER || o.ORDER_ID,
+                      o.customerName,
+                      formatNumber(o.INVOICE_TOTAL)
+                    )}
+                  </p>
+                  {confirmError && <StatusMessage variant="error">{confirmError}</StatusMessage>}
+                  <div className="sales-order-detail-page__confirm-actions">
+                    <Button
+                      variant="secondary"
+                      disabled={confirming}
+                      onClick={() => { setConfirmOpen(false); setConfirmError(undefined); }}
+                    >
+                      {copy.confirmPaymentCancel}
+                    </Button>
+                    <Button
+                      variant="primary"
+                      disabled={confirming}
+                      onClick={() => { void handleConfirmPayment(); }}
+                    >
+                      {confirming ? copy.confirmPaymentTitle : copy.confirmPaymentConfirm}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         );
       })()}
