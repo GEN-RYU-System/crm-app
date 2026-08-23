@@ -807,3 +807,94 @@ git revert <マージコミットSHA>
 ### 事実: OD-00177 の入金確認
 
 `dryRunGetOrderStatus("OD-00177")` の結果: `STATUS = '仕入れ中'` / `PAYMENT_STATUS = '入金済み'` / `PAYMENT_CONFIRMED_AT = '2026-08-23T15:50:24.716Z'`。DEV 実機で入金確認機能が動作し、ステータス遷移が記録されていることを確認済み。また `dryRunOrderStatusRecalculation` の差分 0件（サイドエフェクトなし）も確認済み。
+
+## 【22】Discord OAuth Bot招待フロー実装 — Phase 2-A
+
+- 日時: 2026-08-24
+- ブランチ: release/discord-oauth-invite
+- PR: （PR作成後に記録）
+- マージコミット SHA: （マージ後に記録）
+- 戻し方: git revert <マージコミットSHA>
+
+### 変更ファイル一覧と目的
+
+| ファイル | Change kind | 目的 |
+|----------|-------------|------|
+| `src/35_DiscordOAuthApi.js` | new feature | generateDiscordOAuthUrl / getDiscordOAuthStatus / handleDiscordOAuthCallback / createDiscordCallbackHtml |
+| `src/27_WebApp.js` | feature extension | doGet に Discord OAuthコールバック分岐追加（state パラメータ判定） |
+| `frontend/src/gas/client.ts` | feature extension | generateDiscordOAuthUrl / getDiscordOAuthStatus 関数追加 |
+| `frontend/src/gas/types.d.ts` | feature extension | GoogleScriptRun に2メソッド追加 |
+| `frontend/src/features/discordIntegration/contracts.ts` | feature extension | DiscordOAuthUrlResult / DiscordOAuthStatusResult 型・Repository メソッド追加 |
+| `frontend/src/features/discordIntegration/gasAdapter.ts` | feature extension | generateOAuthUrl / getOAuthStatus メソッド追加 |
+| `frontend/src/content/ja/discordIntegration.ts` | feature extension | Bot招待セクションのcopyキー追加 |
+| `frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx` | feature extension | Bot招待UIセクション追加（招待ボタン・Guild連携状態・状態確認ボタン） |
+| `frontend/src/preview/gasRunnerMock.ts` | feature extension | generateDiscordOAuthUrl / getDiscordOAuthStatus モック追加 |
+| `frontend/dist/index.html` | artifact | build:gas 再生成 |
+
+### S1〜S7 実測結果
+
+**S1: Logger.logへの秘匿情報出力**
+```
+$ grep -n "Logger.log" src/35_DiscordOAuthApi.js
+9:  * - Logger.log に CLIENT_ID・state・guild_id を渡さない
+54:    Logger.log('generateDiscordOAuthUrl error: ' + error.message);
+75:    Logger.log('getDiscordOAuthStatus error: ' + error.message);
+```
+→ error.message のみ出力。CLIENT_ID・state・guild_id は含まない。合格。
+
+**S2: getDiscordOAuthStatusの戻り値にCLIENT_IDを含まない**
+→ `return { guildId: guildId || null }` のみ返却。CLIENT_IDは含まない。合格。
+
+**S3: checkPermission('admin_access')が両関数に存在**
+```
+$ grep -n "checkPermission" src/35_DiscordOAuthApi.js
+8:  * - 全関数に checkPermission('admin_access') でガード
+31:    checkPermission('admin_access');
+70:    checkPermission('admin_access');
+```
+→ generateDiscordOAuthUrl (L31) / getDiscordOAuthStatus (L70) 両方に存在。合格。
+
+**S4: DISCORD_CLIENT_IDプロパティキー名のみ（実値なし）**
+```
+$ grep -rn "DISCORD_CLIENT_ID\s*=" src/
+（出力なし）
+```
+→ 実値の代入は0件。getProperty('DISCORD_CLIENT_ID') のみ。合格。
+
+**S5: permissions値の内訳（Kick/Ban削除後）**
+- 削除前: 805432406（KICK_MEMBERS + BAN_MEMBERS を含む）
+- 削除後: 805432400（KICK_MEMBERS 0x2・BAN_MEMBERS 0x4 を除去）
+- 残存権限内訳:
+  - MANAGE_CHANNELS (0x10 = 16)
+  - ADD_REACTIONS (0x40 = 64)
+  - VIEW_CHANNEL (0x400 = 1024)
+  - SEND_MESSAGES (0x800 = 2048)
+  - MANAGE_MESSAGES (0x2000 = 8192)
+  - EMBED_LINKS (0x4000 = 16384)
+  - ATTACH_FILES (0x8000 = 32768)
+  - READ_MESSAGE_HISTORY (0x10000 = 65536)
+  - MANAGE_ROLES (0x10000000 = 268435456)
+  - MANAGE_WEBHOOKS (0x20000000 = 536870912)
+- 使用根拠: Botがチャンネル管理・メッセージ送受信・役職管理に必要な最小権限セット。合格。
+
+**S6: state one-time消費**
+```
+$ grep -n "cache.remove" src/35_DiscordOAuthApi.js
+107:  cache.remove(state);
+```
+→ state検証後に即remove。one-time消費を実装済み。合格。
+
+**S7: guild_idフォーマット検証（Snowflake）**
+```
+$ grep -n "17,19" src/35_DiscordOAuthApi.js
+110:  if (!guildId || !/^\d{17,19}$/.test(guildId)) {
+```
+→ /^\d{17,19}$/ でSnowflakeフォーマット確認。合格。
+
+### ビルド検証
+
+```
+$ npm run build:gas
+design-system checks passed
+```
+→ PASS（TypeScriptエラー0・デザインシステム違反0）
