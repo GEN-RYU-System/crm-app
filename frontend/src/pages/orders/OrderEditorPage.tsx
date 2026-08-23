@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+
+function formatDate(value: unknown): string {
+  if (typeof value !== 'string' || value === '') return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('ja-JP');
+}
 import { Button, Card, Combobox, LineItemEditor, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField, TwoColumnLayout } from '../../components/ui';
 import { ordersCopy } from '../../content/ja/orders';
 import type { ShippingAddressDto, PaymentProfileDto, CustomerRepository } from '../../features/customers/contracts';
@@ -422,13 +428,13 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
               {invoiceInfo.invoiceIssuedAt && (
                 <>
                   <dt className="order-editor-page__meta-label">{ordersCopy.detail.invoiceIssuedAt}</dt>
-                  <dd className="order-editor-page__meta-value">{invoiceInfo.invoiceIssuedAt}</dd>
+                  <dd className="order-editor-page__meta-value">{formatDate(invoiceInfo.invoiceIssuedAt)}</dd>
                 </>
               )}
               {invoiceInfo.paymentDueAt && (
                 <>
                   <dt className="order-editor-page__meta-label">{ordersCopy.detail.paymentDueAt}</dt>
-                  <dd className="order-editor-page__meta-value">{invoiceInfo.paymentDueAt}</dd>
+                  <dd className="order-editor-page__meta-value">{formatDate(invoiceInfo.paymentDueAt)}</dd>
                 </>
               )}
             </dl>
