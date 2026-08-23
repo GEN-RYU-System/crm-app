@@ -531,8 +531,60 @@ git revert fd084eda2725ec7ba675afb947982fb0e0aa8e4c
 
 - `npm run build:gas` 通過（typecheck + vite build + emit-gas-html + design-system check）
 - `clasp run runCoreSchemaConformanceAudit` → 総不一致 **0**（GAS 変更なし）
-- CI: PR #395 で確認予定
+- CI: PASS（deploy-dev.yml: success）
 - PO 実機確認待ち: OD-00176 赤バッジ / OD-00175 黄バッジ / OD-00177 バッジなし
+
+### 補足: OD-00174 の後処理
+
+PO が手動削除し完了。削除後の /sales-orders は すべて 175 / タブ合計 175 で一致。
+「不明」ステータスは 0 件になった。
+
+### マージコミット SHA
+
+e0eafe480182d5450d0134b048ce2e33ab4a4723
+
+### 戻し方
+
+```
+git revert e0eafe480182d5450d0134b048ce2e33ab4a4723
+```
+
+---
+
+## 【15】支払期日バッジの位置ズレ修正 — PR #396
+
+**実施日時**: 2026-08-23
+
+### 現象
+
+支払期日列で、バッジがある行（OD-00175/176）の日付が左にずれる。
+バッジのない行（OD-00177）と日付の右端が揃わない。
+
+### 原因
+
+バッジあり行は `<span class="cell">[日付][バッジ]</span>` の幅 = 日付幅 + gap + バッジ幅。
+バッジなし行は `[日付テキスト]` の幅 = 日付幅のみ。
+セルが `text-align: center` で中央揃えされているため、セル幅が違うと日付の左端位置がずれる。
+
+### 修正
+
+バッジなし行にも同じ幅の空スロットを常に置き、全行のセル幅を揃える。
+
+- CSS: `inline-flex` → `inline-grid`、バッジ列幅を `--_badge-col: 5rem` で1箇所に定義
+- TSX: `let badge: ReactNode` を宣言し、バッジあり/なしを分岐後、
+  常に `<span><{日付}><span aria-hidden>{badge}</span></span>` を返す
+  （バッジなし時は空 `<span>` がグリッド列を占有するため幅は変わらない）
+
+**変更ファイル（frontend 2ファイル）:**
+- `frontend/src/pages/sales-orders/SalesOrderListPage.css`
+- `frontend/src/pages/sales-orders/SalesOrderListPage.tsx`
+
+### 検証結果
+
+- `npm run build:gas` 通過（typecheck + vite build + emit-gas-html + design-system check）
+- `clasp run runCoreSchemaConformanceAudit` → 総不一致 **0**（GAS 変更なし）
+- CI: PR #396 で確認予定
+- PO 実機確認待ち: OD-00175/176/177 の日付右端が縦一直線に揃っていること
 
 ### マージコミット SHA
 
