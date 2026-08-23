@@ -438,6 +438,7 @@ export type OrderDetailRecord = {
     ORDER_DATE: string;
     CUSTOMER_ID: string;
     customerName: string;
+    awaitingPaymentStatus: string;
     shippingDestinationName: string;
     shippingAddressLine1: string;
     shippingAddressLine2: string;
