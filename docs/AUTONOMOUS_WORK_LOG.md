@@ -659,3 +659,16 @@ git revert <マージコミットSHA>
         総件数175件、変更あり0件。既存データへの実害なし。
 - 記録: /orders 経由の更新が増えた際（目安: 月次ベースで変更ありが1件以上）に再確認すること。
 ```
+
+---
+
+## 【18】PR13: 受注管理詳細ページ（読み取り専用）
+
+- PR番号: #406
+- マージコミットSHA: （マージ後に記録）
+- 対象: /sales-orders/:orderId
+- 新規ファイル: SalesOrderDetailPage.tsx, SalesOrderDetailPage.css
+- GAS: getCoreOrderDetailForFrontend を 28_CoreOrderReadApi.js に追加
+- 戻し方: git revert <マージコミットSHA>
+- dryRun（2026-08-23）: 175件中変更あり0件。実害なし。
+- PO実機確認: OD-00175（登録なし確認）+ OD-00164（実データ確認）が必要
