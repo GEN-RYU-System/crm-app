@@ -158,5 +158,5 @@ function buildAddressLines(addr) {
     line2 = line2 + ' ' + String(addr.zip).trim();
   }
 
-  return [line1, line2].filter(function(v) { return v !== ''; });
+  return [line1, line2.trim()].filter(function(v) { return v !== ''; });
 }
