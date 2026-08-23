@@ -116,6 +116,7 @@ export const quotesCopy = {
       lineUnitPrice:   '単価',
       lineNote:        'メモ',
     },
+    printQuote:  '印刷 / PDF保存',
     saveDraft:   '一時保存',
     savingDraft: '保存中...',
     issue:       '発行',
