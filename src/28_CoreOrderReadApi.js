@@ -211,23 +211,51 @@ function dryRunCheckOrderDetailLookup(orderId) {
   }
 
   var ss = getSpreadsheet();
-  var data = readDetailSheet_(ss, 'ORDERS', ['ORDER_ID']);
 
-  var matched = 0;
-  for (var i = 0; i < data.length; i++) {
-    if (String(data[i].ORDER_ID || '').trim() === String(orderId || '').trim()) {
-      matched++;
+  // フェーズ1: ['ORDER_ID'] だけで readDetailSheet_ を呼ぶ（照合確認）
+  var dataPhase1 = readDetailSheet_(ss, 'ORDERS', ['ORDER_ID']);
+  var matchedPhase1 = 0;
+  for (var i = 0; i < dataPhase1.length; i++) {
+    if (String(dataPhase1[i].ORDER_ID || '').trim() === String(orderId || '').trim()) {
+      matchedPhase1++;
     }
   }
 
-  var sampleRow  = data.length > 0 ? data[0] : null;
+  // フェーズ2: getCoreOrderDetailForFrontend と同じ 33 フィールドで呼ぶ
+  var fullOrderFields = [
+    'ORDER_ID', 'INVOICE_NUMBER', 'ORDER_DATE', 'CUSTOMER_ID',
+    'INVOICE_ISSUED_AT', 'PAYMENT_DUE_AT', 'PAYMENT_METHOD',
+    'CURRENCY', 'EXCHANGE_RATE',
+    'LINE_TOTAL', 'SHIPPING_FEE', 'DUTY', 'DISCOUNT', 'OTHER_FEE', 'INVOICE_TOTAL', 'INVOICE_TOTAL_JPY',
+    'PAYMENT_STATUS', 'STATUS',
+    'PAYMENT_CONFIRMED_AT', 'PAYMENT_CONFIRMATION_SOURCE',
+    'SHIPPING_METHOD', 'SHIPPED_AT', 'TRACKING_NUMBER', 'SHIPPING_NOTE',
+    'NOTE', 'TRANSACTION_NOTE', 'INTERNAL_NOTE',
+    'SHIPPING_DESTINATION_ID', 'PAYMENT_DESTINATION_ID',
+    'CANCELLATION_REASON', 'CANCELLATION_NOTE',
+    'REGISTERED_AT', 'UPDATED_AT'
+  ];
+  var dataPhase2 = readDetailSheet_(ss, 'ORDERS', fullOrderFields);
+  var matchedPhase2 = 0;
+  var matchedRowPhase2 = null;
+  for (var j = 0; j < dataPhase2.length; j++) {
+    if (String(dataPhase2[j].ORDER_ID || '').trim() === String(orderId || '').trim()) {
+      matchedPhase2++;
+      matchedRowPhase2 = dataPhase2[j];
+    }
+  }
+
+  var sampleRow  = dataPhase1.length > 0 ? dataPhase1[0] : null;
   var sampleKeys = sampleRow !== null ? Object.keys(sampleRow) : [];
 
   return {
-    total:      data.length,
-    matched:    matched,
-    sampleKeys: sampleKeys,
-    sampleRow:  sampleRow
+    phase1_total:      dataPhase1.length,
+    phase1_matched:    matchedPhase1,
+    sampleKeys:        sampleKeys,
+    sampleRow:         sampleRow,
+    phase2_total:      dataPhase2.length,
+    phase2_matched:    matchedPhase2,
+    phase2_matchedRow: matchedRowPhase2
   };
 }
 
