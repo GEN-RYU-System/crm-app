@@ -2520,3 +2520,105 @@ function benchInventoryProductOptionsWithConditions() {
   Logger.log(out);
   return out;
 }
+
+/**
+ * getInventoryProductOptions のキャッシュ効果を計測する。
+ * 1回目: シート読み出し + writeCacheChunks_（キャッシュミス相当）
+ * 2回目: readCacheChunks_（キャッシュヒット相当）
+ * 3回目: readCacheChunks_（キャッシュヒット相当）
+ *
+ * checkPermission を呼ばないため clasp run から実行可能。
+ * テスト専用キーを使うため本番キャッシュを汚染しない。
+ */
+function benchInventoryProductOptionsCacheHit() {
+  var ss         = getSpreadsheet();
+  var invSchema  = CORE_SCHEMA_V1_TABLES['SHARED_INVENTORY'];
+  var prodSchema = CORE_SCHEMA_V1_TABLES['PRODUCTS'];
+  var CHUNK      = 90000;
+  var TTL        = 600;
+  var CONDITION_CASE = invSchema.values.CONDITION.CASE;
+
+  // テスト専用キー（本番キャッシュと衝突しない）
+  var TEST_INDEX  = 'BENCH_INV_PROD_OPT_INDEX';
+  var TEST_PREFIX = 'BENCH_INV_PROD_OPT_';
+
+  var cache = CacheService.getScriptCache();
+  // 事前にテストキーをクリア
+  cache.remove(TEST_INDEX);
+
+  var invSheet  = ss.getSheetByName(invSchema.sheetName);
+  var prodSheet = ss.getSheetByName(prodSchema.sheetName);
+
+  var invData  = invSheet.getDataRange().getValues();
+  var invH     = invData[0].map(String);
+  var pidIdx   = invH.indexOf(invSchema.headers['PRODUCT_ID']);
+  var qtyIdx   = invH.indexOf(invSchema.headers['QUANTITY']);
+  var priceIdx = invH.indexOf(invSchema.headers['UNIT_PRICE']);
+  var condIdx  = invH.indexOf(invSchema.headers['CONDITION']);
+
+  var prodData  = prodSheet.getDataRange().getValues();
+  var prodH     = prodData[0].map(String);
+  var prodPidIdx = prodH.indexOf(prodSchema.headers['PRODUCT_ID']);
+  var jaIdx      = prodH.indexOf(prodSchema.headers['JAPANESE_TITLE']);
+  var catIdx     = prodH.indexOf(prodSchema.headers['CATEGORY']);
+  var boxWIdx    = prodH.indexOf(prodSchema.headers['BOX_WEIGHT']);
+  var caseWIdx   = prodH.indexOf(prodSchema.headers['CASE_WEIGHT']);
+
+  var prodMap = {};
+  for (var pi = 1; pi < prodData.length; pi++) {
+    var ppid = String(prodData[pi][prodPidIdx] != null ? prodData[pi][prodPidIdx] : '').trim();
+    if (!ppid) continue;
+    prodMap[ppid] = {
+      productName: String(prodData[pi][jaIdx] != null ? prodData[pi][jaIdx] : '').trim(),
+      category:    catIdx >= 0 ? String(prodData[pi][catIdx] != null ? prodData[pi][catIdx] : '').trim() : '',
+      boxWeight:   boxWIdx >= 0 ? (Number(prodData[pi][boxWIdx]) || 0) : 0,
+      caseWeight:  caseWIdx >= 0 ? (Number(prodData[pi][caseWIdx]) || 0) : 0
+    };
+  }
+
+  var condMap = {};
+  for (var i = 1; i < invData.length; i++) {
+    var qty = Number(invData[i][qtyIdx]) || 0;
+    if (qty <= 0) continue;
+    var pid = String(invData[i][pidIdx] != null ? invData[i][pidIdx] : '').trim();
+    if (!pid || !prodMap[pid]) continue;
+    if (!condMap[pid]) condMap[pid] = [];
+    var cond = String(invData[i][condIdx] != null ? invData[i][condIdx] : '');
+    var uw = (cond === CONDITION_CASE) ? prodMap[pid].caseWeight : prodMap[pid].boxWeight;
+    condMap[pid].push({ condition: cond, quantity: qty, unitPrice: Number(invData[i][priceIdx]) || 0, unitWeight: uw });
+  }
+
+  var results = [];
+  for (var j = 1; j < prodData.length; j++) {
+    var pid2 = String(prodData[j][prodPidIdx] != null ? prodData[j][prodPidIdx] : '').trim();
+    if (!pid2 || !condMap[pid2]) continue;
+    var p = prodMap[pid2];
+    results.push({ productId: pid2, productName: p.productName, category: p.category, conditions: condMap[pid2] });
+  }
+
+  // ─── 1回目: シート読み出し + writeCacheChunks_（キャッシュミス相当） ─────────
+  var t1start = Date.now();
+  writeCacheChunks_(TEST_INDEX, TEST_PREFIX, results, TTL, CHUNK);
+  var run1Ms = Date.now() - t1start;
+
+  // ─── 2回目: readCacheChunks_（キャッシュヒット） ─────────────────────────────
+  var t2start = Date.now();
+  var hit2 = readCacheChunks_(TEST_INDEX, TEST_PREFIX);
+  var run2Ms = Date.now() - t2start;
+
+  // ─── 3回目: readCacheChunks_（キャッシュヒット） ─────────────────────────────
+  var t3start = Date.now();
+  var hit3 = readCacheChunks_(TEST_INDEX, TEST_PREFIX);
+  var run3Ms = Date.now() - t3start;
+
+  var out = JSON.stringify({
+    キャッシュミス_シート読み出し済みwrite_ms: run1Ms,
+    キャッシュヒット_2回目_ms:                 run2Ms,
+    キャッシュヒット_3回目_ms:                 run3Ms,
+    hit2_件数:  hit2 ? hit2.length : null,
+    hit3_件数:  hit3 ? hit3.length : null,
+    note: '1回目はシート読み出し（buildCurrentResult呼び出し後）のwriteコストのみ計測。シート読み出し込みの合計は benchInventoryProductOptionsWithConditions の run1 を参照。'
+  }, null, 2);
+  Logger.log(out);
+  return out;
+}
