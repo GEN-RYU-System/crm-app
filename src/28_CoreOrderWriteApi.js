@@ -90,6 +90,7 @@ function createCoreOrderForFrontend(sessionId, payload) {
   var duty = coreOrderWriteNormalizeNumeric(payload.duty, 'duty') || 0;
   var otherFee = coreOrderWriteNormalizeNumeric(payload.otherFee, 'otherFee') || 0;
   var discount = coreOrderWriteNormalizeNumeric(payload.discount, 'discount') || 0;
+  var shippingNote = coreOrderWriteValue(payload.shippingNote);
   var internalNote = coreOrderWriteValue(payload.internalNote);
 
   // 明細合計の計算（サーバーサイド）
@@ -180,6 +181,7 @@ function createCoreOrderForFrontend(sessionId, payload) {
       setOrderCell('UPDATED_AT', now);
       setOrderCell('PAYMENT_STATUS', paymentStatus);
       setOrderCell('INVOICE_TOTAL_JPY', invoiceTotalJpy);
+      setOrderCell('SHIPPING_NOTE', shippingNote);
       setOrderCell('INTERNAL_NOTE', internalNote);
 
       orderSheet.appendRow(orderRow);
