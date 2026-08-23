@@ -2331,6 +2331,77 @@ function benchLeadSourceIdConversion() {
 }
 
 /**
+ * getLeads（実関数）を呼ぶことで、流入元ID変換処理を含んだ
+ * キャッシュミス時・ヒット時の実コストを計測する。
+ *
+ * - 1回目: leads + 流入元マスタ 両方キャッシュなし（最悪ケース）
+ * - 2回目: leads + 流入元マスタ 両方キャッシュあり（ヒット時）
+ *   ★ キャッシュヒット時は getLeads が呼ばれないため readCacheChunks_ のみを計測
+ *
+ * 実行方法: clasp run benchLeadSourceDisplay
+ */
+function benchLeadSourceDisplay() {
+  var RUNS = 3;
+  var out  = ['=== benchLeadSourceDisplay ===', '実行: ' + new Date().toISOString(), ''];
+
+  // ── 全キャッシュをクリア（leads 3種 + 流入元マスタ） ────────────────────
+  clearCacheChunks_(LEADS_CACHE_INDEX_ALL,      LEADS_CACHE_PREFIX_ALL);
+  clearCacheChunks_(LEADS_CACHE_INDEX_INBOUND,  LEADS_CACHE_PREFIX_INBOUND);
+  clearCacheChunks_(LEADS_CACHE_INDEX_OUTBOUND, LEADS_CACHE_PREFIX_OUTBOUND);
+  clearCacheChunks_(LEAD_SOURCES_CACHE_INDEX,   LEAD_SOURCES_CACHE_PREFIX);
+  out.push('全キャッシュクリア完了（leads 3種 + 流入元マスタ）');
+  out.push('');
+
+  var targets = [
+    { label: 'ALL（全件）',    type: undefined,     indexKey: LEADS_CACHE_INDEX_ALL,      prefix: LEADS_CACHE_PREFIX_ALL      },
+    { label: 'INBOUND',        type: 'インバウンド',  indexKey: LEADS_CACHE_INDEX_INBOUND,  prefix: LEADS_CACHE_PREFIX_INBOUND  },
+    { label: 'OUTBOUND',       type: 'アウトバウンド', indexKey: LEADS_CACHE_INDEX_OUTBOUND, prefix: LEADS_CACHE_PREFIX_OUTBOUND }
+  ];
+
+  for (var t = 0; t < targets.length; t++) {
+    var tgt = targets[t];
+    out.push('--- ' + tgt.label + ' ---');
+
+    var missMs   = [];
+    var hitMs    = [];
+    var lastRows = 0;
+
+    for (var run = 0; run < RUNS; run++) {
+      // キャッシュクリア（本回の1回目を必ずキャッシュなしにする）
+      clearCacheChunks_(tgt.indexKey, tgt.prefix);
+      clearCacheChunks_(LEAD_SOURCES_CACHE_INDEX, LEAD_SOURCES_CACHE_PREFIX);
+
+      // ── キャッシュミス: getLeads を実際に呼ぶ（変換処理含む）──────────────
+      var t1 = Date.now();
+      var rows = getLeads('lead', tgt.type);
+      writeCacheChunks_(tgt.indexKey, tgt.prefix, rows, LEADS_CACHE_TTL, LEADS_CACHE_CHUNK_SIZE);
+      var ms1 = Date.now() - t1;
+      missMs.push(ms1);
+      lastRows = rows.length;
+      out.push('  試行' + (run + 1) + ' miss: ' + ms1 + 'ms (' + lastRows + '件)');
+
+      // ── キャッシュヒット: readCacheChunks_ のみ（getLeads は呼ばれない） ──
+      var t2 = Date.now();
+      readCacheChunks_(tgt.indexKey, tgt.prefix);
+      var ms2 = Date.now() - t2;
+      hitMs.push(ms2);
+      out.push('  試行' + (run + 1) + '  hit: ' + ms2 + 'ms');
+    }
+
+    var sumMiss = 0; for (var i = 0; i < missMs.length; i++) sumMiss += missMs[i];
+    var sumHit  = 0; for (var i = 0; i < hitMs.length;  i++) sumHit  += hitMs[i];
+    out.push('  miss 平均: ' + Math.round(sumMiss / RUNS) + 'ms');
+    out.push('  hit  平均: ' + Math.round(sumHit  / RUNS) + 'ms');
+    out.push('');
+  }
+
+  out.push('=== 完了 ===');
+  var result = out.join('\n');
+  Logger.log(result);
+  return result;
+}
+
+/**
  * 【読み取り専用】QUOTES / QUOTE_LINES シートの数式列を調査する。
  * setValues 化（施策C）の適否判断用。
  * 先頭5データ行の getFormulas() から数式が存在する列を列挙する。
