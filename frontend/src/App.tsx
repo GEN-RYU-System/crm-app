@@ -46,7 +46,7 @@ import { OrderListCacheProvider } from './pages/orders/OrderListCacheContext';
 import { ORDER_ROUTE_SEGMENTS } from './pages/orders/orderEditorConfig';
 import { StaffListPage } from './pages/staff/StaffListPage';
 import { CustomerAggregateCacheProvider } from './features/customers/CustomerAggregateCacheContext';
-import { inboxPreviewRepository } from './features/inbox/previewAdapter';
+import { inboxGasRepository } from './features/inbox/gasAdapter';
 import { inventoryGasRepository } from './features/inventory/gasAdapter';
 import { orderGasRepository } from './features/orders/gasAdapter';
 import { quoteGasRepository } from './features/quotes/gasAdapter';
@@ -185,7 +185,7 @@ function AppRouter() {
   const canAddLeads = hasNavigationPermission(permissions, 'lead_add');
   const canEditLeads = hasNavigationPermission(permissions, 'lead_edit');
   const leadsRoute = permissionState.status === 'checking' ? <LeadPermissionLoading /> : canAccessLeads ? <LeadListPage canAdd={canAddLeads} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
-  const inboxRoute = permissionState.status === 'checking' ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={inboxCopy.loading} />{inboxCopy.loading}</StatusMessage> : canAccessInbox ? <InboxPreviewPage repository={inboxPreviewRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+  const inboxRoute = permissionState.status === 'checking' ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={inboxCopy.loading} />{inboxCopy.loading}</StatusMessage> : canAccessInbox ? <InboxPreviewPage repository={inboxGasRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const createRoute = canAccessLeads && canAddLeads ? <LeadEditorPage mode="create" canEdit={false} repository={leadGasRepository} /> : <Navigate to={canAccessLeads ? NAVIGATION_BY_ID.leads.hash : NAVIGATION_BY_ID.dashboard.hash} replace />;
   const detailRoute = canAccessLeads ? <LeadEditorPage mode="detail" canEdit={canEditLeads} repository={leadGasRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const customersRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerListPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;

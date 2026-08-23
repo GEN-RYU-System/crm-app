@@ -1,5 +1,6 @@
 import { errorCopy, leadsCopy } from '../content/ja';
 import type { CustomerAggregateDto, CustomerAggregatesRecord, CustomerSummaryDto } from '../features/customers/contracts';
+import type { InboxConversationDetailDto, InboxConversationDto } from '../features/inbox/contracts';
 import type { OrderCreatePayload, OrderCreateResult, OrderUpdatePayload, OrderUpdateResult } from '../features/orders/contracts';
 import type { StaffProfileDto, StaffSummaryDto } from '../features/staff/contracts';
 
@@ -826,6 +827,35 @@ export function getCoreIssuer(): Promise<IssuerRecord> {
       })
       .withFailureHandler((error) => reject(toError(error)))
       .getCoreIssuerForFrontend(getStoredSessionId());
+  });
+}
+
+export function getInboxConversations(forceRefresh?: boolean): Promise<readonly InboxConversationDto[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (!Array.isArray(value)) { reject(new Error(errorCopy.communication)); return; }
+        resolve(value as InboxConversationDto[]);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getInboxConversationsForFrontend(getStoredSessionId(), forceRefresh === true);
+  });
+}
+
+export function getInboxConversationDetail(leadId: string): Promise<InboxConversationDetailDto | null> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (value === null) { resolve(null); return; }
+        if (typeof value !== 'object' || Array.isArray(value)) { reject(new Error(errorCopy.communication)); return; }
+        resolve(value as InboxConversationDetailDto);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getInboxConversationDetailForFrontend(getStoredSessionId(), leadId);
   });
 }
 
