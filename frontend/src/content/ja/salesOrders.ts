@@ -44,4 +44,7 @@ export const salesOrdersCopy = {
     status:          'ステータス',
     invoiceIssuedAt: '作成日',
   },
+  paymentDueBadgeOverdue:  '期限超過',
+  paymentDueBadgeToday:    '本日期日',
+  paymentDueBadgeTomorrow: '期日1日前',
 } as const;
