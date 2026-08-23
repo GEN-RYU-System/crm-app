@@ -1,12 +1,12 @@
 .issuer-master-form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-4);
+  gap: var(--space-lg);
+  padding: var(--space-lg);
 }
 
 .issuer-master-save-success {
-  color: var(--color-success-700);
+  color: var(--color-success-strong);
   font-size: var(--text-sm);
   font-weight: 500;
   margin: 0;
