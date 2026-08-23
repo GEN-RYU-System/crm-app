@@ -17,7 +17,7 @@ import {
 import { useSalesOrderListCache } from './SalesOrderListCacheContext';
 import './SalesOrderListPage.css';
 
-/** Renders the payment due date cell with a danger/warning badge when the date is overdue or approaching. Date-only comparison, ignores time. */
+/** Renders the payment due date cell: date text with a status badge to the right when overdue or approaching. Date-only comparison, ignores time. */
 function renderPaymentDueAtCell(row: SalesOrderRow) {
   const raw = row.paymentDueAt;
   if (!raw) return '-';
@@ -25,15 +25,38 @@ function renderPaymentDueAtCell(row: SalesOrderRow) {
   if (Number.isNaN(due.getTime())) return '-';
 
   const today = new Date();
-  const dueDate  = new Date(due.getFullYear(),   due.getMonth(),   due.getDate());
+  const dueDate   = new Date(due.getFullYear(),   due.getMonth(),   due.getDate());
   const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const formatted = due.toLocaleDateString('ja-JP');
 
-  if (dueDate < todayDate) return <Badge variant="danger">{formatted}</Badge>;
+  if (dueDate < todayDate) {
+    return (
+      <span className="sales-order-list-page__payment-due-cell">
+        {formatted}
+        <Badge variant="danger">{salesOrdersCopy.paymentDueBadgeOverdue}</Badge>
+      </span>
+    );
+  }
+
+  if (dueDate.getTime() === todayDate.getTime()) {
+    return (
+      <span className="sales-order-list-page__payment-due-cell">
+        {formatted}
+        <Badge variant="warning">{salesOrdersCopy.paymentDueBadgeToday}</Badge>
+      </span>
+    );
+  }
 
   const warningDate = new Date(todayDate);
   warningDate.setDate(todayDate.getDate() + PAYMENT_DUE_WARNING_DAYS);
-  if (dueDate <= warningDate) return <Badge variant="warning">{formatted}</Badge>;
+  if (dueDate <= warningDate) {
+    return (
+      <span className="sales-order-list-page__payment-due-cell">
+        {formatted}
+        <Badge variant="warning">{salesOrdersCopy.paymentDueBadgeTomorrow}</Badge>
+      </span>
+    );
+  }
 
   return formatted;
 }
