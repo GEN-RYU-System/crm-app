@@ -2622,3 +2622,45 @@ function benchInventoryProductOptionsCacheHit() {
   Logger.log(out);
   return out;
 }
+
+/**
+ * リード管理シートの「取り扱いタイトル」列の実値調査。
+ * - 空欄以外の値の分布を集計
+ * - カンマ区切りを含む行の有無を確認
+ *
+ * checkPermission を呼ばないため clasp run から実行可能。
+ */
+function surveyProductTitleColumn() {
+  var ss    = getSpreadsheet();
+  var sheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  if (!sheet || sheet.getLastRow() <= 1) return '[ERROR] リード管理シートが見つかりません';
+
+  var data    = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var colIdx  = headers.indexOf('取り扱いタイトル');
+  if (colIdx < 0) return '[ERROR] 取り扱いタイトル列が見つかりません (col index=-1)';
+
+  var valueCounts = {};
+  var commaRows   = [];
+  var emptyCount  = 0;
+
+  for (var i = 1; i < data.length; i++) {
+    var raw = data[i][colIdx];
+    var v   = String(raw != null ? raw : '').trim();
+    if (!v) { emptyCount++; continue; }
+    valueCounts[v] = (valueCounts[v] || 0) + 1;
+    if (v.indexOf(',') >= 0) commaRows.push({ row: i + 1, value: v });
+  }
+
+  var out = JSON.stringify({
+    対象列:         '取り扱いタイトル (col' + (colIdx + 1) + ')',
+    総データ行数:   data.length - 1,
+    空欄行数:       emptyCount,
+    非空欄行数:     (data.length - 1) - emptyCount,
+    カンマ含む行数: commaRows.length,
+    カンマ含む行:   commaRows.slice(0, 10),
+    値の分布:       valueCounts
+  }, null, 2);
+  Logger.log(out);
+  return out;
+}
