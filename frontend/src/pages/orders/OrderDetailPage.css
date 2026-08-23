@@ -1,0 +1,12 @@
+.order-detail-page__actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.order-detail-page__section-title { font-size: var(--font-md); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-md); }
+.order-detail-page__dl { display: grid; gap: 0; }
+.order-detail-page__row { display: grid; grid-template-columns: 12rem 1fr; gap: var(--space-md); align-items: baseline; padding: var(--space-sm) 0; border-bottom: 1px solid var(--color-border); }
+.order-detail-page__row:last-child { border-bottom: none; }
+.order-detail-page__label { font-size: var(--font-sm); font-weight: var(--font-weight-semibold); color: var(--color-text-muted); }
+.order-detail-page__value { font-size: var(--font-sm); color: var(--color-text-primary); margin: 0; }
+.order-detail-page__edit-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-md); }
+.order-detail-page__form { display: grid; gap: var(--space-lg); }
+.order-detail-page__invoice-total { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); background: var(--color-page); border-radius: var(--radius-control); }
+.order-detail-page__invoice-total-label { font-size: var(--font-sm); font-weight: var(--font-weight-semibold); color: var(--color-text-muted); }
+.order-detail-page__invoice-total-value { font-size: var(--font-lg); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
