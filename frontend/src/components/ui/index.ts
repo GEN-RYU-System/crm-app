@@ -5,3 +5,4 @@ export { HubShell } from './HubShell/HubShell'; export type { HubShellProps } fr
 export { Combobox } from './Combobox/Combobox'; export type { ComboboxProps } from './Combobox/Combobox';
 export { LineItemEditor } from './LineItemEditor/LineItemEditor'; export type { LineItemEditorLabels, LineItemEditorProps, LineItemValue } from './LineItemEditor/LineItemEditor';
 export { TwoColumnLayout } from './TwoColumnLayout/TwoColumnLayout';
+export { MultiSelect } from './MultiSelect/MultiSelect'; export type { MultiSelectProps } from './MultiSelect/MultiSelect';
