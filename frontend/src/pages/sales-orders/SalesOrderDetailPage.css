@@ -1,11 +1,215 @@
-.sales-order-detail-page { display: flex; flex-direction: column; gap: var(--space-lg); }
-.sales-order-detail-page__back { margin-bottom: var(--space-xs); }
-.sales-order-detail-page__badges { display: flex; gap: var(--space-xs); flex-wrap: wrap; margin-top: calc(-1 * var(--space-sm)); margin-bottom: var(--space-xs); }
-.sales-order-detail-page__section-card { padding: var(--space-lg); }
-.sales-order-detail-page__section-title { font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); margin: 0 0 var(--space-md) 0; }
-.sales-order-detail-page__def-list { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm) var(--space-xl); margin: 0; }
-.sales-order-detail-page__def-row { display: contents; }
-.sales-order-detail-page__def-label { font-size: var(--font-size-sm); color: var(--color-text-secondary); margin: 0; }
-.sales-order-detail-page__def-value { font-size: var(--font-size-sm); color: var(--color-text-primary); margin: 0; }
-.sales-order-detail-page__due-with-badge { display: inline-flex; align-items: center; gap: var(--space-xs); }
-.sales-order-detail-page__table-card { border-radius: var(--radius-data-table); overflow: hidden; padding: var(--space-none); }
+.sales-order-detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  max-width: 1200px;
+  padding: var(--space-lg);
+}
+
+.sales-order-detail-page__back {
+  margin-bottom: var(--space-xs);
+}
+
+.sales-order-detail-page__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-md);
+}
+
+.sales-order-detail-page__header-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-none);
+}
+
+.sales-order-detail-page__header-right {
+  flex-shrink: 0;
+}
+
+.sales-order-detail-page__title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.sales-order-detail-page__subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.sales-order-detail-page__order-id {
+  color: var(--color-text-secondary);
+}
+
+.sales-order-detail-page__badges {
+  display: flex;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.sales-order-detail-page__summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-md);
+  padding: var(--space-md) 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+@media (max-width: 768px) {
+  .sales-order-detail-page__summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.sales-order-detail-page__summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-none);
+}
+
+.sales-order-detail-page__summary-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sales-order-detail-page__summary-value {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.sales-order-detail-page__summary-badge {
+  display: inline-flex;
+  align-items: center;
+}
+
+.sales-order-detail-page__dest-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xl);
+  padding: var(--space-md) 0;
+}
+
+@media (max-width: 640px) {
+  .sales-order-detail-page__dest-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sales-order-detail-page__dest-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.sales-order-detail-page__dest-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.sales-order-detail-page__dest-value {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.sales-order-detail-page__address {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  font-style: normal;
+  line-height: 1.6;
+}
+
+.sales-order-detail-page__section {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.sales-order-detail-page__section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.sales-order-detail-page__section-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.sales-order-detail-page__empty-note {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.sales-order-detail-page__two-col {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .sales-order-detail-page__two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sales-order-detail-page__amount-dl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+}
+
+.sales-order-detail-page__amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-md);
+  padding: var(--space-none) 0;
+}
+
+.sales-order-detail-page__amount-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.sales-order-detail-page__amount-value {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  text-align: right;
+  margin: 0;
+}
+
+.sales-order-detail-page__amount-row--total {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+
+.sales-order-detail-page__amount-row--total .sales-order-detail-page__amount-label,
+.sales-order-detail-page__amount-row--total .sales-order-detail-page__amount-value {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
