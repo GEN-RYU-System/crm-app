@@ -126,7 +126,7 @@ export function IssuerMasterPage({ canEdit }: { canEdit: boolean }) {
           <StatusMessage variant="error">
             {loadError || issuerCopy.loadError}
             <Button variant="outline" size="sm" onClick={() => void load()}>
-              {issuerCopy.loading}
+              {issuerCopy.retry}
             </Button>
           </StatusMessage>
         )}

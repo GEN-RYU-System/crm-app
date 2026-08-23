@@ -22,6 +22,7 @@ export const issuerCopy = {
   saveSuccess: '保存しました',
   saveError: '保存に失敗しました',
   loading: '読み込み中...',
+  retry: '再読み込み',
   loadError: '発行元情報の取得に失敗しました',
 } as const;
 
