@@ -646,3 +646,29 @@ PR #397 で日付の右端は揃ったが、日付＋バッジの塊が列中央
 ```
 git revert <マージコミットSHA>
 ```
+
+---
+
+## 【17】調査記録: updateCoreOrderForFrontend と recalculateOrderStatusById の乖離
+
+- 調査日: 2026-08-23
+- 事実: src/28_CoreOrderUpdateApi.js は recalculateOrderStatusById を呼び出していない。
+        JSDoc には「updateCoreOrderForFrontend から呼び出すことを想定」とあるが、
+        実装ではインラインで calculateOrderStatus() + calculatePaymentStatus() を呼んでいる。
+- 事実: clasp run dryRunOrderStatusRecalculation の結果（2026-08-23実測）:
+        総件数175件、変更あり0件。既存データへの実害なし。
+- 記録: /orders 経由の更新が増えた際（目安: 月次ベースで変更ありが1件以上）に再確認すること。
+```
+
+---
+
+## 【18】PR13: 受注管理詳細ページ（読み取り専用）
+
+- PR番号: #406
+- マージコミットSHA: （マージ後に記録）
+- 対象: /sales-orders/:orderId
+- 新規ファイル: SalesOrderDetailPage.tsx, SalesOrderDetailPage.css
+- GAS: getCoreOrderDetailForFrontend を 28_CoreOrderReadApi.js に追加
+- 戻し方: git revert <マージコミットSHA>
+- dryRun（2026-08-23）: 175件中変更あり0件。実害なし。
+- PO実機確認: OD-00175（登録なし確認）+ OD-00164（実データ確認）が必要

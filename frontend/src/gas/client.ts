@@ -431,6 +431,96 @@ export function getCoreQuoteDetail(quoteId: string): Promise<QuoteDetailRecord |
   });
 }
 
+export type OrderDetailRecord = {
+  order: {
+    ORDER_ID: string;
+    INVOICE_NUMBER: string;
+    ORDER_DATE: string;
+    CUSTOMER_ID: string;
+    customerName: string;
+    shippingDestinationName: string;
+    paymentDestinationName: string;
+    INVOICE_ISSUED_AT: string;
+    PAYMENT_DUE_AT: string;
+    PAYMENT_METHOD: string;
+    CURRENCY: string;
+    EXCHANGE_RATE: string | number;
+    LINE_TOTAL: string | number;
+    SHIPPING_FEE: string | number;
+    DUTY: string | number;
+    DISCOUNT: string | number;
+    OTHER_FEE: string | number;
+    INVOICE_TOTAL: string | number;
+    INVOICE_TOTAL_JPY: string | number;
+    PAYMENT_STATUS: string;
+    STATUS: string;
+    PAYMENT_CONFIRMED_AT: string;
+    NOTE: string;
+    TRANSACTION_NOTE: string;
+    INTERNAL_NOTE: string;
+    CANCELLATION_REASON: string;
+    CANCELLATION_NOTE: string;
+    REGISTERED_AT: string;
+    UPDATED_AT: string;
+  };
+  lines: Array<{
+    ORDER_LINE_ID: string;
+    LINE_NUMBER: string | number;
+    CATEGORY: string;
+    PRODUCT_NAME: string;
+    STATUS: string;
+    SKU: string;
+    QUANTITY: string | number;
+    UNIT_PRICE: string | number;
+    SUBTOTAL: string | number;
+    PRODUCT_ID: string;
+  }>;
+  purchases: Array<{
+    PURCHASE_ID: string;
+    ORDERED_AT: string;
+    TRANSACTION_NUMBER: string;
+    SUPPLIER: string;
+    SUPPLIER_URL: string;
+    QUANTITY: string | number;
+    UNIT_PRICE: string | number;
+    AMOUNT: string | number;
+    SHIPPING_OR_AGENCY_FEE: string | number;
+    CARRIER: string;
+    TRACKING_NUMBER: string;
+    STATUS: string;
+    NOTE: string;
+  }>;
+  shipments: Array<{
+    SHIPMENT_ID: string;
+    BOX_NUMBER: string | number;
+    SHIPPING_METHOD: string;
+    SHIPPED_AT: string;
+    TRACKING_NUMBER: string;
+    WEIGHT: string | number;
+    PICKUP_REQUEST: string;
+    NOTE: string;
+  }>;
+};
+
+export function getCoreOrderDetail(orderId: string): Promise<OrderDetailRecord | null> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => {
+        const v = value as OrderDetailRecord | { success: false } | null;
+        if (v && typeof v === 'object' && 'success' in v && (v as { success: false }).success === false) {
+          resolve(null);
+          return;
+        }
+        resolve(v as OrderDetailRecord);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getCoreOrderDetailForFrontend(getStoredSessionId(), orderId);
+  });
+}
+
 export function getCoreOrders(forceRefresh?: boolean): Promise<readonly OrderRecord[]> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
