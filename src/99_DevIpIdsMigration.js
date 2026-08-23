@@ -156,7 +156,7 @@ function dryRunIpIdsMigration() {
         leadId:    leadId,
         original:  titleVal,
         ids:       ids.join(','),
-        detail:    detail
+        detail:    detail.join(' | ')
       });
     }
   }
