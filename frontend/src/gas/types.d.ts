@@ -41,6 +41,10 @@ interface GoogleScriptRun {
   getLeadFormOptions(sessionId: string | null): void;
   getCoreIssuerForFrontend(sessionId: string | null): void;
   updateCoreIssuerForFrontend(sessionId: string | null, issuerData: unknown): void;
+  saveDiscordBotToken(sessionId: string | null, token: string): void;
+  getDiscordConnectionStatusForFrontend(sessionId: string | null): void;
+  saveDiscordChannels(sessionId: string | null, channelIds: unknown): void;
+  getDiscordChannelsForFrontend(sessionId: string | null): void;
 }
 
 interface Window {
