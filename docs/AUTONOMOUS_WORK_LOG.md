@@ -697,7 +697,7 @@ git revert <マージコミットSHA>
 | `--color-surface-selected` | 1 | SalesOrderListPage.css | `--color-tab-surface-active` |
 | `--font-weight-medium` | 1 | SalesOrderListPage.css | `--font-weight-semibold` |
 
-**調査B: sales-orders 以外の未定義トークン（修正対象外）**: 352件（コードベース全体の精査対象）。100件超のため修正は今スプリントのスコープ外。
+**調査B: sales-orders 以外の未定義トークン（修正対象外）**: 当初 Generator が「352件」と報告したが、これは誤集計だった。Generator は定義済みトークンとのクロスチェックをせず、全 `var()` 参照（当時 約982件）を未定義候補として列挙した可能性が高い。実際に `tokens.css` + `palette.css` と照合した結果、未定義トークンは **8件・5種のみ**（`--font-lg` 3件 / `--space-4` 2件 / `--ui-skeleton-table-columns` 1件 / `--color-success-700` 1件 / `--text-sm` 1件）。正しい集計方法: `node -e` で全 CSS の `var()` を取得し、定義済みトークン Set と差分を取る。
 
 **調査C: raw値使用**: font-size raw px/rem = 0件、border-radius raw px = 0件、color hex/rgb = 0件（すべてトークン経由）。
 
@@ -721,3 +721,60 @@ git revert <マージコミットSHA>
 - 戻し方: git revert <マージコミットSHA>
 - dryRun（2026-08-23）: 175件中変更あり0件。実害なし。
 - PO実機確認: OD-00175（登録なし確認）+ OD-00164（実データ確認）が必要
+
+---
+
+## 【20】PR19: デザイントークン6件追加・未定義参照解消・検査を全体に拡張 — PR #448
+
+- 日時: 2026-08-24
+- PR: #448
+- ブランチコミット SHA: fd6a22c86d15055bae64dcd873d461e38c353a25
+- マージコミット SHA: （マージ後に記録）
+- 戻し方: git revert <マージコミットSHA>
+
+### 変更内容
+
+**tokens.css に追加した6件**
+
+| トークン | 値 | 根拠 |
+|----------|-----|------|
+| `--font-lg` | 18px | 3箇所（quotes/orders editor・orders detail）で合計金額の強調表示に使用中だった未定義参照を正式化 |
+| `--text-sm` | `var(--font-sm)` | `--font-sm` の別名（IssuerMasterPage が参照）|
+| `--color-success-strong` | `var(--palette-success-text)` | 白背景上の成功メッセージテキスト。palette.css の既存シェード（#22543d）を使用。独自色値は設けず |
+| `--transition-fast` | `var(--motion-fast)` | `--motion-fast` の別名（MultiSelect.css が参照）。値を二重管理しないよう別名とした |
+| `--radius-xs` | 4px | MultiSelect.css で参照。palette に4px相当なし → 実値定義 |
+| `--line-height-tight` | 1.25 | MultiSelect.css で参照。palette に汎用 line-height トークンなし → 実値定義 |
+
+**IssuerMasterPage.css 修正**
+
+- `--space-4` → `--space-lg`（16px、palette-space-4 と同値のため別名で置換）
+- `--color-success-700` → `--color-success-strong`
+
+**check-design-system.mjs 拡張**
+
+- 未定義トークン検査対象を `pages/sales-orders/` 限定 → `frontend/src/` 全体に変更
+- 除外: `--ui-skeleton-table-columns` のみ（コンポーネントAPIのため。コメントあり）
+
+**docs/DESIGN_TOKENS.md 新設**
+
+- よく使う20件（使用回数順）＋全件一覧を掲載
+- 「この表にある名前だけを使う」旨と「未定義参照は画面だけ壊れる」旨を明記
+
+### 検証結果
+
+- `npm run build:gas` → PASS（design-system checks passed）
+- `npm run check:design-system` → 違反0（frontend/src/ 全体、--ui-skeleton-table-columns除外）
+- `clasp run runCoreSchemaConformanceAudit` → 総不一致 0 → PASS
+- PO実機確認待ち（合計金額18px・発行元マスタ・MultiSelect）
+
+### ナレッジ: 未定義CSS変数の挙動
+
+`var(--undefined-token)` はビルドも CI も通過する。ブラウザはフォールバック値（継承値または `initial`）を使用するため、**画面だけが静かに壊れる**。check:design-system の全体検査により今後は CI でブロックされる。
+
+### データ事実: PY-00012（支払先マスタ）
+
+`dryRunGetPaymentDestination("PY-00012")` の結果: `DISPLAY_NAME = ''` / `BILLING_NAME = ''`。フロントが「-」と表示するのはデータ未入力によるもので、コードのバグではない。
+
+### 事実: OD-00177 の入金確認
+
+`dryRunGetOrderStatus("OD-00177")` の結果: `STATUS = '仕入れ中'` / `PAYMENT_STATUS = '入金済み'` / `PAYMENT_CONFIRMED_AT = '2026-08-23T15:50:24.716Z'`。DEV 実機で入金確認機能が動作し、ステータス遷移が記録されていることを確認済み。また `dryRunOrderStatusRecalculation` の差分 0件（サイドエフェクトなし）も確認済み。
