@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { Button, DataTable, EmptyState, StatusMessage } from '../../components/ui';
 import type { DataTableColumn } from '../../components/ui';
-import { salesOrdersCopy, SALES_ORDER_PAYMENT_STATUS_BADGE_VARIANT } from '../../content/ja';
+import { salesOrdersCopy } from '../../content/ja';
 import {
   getCoreOrderDetail,
   confirmCoreOrderPayment,
@@ -35,6 +35,12 @@ function formatNumber(v: unknown): string {
   const n = Number(v);
   if (Number.isNaN(n)) return String(v);
   return n.toLocaleString('ja-JP');
+}
+
+function formatWithCurrency(v: unknown, currency: string): string {
+  const formatted = formatNumber(v);
+  if (formatted === '-') return '-';
+  return currency ? `${formatted} ${currency}` : formatted;
 }
 
 function paymentDueBadge(paymentDueAt: string): ReactNode {
@@ -95,9 +101,8 @@ export function SalesOrderDetailPage() {
   const copy = salesOrdersCopy.detail;
 
   const order = detail?.order;
-  const statusVariant = order ? (SALES_ORDER_PAYMENT_STATUS_BADGE_VARIANT[order.PAYMENT_STATUS] ?? 'neutral') : 'neutral';
 
-  const canConfirmPayment = order?.STATUS === '\u652f\u6255\u3044\u5f85\u3061';
+  const canConfirmPayment = !!order?.awaitingPaymentStatus && order.STATUS === order.awaitingPaymentStatus;
 
   const handleConfirmPayment = async () => {
     if (!orderId) return;
@@ -199,13 +204,6 @@ export function SalesOrderDetailPage() {
               </div>
             </div>
 
-            {/* badge row: status / payment status / due date */}
-            <div className="sales-order-detail-page__badges">
-              {o.STATUS && <Badge variant="neutral">{o.STATUS}</Badge>}
-              {o.PAYMENT_STATUS && <Badge variant={statusVariant}>{o.PAYMENT_STATUS}</Badge>}
-              {dueBadge}
-            </div>
-
             {/* payment summary: 4-column grid */}
             <div className="sales-order-detail-page__summary-grid">
               <div className="sales-order-detail-page__summary-item">
@@ -217,7 +215,7 @@ export function SalesOrderDetailPage() {
               </div>
               <div className="sales-order-detail-page__summary-item">
                 <span className="sales-order-detail-page__summary-label">{copy.labelInvoiceTotalSummary}</span>
-                <span className="sales-order-detail-page__summary-value">{formatNumber(o.INVOICE_TOTAL)} {o.CURRENCY || ''}</span>
+                <span className="sales-order-detail-page__summary-value">{formatWithCurrency(o.INVOICE_TOTAL, o.CURRENCY)}</span>
               </div>
               <div className="sales-order-detail-page__summary-item">
                 <span className="sales-order-detail-page__summary-label">{copy.labelPaymentMethodSummary}</span>
@@ -339,7 +337,7 @@ export function SalesOrderDetailPage() {
                     </div>
                     <div className="sales-order-detail-page__amount-row sales-order-detail-page__amount-row--total">
                       <dt className="sales-order-detail-page__amount-label">{copy.labelInvoiceTotalDetail}</dt>
-                      <dd className="sales-order-detail-page__amount-value">{formatNumber(o.INVOICE_TOTAL)} {o.CURRENCY || ''}</dd>
+                      <dd className="sales-order-detail-page__amount-value">{formatWithCurrency(o.INVOICE_TOTAL, o.CURRENCY)}</dd>
                     </div>
                   </dl>
                 </div>
