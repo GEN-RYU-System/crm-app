@@ -167,10 +167,10 @@ export function DiscordIntegrationPage({ repository }: Props) {
       <PageHeader title={discordIntegrationCopy.title} subtitle={discordIntegrationCopy.subtitle} />
 
       <Card>
-        <h2 style={{ marginBottom: '1rem', fontSize: '1rem', fontWeight: 600 }}>
+        <h2 style={{ marginBottom: 'var(--space-lg)', fontSize: 'var(--font-md)', fontWeight: 600 }}>
           {discordIntegrationCopy.tokenSection}
         </h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
           <TextField
             label={discordIntegrationCopy.tokenLabel}
             type="password"
@@ -180,7 +180,7 @@ export function DiscordIntegrationPage({ repository }: Props) {
             fullWidth
           />
           {tokenSaveState === 'success' && (
-            <p role="status" style={{ color: 'var(--color-success, green)', fontSize: '0.875rem' }}>
+            <p role="status" style={{ color: 'var(--color-success, green)', fontSize: 'var(--font-sm)' }}>
               {discordIntegrationCopy.tokenSaved}
             </p>
           )}
@@ -202,11 +202,11 @@ export function DiscordIntegrationPage({ repository }: Props) {
       </Card>
 
       <Card>
-        <h2 style={{ marginBottom: '1rem', fontSize: '1rem', fontWeight: 600 }}>
+        <h2 style={{ marginBottom: 'var(--space-lg)', fontSize: 'var(--font-md)', fontWeight: 600 }}>
           {discordIntegrationCopy.connectionSection}
         </h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <div style={{ fontSize: '0.875rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+          <div style={{ fontSize: 'var(--font-sm)' }}>
             {connectionStatus.isTokenSet ? (
               <>
                 <p>
@@ -218,7 +218,7 @@ export function DiscordIntegrationPage({ repository }: Props) {
                     {discordIntegrationCopy.connectionStatus.connected} &mdash; {discordIntegrationCopy.connectedBot}{connectionStatus.botName} (ID: {connectionStatus.botId})
                   </p>
                 ) : (
-                  <p style={{ color: 'var(--color-error, red)' }}>
+                  <p style={{ color: 'var(--color-danger)' }}>
                     {discordIntegrationCopy.connectionStatus.notConnected}
                   </p>
                 )}
@@ -233,7 +233,7 @@ export function DiscordIntegrationPage({ repository }: Props) {
             <StatusMessage variant="error">{testError}</StatusMessage>
           )}
           {testState === 'success' && (
-            <p role="status" style={{ color: 'var(--color-success, green)', fontSize: '0.875rem' }}>
+            <p role="status" style={{ color: 'var(--color-success, green)', fontSize: 'var(--font-sm)' }}>
               {discordIntegrationCopy.connectionSuccess}
             </p>
           )}
@@ -252,11 +252,11 @@ export function DiscordIntegrationPage({ repository }: Props) {
       </Card>
 
       <Card>
-        <h2 style={{ marginBottom: '1rem', fontSize: '1rem', fontWeight: 600 }}>
+        <h2 style={{ marginBottom: 'var(--space-lg)', fontSize: 'var(--font-md)', fontWeight: 600 }}>
           {discordIntegrationCopy.channelSection}
         </h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'flex-end' }}>
             <TextField
               label={discordIntegrationCopy.channelIdLabel}
               value={channelInput}
@@ -275,7 +275,7 @@ export function DiscordIntegrationPage({ repository }: Props) {
             </Button>
           </div>
           {channelSaveState === 'success' && (
-            <p role="status" style={{ color: 'var(--color-success, green)', fontSize: '0.875rem' }}>
+            <p role="status" style={{ color: 'var(--color-success, green)', fontSize: 'var(--font-sm)' }}>
               {discordIntegrationCopy.channelAdded}
             </p>
           )}
@@ -284,17 +284,17 @@ export function DiscordIntegrationPage({ repository }: Props) {
           )}
           <div>
             {channels.length === 0 ? (
-              <p style={{ color: 'var(--color-text-muted, gray)', fontSize: '0.875rem' }}>
+              <p style={{ color: 'var(--color-text-muted, gray)', fontSize: 'var(--font-sm)' }}>
                 {discordIntegrationCopy.noChannels}
               </p>
             ) : (
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
                 {channels.map((channelId) => (
                   <li
                     key={channelId}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem', background: 'var(--color-surface-subtle, #f5f5f5)', borderRadius: '0.25rem' }}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-sm)', background: 'var(--color-surface-subtle, #f5f5f5)', borderRadius: 'var(--radius-control)' }}
                   >
-                    <code style={{ fontSize: '0.875rem' }}>{channelId}</code>
+                    <code style={{ fontSize: 'var(--font-sm)' }}>{channelId}</code>
                     <Button
                       variant="outline"
                       size="sm"
