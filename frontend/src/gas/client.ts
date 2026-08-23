@@ -789,11 +789,17 @@ export type LeadSource = {
   isOutbound: boolean;
 };
 
+export type IpTitle = {
+  ipId: string;
+  name: string;
+};
+
 export type LeadFormOptions = {
   leadTypes: readonly string[];
   responseSpeeds: readonly string[];
   countries: readonly LeadFormCountry[];
   leadSources: readonly LeadSource[];
+  ipTitles: readonly IpTitle[];
 };
 
 export function getLeadFormOptions(): Promise<LeadFormOptions> {

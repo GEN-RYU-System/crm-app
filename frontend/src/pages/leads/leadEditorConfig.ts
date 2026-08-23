@@ -2,7 +2,7 @@ import { NAVIGATION_BY_ID } from '../../app/navigation';
 import { leadsCopy } from '../../content/ja';
 import type { LeadRecord, LeadType } from '../../gas/client';
 
-export type LeadEditorValues = Record<'customerName' | 'sourceId' | 'sourceName' | 'country' | 'productTitle' | 'responseSpeed' | 'csMemo', string>;
+export type LeadEditorValues = Record<'customerName' | 'sourceId' | 'sourceName' | 'country' | 'productTitle' | 'responseSpeed' | 'csMemo' | 'ipIds', string>;
 
 export const LEAD_EDITOR_PATHS = {
   list: NAVIGATION_BY_ID.leads.hash,
@@ -22,7 +22,7 @@ function value(record: LeadRecord, field: keyof typeof leadsCopy.fields): string
 }
 
 export function emptyLeadEditorValues(): LeadEditorValues {
-  return { customerName: '', sourceId: '', sourceName: '', country: '', productTitle: '', responseSpeed: '', csMemo: '' };
+  return { customerName: '', sourceId: '', sourceName: '', country: '', productTitle: '', responseSpeed: '', csMemo: '', ipIds: '' };
 }
 
 export function toLeadEditorValues(record: LeadRecord): LeadEditorValues {
@@ -33,7 +33,8 @@ export function toLeadEditorValues(record: LeadRecord): LeadEditorValues {
     country: value(record, 'country'),
     productTitle: value(record, 'productTitle'),
     responseSpeed: value(record, 'responseSpeed'),
-    csMemo: value(record, 'csMemo')
+    csMemo: value(record, 'csMemo'),
+    ipIds: value(record, 'ipIds')
   };
 }
 
@@ -45,7 +46,8 @@ function toLeadWriteValues(values: LeadEditorValues): Record<string, string> {
     [leadsCopy.fields.country]: values.country,
     [leadsCopy.fields.productTitle]: values.productTitle,
     [leadsCopy.fields.responseSpeed]: values.responseSpeed,
-    [leadsCopy.fields.csMemo]: values.csMemo
+    [leadsCopy.fields.csMemo]: values.csMemo,
+    [leadsCopy.fields.ipIds]: values.ipIds
   };
 }
 

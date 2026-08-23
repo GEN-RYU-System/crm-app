@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Button, Card, Combobox, EmptyState, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField } from '../../components/ui';
+import { Button, Card, Combobox, EmptyState, MultiSelect, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField } from '../../components/ui';
 import { leadsCopy } from '../../content/ja';
-import type { LeadFormCountry, LeadFormOptions, LeadSource, LeadRepository, LeadType } from '../../features/leads/contracts';
+import type { IpTitle, LeadFormCountry, LeadFormOptions, LeadSource, LeadRepository, LeadType } from '../../features/leads/contracts';
 import { useLeadListCache } from './LeadListCacheContext';
 import { emptyLeadEditorValues, LEAD_EDITOR_PATHS, toLeadCreateValues, toLeadEditorValues, toLeadUpdateValues, type LeadEditorValues } from './leadEditorConfig';
 import { LEAD_TYPE_TABS } from './leadListConfig';
@@ -107,6 +107,15 @@ export function LeadEditorPage({ mode, canEdit, repository }: Props) {
     }));
   };
 
+  const handleIpIdsChange = (selectedIds: string[], currentFallbackLabels: Record<string, string>) => {
+    const ipIds = selectedIds.join(',');
+    const ipTitles = formOptions?.ipTitles ?? [];
+    const productTitle = selectedIds
+      .map((id) => ipTitles.find((t) => t.ipId === id)?.name ?? currentFallbackLabels[id] ?? id)
+      .join(', ');
+    setValues((previous) => ({ ...previous, ipIds, productTitle }));
+  };
+
   const save = async () => {
     if (!values.customerName.trim()) {
       setSaveError(leadsCopy.customerNameRequired);
@@ -172,6 +181,18 @@ export function LeadEditorPage({ mode, canEdit, repository }: Props) {
     : values.responseSpeed
       ? [{ value: values.responseSpeed, label: values.responseSpeed }]
       : [];
+
+  // IP titles MultiSelect: build fallbackLabels for IDs not in master (e.g. migrated data, deleted entries)
+  const ipTitleItems: readonly IpTitle[] = formOptions?.ipTitles ?? [];
+  const ipIdsList  = values.ipIds ? values.ipIds.split(',').map((s) => s.trim()).filter(Boolean) : [];
+  const ipNamesList = values.productTitle ? values.productTitle.split(', ') : [];
+  const ipMasterKeys = new Set(ipTitleItems.map((t) => t.ipId));
+  const ipFallbackLabels: Record<string, string> = {};
+  ipIdsList.forEach((id, i) => {
+    if (!ipMasterKeys.has(id)) {
+      ipFallbackLabels[id] = ipNamesList[i] ?? id;
+    }
+  });
 
   return (
     <>
@@ -246,10 +267,17 @@ export function LeadEditorPage({ mode, canEdit, repository }: Props) {
             disabled={!editable || !optionsReady}
           />
 
-          <TextField
-            label={leadsCopy.form.productTitle}
-            value={values.productTitle}
-            onChange={(event) => updateValue('productTitle', event.target.value)}
+          <MultiSelect<IpTitle>
+            label={leadsCopy.form.ipTitles}
+            items={[...ipTitleItems]}
+            getKey={(t) => t.ipId}
+            getLabel={(t) => t.name}
+            values={ipIdsList}
+            onChange={(next) => handleIpIdsChange(next, ipFallbackLabels)}
+            fallbackLabels={ipFallbackLabels}
+            getRemoveLabel={leadsCopy.form.removeIpTitle}
+            placeholder={leadsCopy.form.ipTitlesPlaceholder}
+            noResultsText={leadsCopy.form.ipTitlesNoResults}
             width="md"
             disabled={!editable}
           />
