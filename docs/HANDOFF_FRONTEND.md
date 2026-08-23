@@ -1,7 +1,7 @@
 # フロントエンド引き継ぎドキュメント
 
 > 作成: 2026-08-15  
-> 最終更新: 2026-08-19（PR #259 マージ後の状態に更新）  
+> 最終更新: 2026-08-23（PR #391 / #390 マージ後：一覧ページ作成手順を追記）  
 > 対象リポジトリ: GEN-RYU-System/crm-app（develop ブランチ）  
 > すべて実測値。推測が混じる箇所は【推測】と明記する。
 
@@ -461,3 +461,55 @@ React側で機能を実装
 - **権限制御**: 発行後の編集可否など、画面ごとのビジネスルールが異なる
 
 理由: 画面ごとの分岐を共通部品に持ち込むと、片方の修正でもう片方が壊れるリスクが高まる。
+
+---
+
+## 14. 新しい一覧ページを作る時の手順
+
+### GAS 側
+
+1. **キャッシュに `readCacheChunks_` / `writeCacheChunks_` を使う**
+   GAS の `CacheService` は 100KB 上限があるため、90,000 文字チャンクに分割するユーティリティを使う（`src/00_CacheChunks.js`）。
+
+2. **書き込みがあれば `withSheetWrite_` で包む**
+   ロック（`LockService`）とキャッシュ削除を一括で行うユーティリティ（`src/00_SheetWrite.js`）。
+   `useLock: true` と `cacheTargets` を指定すること。
+
+3. **対象シートに数式列がないか `getFormulas()` で実測する**
+   数式列が存在しない場合は `setValues([rowValues])` 1回にまとめてよい。
+   数式列がある場合は `setValue` のセル単位書き込みに留める（`setValues` で数式が上書きされるため）。
+
+### フロント側
+
+4. **`createListCache` を使う（独自実装しない）**
+   `frontend/src/app/createListCache.tsx` のファクトリを使う。
+   `statusOptions` など追加データが必要な場合は `OrderListCacheContext` の `SymbolMapContext` パターンで別 Context に切り出す。
+
+5. **`App.tsx` に Provider を追加する**
+   既存の Provider チェーンの末尾に `<FooListCacheProvider>` を追加する。
+
+6. **`usePrefetch.ts` の steps に1行追加する**
+   `{ canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.foo, permissions), load: () => ensureFoo() }` を steps 配列に追加する。
+
+7. **`SyncPoller` の refreshers に1行追加する**
+   `foo: () => refreshFoo()` を refreshers オブジェクトに追加する。
+   SyncSignals にキーがない場合は、同じシートを読む既存ドメインのシグナルを共有する
+   （例: 売上オーダーは ORDERS シートを読むため `orders` シグナルを共有）。
+
+8. **`npm run check:design-system` が通ることを確認する**
+   手順 4〜7 のいずれかが漏れると CI が落ちる。
+
+```
+★ 手順 4〜7 は check-design-system.mjs が機械的に検査する。
+  漏れると CI が落ちる（PR #391 で追加）。
+```
+
+### 注意事項
+
+- **リード管理シートに数式を追加しないこと**
+  `updateLead`（`src/27_WebApp.js`）は全列を `setValues([rowValues])` で1回書き戻す。
+  数式列があると書き戻し時に上書きされて消える。
+
+- **流入元マスタ更新時のキャッシュ無効化は未実装**
+  流入元マスタ（`LEAD_SOURCES` シート）を変更しても、リード一覧のキャッシュは自動では更新されない。
+  設定ページ作成時に対応する。
