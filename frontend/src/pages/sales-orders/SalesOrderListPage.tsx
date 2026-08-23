@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { CRM_SEARCH_ICON, CRM_SORT_ICONS } from '../../app/icons';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMessage, TextField, type DataTableColumn } from '../../components/ui';
@@ -17,7 +17,11 @@ import {
 import { useSalesOrderListCache } from './SalesOrderListCacheContext';
 import './SalesOrderListPage.css';
 
-/** Renders the payment due date cell: date text with a status badge to the right when overdue or approaching. Date-only comparison, ignores time. */
+/**
+ * Renders the payment due date cell.
+ * Always uses a two-column grid (date | badge-slot) so that the date right-edge
+ * stays aligned across rows regardless of badge presence. Date-only comparison, ignores time.
+ */
 function renderPaymentDueAtCell(row: SalesOrderRow) {
   const raw = row.paymentDueAt;
   if (!raw) return '-';
@@ -29,36 +33,25 @@ function renderPaymentDueAtCell(row: SalesOrderRow) {
   const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const formatted = due.toLocaleDateString('ja-JP');
 
+  let badge: ReactNode;
   if (dueDate < todayDate) {
-    return (
-      <span className="sales-order-list-page__payment-due-cell">
-        {formatted}
-        <Badge variant="danger">{salesOrdersCopy.paymentDueBadgeOverdue}</Badge>
-      </span>
-    );
+    badge = <Badge variant="danger">{salesOrdersCopy.paymentDueBadgeOverdue}</Badge>;
+  } else if (dueDate.getTime() === todayDate.getTime()) {
+    badge = <Badge variant="warning">{salesOrdersCopy.paymentDueBadgeToday}</Badge>;
+  } else {
+    const warningDate = new Date(todayDate);
+    warningDate.setDate(todayDate.getDate() + PAYMENT_DUE_WARNING_DAYS);
+    if (dueDate <= warningDate) {
+      badge = <Badge variant="warning">{salesOrdersCopy.paymentDueBadgeTomorrow}</Badge>;
+    }
   }
 
-  if (dueDate.getTime() === todayDate.getTime()) {
-    return (
-      <span className="sales-order-list-page__payment-due-cell">
-        {formatted}
-        <Badge variant="warning">{salesOrdersCopy.paymentDueBadgeToday}</Badge>
-      </span>
-    );
-  }
-
-  const warningDate = new Date(todayDate);
-  warningDate.setDate(todayDate.getDate() + PAYMENT_DUE_WARNING_DAYS);
-  if (dueDate <= warningDate) {
-    return (
-      <span className="sales-order-list-page__payment-due-cell">
-        {formatted}
-        <Badge variant="warning">{salesOrdersCopy.paymentDueBadgeTomorrow}</Badge>
-      </span>
-    );
-  }
-
-  return formatted;
+  return (
+    <span className="sales-order-list-page__payment-due-cell">
+      {formatted}
+      <span aria-hidden={badge === undefined ? 'true' : undefined}>{badge}</span>
+    </span>
+  );
 }
 
 export function SalesOrderListPage() {
