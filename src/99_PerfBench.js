@@ -2664,3 +2664,193 @@ function surveyProductTitleColumn() {
   Logger.log(out);
   return out;
 }
+
+/**
+ * リード管理シートの「返信速度」列の実値調査。
+ * 選択肢マスタの「返信速度」5件と突き合わせ、マスタ外の値を列挙する。
+ * checkPermission を呼ばないため clasp run から実行可能。
+ */
+function surveyResponseSpeedColumn() {
+  var ss        = getSpreadsheet();
+  var leadsSheet  = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  var optSheet    = ss.getSheetByName(CONFIG.SHEETS.SETTINGS);  // 選択肢マスタ
+  if (!leadsSheet || leadsSheet.getLastRow() <= 1) return '[ERROR] リード管理シートが見つかりません';
+
+  // 選択肢マスタから「返信速度」列を取得
+  var masterOptions = [];
+  if (optSheet && optSheet.getLastRow() > 1) {
+    var optData = optSheet.getDataRange().getValues();
+    var optH    = optData[0];
+    var rsIdx   = optH.indexOf('返信速度');
+    if (rsIdx >= 0) {
+      for (var r = 1; r < optData.length; r++) {
+        var v = String(optData[r][rsIdx] != null ? optData[r][rsIdx] : '').trim();
+        if (v) masterOptions.push(v);
+      }
+    }
+  }
+  var masterSet = {};
+  masterOptions.forEach(function(v) { masterSet[v] = true; });
+
+  // リード管理シートの「返信速度」列を集計
+  var leadsData = leadsSheet.getDataRange().getValues();
+  var leadsH    = leadsData[0];
+  var colIdx    = leadsH.indexOf('返信速度');
+  if (colIdx < 0) return '[ERROR] 返信速度列が見つかりません';
+
+  var valueCounts  = {};
+  var outOfMaster  = {};
+  var emptyCount   = 0;
+
+  for (var i = 1; i < leadsData.length; i++) {
+    var raw = leadsData[i][colIdx];
+    var val = String(raw != null ? raw : '').trim();
+    if (!val) { emptyCount++; continue; }
+    valueCounts[val] = (valueCounts[val] || 0) + 1;
+    if (!masterSet[val]) outOfMaster[val] = (outOfMaster[val] || 0) + 1;
+  }
+
+  var out = JSON.stringify({
+    選択肢マスタ_返信速度: masterOptions,
+    総データ行数:   leadsData.length - 1,
+    空欄行数:       emptyCount,
+    非空欄行数:     (leadsData.length - 1) - emptyCount,
+    マスタ外の値:   outOfMaster,
+    値の分布:       valueCounts
+  }, null, 2);
+  Logger.log(out);
+  return out;
+}
+
+/**
+ * リード管理シートの「国」列の実値調査。
+ * 国マスタ250件と突き合わせ、マスタ外の値を列挙する。
+ * checkPermission を呼ばないため clasp run から実行可能。
+ */
+function surveyCountryColumn() {
+  var ss         = getSpreadsheet();
+  var leadsSheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
+  var countrySheet = ss.getSheetByName('国マスタ');
+  if (!leadsSheet || leadsSheet.getLastRow() <= 1) return '[ERROR] リード管理シートが見つかりません';
+
+  // 国マスタから有効な国名を取得
+  var masterNames = [];
+  if (countrySheet && countrySheet.getLastRow() > 1) {
+    var cData    = countrySheet.getDataRange().getValues();
+    var cH       = cData[0];
+    var nameIdx  = cH.indexOf('国名（表示）');
+    var validIdx = cH.indexOf('有効');
+    if (nameIdx >= 0) {
+      for (var r = 1; r < cData.length; r++) {
+        var name  = String(cData[r][nameIdx] != null ? cData[r][nameIdx] : '').trim();
+        var valid = validIdx < 0 || String(cData[r][validIdx] || '').toUpperCase() !== 'FALSE';
+        if (name && valid) masterNames.push(name);
+      }
+    }
+  }
+  var masterSet = {};
+  masterNames.forEach(function(n) { masterSet[n] = true; });
+
+  // リード管理シートの「国」列を集計
+  var leadsData = leadsSheet.getDataRange().getValues();
+  var leadsH    = leadsData[0];
+  var colIdx    = leadsH.indexOf('国');
+  if (colIdx < 0) return '[ERROR] 国列が見つかりません';
+
+  var valueCounts = {};
+  var outOfMaster = {};
+  var emptyCount  = 0;
+
+  for (var i = 1; i < leadsData.length; i++) {
+    var raw = leadsData[i][colIdx];
+    var val = String(raw != null ? raw : '').trim();
+    if (!val) { emptyCount++; continue; }
+    valueCounts[val] = (valueCounts[val] || 0) + 1;
+    if (!masterSet[val]) outOfMaster[val] = (outOfMaster[val] || 0) + 1;
+  }
+
+  var out = JSON.stringify({
+    国マスタ件数:  masterNames.length,
+    総データ行数:  leadsData.length - 1,
+    空欄行数:      emptyCount,
+    非空欄行数:    (leadsData.length - 1) - emptyCount,
+    マスタ外の値:  outOfMaster,
+    値の分布:      valueCounts
+  }, null, 2);
+  Logger.log(out);
+  return out;
+}
+
+/**
+ * getLeadFormOptions が返す JSON のサイズを実測する。
+ * checkPermission を呼ばないため clasp run から実行可能。
+ */
+function benchLeadFormOptionsJson() {
+  var ss       = getSpreadsheet();
+  var optSheet = ss.getSheetByName(CONFIG.SHEETS.SETTINGS);  // 選択肢マスタ
+  var countrySheet = ss.getSheetByName('国マスタ');
+  var CHUNK    = 90000;
+
+  // 選択肢マスタ → leadTypes / responseSpeeds
+  var leadTypes     = [];
+  var responseSpeeds = [];
+  if (optSheet && optSheet.getLastRow() > 1) {
+    var optData = optSheet.getDataRange().getValues();
+    var optH    = optData[0];
+    var ltIdx   = optH.indexOf('リード種別');
+    var rsIdx   = optH.indexOf('返信速度');
+    for (var r = 1; r < optData.length; r++) {
+      if (ltIdx >= 0) {
+        var lt = String(optData[r][ltIdx] != null ? optData[r][ltIdx] : '').trim();
+        if (lt) leadTypes.push(lt);
+      }
+      if (rsIdx >= 0) {
+        var rs = String(optData[r][rsIdx] != null ? optData[r][rsIdx] : '').trim();
+        if (rs) responseSpeeds.push(rs);
+      }
+    }
+  }
+
+  // 国マスタ → countries
+  var countries = [];
+  if (countrySheet && countrySheet.getLastRow() > 1) {
+    var cData    = countrySheet.getDataRange().getValues();
+    var cH       = cData[0];
+    var nameIdx  = cH.indexOf('国名（表示）');
+    var codeIdx  = cH.indexOf('国番号');
+    var stateIdx = cH.indexOf('州必須');
+    var postalIdx = cH.indexOf('郵便番号必須');
+    var validIdx = cH.indexOf('有効');
+    if (nameIdx >= 0) {
+      for (var ci = 1; ci < cData.length; ci++) {
+        var name  = String(cData[ci][nameIdx] != null ? cData[ci][nameIdx] : '').trim();
+        var valid = validIdx < 0 || String(cData[ci][validIdx] || '').toUpperCase() !== 'FALSE';
+        if (!name || !valid) continue;
+        countries.push({
+          name:          name,
+          dialCode:      codeIdx  >= 0 ? String(cData[ci][codeIdx]  || '').trim() : '',
+          stateRequired:  stateIdx  >= 0 && String(cData[ci][stateIdx]  || '').toUpperCase() === 'TRUE',
+          postalRequired: postalIdx >= 0 && String(cData[ci][postalIdx] || '').toUpperCase() === 'TRUE'
+        });
+      }
+    }
+  }
+
+  var payload  = { leadTypes: leadTypes, responseSpeeds: responseSpeeds, countries: countries };
+  var jsonStr  = JSON.stringify(payload);
+  var jsonLen  = jsonStr.length;
+  var chunks   = Math.ceil(jsonLen / CHUNK);
+
+  var out = JSON.stringify({
+    leadTypes件数:      leadTypes.length,
+    leadTypes値:        leadTypes,
+    responseSpeeds件数: responseSpeeds.length,
+    responseSpeeds値:   responseSpeeds,
+    countries件数:      countries.length,
+    JSON文字数:         jsonLen,
+    チャンク数_90000字: chunks,
+    上限超過_90000:     jsonLen > CHUNK
+  }, null, 2);
+  Logger.log(out);
+  return out;
+}
