@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Card, EmptyState, LineItemEditor, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField } from '../../components/ui';
+import { Button, Card, EmptyState, LineItemEditor, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField, TwoColumnLayout } from '../../components/ui';
 import { quotesCopy } from '../../content/ja';
 import { createCoreQuote, getCoreQuoteDetail, getCoreCurrencies, getInventoryProductOptions, getLeadOptionsForFrontend, updateCoreQuote, type CurrencyRecord, type InventoryProductOption, type LeadOption } from '../../gas/client';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
@@ -11,6 +11,30 @@ import './QuoteEditorPage.css';
 type Props = { mode: 'create' | 'detail'; canEdit: boolean };
 type DetailState = 'loading' | 'ready' | 'missing' | 'error';
 type SavingState = 'idle' | 'draft' | 'issued';
+
+/** Calculate subtotal for a single line item (quantity x unit price). */
+function calcLineSubtotal(quantity: string, unitPrice: string): number | null {
+  const qty = Number(toHalfwidthDigits(quantity));
+  const price = Number(toHalfwidthDigits(unitPrice));
+  return Number.isFinite(qty) && Number.isFinite(price) ? qty * price : null;
+}
+
+/** Calculate quote total: line subtotal + shipping fee - discount. */
+function calcQuoteTotal(
+  lines: QuoteLineEditorValues[],
+  shippingFee: string,
+  discount: string,
+): number | null {
+  const lineTotal = lines.reduce<number | null>((sum, line) => {
+    const sub = calcLineSubtotal(line.quantity, line.unitPrice);
+    if (sub === null || sum === null) return null;
+    return sum + sub;
+  }, 0);
+  if (lineTotal === null) return null;
+  const fee = Number(toHalfwidthDigits(shippingFee)) || 0;
+  const disc = Number(toHalfwidthDigits(discount)) || 0;
+  return lineTotal + fee - disc;
+}
 
 export function QuoteEditorPage({ mode, canEdit }: Props) {
   const navigate = useNavigate();
@@ -26,6 +50,11 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
   const [inventoryProducts, setInventoryProducts] = useState<InventoryProductOption[]>([]);
   const [lineErrors, setLineErrors] = useState<Map<number, string>>(new Map());
   const [inventoryError, setInventoryError] = useState('');
+  const [quoteMetaInfo, setQuoteMetaInfo] = useState<{
+    quoteId: string;
+    issuedDate: string;
+    expiryDate: string;
+  } | null>(null);
 
   // Derive conditions from the prefetched inventory cache (no GAS call needed).
   const conditionsMap = useInventoryConditionsMap();
@@ -54,6 +83,15 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
     void getCoreQuoteDetail(quoteId).then((record) => {
       if (!record) { setDetailState('missing'); return; }
       setValues(toQuoteEditorValues(record));
+      // Store meta info for right column display
+      const q = record.quote;
+      if (q.quoteId || q.issuedDate || q.expiryDate) {
+        setQuoteMetaInfo({
+          quoteId: q.quoteId,
+          issuedDate: q.issuedDate,
+          expiryDate: q.expiryDate,
+        });
+      }
       setDetailState('ready');
     }).catch((cause) => {
       setLoadError(cause instanceof Error ? cause.message : quotesCopy.editor.loadError);
@@ -227,6 +265,153 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
     conditionOptionLabel: quotesCopy.editor.form.lineConditionOptionLabel,
   };
 
+  const quoteTotal = calcQuoteTotal(values.lines, values.shippingFee, values.discount);
+
+  /** Right column: quote meta info and amount summary */
+  const rightColumn = (
+    <div className="quote-editor-page__right-panel">
+      {/* Detail mode only: quote ID / issued date / expiry date */}
+      {mode === 'detail' && quoteMetaInfo && (
+        <>
+          <div className="quote-editor-page__right-section">
+            <h2 className="quote-editor-page__right-heading">{quotesCopy.detail.title}</h2>
+            <dl className="quote-editor-page__meta-list">
+              {quoteMetaInfo.quoteId && (
+                <>
+                  <dt className="quote-editor-page__meta-label">{quotesCopy.columns.quoteId}</dt>
+                  <dd className="quote-editor-page__meta-value">{quoteMetaInfo.quoteId}</dd>
+                </>
+              )}
+              {quoteMetaInfo.issuedDate && (
+                <>
+                  <dt className="quote-editor-page__meta-label">{quotesCopy.detail.issuedDate}</dt>
+                  <dd className="quote-editor-page__meta-value">{quoteMetaInfo.issuedDate}</dd>
+                </>
+              )}
+              {quoteMetaInfo.expiryDate && (
+                <>
+                  <dt className="quote-editor-page__meta-label">{quotesCopy.detail.expiryDate}</dt>
+                  <dd className="quote-editor-page__meta-value">{quoteMetaInfo.expiryDate}</dd>
+                </>
+              )}
+            </dl>
+          </div>
+          <hr className="quote-editor-page__divider" />
+        </>
+      )}
+
+      {/* Amount summary */}
+      <div className="quote-editor-page__right-section">
+        <h2 className="quote-editor-page__right-heading">{quotesCopy.detail.lines}</h2>
+        <div className="quote-editor-page__amount-form">
+          <TextField
+            label={quotesCopy.editor.form.shippingFee}
+            value={values.shippingFee}
+            onChange={(e) => updateValue('shippingFee', e.target.value)}
+            width="sm"
+            disabled={!editable}
+          />
+          <TextField
+            label={quotesCopy.editor.form.discount}
+            value={values.discount}
+            onChange={(e) => updateDiscount(e.target.value)}
+            placeholder={quotesCopy.editor.form.discountPlaceholder}
+            width="sm"
+            disabled={!editable}
+          />
+        </div>
+      </div>
+
+      <hr className="quote-editor-page__divider" />
+
+      {/* Quote total */}
+      <div className="quote-editor-page__right-section">
+        <div className="quote-editor-page__total-row">
+          <span className="quote-editor-page__total-label">{quotesCopy.detail.totalAmount}</span>
+          <span className="quote-editor-page__total-value">
+            {quoteTotal != null ? quoteTotal.toLocaleString() : '—'}
+          </span>
+        </div>
+      </div>
+
+      <hr className="quote-editor-page__divider" />
+
+      {/* Currency */}
+      <div className="quote-editor-page__right-section">
+        <div className="quote-editor-page__amount-form">
+          <Select
+            label={quotesCopy.editor.form.currency}
+            options={currencyOptions}
+            value={values.currency}
+            onChange={(e) => updateValue('currency', e.target.value)}
+            width="sm"
+            disabled={!editable}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  /** Left column: lead selection, line items, memo */
+  const leftColumn = (
+    <>
+      {/* Lead selection section */}
+      <Card>
+        <div className="quote-editor-page__form">
+          <LeadCombobox
+            leads={leads}
+            value={values.leadId}
+            onChange={(leadId) => updateValue('leadId', leadId)}
+            label={quotesCopy.editor.form.leadId}
+            placeholder={quotesCopy.editor.form.leadPlaceholder}
+            noResultsText={quotesCopy.editor.form.leadNoResults}
+            width="md"
+            required
+            disabled={!editable}
+          />
+        </div>
+      </Card>
+
+      {/* Line items section */}
+      <Card>
+        <div className="quote-editor-page__lines-header">
+          <h2 className="quote-editor-page__section-title">{quotesCopy.editor.form.lines}</h2>
+          {editable && (
+            <Button variant="outline" size="sm" onClick={addLine}>
+              {quotesCopy.editor.form.addLine}
+            </Button>
+          )}
+        </div>
+        <LineItemEditor
+          products={inventoryProducts}
+          lines={values.lines}
+          conditionsMap={conditionsMap}
+          onProductSelect={handleProductSelect}
+          onConditionSelect={handleConditionSelect}
+          onQuantityChange={handleQuantityChange}
+          onUnitPriceChange={(index, value) => updateLine(index, 'unitPrice', value)}
+          onRemove={removeLine}
+          lineErrors={lineErrors}
+          disabled={!editable}
+          labels={lineItemLabels}
+        />
+      </Card>
+
+      {/* Memo / notes section */}
+      <Card>
+        <div className="quote-editor-page__form">
+          <Textarea
+            label={quotesCopy.editor.form.note}
+            value={values.note}
+            onChange={(e) => updateValue('note', e.target.value)}
+            disabled={!editable}
+            fullWidth
+          />
+        </div>
+      </Card>
+    </>
+  );
+
   return (
     <>
       <PageHeader
@@ -272,76 +457,7 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
       {isLoading ? (
         <Card><Skeleton variant="list" rows={6} label={quotesCopy.detailLoading} /></Card>
       ) : (
-        <>
-          <Card>
-            <div className="quote-editor-page__form">
-              <LeadCombobox
-                leads={leads}
-                value={values.leadId}
-                onChange={(leadId) => updateValue('leadId', leadId)}
-                label={quotesCopy.editor.form.leadId}
-                placeholder={quotesCopy.editor.form.leadPlaceholder}
-                noResultsText={quotesCopy.editor.form.leadNoResults}
-                width="md"
-                required
-                disabled={!editable}
-              />
-              <Select
-                label={quotesCopy.editor.form.currency}
-                options={currencyOptions}
-                value={values.currency}
-                onChange={(e) => updateValue('currency', e.target.value)}
-                width="sm"
-                disabled={!editable}
-              />
-              <TextField
-                label={quotesCopy.editor.form.shippingFee}
-                value={values.shippingFee}
-                onChange={(e) => updateValue('shippingFee', e.target.value)}
-                width="sm"
-                disabled={!editable}
-              />
-              <TextField
-                label={quotesCopy.editor.form.discount}
-                value={values.discount}
-                onChange={(e) => updateDiscount(e.target.value)}
-                placeholder={quotesCopy.editor.form.discountPlaceholder}
-                width="sm"
-                disabled={!editable}
-              />
-              <Textarea
-                label={quotesCopy.editor.form.note}
-                value={values.note}
-                onChange={(e) => updateValue('note', e.target.value)}
-                disabled={!editable}
-              />
-            </div>
-          </Card>
-
-          <Card>
-            <div className="quote-editor-page__lines-header">
-              <h2 className="quote-editor-page__section-title">{quotesCopy.editor.form.lines}</h2>
-              {editable && (
-                <Button variant="outline" size="sm" onClick={addLine}>
-                  {quotesCopy.editor.form.addLine}
-                </Button>
-              )}
-            </div>
-            <LineItemEditor
-              products={inventoryProducts}
-              lines={values.lines}
-              conditionsMap={conditionsMap}
-              onProductSelect={handleProductSelect}
-              onConditionSelect={handleConditionSelect}
-              onQuantityChange={handleQuantityChange}
-              onUnitPriceChange={(index, value) => updateLine(index, 'unitPrice', value)}
-              onRemove={removeLine}
-              lineErrors={lineErrors}
-              disabled={!editable}
-              labels={lineItemLabels}
-            />
-          </Card>
-        </>
+        <TwoColumnLayout left={leftColumn} right={rightColumn} />
       )}
     </>
   );
