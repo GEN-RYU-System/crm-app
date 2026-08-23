@@ -418,9 +418,12 @@ function getLeads(filter, leadType) {
   const statusIdx = headers.indexOf('リードステータス');
   const archivedAtIdx = headers.indexOf('アーカイブ日');
   const sourceIdIdx = headers.indexOf('流入元ID');
+  const ipIdsIdx    = headers.indexOf('作品ID');
 
   // 流入元ID → 名称変換マップ（流入元ID列が存在する場合のみ取得）
-  const sourceIdMap = sourceIdIdx >= 0 ? getLeadSourceIdMap_() : {};
+  const sourceIdMap  = sourceIdIdx >= 0 ? getLeadSourceIdMap_()  : {};
+  // 作品ID → 表示名変換マップ（作品ID列が存在する場合のみ取得）
+  const ipMasterMap  = ipIdsIdx    >= 0 ? getIpMasterMap_()      : {};
 
   console.log('getLeads: typeIdx=' + typeIdx + ', statusIdx=' + statusIdx);
   console.log('getLeads: LEAD_STATUSES=' + JSON.stringify(CONFIG.LEAD_STATUSES));
@@ -492,6 +495,22 @@ function getLeads(filter, leadType) {
       }
     }
 
+    // 作品ID → 取り扱いタイトル（名称）変換（移行期互換ルール）
+    // - 作品IDが入っている行: マスタから名称に変換して取り扱いタイトルフィールドを上書き
+    //   表示名は別名優先、空の場合は作品名（在庫ページのタブと同じ規則）
+    //   カンマ+空白で再結合（例: "ポケモン, ワンピース"）
+    // - 作品IDが空欄の行: 取り扱いタイトル列の値をそのまま返す（未変換分）
+    if (ipIdsIdx >= 0) {
+      const rawIds = String(lead['作品ID'] || '').trim();
+      if (rawIds) {
+        const names = rawIds.split(',').map(function(id) {
+          const trimmed = id.trim();
+          return ipMasterMap[trimmed] || trimmed;
+        });
+        lead['取り扱いタイトル'] = names.join(', ');
+      }
+    }
+
     leads.push(lead);
   }
 
@@ -522,6 +541,12 @@ const LEAD_SOURCES_CACHE_INDEX      = 'LEAD_SOURCES_CACHE_INDEX';
 const LEAD_SOURCES_CACHE_PREFIX     = 'LEAD_SOURCES_CACHE_';
 const LEAD_SOURCES_CACHE_TTL        = 600;
 const LEAD_SOURCES_CACHE_CHUNK_SIZE = 90000;
+
+// ─── 作品マスタキャッシュ定数 ────────────────────────────────────────────────
+const IP_MASTER_CACHE_INDEX      = 'IP_MASTER_CACHE_INDEX';
+const IP_MASTER_CACHE_PREFIX     = 'IP_MASTER_CACHE_';
+const IP_MASTER_CACHE_TTL        = 600;
+const IP_MASTER_CACHE_CHUNK_SIZE = 90000;
 
 /**
  * 流入元マスタから source_id → 名称 のマップを返す（キャッシュ対応、TTL 600秒）。
@@ -559,6 +584,48 @@ function getLeadSourceIdMap_() {
 
   writeCacheChunks_(LEAD_SOURCES_CACHE_INDEX, LEAD_SOURCES_CACHE_PREFIX, idMap, LEAD_SOURCES_CACHE_TTL, LEAD_SOURCES_CACHE_CHUNK_SIZE);
   return idMap;
+}
+
+/**
+ * 作品マスタ_共用在庫から ip_id → 表示名 のマップを返す（キャッシュ対応、TTL 600秒）。
+ * 表示名は別名優先、空の場合は作品名（在庫ページのタブと同じ規則）。
+ * キャッシュヒット時はシートを読まない。
+ *
+ * @returns {Object.<string, string>}  例: { IP001: 'ポケモン', IP002: 'ワンピース', ... }
+ */
+function getIpMasterMap_() {
+  const cached = readCacheChunks_(IP_MASTER_CACHE_INDEX, IP_MASTER_CACHE_PREFIX);
+  if (cached !== null) return cached;
+
+  const ss    = getSpreadsheet();
+  const sheet = ss.getSheetByName('作品マスタ_共用在庫');
+
+  if (!sheet || sheet.getLastRow() <= 1) {
+    writeCacheChunks_(IP_MASTER_CACHE_INDEX, IP_MASTER_CACHE_PREFIX, {}, IP_MASTER_CACHE_TTL, IP_MASTER_CACHE_CHUNK_SIZE);
+    return {};
+  }
+
+  const data     = sheet.getDataRange().getValues();
+  const headers  = data[0].map(String);
+  const ipIdIdx  = headers.indexOf('ip_id');
+  const nameIdx  = headers.indexOf('作品名');
+  const aliasIdx = headers.indexOf('別名');
+
+  if (ipIdIdx < 0 || nameIdx < 0) {
+    writeCacheChunks_(IP_MASTER_CACHE_INDEX, IP_MASTER_CACHE_PREFIX, {}, IP_MASTER_CACHE_TTL, IP_MASTER_CACHE_CHUNK_SIZE);
+    return {};
+  }
+
+  const ipMap = {};
+  for (let i = 1; i < data.length; i++) {
+    const id    = String(data[i][ipIdIdx]  || '').trim();
+    const name  = String(data[i][nameIdx]  || '').trim();
+    const alias = aliasIdx >= 0 ? String(data[i][aliasIdx] || '').trim() : '';
+    if (id) ipMap[id] = alias || name;
+  }
+
+  writeCacheChunks_(IP_MASTER_CACHE_INDEX, IP_MASTER_CACHE_PREFIX, ipMap, IP_MASTER_CACHE_TTL, IP_MASTER_CACHE_CHUNK_SIZE);
+  return ipMap;
 }
 
 /**
