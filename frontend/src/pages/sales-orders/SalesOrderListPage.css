@@ -9,4 +9,4 @@
 .sales-order-list-page__main { flex: 1; min-width: 0; }
 .sales-order-list-page__data-card { border-radius: var(--radius-data-table); overflow: hidden; padding: var(--space-none); }
 .sales-order-list-page__data-state { padding: var(--space-xl); }
-.sales-order-list-page__payment-due-cell { display: inline-flex; align-items: center; gap: var(--space-xs); }
+.sales-order-list-page__payment-due-cell { --_badge-col: 5rem; display: inline-grid; grid-template-columns: max-content var(--_badge-col); align-items: center; gap: var(--space-xs); }
