@@ -19,8 +19,8 @@ import './SalesOrderListPage.css';
 
 /**
  * Renders the payment due date cell.
- * Always uses a two-column grid (date | badge-slot) so that the date right-edge
- * stays aligned across rows regardless of badge presence. Date-only comparison, ignores time.
+ * Uses a three-column grid (spacer | date | badge-slot) so that the date stays
+ * centered in the column regardless of badge presence. Date-only comparison, ignores time.
  */
 function renderPaymentDueAtCell(row: SalesOrderRow) {
   const raw = row.paymentDueAt;
@@ -48,8 +48,9 @@ function renderPaymentDueAtCell(row: SalesOrderRow) {
 
   return (
     <span className="sales-order-list-page__payment-due-cell">
-      {formatted}
-      <span aria-hidden={badge === undefined ? 'true' : undefined}>{badge}</span>
+      <span aria-hidden="true" />
+      <span>{formatted}</span>
+      <span className="sales-order-list-page__payment-due-badge-slot" aria-hidden={badge === undefined ? 'true' : undefined}>{badge}</span>
     </span>
   );
 }

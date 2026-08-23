@@ -583,8 +583,59 @@ git revert e0eafe480182d5450d0134b048ce2e33ab4a4723
 
 - `npm run build:gas` 通過（typecheck + vite build + emit-gas-html + design-system check）
 - `clasp run runCoreSchemaConformanceAudit` → 総不一致 **0**（GAS 変更なし）
-- CI: PR #396 で確認予定
-- PO 実機確認待ち: OD-00175/176/177 の日付右端が縦一直線に揃っていること
+- CI: PASS（deploy-dev.yml: success）
+- PO 実機確認: OD-00175/176/177 の日付右端が縦一直線に揃っていることを確認済み
+
+### マージコミット SHA
+
+457ef47f394b748ce875fd2f050cc1e29c788a44
+
+### 戻し方
+
+```
+git revert 457ef47f394b748ce875fd2f050cc1e29c788a44
+```
+
+---
+
+## 【16】支払期日セルのレイアウト調整（日付を列中央に配置） — PR #399
+
+**実施日時**: 2026-08-23
+
+### 現象
+
+PR #397 で日付の右端は揃ったが、日付＋バッジの塊が列中央より左に寄って見える。
+バッジが右に付く分、全体が左にオフセットしているため。
+
+### 原因
+
+2カラムグリッド `max-content var(--_badge-col)` では、日付とバッジの合計幅が
+列内で中央揃えされる。日付単体ではなく塊全体が中央になるため、
+バッジのない行と位置が揃わない（日付が左に見える）。
+
+### 修正
+
+3カラムグリッド `var(--_badge-col) 1fr var(--_badge-col)` に変更。
+
+| カラム | 内容 | 備考 |
+|--------|------|------|
+| 1列目 | 空スペーサー（aria-hidden） | 常に確保 |
+| 2列目 | 日付テキスト | 1fr → コンテンツ幅 |
+| 3列目 | バッジスロット（justify-self: end） | バッジなし時も5rem確保 |
+
+3カラムが対称（左右とも `--_badge-col: 5rem`）なため、
+1fr 列の日付が常にセル全体の中央に配置される。
+
+**変更ファイル（frontend 2ファイル）:**
+- `frontend/src/pages/sales-orders/SalesOrderListPage.css` — grid-template-columns 変更 + badge-slot クラス追加
+- `frontend/src/pages/sales-orders/SalesOrderListPage.tsx` — 先頭スペーサー追加・badge-slot クラス付与
+
+### 検証結果
+
+- `npm run build:gas` 通過（typecheck + vite build + emit-gas-html + design-system check）
+- `clasp run runCoreSchemaConformanceAudit` → 総不一致 **0**（GAS 変更なし）
+- CI: PR #399 で確認予定
+- PO 実機確認待ち: OD-00175/176/177 の日付が列中央に揃い、バッジが列右端に揃っていること
 
 ### マージコミット SHA
 
