@@ -54,8 +54,9 @@ function doGet(e) {
   }
 
   // Discord OAuth コールバック（Botサーバー招待後のリダイレクト受信）
-  // state パラメータが存在する場合はDiscordからのコールバックと判断する
-  if (params.state) {
+  // state と guild_id の両方が存在する場合にDiscordからのコールバックと判断する
+  // state のみでは将来別機能が state を使う場合に衝突するリスクがある
+  if (params.state && params.guild_id) {
     return handleDiscordOAuthCallback(params);
   }
 
