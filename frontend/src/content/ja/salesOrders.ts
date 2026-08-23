@@ -119,5 +119,14 @@ export const salesOrdersCopy = {
     sectionPaymentSummary: '支払いサマリ',
     sectionDestinations: '配送先 / 請求先',
     sectionAmountDetail: '金額詳細',
+    // 入金確認ダイアログ
+    confirmPaymentTitle: '入金確認',
+    confirmPaymentBody: (invoiceNumber: string, customerName: string, total: string) =>
+      `以下の受注の入金を確認します。\n請求書番号: ${invoiceNumber}\n顧客名: ${customerName}\n請求総額: ${total}`,
+    confirmPaymentConfirm: '確定',
+    confirmPaymentCancel: 'キャンセル',
+    confirmPaymentSuccess: '入金を確認しました。',
+    confirmPaymentErrorInvalidStatus: '支払い待ち状態の受注にのみ入金確認できます。',
+    confirmPaymentErrorGeneric: '入金確認に失敗しました。',
   },
 } as const;
