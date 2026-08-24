@@ -6,6 +6,13 @@
 import { ISSUER_HEADER } from '../content/ja/issuer';
 
 const MOCK_SESSION_ID = 'preview-mock-session';
+const mockCallCounts: Record<string, number> = {};
+
+type PreviewWindow = Window & { __gasMockCallCounts?: Readonly<Record<string, number>> };
+
+function recordMockCall(functionName: string): void {
+  mockCallCounts[functionName] = (mockCallCounts[functionName] ?? 0) + 1;
+}
 
 export const PREVIEW_SESSION_ID = MOCK_SESSION_ID;
 
@@ -344,7 +351,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     },
     checkSyncSignals(_s: string | null) { succeed(MOCK_SYNC_SIGNALS); },
     getLeadFormOptions(_s: string | null) {
-      succeed({ leadTypes: [], responseSpeeds: [], countries: [] });
+      succeed({ leadTypes: [], responseSpeeds: [], countries: [], leadSources: [] });
     },
     getCoreIssuerForFrontend(_s: string | null) {
       succeed({
@@ -410,7 +417,16 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     },
   };
 
-  return chain;
+  return new Proxy(chain, {
+    get(target, property, receiver) {
+      const value = Reflect.get(target, property, receiver);
+      if (typeof property !== 'string' || typeof value !== 'function' || property === 'withSuccessHandler' || property === 'withFailureHandler') return value;
+      return (...args: unknown[]) => {
+        recordMockCall(property);
+        return value.apply(target, args);
+      };
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -418,10 +434,13 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
 // ---------------------------------------------------------------------------
 
 export function installGASMock(): void {
+  for (const name of Object.keys(mockCallCounts)) delete mockCallCounts[name];
   sessionStorage.setItem('crm_session_id', MOCK_SESSION_ID);
   const runner = buildChain(
     () => { /* default no-op success */ },
     () => { /* default no-op error */ },
   );
-  (window as Window & { google?: unknown }).google = { script: { run: runner } };
+  const previewWindow = window as PreviewWindow & { google?: unknown };
+  previewWindow.__gasMockCallCounts = mockCallCounts;
+  previewWindow.google = { script: { run: runner } };
 }
