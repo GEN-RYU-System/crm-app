@@ -112,6 +112,12 @@ second: getLeadDetail = 1
 PASS: detail reopen did not issue another getLeadDetail call
 ```
 
+### PR / revert / deploy
+
+- PR #507 を squash merge。マージコミット SHA: `e459264a0a47d897191198b7ce508aac41c05fb7`。
+- 戻し方: `git revert e459264a0a47d897191198b7ce508aac41c05fb7`
+- Deploy to DEV run `32778593946` は成功。`getDeployedSha` 生出力の SHA は同じ `e459264a0a47d897191198b7ce508aac41c05fb7`。
+
 ---
 
 ## 【発行元マスタseed匿名化】公開記載ルール準拠 — PR #493
