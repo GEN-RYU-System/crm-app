@@ -61,7 +61,7 @@ var CORE_ORDER_UPDATE_CACHE_TARGETS = [
  * }} orderData
  * @returns {{ success: true, orderId: string }}
  */
-function updateCoreOrderForFrontend(sessionId, orderId, orderData) {
+function updateCoreOrderForFrontend(sessionId, orderId, orderData, isDraft) {
   setEmailFromSession(sessionId);
   checkPermission('deal_edit');
 
@@ -77,6 +77,16 @@ function updateCoreOrderForFrontend(sessionId, orderId, orderData) {
   // 既存の請求書発行日を確認
   var invoiceIssuedAt = existing.INVOICE_ISSUED_AT;
   var isInvoiceIssued = invoiceIssuedAt !== '' && invoiceIssuedAt !== null && invoiceIssuedAt !== undefined;
+  var shouldIssue = isDraft === false && !isInvoiceIssued;
+  var issuedInvoiceNumber = '';
+  if (shouldIssue) {
+    var method = coreOrderWriteValue(existing.PAYMENT_METHOD).toUpperCase();
+    if (method === 'WISE') issuedInvoiceNumber = generateNextInvoiceNumber();
+    else if (method === 'PAYPAL') {
+      issuedInvoiceNumber = coreOrderWriteValue(orderData.invoiceNumber);
+      if (!issuedInvoiceNumber) throw new Error('INVOICE_NUMBER_REQUIRED');
+    }
+  }
 
   // 発行後の金額系フィールドを禁止する
   if (isInvoiceIssued) {
@@ -199,6 +209,10 @@ function updateCoreOrderForFrontend(sessionId, orderId, orderData) {
       if (orderData.internalNote      !== undefined) setOrderCell('INTERNAL_NOTE',         coreOrderWriteValue(orderData.internalNote));
       if (orderData.cancellationReason !== undefined) setOrderCell('CANCELLATION_REASON',  coreOrderWriteValue(orderData.cancellationReason));
       if (orderData.cancellationNote  !== undefined) setOrderCell('CANCELLATION_NOTE',     coreOrderWriteValue(orderData.cancellationNote));
+      if (shouldIssue) {
+        setOrderCell('INVOICE_ISSUED_AT', now);
+        setOrderCell('INVOICE_NUMBER', issuedInvoiceNumber);
+      }
 
       // ステータス更新
       setOrderCell('STATUS',          newOrderStatus);
