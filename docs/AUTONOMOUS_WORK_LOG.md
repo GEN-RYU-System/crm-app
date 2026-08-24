@@ -15,6 +15,21 @@
 
 ---
 
+## 【Discord連携】保存と接続確認の統合 — PR #489
+
+### 変更内容
+- Botトークンの保存と接続確認を「保存して接続」ボタンへ統合した。
+- 保存・接続成功、保存済み接続失敗、保存失敗を区別して表示するようにした。
+
+### 検証結果
+- `npm run build:gas --prefix frontend` 成功。
+- `?preview#/discord-integration` のPlaywrightで3状態を確認。
+
+### mergeCommit
+`c2075ded9152f0003d5200ea02e8a1fc5f172172`
+
+---
+
 ## 【発行元マスタseed匿名化】公開記載ルール準拠 — PR #493
 
 ### 変更内容
