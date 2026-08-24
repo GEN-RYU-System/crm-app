@@ -1038,4 +1038,4 @@ GitHub Actions 課金停止による DEV 配布失敗を、ローカル `clasp p
 - 公開後監査: `gitleaks git --log-opts="--all"` は0件、`trufflehog git file://. --no-update --only-verified` は verified/unverified とも0件。
 - 補完grepで顧客実名1件を検出（本ログの旧記載、コミット `e4e6b66e3d360ba162c8dd742d41d2ccdbe5e330`）。GitHubリポジトリは `PRIVATE` へ復帰済み。現行ファイルから実名を除去した。履歴書換えは実施しない。
 - 変更内容: 実名をID参照へ置換し、`docs/PUBLIC_READINESS_SCAN.md` を追加。
-- 戻し方: この監査PRのsquash mergeコミットを `git revert <merge-sha>` で戻す（実名の再公開はしない）。
+- 戻し方: 監査PR #462 のsquash mergeコミット `bc4453579a7f49bf3fda69b1223f0dfa4c53bc16` は `git revert bc4453579a7f49bf3fda69b1223f0dfa4c53bc16` で戻せる（実名の再公開はしない）。
