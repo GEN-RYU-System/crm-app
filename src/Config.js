@@ -10,6 +10,13 @@ function getERPEnvironment() {
   return getEnvironment();
 }
 
+/**
+ * 互換用: 旧ERPブックではなく、現在のDEVブックを返す。
+ */
+function getERPSpreadsheetId() {
+  return getRequiredSpreadsheetProperty('DEV_SPREADSHEET_ID');
+}
+
 function getRequiredSpreadsheetProperty(key) {
   const value = PropertiesService.getScriptProperties().getProperty(key);
   if (!value) throw new Error('プロパティ未設定: ' + key);
