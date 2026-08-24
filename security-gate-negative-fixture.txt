@@ -1,0 +1,3 @@
+Intentional negative test fixture for the Security Content Check.
+This reserved-domain dummy address must be rejected by the custom content gate:
+intentional-gate-test@blocked.example
