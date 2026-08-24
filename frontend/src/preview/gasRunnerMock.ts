@@ -4,6 +4,7 @@
  * Never included in production builds.
  */
 import { ISSUER_HEADER } from '../content/ja/issuer';
+import { leadsCopy } from '../content/ja/leads';
 import { NAVIGATION_BY_ID, type NavigationItemId, type NavigationPermission } from '../app/navigation';
 
 const MOCK_SESSION_ID = 'preview-mock-session';
@@ -218,6 +219,20 @@ const MOCK_LEAD_OPTIONS = [
   { leadId: 'LDI-0002', customerName: 'Preview Lead B' },
 ];
 
+const MOCK_LEAD_DETAILS: Record<string, Record<string, unknown>> = {
+  'LDI-0001': {
+    [leadsCopy.fields.leadId]: 'LDI-0001',
+    [leadsCopy.fields.customerName]: 'Preview Lead A',
+    [leadsCopy.fields.leadType]: leadsCopy.leadTypes.inbound,
+    [leadsCopy.fields.sourceId]: 'preview-source',
+    [leadsCopy.fields.source]: 'Preview Source',
+    [leadsCopy.fields.country]: 'JP',
+    [leadsCopy.fields.productTitle]: 'Preview Product',
+    [leadsCopy.fields.responseSpeed]: 'Fast',
+    [leadsCopy.fields.csMemo]: 'Preview lead detail not present in list cache.',
+  },
+};
+
 const MOCK_SYNC_SIGNALS = {
   leads: null, quotes: null, orders: null,
   inventory: null, staff: null, customers: null,
@@ -255,7 +270,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     },
     getSessionUser(_sessionId: string) { succeed(MOCK_SESSION_USER); },
     getLeadsByType(_sessionId: string | null, _leadType?: string, _force?: boolean) { succeed([]); },
-    getLeadDetail(_sessionId: string | null, _leadId: string) { succeed(null); },
+    getLeadDetail(_sessionId: string | null, leadId: string) { succeed(MOCK_LEAD_DETAILS[leadId] ?? null); },
     createLead(_sessionId: string | null, _data: unknown) { succeed({ success: true, leadId: 'LDI-NEW' }); },
     updateLead(_sessionId: string | null, _sheet: string, _leadId: string, _data: unknown) { succeed({ success: true }); },
 
