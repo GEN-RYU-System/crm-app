@@ -417,12 +417,13 @@ function insertBadgeTestData() {
   const existingLeads = getSheetDataAsObjects(leadSheet);
   const existingTestIds = existingLeads.filter(l => String(l['リードID']).startsWith('TEST-')).map(l => l['リードID']);
 
+  const leadHeaders = leadSheet.getRange(1, 1, 1, leadSheet.getLastColumn()).getDisplayValues()[0].map(String);
   testLeads.forEach(lead => {
-    if (!existingTestIds.includes(lead[0])) {
-      leadSheet.appendRow(lead);
-      Logger.log('✅ テストリード追加: ' + lead[0] + ' (' + lead[5] + ') ' + lead[19] + ' ￥' + lead[41]);
+    if (!existingTestIds.includes(lead['リードID'])) {
+      leadSheet.appendRow(convertObjectToRowArray(lead, leadHeaders));
+      Logger.log('✅ テストリード追加: ' + lead['リードID'] + ' (' + lead['顧客名'] + ') ' + lead['リード進捗'] + ' ￥' + lead['初回取引金額']);
     } else {
-      Logger.log('ℹ️ テストリードは既に存在: ' + lead[0]);
+      Logger.log('ℹ️ テストリードは既に存在: ' + lead['リードID']);
     }
   });
 
@@ -480,61 +481,58 @@ function insertBadgeTestData() {
 }
 
 /**
- * テスト用リードデータ行を作成
+ * テスト用リードデータをヘッダー名で作成する。
+ * 実シートのヘッダー順は呼出元で取得して convertObjectToRowArray に渡す。
  */
 function createTestLead(leadId, status, amount, daysAgo, staffId, customerName) {
   const now = new Date();
   const dealDate = new Date(now.getTime() + daysAgo * 24 * 60 * 60 * 1000);
   const dateStr = Utilities.formatDate(dealDate, 'Asia/Tokyo', 'yyyy/MM/dd');
 
-  // 60列のリードデータ（HEADERS.LEADS準拠）
-  const row = new Array(60).fill('');
-
-  row[0] = leadId;                        // リードID
-  row[1] = dateStr;                       // 登録日
-  row[2] = 'インバウンド';                // リード種別
-  row[3] = dateStr;                       // シート更新日
-  row[4] = 'テスト流入';                  // 流入経路
-  row[5] = customerName;                  // 顧客名
-  row[6] = 'Test Customer';               // 呼び方（英語）
-  row[7] = 'USA';                         // 国
-  row[8] = 'test@customer.com';           // メール
-  row[9] = '';                            // 電話番号
-  row[10] = 'Email';                      // 連絡手段
-  row[11] = '';                           // メッセージURL
-  row[12] = dateStr;                      // 初回接触日
-  row[13] = '高';                         // 温度感
-  row[14] = '中規模';                     // 想定規模
-  row[15] = '信頼重視';                   // 顧客タイプ
-  row[16] = '24h以内';                    // 返信速度
-  row[17] = 'テストデータ';               // CSメモ
-  row[18] = 1;                            // 問い合わせ回数
-  row[19] = status;                       // 進捗ステータス
-  row[20] = 'テスト 太郎';                // 担当者
-  row[21] = staffId;                      // 担当者ID
-  row[22] = dateStr;                      // アサイン日
-  row[23] = staffId;                      // 最終対応者ID
-  row[24] = 'A';                          // 見込度
-  row[25] = '';                           // 次回アクション
-  row[26] = '';                           // 次回アクション日
-  row[27] = 'テスト商談';                 // 商談メモ
-  row[28] = '';                           // 相手の課題
-  row[29] = 'Pokemon';                    // 取り扱いタイトル
-  row[30] = 'EC';                         // 販売形態
-  row[31] = amount;                       // 月間見込み金額
-  row[32] = amount;                       // 1回の発注金額
-  row[33] = '月1回';                      // 購入頻度
-  row[34] = 'いいえ';                     // 競合比較中
-  row[35] = '◎ 非常に良い';               // 商談の手応え
-  row[36] = '';                           // アラート確認日
-  row[37] = status === '成約' ? '成約' : ''; // 商談結果
-  row[38] = '';                           // 対象外理由
-  row[39] = '';                           // 失注理由
-  row[40] = status === '成約' ? dateStr : ''; // 初回取引日
-  row[41] = status === '成約' ? amount : 0;   // 初回取引金額
-  row[42] = status === '成約' ? amount : 0;   // 累計取引金額
-
-  return row;
+  return {
+    'リードID': leadId,
+    '登録日': dateStr,
+    '顧客名': customerName,
+    'リード進捗': status,
+    '商談結果': status === '成約' ? '成約' : '',
+    '呼び方（英語）': 'Test Customer',
+    '国': 'USA',
+    'シート更新日': dateStr,
+    'リード担当者': 'テスト 太郎',
+    'リード種別': 'インバウンド',
+    '流入経路': 'テスト流入',
+    'メッセージURL': '',
+    'CSメモ': 'テストデータ',
+    'メール': 'test@customer.com',
+    '電話番号': '',
+    '連絡手段': 'Email',
+    '温度感': '高',
+    '想定規模': '中規模',
+    '返信速度': '24h以内',
+    '問い合わせ回数': 1,
+    'アサイン日': dateStr,
+    '担当者ID': staffId,
+    '顧客タイプ': '信頼重視',
+    '最終対応者ID': staffId,
+    '見込度': 'A',
+    '次回アクション': '',
+    '次回アクション日': '',
+    '商談メモ': 'テスト商談',
+    '相手の課題': '',
+    '取り扱いタイトル': 'Pokemon',
+    '販売形態': 'EC',
+    '月間見込み金額': amount,
+    '1回の発注金額': amount,
+    '購入頻度(月次)': '月1回',
+    '競合比較中': 'いいえ',
+    '商談の手応え': '◎ 非常に良い',
+    'アラート確認日': '',
+    '対象外理由': '',
+    '失注理由': '',
+    '初回取引日': status === '成約' ? dateStr : '',
+    '初回取引金額': status === '成約' ? amount : 0,
+    '累計取引金額': status === '成約' ? amount : 0
+  };
 }
 
 /**
