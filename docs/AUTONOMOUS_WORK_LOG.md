@@ -1643,6 +1643,12 @@ Playwrightを実行できるブラウザ接続を用意し、既存 `?preview` �
 
 - マージ後のPRを `git revert <mergeCommit SHA>` で戻す。既存のSensitive Contentチェックには影響しない。
 
+## 【Secrets固定文字列CI検査】マージ記録
+
+- PR #525 mergeCommit: `64d912a92c70d06fa399ec4bec4487e77fbbc865`。
+- PR #525のCIで、`Check configured secret patterns` ステップはsuccessを確認した。
+- ワークフローは`pull_request`専用のため、developへのpush単独では同ステップを起動しない。後続のdocs PRで同一develop内容に対するステップ成功を確認する。
+
 ### 読み替え済みSHA
 
 - マージコミット SHA: f5740e95a9ee868fe7d8d67251a2ef894643a873
