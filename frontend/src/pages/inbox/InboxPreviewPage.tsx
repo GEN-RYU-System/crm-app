@@ -1,58 +1,31 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CRM_SEARCH_ICON } from '../../app/icons';
 import { Badge, Button, ConversationWorkspace, EmptyState, PageHeader, Select, Skeleton, TabBar, Tabs, TextField, Textarea } from '../../components/ui';
 import { inboxCopy } from '../../content/ja';
-import type { InboxConversationDetailDto, InboxConversationDto, InboxPlatform, InboxRepository, InboxStatus } from '../../features/inbox/contracts';
+import type { InboxPlatform, InboxRepository, InboxStatus } from '../../features/inbox/contracts';
 import { INBOX_KARTE_TABS, INBOX_PLATFORM_OPTIONS, INBOX_STATUS_TABS } from './inboxConfig';
 import './InboxPreviewPage.css';
+import { useInboxListCache } from './InboxListCacheContext';
+import { useInboxDetailCache } from './InboxDetailCacheContext';
 
-export function InboxPreviewPage({ repository }: { repository: InboxRepository }) {
+export function InboxPreviewPage({ repository: _repository }: { repository: InboxRepository }) {
   const [status, setStatus] = useState<InboxStatus>('all');
   const [platform, setPlatform] = useState<InboxPlatform>('all');
   const [query, setQuery] = useState('');
-  const [conversations, setConversations] = useState<readonly InboxConversationDto[] | null>(null);
-  const [listError, setListError] = useState(false);
+  const { conversations, error: listError, ensureLoaded } = useInboxListCache();
   const [selectedId, setSelectedId] = useState('');
-  const [selectedDetail, setSelectedDetail] = useState<InboxConversationDetailDto | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  const { details, loading, ensureLoaded: ensureDetail } = useInboxDetailCache();
   const [karteTab, setKarteTab] = useState('customer');
-  const detailCache = useRef<Map<string, InboxConversationDetailDto>>(new Map());
-
   useEffect(() => {
-    let active = true;
-    void (async () => {
-      try {
-        const rows = await repository.listConversations();
-        if (!active) return;
-        setConversations(rows);
-        if (rows.length > 0) setSelectedId(rows[0].id);
-      } catch {
-        if (active) setListError(true);
-      }
-    })();
-    return () => { active = false; };
-  }, [repository]);
+    void ensureLoaded();
+  }, [ensureLoaded]);
+  useEffect(() => { if (conversations?.length && !selectedId) setSelectedId(conversations[0].id); }, [conversations, selectedId]);
+  useEffect(() => { if (conversations) void Promise.all(conversations.slice(0, 5).map((row) => ensureDetail(row.id))); }, [conversations, ensureDetail]);
 
   useEffect(() => {
     if (!selectedId) return;
-    const cached = detailCache.current.get(selectedId);
-    if (cached) { setSelectedDetail(cached); return; }
-    let active = true;
-    setDetailLoading(true);
-    void (async () => {
-      try {
-        const detail = await repository.getConversation(selectedId);
-        if (!active) return;
-        if (detail) {
-          detailCache.current.set(selectedId, detail);
-          setSelectedDetail(detail);
-        }
-      } finally {
-        if (active) setDetailLoading(false);
-      }
-    })();
-    return () => { active = false; };
-  }, [repository, selectedId]);
+    void ensureDetail(selectedId, true);
+  }, [ensureDetail, selectedId]);
 
   const filtered = useMemo(() => (conversations ?? []).filter((conv) =>
     (status === 'all' || conv.status === status) &&
@@ -61,7 +34,8 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
   ), [conversations, platform, query, status]);
 
   const effectiveConv = filtered.find((c) => c.id === selectedId) ?? filtered[0] ?? null;
-  const detail = effectiveConv?.id === selectedDetail?.conversation.id ? selectedDetail : null;
+  const detail = effectiveConv ? details[effectiveConv.id]?.[0] ?? null : null;
+  const detailLoading = effectiveConv ? (loading[effectiveConv.id] ?? false) && detail === null : false;
 
   const karteFields: [string, string][] = detail == null ? [] : karteTab === 'customer'
     ? [[inboxCopy.fields.customerName, detail.karte.customerName], [inboxCopy.fields.platform, detail.karte.platform]]
