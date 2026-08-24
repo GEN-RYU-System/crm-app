@@ -1055,6 +1055,9 @@ GitHub Actions 課金停止による DEV 配布失敗を、ローカル `clasp p
 
 - 日時: 2026-08-24
 - ブランチ: `feat/discord-ticket-issuance`
+- PR番号: #465
+- mergedAt: 2026-08-24T07:46:37Z
+- mergeCommit SHA: `02ef6614cd28d3aae6a591f8f85e6e0e10a72bcc`
 - 対象環境: DEV のみ（本番操作なし）
 - 変更ファイル: 本ログのみ。実装・デプロイ・スプレッドシート変更は行っていない。
 
