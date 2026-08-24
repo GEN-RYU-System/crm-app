@@ -15,6 +15,17 @@
 
 ---
 
+## 【受信箱公開 Phase 0–3】ナビゲーション昇格
+
+- セッション健全性: `true` は exit 0・hook エラーなし。
+- Playwright: Chromium CLI により `?preview#/` と `?preview#/inbox` のスクリーンショット取得に成功。受信箱ヘッダーにプレビューバッジがなく、一覧・詳細が表示されることを確認。
+- DEV 件数照合: `dryRunVerifyInboxPhase1("LDI-00002")` は一覧25件、対象メッセージ75件。
+- 変更範囲: inbox の navigation state を `available` に変更し、画面文言とバッジを公開状態へ整合。受注管理の state は未変更。
+- 検証: `frontend/npm run build:gas` 成功。
+- PR / merge SHA / revert SHA: マージ後に追記する。
+
+---
+
 ## 【リポジトリ正規状態】恒久記録の追加 — PR #482
 
 ### 変更内容

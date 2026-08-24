@@ -71,7 +71,7 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
 
   return (
     <>
-      <PageHeader eyebrow={inboxCopy.eyebrow} title={inboxCopy.title} subtitle={inboxCopy.subtitle} action={<Badge variant="info">{inboxCopy.previewBadge}</Badge>} />
+      <PageHeader eyebrow={inboxCopy.eyebrow} title={inboxCopy.title} subtitle={inboxCopy.subtitle} />
       <section className="inbox-preview">
         <div className="inbox-preview__tab-row">
           <TabBar items={INBOX_STATUS_TABS} activeKey={status} onChange={setStatus} aria-label={inboxCopy.statusTabsLabel} />
@@ -85,7 +85,7 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
             conversations === null && !listError
               ? <Skeleton variant="list" rows={4} label={inboxCopy.loading} />
               : filtered.length === 0
-              ? <EmptyState title={inboxCopy.noConversations} description={inboxCopy.previewNote} />
+              ? <EmptyState title={inboxCopy.noConversations} description={inboxCopy.noConversationsDescription} />
               : <div className="inbox-preview__list">
                   {filtered.map((conv) => (
                     <button
@@ -120,7 +120,7 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
                     </article>
                   ))}
                 </div>
-              : <EmptyState title={inboxCopy.noConversations} description={inboxCopy.previewNote} />
+              : <EmptyState title={inboxCopy.noConversations} description={inboxCopy.noConversationsDescription} />
           }
           composer={<div className="inbox-preview__composer"><TextField aria-label={inboxCopy.composerPlaceholder} placeholder={inboxCopy.composerPlaceholder} readOnly fullWidth value="" /><Button disabled>{inboxCopy.send}</Button></div>}
           detailsLabel={inboxCopy.detailsLabel}
