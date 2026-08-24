@@ -72,6 +72,21 @@ function redaction2RetirePreviousDevSpreadsheet() {
   return { retired: true, removedEditors, removedViewers, linkSharingDisabled: true };
 }
 
+function redaction2InspectPreviousDevSpreadsheet() {
+  const previousId = PropertiesService.getScriptProperties().getProperty(REDACTION2_PREVIOUS_DEV_PROPERTY);
+  if (!previousId) throw new Error('redaction2の退役対象DEVプロパティがありません。');
+
+  const file = DriveApp.getFileById(previousId);
+  return {
+    retiredNameApplied: file.getName().endsWith('_RETIRED_20260824'),
+    ownerIsCurrentUser: file.getOwner().getEmail() === Session.getEffectiveUser().getEmail(),
+    editorCount: file.getEditors().length,
+    viewerCount: file.getViewers().length,
+    linkSharingAccess: String(file.getSharingAccess()),
+    linkSharingPermission: String(file.getSharingPermission())
+  };
+}
+
 function redaction2InspectErpSpreadsheet() {
   const file = DriveApp.getFileById(getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID'));
   const spreadsheet = SpreadsheetApp.openById(file.getId());
