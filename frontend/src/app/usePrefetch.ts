@@ -9,6 +9,7 @@ import { useOrderListCache } from '../pages/orders/OrderListCacheContext';
 import { useSalesOrderListCache } from '../pages/sales-orders/SalesOrderListCacheContext';
 import { useStaffListCache } from '../pages/staff/StaffListCacheContext';
 import { useQuoteListCache } from '../pages/quotes/QuoteListCacheContext';
+import { useCurrencyMasterCache } from '../pages/currency/CurrencyMasterCacheContext';
 
 export function usePrefetch(permissions: NavigationPermissions | null): void {
   const { ensureLoaded: ensureLeads } = useLeadListCache();
@@ -20,6 +21,7 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
   const { ensureLoaded: ensureSalesOrders } = useSalesOrderListCache();
   const { ensureLoaded: ensureStaff } = useStaffListCache();
   const { ensureLoaded: ensureQuotes } = useQuoteListCache();
+  const { ensureLoaded: ensureCurrencies } = useCurrencyMasterCache();
   const hasRun = useRef(false);
 
   useEffect(() => {
@@ -33,6 +35,7 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
       { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.orders,      permissions), load: () => ensureAggregates() },
       { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.inventory,   permissions), load: () => ensureInventory() },
       { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.orders,      permissions), load: () => ensureOrders() },
+      { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.orders, permissions) || canAccessNavigationItem(NAVIGATION_BY_ID.quotes, permissions), load: () => ensureCurrencies() },
       { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.salesOrders, permissions), load: () => ensureSalesOrders() },
       { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.staff,       permissions), load: () => ensureStaff() },
       { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.quotes,      permissions), load: () => ensureQuotes() },
@@ -48,6 +51,6 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [permissions, ensureLeads, ensureLeadFormOptions, ensureCustomers, ensureAggregates, ensureInventory, ensureOrders, ensureSalesOrders, ensureStaff, ensureQuotes]);
+  }, [permissions, ensureLeads, ensureLeadFormOptions, ensureCustomers, ensureAggregates, ensureInventory, ensureOrders, ensureCurrencies, ensureSalesOrders, ensureStaff, ensureQuotes]);
 
 }
