@@ -1711,6 +1711,11 @@ Playwrightを実行できるブラウザ接続を用意し、既存 `?preview` �
 
 - マージ後のPRを `git revert <mergeCommit SHA>` で戻す。
 
+## 【Discord招待・Guild連携・チャンネルセットアップ認証補完】マージ記録
+
+- PR #532 mergeCommit: `df2f636ce3e9250687e74b94584fba8e36668fd9`。
+- 対象4関数で、sessionIdからのメール設定を管理権限確認より前に行う順序へ統一した。
+
 ### 読み替え済みSHA
 
 - マージコミット SHA: f5740e95a9ee868fe7d8d67251a2ef894643a873
