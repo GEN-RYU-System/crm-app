@@ -1,6 +1,6 @@
 function checkStaffHeaders() {
   try {
-    const ss = SpreadsheetApp.openById('[REDACTED]');
+    const ss = SpreadsheetApp.openById(getRequiredSpreadsheetProperty('PRODUCTION_SPREADSHEET_ID'));
     const sheet = ss.getSheetByName('担当者マスタ');
     
     if (!sheet) {

@@ -11,7 +11,7 @@ function getSheetById(gid) {
  * 管理者かどうかを判定する関数
  */
 function checkIsAdmin() {
-  const adminEmails = ["admin@example.com"]; 
+  const adminEmails = ["admin@example.com"];
   const currentUserEmail = resolveCurrentUserEmail();
   return {
     email: currentUserEmail,

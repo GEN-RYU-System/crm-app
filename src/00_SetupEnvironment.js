@@ -53,7 +53,7 @@ function setupProductionEnvironment() {
   Logger.log('本番環境セットアップ完了');
   Logger.log('========================================');
   Logger.log('環境: ' + props.getProperty('ENVIRONMENT'));
-  Logger.log('本番用スプレッドシートID: [REDACTED]');
+  Logger.log('本番用スプレッドシートID: [configured via PRODUCTION_SPREADSHEET_ID]');
   Logger.log('');
   Logger.log('注意: 本番環境での作業は慎重に行ってください');
 }
@@ -71,7 +71,7 @@ function checkCurrentEnvironment() {
   Logger.log('========================================');
   Logger.log('環境: ' + env);
   Logger.log('開発用スプレッドシートID: ' + devId);
-  Logger.log('本番用スプレッドシートID: [REDACTED]');
+  Logger.log('本番用スプレッドシートID: [configured via PRODUCTION_SPREADSHEET_ID]');
   Logger.log('');
 
   // getSpreadsheet()で実際に取得されるスプレッドシートを確認

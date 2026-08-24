@@ -7,7 +7,7 @@
  */
 function logLeadsSheetHeaders() {
   try {
-    const ss = SpreadsheetApp.openById('[REDACTED]');
+    const ss = SpreadsheetApp.openById(getRequiredSpreadsheetProperty('PRODUCTION_SPREADSHEET_ID'));
     Logger.log('スプレッドシート名: ' + ss.getName());
 
     const sheet = ss.getSheetByName('リード管理');
@@ -45,7 +45,7 @@ function logLeadsSheetHeaders() {
  */
 function logDealsSheetHeaders() {
   try {
-    const ss = SpreadsheetApp.openById('[REDACTED]');
+    const ss = SpreadsheetApp.openById(getRequiredSpreadsheetProperty('PRODUCTION_SPREADSHEET_ID'));
     Logger.log('スプレッドシート名: ' + ss.getName());
 
     const sheet = ss.getSheetByName('商談管理');
@@ -83,7 +83,7 @@ function logDealsSheetHeaders() {
  */
 function logAllSheetInfo() {
   try {
-    const ss = SpreadsheetApp.openById('[REDACTED]');
+    const ss = SpreadsheetApp.openById(getRequiredSpreadsheetProperty('PRODUCTION_SPREADSHEET_ID'));
     Logger.log('\n=== スプレッドシート情報 ===');
     Logger.log('名前: ' + ss.getName());
     Logger.log('ID: ' + ss.getId());
