@@ -194,7 +194,7 @@
 - Playwright による見積もりエディタ動作確認（Lead/Product 各 Combobox の選択・クリア）
 
 ### 戻し方
-`git revert 78e308e` で LeadCombobox / ProductCombobox の旧実装を復元可能
+`git revert f5740e95a9ee868fe7d8d67251a2ef894643a873` で LeadCombobox / ProductCombobox の旧実装を復元可能
 
 ---
 
@@ -220,7 +220,7 @@
 - CI 通過
 
 ### 戻し方
-`git revert 4f35b41` でカタログ登録を元に戻せる
+`git revert bddf9f21ff4a3247c40325b098164f5a5e5cc576` でカタログ登録を元に戻せる
 
 ---
 
@@ -254,7 +254,7 @@ SubMenu, HubShell, Combobox（計20件）
 - CI 通過
 
 ### 戻し方
-`git revert e143adf` でハードコード方式に戻せる
+`git revert 9b1ce3dc7ae56d3caf05746995668cdcf4518614` でハードコード方式に戻せる
 
 ---
 
@@ -281,7 +281,7 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
   violations.push('staff page bypasses the StaffRepository boundary');
 ```
 
-**追加元**: PR #299「スタッフ一覧にキャッシュコンテキストを追加」(commit `1e82b1d`) でスタッフ境界の実装と同時に検査が追加された。
+**追加元**: PR #299「スタッフ一覧にキャッシュコンテキストを追加」(commit `937fdff3178a87dc2499472b64592ea4ccdbc8fa`) でスタッフ境界の実装と同時に検査が追加された。
 
 ### 変更内容
 なし（コード変更不要）
@@ -294,7 +294,7 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 ## 【5】オーダー作成画面のフルページスケルトン廃止 — PR #362
 
 **マージ日時**: 2026-08-21T21:11:51Z  
-**revert用SHA**: `6e10e1d62f278b9b8b1c042e886bf335a58d48d1`
+**revert用SHA**: `bc2663031ab57135572506f42f2f7e13333eaf17`
 
 ### 変更内容
 - `frontend/src/pages/orders/OrderCreatePage.tsx` を CustomerListCacheContext 対応に書き換え
@@ -311,10 +311,10 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 ## 【6】PR #362 差し戻し — PR #364
 
 **マージ日時**: 2026-08-21T21:24:54Z  
-**revert用SHA**: `df83e0a36bff4143d3bc964bad310853a61919a9`
+**revert用SHA**: `cd41c9898bc306df1e63acf429f75f2353531711`
 
 ### 変更内容
-- `git revert 6e10e1d` により PR #362 の変更を差し戻し
+- `git revert bc2663031ab57135572506f42f2f7e13333eaf17` により PR #362 の変更を差し戻し
 
 ### 経緯
 - 2回の静的解析では根本原因を特定できなかったため、ルールに従い即リバート
@@ -328,7 +328,7 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 ## 【7】オーダー新規作成ボタンの navigate 修正 — PR #367
 
 **マージ日時**: 2026-08-21T21:48:07Z  
-**revert用SHA**: `3bdc975109811d4955a1333a42d9082162e8ea40`
+**revert用SHA**: `4b666e187a392c1596d13f31cecc91706a19d9c9`
 
 ### 変更前
 ```tsx
@@ -359,7 +359,7 @@ QuoteListPage は最初から絶対パスを使っており正常動作してい
 ## 【8】dev preview モード — GAS モックランナー導入 — PR #370
 
 **マージ日時**: 2026-08-21T21:59:29Z  
-**revert用SHA**: `78bff4f3e1ce0f04016de2d02e9f37a8fe93c6f6`
+**revert用SHA**: `e6beba84381468c6792043d4e8c194dc0d2cbef5`
 
 ### 変更内容
 - `frontend/src/preview/gasRunnerMock.ts` を新規作成
@@ -386,7 +386,7 @@ QuoteListPage は最初から絶対パスを使っており正常動作してい
 ## 【9】受注管理一覧の列調整 — PR #372
 
 **マージ日時**: 2026-08-21T23:39:50Z
-**revert用SHA**: `b8c8dc1f39219dd664443e9db5950e3aa24c9b8d`
+**revert用SHA**: `1e4f8aa8e072e491dd1ab04d84bdc224a9e1e9f5`
 
 ### 変更前
 
@@ -421,14 +421,14 @@ QuoteListPage は最初から絶対パスを使っており正常動作してい
 
 ### 戻し方
 
-`git revert b8c8dc1f39219dd664443e9db5950e3aa24c9b8d` で列定義・ページ変更を元に戻せる
+`git revert 1e4f8aa8e072e491dd1ab04d84bdc224a9e1e9f5` で列定義・ページ変更を元に戻せる
 
 ---
 
 ## 【10】オーダー受注日・支払期日をサーバー側で自動設定 — PR #377
 
 **マージ日時**: 2026-08-22T06:53:02Z
-**revert用SHA**: `56d9e125b877e35d536f66bb537ecfb02ac7162c`
+**revert用SHA**: `0e91fc0ddb6f5a5c1b01511282de17dfc971ff1d`
 
 ### 変更前
 
@@ -480,7 +480,7 @@ QuoteListPage は最初から絶対パスを使っており正常動作してい
 ## 【11】在庫状態プルダウンをプリフェッチ化（商品選択時の待ち時間を除去） — PR #382
 
 **マージ日時**: 2026-08-22T17:15:57Z
-**revert用SHA**: `efad153df11b5217d6e351e10e936f0714693ac1`
+**revert用SHA**: `313a3d05bee7e11e000451e60bb50480c95c520e`
 
 ### 1-A 調査結果（明細状態即時化の調査）
 
@@ -519,8 +519,8 @@ QuoteListPage は最初から絶対パスを使っており正常動作してい
 
 ### SHA照合
 
-- getDeployedSha: `efad153df11b5217d6e351e10e936f0714693ac1`
-- origin/develop HEAD: `efad153` ✓ 一致
+- getDeployedSha: `313a3d05bee7e11e000451e60bb50480c95c520e`
+- origin/develop HEAD: `313a3d05bee7e11e000451e60bb50480c95c520e` ✓ 一致
 
 ### conformance audit 結果
 
@@ -535,7 +535,7 @@ QuoteListPage は最初から絶対パスを使っており正常動作してい
 ### 戻し方
 
 ```
-git revert efad153
+git revert 313a3d05bee7e11e000451e60bb50480c95c520e
 ```
 
 ---
@@ -600,12 +600,12 @@ validateCoreSchemaV1TableForWrite を使う全関数がこれら列を認識で�
 
 ### マージコミット SHA
 
-fd084eda2725ec7ba675afb947982fb0e0aa8e4c
+986d21b6e20124be14acdf46191b5ccbadf65814
 
 ### 戻し方
 
 ```
-git revert fd084eda2725ec7ba675afb947982fb0e0aa8e4c
+git revert 986d21b6e20124be14acdf46191b5ccbadf65814
 ```
 
 ---
@@ -699,12 +699,12 @@ PO が手動削除し完了。削除後の /sales-orders は すべて 175 / タ
 
 ### マージコミット SHA
 
-e0eafe480182d5450d0134b048ce2e33ab4a4723
+3d054a6e6d155170e12c224f0f001d432d774357
 
 ### 戻し方
 
 ```
-git revert e0eafe480182d5450d0134b048ce2e33ab4a4723
+git revert 3d054a6e6d155170e12c224f0f001d432d774357
 ```
 
 ---
@@ -746,12 +746,12 @@ git revert e0eafe480182d5450d0134b048ce2e33ab4a4723
 
 ### マージコミット SHA
 
-457ef47f394b748ce875fd2f050cc1e29c788a44
+61a6bd05934d005cbf007c1cf6ef07290ab38b00
 
 ### 戻し方
 
 ```
-git revert 457ef47f394b748ce875fd2f050cc1e29c788a44
+git revert 61a6bd05934d005cbf007c1cf6ef07290ab38b00
 ```
 
 ---
@@ -885,7 +885,7 @@ git revert <マージコミットSHA>
 ## 【20】管理センター Discord連携設定ページ — PR #438
 
 - PR番号: #438
-- マージコミットSHA: `b7fb2bd00f73ef0e02637f24049eeeec68aeb335`
+- マージコミットSHA: `953338be7edf8d66df8aa139e72ee255a67105f8`
 - mergedAt: 2026-08-23T22:05:36Z
 - 対象: 管理センター > 外部連携 > Discord連携設定（/discord-integration）
 - 新規ファイル:
@@ -898,7 +898,7 @@ git revert <マージコミットSHA>
   - `frontend/src/app/navigation.ts`（discordIntegration ページ追加、state: 'preview'）
   - `frontend/src/gas/client.ts`（4関数追加）
   - `src/27_WebApp.js`（getPermissionsByRole に discordIntegration 追加）
-- 戻し方: `git revert b7fb2bd00f73ef0e02637f24049eeeec68aeb335`
+- 戻し方: `git revert 953338be7edf8d66df8aa139e72ee255a67105f8`
 - Deploy to DEV: completed / success（2026-08-23T22:05:38Z、1m9s）
 - U1〜U4確定:
   - U1: testDiscordConnection() — 引数なし、{success, botInfo:{username, id, discriminator}} — src/33_DiscordIntegrationService.js:23-87
@@ -915,7 +915,7 @@ git revert <マージコミットSHA>
 
 - 日時: 2026-08-24
 - PR: #448
-- ブランチコミット SHA: fd6a22c86d15055bae64dcd873d461e38c353a25
+- ブランチコミット SHA: ba69a4e5ce5fc888a2b666dda544189044eb5c9c
 - マージコミット SHA: （マージ後に記録）
 - 戻し方: git revert <マージコミットSHA>
 
@@ -1092,27 +1092,27 @@ design-system checks passed
 
 ### mergeCommit SHA
 
-`8575fcbef423b06eaacfa466a02fee24f4761851`（2026-08-24T00:00:59Z）
+`6358ba06c95faad54e23cba6c970446125968b23`（2026-08-24T00:00:59Z）
 
 ### 戻し方
 
-`git revert 8575fcbef423b06eaacfa466a02fee24f4761851`
+`git revert 6358ba06c95faad54e23cba6c970446125968b23`
 
 ---
 
 ## 【23】LEADS に IP_IDS（作品ID）列追加 — PR #437
 
 - mergedAt: 2026-08-23T21:35:41Z
-- マージコミット SHA: `5af2fd6dfe084675f40d1e4e509cc299fa9842eb`
-- 戻し方: `git revert 5af2fd6dfe084675f40d1e4e509cc299fa9842eb`
+- マージコミット SHA: `124b18b0840b67dad036f355ca5b484cd4bdf7cb`
+- 戻し方: `git revert 124b18b0840b67dad036f355ca5b484cd4bdf7cb`
 
 ---
 
 ## 【24】受信箱 GAS 読み取り API（Phase 1） — PR #445
 
 - mergedAt: 2026-08-23T22:10:54Z
-- マージコミット SHA: `b62e200ee59137b67a510f92e82f097a01671922`
-- 戻し方: `git revert b62e200ee59137b67a510f92e82f097a01671922`
+- マージコミット SHA: `e5577e23ec6bffb0876e1e99c0c7226f36ee2d48`
+- 戻し方: `git revert e5577e23ec6bffb0876e1e99c0c7226f36ee2d48`
 
 ### 変更内容
 
@@ -1136,16 +1136,16 @@ design-system checks passed
 ## 【25】DEV 診断: dryRunVerifyInboxPhase1 追加 — PR #447
 
 - mergedAt: 2026-08-23T22:20:02Z
-- マージコミット SHA: `db3676e06c887f02df30d654c812e9c104e41f97`
-- 戻し方: `git revert db3676e06c887f02df30d654c812e9c104e41f97`
+- マージコミット SHA: `9dd4cfc225c17da3b5d48a1b7b85ebe9e63f8b93`
+- 戻し方: `git revert 9dd4cfc225c17da3b5d48a1b7b85ebe9e63f8b93`
 
 ---
 
 ## 【26】受信箱フロント接続（Phase 2） — PR #449
 
 - mergedAt: 2026-08-23T22:37:05Z
-- マージコミット SHA: `d14bb3bb8960d92e9abb9789ff5a1183cf9508c8`
-- 戻し方: `git revert d14bb3bb8960d92e9abb9789ff5a1183cf9508c8`
+- マージコミット SHA: `978d1b69045aca1b5abb0931f2b7a3b861d8b415`
+- 戻し方: `git revert 978d1b69045aca1b5abb0931f2b7a3b861d8b415`
 
 ### 変更内容
 
@@ -1160,8 +1160,8 @@ design-system checks passed
 ## 【27】受信箱 3 ペイン UI 実装（Phase 3） — PR #453
 
 - mergedAt: 2026-08-23T22:57:43Z
-- マージコミット SHA: `f1237217a83fb0359a148fdadef995b8fbb67490`
-- 戻し方: `git revert f1237217a83fb0359a148fdadef995b8fbb67490`
+- マージコミット SHA: `ebe28c3db67a6270d0f671f0b779f49bd148222d`
+- 戻し方: `git revert ebe28c3db67a6270d0f671f0b779f49bd148222d`
 
 ### 変更内容
 
@@ -1177,9 +1177,9 @@ GitHub Actions 課金停止による DEV 配布失敗を、ローカル `clasp p
 1. `.claspignore` 確認: `docs/`, `28_CoreInboxApi.js` は除外なし → 全ファイル対象 ✓
 2. `npm run build:gas` → PASS（typecheck + vite + emit-gas-html + design-system check）
 3. `clasp push --force` → 183 ファイル push 完了
-4. `clasp run recordDeployedSha ["3b25543839071fa5ac4366302b63e04bb47f1977"]`
-   → `{ sha: '3b25543...', deployedAt: '2026-08-24T06:45:39.695Z' }` ✓
-5. `clasp run getDeployedSha` → `3b25543...` = develop HEAD ✓
+4. `clasp run recordDeployedSha ["59e5dbd26a368bfb539a9b5970486ee9ad478e53"]`
+   → `{ sha: '59e5dbd26a368bfb539a9b5970486ee9ad478e53...', deployedAt: '2026-08-24T06:45:39.695Z' }` ✓
+5. `clasp run getDeployedSha` → `59e5dbd26a368bfb539a9b5970486ee9ad478e53...` = develop HEAD ✓
 6. `dryRunVerifyInboxPhase1("LDI-00002")` → conversationListCount=25 / sampleMessageCount=75 ✓
 7. `dryRunVerifyInboxPhase1("LDI-00001")` → sampleMessageCount=8 ✓
 8. 25 件目（CONVERSATION_SUMMARY のみ、会話ログなし）: **LDI-00233**（顧客実名は公開後監査で除去。詳細は `docs/PUBLIC_READINESS_SCAN.md` を参照）
@@ -1189,18 +1189,18 @@ GitHub Actions 課金停止による DEV 配布失敗を、ローカル `clasp p
 - 合格条件（DEV）: Run 512 が成功し、`clasp run getDeployedSha` が `develop` HEAD と一致すること。
 - 実測: `gh run rerun 32699033081 --failed` の再実行は **成功**。`deploy` job は全工程成功（42秒）。
   - `Build GAS artifact` は `npm run build:gas`（`typecheck` / `vite build` / `emit-gas-html` / design-system check）を実行。
-  - `clasp run getDeployedSha` → `e4e6b66e3d360ba162c8dd742d41d2ccdbe5e330`。
-  - `develop` HEAD → `e4e6b66e3d360ba162c8dd742d41d2ccdbe5e330`。一致。
+  - `clasp run getDeployedSha` → `bd906456379d8df9c72ac762fa4ea272165a367b`。
+  - `develop` HEAD → `bd906456379d8df9c72ac762fa4ea272165a367b`。一致。
   - Phase A の DEV API 実測: `LDI-00002` は会話一覧25件・メッセージ75件、`LDI-00001` はメッセージ8件。
 - 画面照合: この実行環境には操作可能なブラウザ接続がなく、新規の実UI観測は未実施。上記は Phase A の DEV API 実測値。
 - 公開後監査: `gitleaks git --log-opts="--all"` は0件、`trufflehog git file://. --no-update --only-verified` は verified/unverified とも0件。
-- 補完grepで顧客実名1件を検出（本ログの旧記載、コミット `e4e6b66e3d360ba162c8dd742d41d2ccdbe5e330`）。GitHubリポジトリは `PRIVATE` へ復帰済み。現行ファイルから実名を除去した。履歴書換えは実施しない。
+- 補完grepで顧客実名1件を検出（本ログの旧記載、コミット `bd906456379d8df9c72ac762fa4ea272165a367b`）。GitHubリポジトリは `PRIVATE` へ復帰済み。現行ファイルから実名を除去した。履歴書換えは実施しない。
 - 変更内容: 実名をID参照へ置換し、`docs/PUBLIC_READINESS_SCAN.md` を追加。
-- 戻し方: 監査PR #462 のsquash mergeコミット `bc4453579a7f49bf3fda69b1223f0dfa4c53bc16` は `git revert bc4453579a7f49bf3fda69b1223f0dfa4c53bc16` で戻せる（実名の再公開はしない）。
+- 戻し方: 監査PR #462 のsquash mergeコミット `17a7d4f63df7938129ecaeaf1cc4e5e6fb0cc998` は `git revert 17a7d4f63df7938129ecaeaf1cc4e5e6fb0cc998` で戻せる（実名の再公開はしない）。
 
 ### 履歴書換え（2026-08-24）
 
-- バックアップ: `git clone --mirror` と `git bundle create --all` を実行し、バンドルから復元した `origin/develop` が書換え前の `3c16588c73e13ed639e76b6ace07a3d0e17ff4cc` と一致。
+- バックアップ: `git clone --mirror` と `git bundle create --all` を実行し、バンドルから復元した `origin/develop` が書換え前の `97b005ad8c441277f63b7362e3f59f44ef95e4d8` と一致。
 - 実施: `git-filter-repo --replace-text` で顧客実名のフルネーム・姓・名の3パターンを `[REDACTED]` へ置換。全パターンは同一の4コミットにのみ出現。
 - SHA対応: `docs/SHA_REMAP_20260824.md` に filter-repo の commit-map（旧SHA→新SHA、1,108行）を保存。
 - 読み替え: 過去のrevert SHAを含むすべての旧SHAは、同ファイルで新SHAに読み替えること。
@@ -1307,3 +1307,121 @@ Playwrightを実行できるブラウザ接続を用意し、既存 `?preview` �
 - S1: `src/37_DiscordTicketApi.js` のLogger出力はstatus/channelId/error.messageのみ。トークン値を渡す箇所なし。
 - S2: `createDiscordTicketForCustomer` の先頭で `checkPermission('admin_access')` を実測。
 - S3: 新規コードにトークン値・Webhook URL・実環境IDなし（previewの数値はモック値）。
+
+---
+
+## 【履歴書換え後処理】revert用SHAのv1→v2連結更新
+
+- 履歴書換えが行われた場合、作業ログのSHAも同時に更新する。
+- 複数回の書き換えでは remap を順に連結して読み替える。
+- 本作業の戻し方: `git revert <本PRのマージコミットSHA>`。
+
+### PR #467 の revert SHA 訂正
+
+- 旧記載の `b38f145759607c23f74873a20783352550dfee22` は履歴書き換えにより無効化された。
+- 正しい revert 対象は `b10aaf6bc9695e3b930a779aebc2c47f10ae7f2e`。戻し方: `git revert b10aaf6bc9695e3b930a779aebc2c47f10ae7f2e`。
+
+---
+
+## 【通貨マスタ共通キャッシュ】PR作成前記録
+
+### 合格条件
+
+- `?preview` の背景プリフェッチ完了後、`window.__gasMockCallCounts` の生出力で `getCoreCurrenciesForFrontend: 1` であること。
+- 見積権限だけで通貨取得が実行され、見積一覧の通貨記号が表示されること。
+- `npm run build:gas` が成功すること。
+
+### 実装
+
+- `CurrencyMasterCacheContext` を `CurrencyRecord[]` の唯一の正本とし、`useCurrencySymbolMap` だけが記号mapを派生する。
+- 注文／見積一覧Contextと注文／見積編集画面の直接通貨取得を共通Context参照に置換した。
+- `usePrefetch` は注文または見積のいずれかの権限がある場合に通貨キャッシュを取得する。
+
+### 検証記録
+
+- `frontend/npm run build:gas`: PASS（typecheck / Vite / emit-gas-html / design-system check）。
+- 生出力による画面検証: この実行環境では利用可能なブラウザ接続がなく未実施。合格条件の1・2は未達のため、PR作成・mergeは行わない。
+
+### 読み替え済みSHA
+
+- マージコミット SHA: f5740e95a9ee868fe7d8d67251a2ef894643a873
+  戻し方: git revert f5740e95a9ee868fe7d8d67251a2ef894643a873
+  （書換え前SHA: 78e308e80f398efd0540a0869461d92475a427da ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: bddf9f21ff4a3247c40325b098164f5a5e5cc576
+  戻し方: git revert bddf9f21ff4a3247c40325b098164f5a5e5cc576
+  （書換え前SHA: 4f35b416a08d4c8d5db7851283968988ce0c2126 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: 9b1ce3dc7ae56d3caf05746995668cdcf4518614
+  戻し方: git revert 9b1ce3dc7ae56d3caf05746995668cdcf4518614
+  （書換え前SHA: e143adffe1b8fb628a91f80b8df50d4810bfc7ff ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: 937fdff3178a87dc2499472b64592ea4ccdbc8fa
+  戻し方: git revert 937fdff3178a87dc2499472b64592ea4ccdbc8fa
+  （書換え前SHA: 1e82b1d8b8f061ec43f4ecfbe8a82abdf7334982 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: bc2663031ab57135572506f42f2f7e13333eaf17
+  戻し方: git revert bc2663031ab57135572506f42f2f7e13333eaf17
+  （書換え前SHA: 6e10e1d62f278b9b8b1c042e886bf335a58d48d1 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: cd41c9898bc306df1e63acf429f75f2353531711
+  戻し方: git revert cd41c9898bc306df1e63acf429f75f2353531711
+  （書換え前SHA: df83e0a36bff4143d3bc964bad310853a61919a9 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: 4b666e187a392c1596d13f31cecc91706a19d9c9
+  戻し方: git revert 4b666e187a392c1596d13f31cecc91706a19d9c9
+  （書換え前SHA: 3bdc975109811d4955a1333a42d9082162e8ea40 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: e6beba84381468c6792043d4e8c194dc0d2cbef5
+  戻し方: git revert e6beba84381468c6792043d4e8c194dc0d2cbef5
+  （書換え前SHA: 78bff4f3e1ce0f04016de2d02e9f37a8fe93c6f6 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: b0c4d90438e5f164ea649a4e552b325d0d505dc5
+  戻し方: git revert b0c4d90438e5f164ea649a4e552b325d0d505dc5
+  （書換え前SHA: 07b672eec3946c9797ee2bfd8004a60cdea42ca6 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: 1e4f8aa8e072e491dd1ab04d84bdc224a9e1e9f5
+  戻し方: git revert 1e4f8aa8e072e491dd1ab04d84bdc224a9e1e9f5
+  （書換え前SHA: b8c8dc1f39219dd664443e9db5950e3aa24c9b8d ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: 0e91fc0ddb6f5a5c1b01511282de17dfc971ff1d
+  戻し方: git revert 0e91fc0ddb6f5a5c1b01511282de17dfc971ff1d
+  （書換え前SHA: 56d9e125b877e35d536f66bb537ecfb02ac7162c ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: 313a3d05bee7e11e000451e60bb50480c95c520e
+  戻し方: git revert 313a3d05bee7e11e000451e60bb50480c95c520e
+  （書換え前SHA: efad153df11b5217d6e351e10e936f0714693ac1 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: 986d21b6e20124be14acdf46191b5ccbadf65814
+  戻し方: git revert 986d21b6e20124be14acdf46191b5ccbadf65814
+  （書換え前SHA: fd084eda2725ec7ba675afb947982fb0e0aa8e4c ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: 3d054a6e6d155170e12c224f0f001d432d774357
+  戻し方: git revert 3d054a6e6d155170e12c224f0f001d432d774357
+  （書換え前SHA: e0eafe480182d5450d0134b048ce2e33ab4a4723 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: 61a6bd05934d005cbf007c1cf6ef07290ab38b00
+  戻し方: git revert 61a6bd05934d005cbf007c1cf6ef07290ab38b00
+  （書換え前SHA: 457ef47f394b748ce875fd2f050cc1e29c788a44 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: 953338be7edf8d66df8aa139e72ee255a67105f8
+  戻し方: git revert 953338be7edf8d66df8aa139e72ee255a67105f8
+  （書換え前SHA: b7fb2bd00f73ef0e02637f24049eeeec68aeb335 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: ba69a4e5ce5fc888a2b666dda544189044eb5c9c
+  戻し方: git revert ba69a4e5ce5fc888a2b666dda544189044eb5c9c
+  （書換え前SHA: fd6a22c86d15055bae64dcd873d461e38c353a25 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: 6358ba06c95faad54e23cba6c970446125968b23
+  戻し方: git revert 6358ba06c95faad54e23cba6c970446125968b23
+  （書換え前SHA: 8575fcbef423b06eaacfa466a02fee24f4761851 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: 124b18b0840b67dad036f355ca5b484cd4bdf7cb
+  戻し方: git revert 124b18b0840b67dad036f355ca5b484cd4bdf7cb
+  （書換え前SHA: 5af2fd6dfe084675f40d1e4e509cc299fa9842eb ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: e5577e23ec6bffb0876e1e99c0c7226f36ee2d48
+  戻し方: git revert e5577e23ec6bffb0876e1e99c0c7226f36ee2d48
+  （書換え前SHA: b62e200ee59137b67a510f92e82f097a01671922 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: 9dd4cfc225c17da3b5d48a1b7b85ebe9e63f8b93
+  戻し方: git revert 9dd4cfc225c17da3b5d48a1b7b85ebe9e63f8b93
+  （書換え前SHA: db3676e06c887f02df30d654c812e9c104e41f97 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: 978d1b69045aca1b5abb0931f2b7a3b861d8b415
+  戻し方: git revert 978d1b69045aca1b5abb0931f2b7a3b861d8b415
+  （書換え前SHA: d14bb3bb8960d92e9abb9789ff5a1183cf9508c8 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: ebe28c3db67a6270d0f671f0b779f49bd148222d
+  戻し方: git revert ebe28c3db67a6270d0f671f0b779f49bd148222d
+  （書換え前SHA: f1237217a83fb0359a148fdadef995b8fbb67490 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: 59e5dbd26a368bfb539a9b5970486ee9ad478e53
+  戻し方: git revert 59e5dbd26a368bfb539a9b5970486ee9ad478e53
+  （書換え前SHA: 3b25543839071fa5ac4366302b63e04bb47f1977 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: bd906456379d8df9c72ac762fa4ea272165a367b
+  戻し方: git revert bd906456379d8df9c72ac762fa4ea272165a367b
+  （書換え前SHA: e4e6b66e3d360ba162c8dd742d41d2ccdbe5e330 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: 17a7d4f63df7938129ecaeaf1cc4e5e6fb0cc998
+  戻し方: git revert 17a7d4f63df7938129ecaeaf1cc4e5e6fb0cc998
+  （書換え前SHA: bc4453579a7f49bf3fda69b1223f0dfa4c53bc16 ※2026-08-24の履歴書換え2回により無効）
+- マージコミット SHA: 97b005ad8c441277f63b7362e3f59f44ef95e4d8
+  戻し方: git revert 97b005ad8c441277f63b7362e3f59f44ef95e4d8
+  （書換え前SHA: 3c16588c73e13ed639e76b6ace07a3d0e17ff4cc ※2026-08-24の履歴書換え2回により無効）
