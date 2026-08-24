@@ -54,6 +54,30 @@
 
 ---
 
+## 【ERP旧版廃止】旧取引管理ブックの退役
+
+### 変更内容
+- 旧版ブックを開く `15_ERPSync.js`、`99_DataTransfer.js`、`99_ERPAnalyzer.js`、`99_ERPDataCleaning.js` を削除。
+- 旧ERP統合初期化、トリガー補助、設定済みブックのスモークから旧版ブックへの依存を削除し、スモークはDEV読取のみへ変更。
+- 旧版ブック用のScript PropertyをGASから削除し、ブックをゴミ箱へ移動した。ゴミ箱は空にしない。
+
+### 参照全量（実測）
+- 旧Script Propertyの直接参照は、変更前に `01_Initialize.js`、`15_ERPSync.js`、`99_DataTransfer.js`、`99_ERPAnalyzer.js`、`99_ERPDataCleaning.js`、`Config.js`、本作業ログで確認。
+- 旧版ブックを開く補助参照は `00_TriggerSetup.js` と `99_TestFunctions.js` にも存在したため、前者は現在の環境参照へ変更し、後者は互換ヘルパー経由で現DEVブックを参照するようにした。
+- `ERP_CONFIG` は現DEVブック内のシート名・gid定義であり、旧版ブックIDは保持しないため残置。
+
+### 実測値
+- Deploy to DEV: run `32724436296` 成功（44秒）。
+- `getDeployedSha` は `338b124d083ea94525506bcc99c96ff6ecd9d160` で当時のdevelop HEADと一致。
+- `smokeReadConfiguredSpreadsheets` → `devReadable: true`。
+- `dryRunVerifyInboxPhase1("LDI-00002")` → 会話一覧25件、メッセージ75件。
+- 退役GAS関数 → `erpPropertyDeleted: true`、`bookTrashed: true`。ID値は出力・記録していない。
+
+### 戻し方
+この廃止はゴミ箱保持期間中にブックを復元し、オーナー判断で新しいScript Propertyを設定したうえで、廃止PRのrevertを検討する。
+
+---
+
 ## 【1】Combobox 共通部品化 — PR #301
 
 **マージ日時**: 2026-08-19T20:35:28Z
