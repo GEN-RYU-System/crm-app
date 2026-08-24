@@ -1051,6 +1051,47 @@ GitHub Actions 課金停止による DEV 配布失敗を、ローカル `clasp p
 
 ---
 
+## 【28】LeadFormOptionsCacheContext — 背景プリフェッチ標準化 PR 1
+
+### 合格条件
+
+- A. `?preview#/leads` 表示後、`__gasMockCallCounts.getLeadFormOptions === 1`
+- B. 同一 SPA セッションで新規リード編集を開いた後も、同回数が `1` のまま
+- `npm run build:gas`（typecheck / build / design-system check）成功
+
+### 変更内容
+
+- `LeadFormOptionsCacheContext` を追加し、`getLeadFormOptions` の単一 payload を `createListCache` へ保持
+- `usePrefetch` に `ensureLeadFormOptions` を登録
+- `LeadEditorPage` の mount 時直接取得を Context の `ensureLoaded` と `formOptions` 参照へ置換。失敗時は `null` でフォーム継続
+- DEV preview の全 GAS モック呼び出しを `window.__gasMockCallCounts` へ関数名別に記録
+
+### Playwright 生出力
+
+```text
+A getLeadFormOptions=1
+B getLeadFormOptions=1
+PASS A+B
+```
+
+### build:gas 生出力
+
+```text
+> crm-app-frontend@0.1.0 build:gas
+> npm run typecheck && npm run build && node scripts/emit-gas-html.mjs && npm run check:design-system
+
+> crm-app-frontend@0.1.0 typecheck
+> tsc --noEmit
+
+✓ 512 modules transformed.
+✓ built in 1.17s
+
+design-system checks passed
+```
+
+### PR / revert
+
+- PR と squash merge 後に merge SHA と `git revert <SHA>` を追記する。
 ## 【28】Discord チケット発行（Phase 2-C・案α）— 着手前確認で停止
 
 - 日時: 2026-08-24
