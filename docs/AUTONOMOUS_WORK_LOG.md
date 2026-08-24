@@ -164,6 +164,33 @@ frontend/src/pages/leads/LeadDetailCacheContext.tsx:10:    const record = await 
 - Customer detail は保存操作を持たないため、保存後更新の合格条件は非該当。
 - list cache にない customerId を keyed cache が取得し、`null` は missing として cache する。
 
+### Phase 1 の実装と検証
+
+- `frontend/src/pages/customers/CustomerDetailCacheContext.tsx` を追加。`createListCache<CustomerAggregateDto, string>` を customerId key で使用し、`repository.getCustomer` の null は空配列として missing cache に保存する。
+- `frontend/src/App.tsx` に `CustomerDetailCacheProvider` を追加し、`CustomerListCacheProvider` の内側へ配置した。
+- `frontend/src/pages/customers/CustomerDetailPage.tsx` の mount 時直接 `repository.getCustomer` 呼び出しを、keyed cache の `ensureLoaded(customerId)` と cached result/error/retry 参照に置換した。Discord ticket 発行の既存動作は変更していない。
+- Customer detail に保存操作はないため、保存後最新化の受入条件は非該当。
+
+```text
+__gasMockCallCounts (first):
+getCoreCustomerForFrontend: 1
+
+__gasMockCallCounts (same detail after back):
+getCoreCustomerForFrontend: 1
+
+customer input values: ["CUS-0001", "Preview Customer A", "", "JP", "", "", "", "", "Preview User", ""]
+PASS: same customer detail was rendered and did not call getCoreCustomerForFrontend again
+```
+
+```text
+npm run build:gas
+> npm run typecheck && npm run build && node scripts/emit-gas-html.mjs && npm run check:design-system
+✓ 515 modules transformed.
+dist/index.html  477.03 kB │ gzip: 123.57 kB
+✓ built in 1.11s
+design-system checks passed
+```
+
 ---
 
 ## 【発行元マスタseed匿名化】公開記載ルール準拠 — PR #493
