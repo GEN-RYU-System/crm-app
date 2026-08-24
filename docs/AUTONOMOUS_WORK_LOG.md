@@ -266,6 +266,21 @@ design-system checks passed
 
 ---
 
+## 【InventoryProductOptions cache】Quote editor の直接取得置換
+
+### 合格条件（実装前定義）
+
+- orders または quotes 権限の裏読み完了時点で `getInventoryProductOptions` は全体で1回。
+- 見積編集を開いても同呼び出しは増えない。見積の保存処理は変更しない。
+
+### 変更と生出力
+
+- `QuoteEditorPage` の直接 `getInventoryProductOptions()` を `InventoryProductOptionsCacheContext` の `ensureLoaded` / `products` 参照に置換した。
+- Quote editor 表示後の `__gasMockCallCounts.getInventoryProductOptions`: `1`。
+- `npm run build:gas`: typecheck / Vite build / design-system checks passed。
+
+---
+
 ## 【発行元マスタseed匿名化】公開記載ルール準拠 — PR #493
 
 ### 変更内容
