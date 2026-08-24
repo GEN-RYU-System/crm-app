@@ -22,7 +22,13 @@
 - DEV 件数照合: `dryRunVerifyInboxPhase1("LDI-00002")` は一覧25件、対象メッセージ75件。
 - 変更範囲: inbox の navigation state を `available` に変更し、画面文言とバッジを公開状態へ整合。受注管理の state は未変更。
 - 検証: `frontend/npm run build:gas` 成功。
-- PR / merge SHA / revert SHA: マージ後に追記する。
+- PR #485 / squash merge SHA: `0816cf107217fdec2371389b73876f79ba433a95` / revert: `git revert 0816cf107217fdec2371389b73876f79ba433a95`。
+
+### Phase 4 停止記録
+
+- 停止理由: 会話ログシートの列位置を固定で参照するコードを検出した。`src/10_ConversationLogService.js` の `getConversationLogs()` は `CONFIG.SHEETS.CONVERSATION_LOG` を開いた後、リードID照合に `data[i][1]` を使用している。
+- 判定: 指示書の「直指定が1件でもあれば一覧化して停止・報告」に該当。`HEADERS.CONVERSATION_LOG` への「原文言語」追加、`HEADERS.LEADS` への「流入元ID」追加、DEV配布、Phase 5 は未実施。
+- 補足: 調査では上記の会話ログ実行経路のほか、`src/25_TestRunner.js` にリード配列の固定添字（`lead[0]`〜`lead[42]`）を確認した。実行経路ごとのヘッダー名参照への置換方針は、この統合指示書の範囲外の設計判断となる。
 
 ---
 
