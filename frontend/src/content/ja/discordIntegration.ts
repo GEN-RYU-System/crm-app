@@ -48,4 +48,16 @@ export const discordIntegrationCopy = {
   refreshingStatus: '確認中...',
   inviteError: '招待URLの取得に失敗しました',
   clientIdNotSet: 'DISCORD_CLIENT_IDが未設定です。スクリプトプロパティを確認してください。',
+  // channel setup section
+  setupSection: 'チャンネルセットアップ',
+  setupStatusLoading: 'セットアップ状態を確認中...',
+  setupStatusDone: 'セットアップ済み',
+  setupStatusNotDone: '未セットアップ',
+  setupCategoryLabel: 'カテゴリID',
+  setupTicketLabel: 'ticket-startチャンネルID',
+  setupButton: 'チャンネルをセットアップする',
+  setupButtonRunning: 'セットアップ中...',
+  setupSuccess: 'セットアップが完了しました',
+  setupError: 'セットアップに失敗しました',
+  setupDisabledReason: '先にBot招待を完了してください',
 } as const;

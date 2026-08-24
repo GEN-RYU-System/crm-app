@@ -808,7 +808,9 @@ git revert <マージコミットSHA>
 
 `dryRunGetOrderStatus("OD-00177")` の結果: `STATUS = '仕入れ中'` / `PAYMENT_STATUS = '入金済み'` / `PAYMENT_CONFIRMED_AT = '2026-08-23T15:50:24.716Z'`。DEV 実機で入金確認機能が動作し、ステータス遷移が記録されていることを確認済み。また `dryRunOrderStatusRecalculation` の差分 0件（サイドエフェクトなし）も確認済み。
 
-## 【22】Discord OAuth Bot招待フロー実装 — Phase 2-A
+---
+
+## 【21】Discord OAuth Bot招待フロー実装 — Phase 2-A
 
 - 日時: 2026-08-24
 - ブランチ: release/discord-oauth-invite
@@ -898,3 +900,42 @@ $ npm run build:gas
 design-system checks passed
 ```
 → PASS（TypeScriptエラー0・デザインシステム違反0）
+
+---
+
+## 【22】Discord チャンネル Auto-setup（Phase 2-B） — PR #458
+
+### 変更ファイル一覧と目的
+
+| ファイル | 変更種別 | 目的 |
+|---------|---------|------|
+| `src/36_DiscordChannelSetupApi.js` | 新規作成 | カテゴリ + ticket-startチャンネル自動作成GAS API |
+| `frontend/src/gas/client.ts` | 追記 | runDiscordAutoSetup / getDiscordSetupStatus 関数追加 |
+| `frontend/src/gas/types.d.ts` | 追記 | GoogleScriptRun型に2関数追加 |
+| `frontend/src/features/discordIntegration/contracts.ts` | 追記 | DiscordAutoSetupResult / DiscordSetupStatus 型追加 |
+| `frontend/src/features/discordIntegration/gasAdapter.ts` | 追記 | リポジトリに runAutoSetup / getSetupStatus 追加 |
+| `frontend/src/content/ja/discordIntegration.ts` | 追記 | セットアップUI用10件テキスト追加 |
+| `frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx` | 変更 | チャンネルセットアップセクション追加 |
+| `frontend/src/preview/gasRunnerMock.ts` | 追記 | runDiscordAutoSetup / getDiscordSetupStatus モック追加 |
+| `frontend/dist/index.html` | 自動生成 | build:gas 成果物 |
+
+### セキュリティチェック実測結果
+
+| # | チェック | 実測コマンド | 結果 |
+|---|---------|------------|------|
+| S1 | Logger.log に BOT_TOKEN 値なし | `grep -n "Logger.log" src/36_DiscordChannelSetupApi.js` | status/id/channelId のみ。BOT_TOKEN 0件 |
+| S3 | 両関数に checkPermission('admin_access') | ファイル読み取り | 142行・253行で確認 |
+| S4 | DISCORD_BOT_TOKEN= の代入なし | `grep -rn "DISCORD_BOT_TOKEN\s*=" src/36_DiscordChannelSetupApi.js` | 0-hit |
+| S5 | permission_overwrites @everyone deny / Bot allow のみ | コードレビュー | applyPermissionOverwrites_ 関数で最小権限実装 |
+
+### 冪等性の実装方法
+
+`GET /guilds/{guild_id}/channels` でギルドの全チャンネル一覧を取得し、`name` と `type` が一致する既存チャンネルがある場合はそのIDを再利用する。新規作成は行わない。カテゴリ（type=4）と ticket-start チャンネル（type=0）それぞれについて独立して判定する。
+
+### mergeCommit SHA
+
+PR #458 マージ後に記録予定: `gh pr view 458 --json mergeCommit`
+
+### 戻し方
+
+`git revert <mergeCommitSHA>`
