@@ -120,6 +120,52 @@ PASS: detail reopen did not issue another getLeadDetail call
 
 ---
 
+## 【アプリ全体プリフェッチ標準化 Phase 0】取得経路再調査
+
+### PR #508 の確認
+
+- `git show --stat --oneline 3a8a1d0` の生出力は `3a8a1d0 docs: record lead cache merge (#508)`、変更は `docs/AUTONOMOUS_WORK_LOG.md | 6 ++++++` のみ。
+- 内容は PR #507（Lead detail keyed cache）の squash merge SHA、`git revert e459264a0a47d897191198b7ce508aac41c05fb7`、Deploy to DEV run `32778593946` と当時の deployed SHA 一致の記録である。アプリ全体プリフェッチの計画表は含まない。
+
+### 読んだファイルと取得経路
+
+- ルーティング: `frontend/src/App.tsx`。業務画面は dashboard / leads / customers / quotes / orders / inventory / staff / issuerMaster / discordIntegration / inbox / salesOrders。カタログ、認証、データ管理はこの調査時点で repository 読み取りなし。
+- 共通裏読み: `frontend/src/app/usePrefetch.ts`。権限に応じ、lead list・lead form options・customer list・customer aggregates・inventory・orders・currencies・sales orders・staff・quotes を各 cache の `ensureLoaded` 経由で読む。
+- Cache 実装: `frontend/src/app/createListCache.tsx`、`frontend/src/pages/{leads,customers,inventory,orders,quotes,sales-orders,staff}/*CacheContext.tsx`、`frontend/src/features/customers/CustomerAggregateCacheContext.tsx`、`frontend/src/pages/currency/CurrencyMasterCacheContext.tsx`。
+- 直接詳細取得: `frontend/src/pages/customers/CustomerDetailPage.tsx` は `repository.getCustomer(customerId)` を `useEffect` で直接呼ぶ。`frontend/src/pages/leads/LeadEditorPage.tsx` は `LeadDetailCacheContext` に置換済み。`frontend/src/pages/orders/OrderDetailPage.tsx` は在庫選択肢を直接取得する。
+- 編集ページの補助取得: `frontend/src/pages/orders/OrderEditorPage.tsx` は顧客・在庫・顧客 aggregate、`frontend/src/pages/quotes/QuoteEditorPage.tsx` は lead options・issuer・quote detail・inventory options、`frontend/src/pages/inbox/InboxPreviewPage.tsx` は会話一覧・選択会話詳細、`frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx` は接続/チャンネル/OAuth/setup 状態を直接取得する。
+- GAS 境界: `frontend/src/features/*/gasAdapter.ts` と `frontend/src/gas/client.ts`。Customer は `getCoreCustomers` / `getCoreCustomer` / `getCoreAllCustomerAggregates` の三経路を持つ。`CustomerAggregateCache` は aggregate 一覧専用で profile を返す `getCustomer` の代替ではない。
+- 検証モック: `frontend/src/preview/gasRunnerMock.ts`。GAS 関数 `getCoreCustomerForFrontend` は customerId 別 aggregate を返し、`__gasMockCallCounts` が関数名別に計数する。
+
+### 生出力（取得呼び出し検索）
+
+```text
+frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx:52:        repository.getConnectionStatus(),
+frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx:53:        repository.getChannels(),
+frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx:54:        repository.getOAuthStatus(),
+frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx:55:        repository.getSetupStatus(),
+frontend/src/pages/orders/OrderDetailPage.tsx:166:      void repository.listInventoryProducts()
+frontend/src/pages/inbox/InboxPreviewPage.tsx:25:        const rows = await repository.listConversations();
+frontend/src/pages/inbox/InboxPreviewPage.tsx:44:        const detail = await repository.getConversation(selectedId);
+frontend/src/pages/orders/OrderEditorPage.tsx:69:      repository.listInventoryProducts(),
+frontend/src/pages/customers/CustomerDetailPage.tsx:18:  const load = useCallback(async () => { setState('loading'); setError(''); try { const result = await repository.getCustomer(customerId); setCustomer(result); setState(result == null ? 'missing' : 'ready'); } catch (cause) { setError(cause instanceof Error ? cause.message : ''); setState('error'); } }, [customerId, repository]);
+frontend/src/pages/leads/LeadDetailCacheContext.tsx:10:    const record = await repository.getDetail(leadId);
+```
+
+### 未対応一覧と小コスト順
+
+1. Customer detail keyed cache — `CustomerDetailPage` の `repository.getCustomer` を customerId key の `createListCache` へ移す。profile を含むため既存 `CustomerAggregateCache` と分離する。合格条件: 詳細→戻る→同一詳細で `getCoreCustomer` が増えず、現ページに保存操作はない。
+2. Order detail inventory options — 直接取得を既存/新規 cache 化できるか、編集ページとの option shape と更新要件を調査してから判断する。
+3. Inbox detail / Discord integration status / Quote editor options / Order editor aggregate reads — 各ページに保存・状態更新・画面遷移の要件があるため、個別の合格条件と更新不変性を確定してから別PRで扱う。
+
+### Phase 1 の合格条件（実装前定義）
+
+- `/customers/:customerId` を開く→一覧へ戻る→同一詳細を再度開くで、`__gasMockCallCounts.getCoreCustomerForFrontend` が増えない。
+- Customer detail は保存操作を持たないため、保存後更新の合格条件は非該当。
+- list cache にない customerId を keyed cache が取得し、`null` は missing として cache する。
+
+---
+
 ## 【発行元マスタseed匿名化】公開記載ルール準拠 — PR #493
 
 ### 変更内容
