@@ -119,4 +119,37 @@ function addOrderExtColumns() {
   return result;
 }
 
-// compareOrderHeaders は 99_TestFunctions.js に定義済み（二重定義防止）
+/**
+ * オーダー管理 / オーダー明細タブの実ヘッダーと CONFIG 定義を比較する。
+ */
+function compareOrderHeaders() {
+  var ss = getSpreadsheet();
+  var lines = [];
+
+  [
+    { sheetKey: 'ORDER_MASTER', sheetName: CONFIG.SHEETS.ORDER_MASTER, headers: HEADERS.ORDER_MASTER },
+    { sheetKey: 'ORDER_LINES', sheetName: CONFIG.SHEETS.ORDER_LINES, headers: HEADERS.ORDER_LINES }
+  ].forEach(function(def) {
+    lines.push('=== ' + def.sheetName + ' (' + def.sheetKey + ') ===');
+    var sheet = ss.getSheetByName(def.sheetName);
+    if (!sheet) {
+      lines.push('  [ERROR] タブが見つかりません: ' + def.sheetName);
+      return;
+    }
+
+    var actual = sheet.getRange(1, 1, 1, def.headers.length).getValues()[0];
+    var mismatches = 0;
+    def.headers.forEach(function(expected, idx) {
+      var colNum = idx + 1;
+      var act = String(actual[idx] || '');
+      var match = act === expected ? 'OK' : 'MISMATCH';
+      if (match === 'MISMATCH') mismatches++;
+      lines.push('  col' + colNum + ': [' + match + '] CONFIG="' + expected + '" / 実="' + act + '"');
+    });
+    lines.push('  mismatches=' + mismatches);
+    lines.push('');
+  });
+
+  Logger.log(lines.join('\n'));
+  return lines.join('\n');
+}
