@@ -168,6 +168,85 @@ function dryRunOrderStatusRecalculation() {
   return result;
 }
 
+/**
+ * PAID（支払済み）を発送待ち条件にした場合の影響を、書き込みなしで試算する。
+ * 本体の calculateOrderStatus() は変更しない。
+ *
+ * @returns {{purchaseStatusCounts: Object<string, number>, statusTransitionCounts: Object<string, number>}}
+ */
+function dryRunOrderStatusWithPurchasePaid() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('dryRunOrderStatusWithPurchasePaid is available only in development');
+  }
+
+  var ss = getSpreadsheet();
+  var ordersMeta = readOrderStatusServiceSheet_(ss, 'ORDERS', [
+    'ORDER_ID', 'STATUS', 'CANCELLATION_REASON', 'PAYMENT_CONFIRMED_AT', 'INVOICE_NUMBER'
+  ]);
+  var shipmentsMeta = readOrderStatusServiceSheet_(ss, 'SHIPMENTS', [
+    'ORDER_ID', 'PICKUP_REQUEST', 'TRACKING_NUMBER'
+  ]);
+  var purchasesMeta = readOrderStatusServiceSheet_(ss, 'PURCHASES', ['ORDER_ID', 'STATUS']);
+  var shipmentsByOrderId = buildOrderStatusLookup_(shipmentsMeta.rows, 'ORDER_ID');
+  var purchasesByOrderId = buildOrderStatusLookup_(purchasesMeta.rows, 'ORDER_ID');
+  var purchaseStatusCounts = {};
+  var statusTransitionCounts = {};
+
+  purchasesMeta.rows.forEach(function(purchaseRow) {
+    var status = isOrderStatusEmptyValue_(purchaseRow.STATUS) ? '（空欄）' : String(purchaseRow.STATUS);
+    purchaseStatusCounts[status] = (purchaseStatusCounts[status] || 0) + 1;
+  });
+
+  ordersMeta.rows.forEach(function(orderRow) {
+    var orderId = String(orderRow.ORDER_ID || '').trim();
+    if (!orderId) return;
+    var shipments = (shipmentsByOrderId[orderId] || []).map(function(shipment) {
+      return { pickupRequest: shipment.PICKUP_REQUEST, trackingNumber: shipment.TRACKING_NUMBER };
+    });
+    var purchases = (purchasesByOrderId[orderId] || []).map(function(purchase) {
+      return { status: purchase.STATUS };
+    });
+    var calculatedStatus = calculateOrderStatusWithPurchasePaid_(
+      {
+        cancellationReason: orderRow.CANCELLATION_REASON,
+        status: orderRow.STATUS,
+        paymentConfirmedAt: orderRow.PAYMENT_CONFIRMED_AT,
+        invoiceNumber: orderRow.INVOICE_NUMBER
+      },
+      shipments,
+      purchases
+    );
+    var transition = String(orderRow.STATUS || '（空欄）') + ' → ' + calculatedStatus;
+    statusTransitionCounts[transition] = (statusTransitionCounts[transition] || 0) + 1;
+  });
+
+  return {
+    purchaseStatusCounts: purchaseStatusCounts,
+    statusTransitionCounts: statusTransitionCounts
+  };
+}
+
+function calculateOrderStatusWithPurchasePaid_(order, shipments, purchases) {
+  var troubleValue = getCoreSchemaV1Value('ORDERS', 'STATUS', 'TROUBLE');
+  var completedValue = getCoreSchemaV1Value('ORDERS', 'STATUS', 'COMPLETED');
+  var awaitingShippingValue = getCoreSchemaV1Value('ORDERS', 'STATUS', 'AWAITING_SHIPPING');
+  var sourcingValue = getCoreSchemaV1Value('ORDERS', 'STATUS', 'SOURCING');
+  var awaitingPaymentValue = getCoreSchemaV1Value('ORDERS', 'STATUS', 'AWAITING_PAYMENT');
+  var cancelledValue = getCoreSchemaV1Value('ORDERS', 'STATUS', 'CANCELLED');
+  var unknownValue = getCoreSchemaV1Value('ORDERS', 'STATUS', 'UNKNOWN');
+  var purchasePaidValue = getCoreSchemaV1Value('PURCHASES', 'STATUS', 'PAID');
+
+  if (!isOrderStatusEmptyValue_(order.cancellationReason)) return cancelledValue;
+  if (order.status === troubleValue) return troubleValue;
+  if ((shipments || []).some(function(shipment) {
+    return !isOrderStatusEmptyValue_(shipment.pickupRequest) && !isOrderStatusEmptyValue_(shipment.trackingNumber);
+  })) return completedValue;
+  if ((purchases || []).some(function(purchase) { return purchase.status === purchasePaidValue; })) return awaitingShippingValue;
+  if (!isOrderStatusEmptyValue_(order.paymentConfirmedAt)) return sourcingValue;
+  if (!isOrderStatusEmptyValue_(order.invoiceNumber)) return awaitingPaymentValue;
+  return unknownValue;
+}
+
 // ─── private helpers ─────────────────────────────────────────────────────────
 
 /**
