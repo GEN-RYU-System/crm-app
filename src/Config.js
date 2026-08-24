@@ -34,24 +34,6 @@ function smokeReadConfiguredSpreadsheets() {
   return { devReadable: Boolean(dev.getId()) };
 }
 
-/**
- * 一時的なERP廃止処理。IDは戻り値・ログへ出力しない。
- * 実行後、呼出し用コードは削除する。
- */
-function retireConfiguredErpSpreadsheet() {
-  const properties = PropertiesService.getScriptProperties();
-  const retiredId = properties.getProperty('ERP_SPREADSHEET_ID');
-  properties.deleteProperty('ERP_SPREADSHEET_ID');
-  if (!retiredId) return { erpPropertyDeleted: true, bookTrashed: false, reason: 'property_was_not_set' };
-
-  try {
-    DriveApp.getFileById(retiredId).setTrashed(true);
-    return { erpPropertyDeleted: true, bookTrashed: true };
-  } catch (error) {
-    return { erpPropertyDeleted: true, bookTrashed: false, reason: 'drive_operation_denied' };
-  }
-}
-
 const ERP_CONFIG = {
   SPREADSHEET_ID: null,
 
