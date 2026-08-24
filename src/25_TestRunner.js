@@ -503,7 +503,7 @@ function createTestLead(leadId, status, amount, daysAgo, staffId, customerName) 
     '流入経路': 'テスト流入',
     'メッセージURL': '',
     'CSメモ': 'テストデータ',
-    'メール': 'test@customer.com',
+    'メール': '',
     '電話番号': '',
     '連絡手段': 'Email',
     '温度感': '高',
