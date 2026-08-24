@@ -7,6 +7,13 @@ import { ISSUER_HEADER } from '../content/ja/issuer';
 
 const MOCK_SESSION_ID = 'preview-mock-session';
 const mockCallCounts: Record<string, number> = {};
+let mockDiscordConnectionStatus = {
+  isTokenSet: false,
+  tokenMask: 'not-set',
+  botName: '',
+  botId: '',
+  connected: false,
+};
 
 type PreviewWindow = Window & { __gasMockCallCounts?: Readonly<Record<string, number>> };
 
@@ -24,7 +31,7 @@ const MOCK_SESSION_USER = {
   staffId: 'EMP-00001',
   fullNameJa: 'Preview User',
   role: 'admin',
-  email: 'preview@preview.local',
+  email: '[preview-user]',
 };
 
 const MOCK_PERMISSIONS = {
@@ -94,7 +101,7 @@ const MOCK_AGGREGATES: Record<string, unknown> = {
     ],
   },
   'CUS-0002': {
-    profile: { customerId: 'CUS-0002', sourceLeadId: '', customerName: 'Preview Customer B', country: 'US', emailAddress: '', phone: '', countryCode: '', firstTransactionDate: '', registeredAt: '', salesAssigneeName: 'Preview User', contactTool: '', shippingNote: '', discordChannelId: '3333333333333333333', shippingAddressCount: 1, paymentProfileCount: 1 },
+    profile: { customerId: 'CUS-0002', sourceLeadId: '', customerName: 'Preview Customer B', country: 'US', emailAddress: '', phone: '', countryCode: '', firstTransactionDate: '', registeredAt: '', salesAssigneeName: 'Preview User', contactTool: '', shippingNote: '', discordChannelId: 'preview-discord-channel', shippingAddressCount: 1, paymentProfileCount: 1 },
     shippingAddresses: [
       {
         addressId: 'SHP-0002',
@@ -370,10 +377,10 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
           [ISSUER_HEADER.ZIP]:             '100-0001',
           [ISSUER_HEADER.COUNTRY]:         'Japan',
           [ISSUER_HEADER.PHONE]:           '+81-3-0000-0000',
-          [ISSUER_HEADER.EMAIL]:           'info@preview.example.com',
+          [ISSUER_HEADER.EMAIL]:           '[preview-email]',
           [ISSUER_HEADER.REGISTRATION_NO]: 'T1234567890123',
           [ISSUER_HEADER.PAYEE_NAME]:      'Preview Company Ltd.',
-          [ISSUER_HEADER.PAYMENT_EMAIL]:   'payment@preview.example.com',
+          [ISSUER_HEADER.PAYMENT_EMAIL]:   '[preview-payment-email]',
           [ISSUER_HEADER.PAYMENT_NOTE]:    'Preview payment note.',
           [ISSUER_HEADER.CLOSING_MESSAGE]: 'Thank you for your order.',
           [ISSUER_HEADER.IS_ACTIVE]:       true,
@@ -385,17 +392,18 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     },
 
     // Discord integration
-    saveDiscordBotToken(_s: string | null, _token: string) {
+    saveDiscordBotToken(_s: string | null, token: string) {
+      if (token === 'preview-save-fail') {
+        succeed({ success: false });
+        return;
+      }
+      mockDiscordConnectionStatus = token === 'preview-connection-fail'
+        ? { isTokenSet: true, tokenMask: '••••fail', botName: '', botId: '', connected: false }
+        : { isTokenSet: true, tokenMask: '••••mock', botName: 'Preview Bot', botId: 'preview-bot-id', connected: true };
       succeed({ success: true });
     },
     getDiscordConnectionStatusForFrontend(_s: string | null) {
-      succeed({
-        isTokenSet: false,
-        tokenMask: 'not-set',
-        botName: '',
-        botId: '',
-        connected: false,
-      });
+      succeed(mockDiscordConnectionStatus);
     },
     saveDiscordChannels(_s: string | null, _channelIds: unknown) {
       succeed({ success: true });
@@ -412,14 +420,14 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
       succeed({ guildId: null });
     },
     runDiscordAutoSetup(_s: string | null) {
-      succeed({ success: true, categoryId: '1111111111111111111', ticketChannelId: '2222222222222222222' });
+      succeed({ success: true, categoryId: 'preview-category', ticketChannelId: 'preview-ticket-channel' });
     },
     getDiscordSetupStatus(_s: string | null) {
       succeed({ guildId: null, categoryId: null, ticketChannelId: null });
     },
     createDiscordTicketForCustomer(_s: string | null, customerId: string) {
-      if (customerId === 'CUS-0002') { succeed({ success: true, reused: true, channelId: '3333333333333333333', channelName: 'ticket-preview-customer-b-0002' }); return; }
-      succeed({ success: true, reused: false, channelId: '4444444444444444444', channelName: 'ticket-preview-customer-a-0001' });
+      if (customerId === 'CUS-0002') { succeed({ success: true, reused: true, channelId: 'preview-existing-channel', channelName: 'ticket-preview-customer-b-0002' }); return; }
+      succeed({ success: true, reused: false, channelId: 'preview-new-channel', channelName: 'ticket-preview-customer-a-0001' });
     },
   };
 
@@ -441,6 +449,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
 
 export function installGASMock(): void {
   for (const name of Object.keys(mockCallCounts)) delete mockCallCounts[name];
+  mockDiscordConnectionStatus = { isTokenSet: false, tokenMask: 'not-set', botName: '', botId: '', connected: false };
   sessionStorage.setItem('crm_session_id', MOCK_SESSION_ID);
   const runner = buildChain(
     () => { /* default no-op success */ },
