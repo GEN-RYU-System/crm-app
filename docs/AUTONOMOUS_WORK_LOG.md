@@ -199,6 +199,43 @@ design-system checks passed
 
 ---
 
+## 【InventoryProductOptions cache】Order detail の直接取得置換
+
+### 合格条件（実装前定義）
+
+- orders または quotes 権限の裏読み完了時点で、`getInventoryProductOptions` は全体で1回。
+- 注文詳細で「金額を編集」を開いても、その呼び出し数は増えない。
+- Order detail の金額保存は既存の `updateOrder` を維持し、商品選択肢の取得経路だけを置換する。
+
+### 変更
+
+- `frontend/src/pages/inventory/InventoryProductOptionsCacheContext.tsx` を追加。`getInventoryProductOptions()` の戻り値を変換せず、`createListCache` + `SINGLE_KEY` で保持する。
+- `frontend/src/App.tsx` に Provider を登録し、`frontend/src/app/usePrefetch.ts` は orders または quotes 権限で `ensureLoaded` を実行する。
+- `frontend/src/pages/orders/OrderDetailPage.tsx` の `repository.listInventoryProducts()` 直接取得を context の `ensureLoaded` / `products` / `loading` 参照に置換した。OrderEditorPage と QuoteEditorPage は未変更。
+
+### 生出力
+
+```text
+__gasMockCallCounts (prefetch complete):
+getInventoryProductOptions: 1
+
+__gasMockCallCounts (after opening amount edit):
+getInventoryProductOptions: 1
+
+PASS: opening order amount edit did not call getInventoryProductOptions again
+```
+
+```text
+npm run build:gas
+> npm run typecheck && npm run build && node scripts/emit-gas-html.mjs && npm run check:design-system
+✓ 516 modules transformed.
+dist/index.html  477.55 kB │ gzip: 123.65 kB
+✓ built in 831ms
+design-system checks passed
+```
+
+---
+
 ## 【発行元マスタseed匿名化】公開記載ルール準拠 — PR #493
 
 ### 変更内容
