@@ -26,6 +26,20 @@
 
 ---
 
+## 【Discord設定API認証】セッション利用者を権限確認前に設定 — PR #484
+
+### 変更内容
+- `src/34_DiscordSettingsApi.js` の sessionId を受け取る4関数で、`checkPermission('admin_access')` の前に `setEmailFromSession(sessionId)` を追加した。
+- 設定保存・取得の権限確認が、渡されたセッションの利用者を基準に実行される順序へ統一した。
+
+### 検証結果
+- `npm run build:gas --prefix frontend` 成功。
+
+### mergeCommit
+`787000cc93c9ecf67452526f8639a300ff71a4a0`
+
+---
+
 ## 【リポジトリ正規状態】恒久記録の追加 — PR #482
 
 ### 変更内容
