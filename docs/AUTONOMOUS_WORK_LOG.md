@@ -1,6 +1,8 @@
 # 自律作業ログ
 
-> **develop凍結中（redaction2実施中）:** 本作業のPR以外のpush・マージ・PR作成を禁止する。履歴書換え完了後に解除記録を追加する。
+> **develop凍結解除（2026-08-24）:** redaction2 v2 の履歴書換え・全履歴再スキャンを完了し、凍結を解除した。Actions を通常のDEVデプロイ経路とし、ローカル clasp は障害時のバックアップ経路とする。
+>
+> **並行作業者への必須告知:** 既存クローン／worktree は使用・push・fetch 禁止。新履歴を必ず再クローンすること。作業ログ内の旧SHA（revert SHAを含む）は `docs/SHA_REMAP_20260824.md`（v1）から `docs/SHA_REMAP_20260824_v2.md`（v2）へ順に連結して読み替える。
 >
 > **redaction2 v2:** 実ID 3件・実メール 5件・電話番号／登録番号 3件を置換対象とし、除外した数値列はシートgid・Git SHA・Actions run ID・ビルド生成物であり個人連絡先ではない。旧SHAは `docs/SHA_REMAP_20260824.md` と `docs/SHA_REMAP_20260824_v2.md` を順に参照する。
 
@@ -8,6 +10,24 @@
 
 このファイルは Claude Code による自律実装セッションの記録です。
 各エントリは PR 単位で記述されます。
+
+---
+
+## 【redaction2後処理】Security Content Check のCLI化 — PR #472
+
+**マージ日時**: 2026-08-24T11:17:14Z
+
+### 変更内容
+- ライセンス必須の `gitleaks/gitleaks-action@v2` を廃止し、公式 GitHub Releases から取得する gitleaks CLI v8.18.4 へ変更
+- SHA-256 をワークフローへ固定し、展開前に `sha256sum --check` で検証
+- 既存の個人情報パターン検査は変更なし
+
+### 実測値
+- PR #472 Security Content Check run `32721030126`: Gitleaks pass（11秒）、Sensitive Content pass（6秒）
+- 負例PR #473 Security Content Check run `32721130562`: Gitleaks pass（10秒）、Sensitive Content fail（7秒）。予約ドメインのダミー値を検出し、未マージでクローズ・ブランチ削除済み
+
+### 戻し方
+`git revert 4d4b7c329e506856fc36bf387838bf96d525357f`
 
 ---
 
