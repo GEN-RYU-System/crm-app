@@ -15,6 +15,13 @@
 
 ---
 
+## 【受信箱公開 Phase 4-1】DEVヘッダー監査関数
+
+- `auditDevInboxSheetHeaders()` を追加。DEV限定で会話ログ・リード管理の1行目を読み、列数とヘッダー名だけをJSON文字列として返す。行データ・シートIDは返さない。
+- 実測結果、PR番号、squash merge SHA、revert SHAは配布・実行後に追記する。
+
+---
+
 ## 【npmキャッシュ除外】誤コミット防止 — PR #488
 
 ### 変更内容
