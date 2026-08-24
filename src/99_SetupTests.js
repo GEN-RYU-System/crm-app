@@ -50,7 +50,7 @@ function test1_VerifySheetCreation() {
   } else {
     Logger.log('\n❌ テスト1失敗: 以下のシートが見つかりません:');
     missingSheets.forEach(name => Logger.log('  - ' + name));
-    Logger.log('\n対処方法: GASエディタで initializeERPIntegration() を実行してください');
+    Logger.log('\n対処方法: 必要なCRMシートを初期化してから再実行してください');
     return false;
   }
 }

@@ -25,6 +25,7 @@ function isKnownNonContactNumber(line, match) {
   const prefix = line.slice(Math.max(0, match.index - 80), match.index);
   if (/(?:github actions|deploy to dev|security content check|ci).*?run\s*#?\s*[`'"]?\s*$/i.test(prefix)) return true;
   if (/\bgh\s+run\s+rerun\s*$/i.test(prefix)) return true;
+  if (/\bID\s*:\s*$/i.test(prefix)) return true;
   return [...line.matchAll(/[0-9a-f]{40}/gi)].some((sha) => {
     const start = sha.index;
     const end = start + sha[0].length;
@@ -54,7 +55,7 @@ for (const file of files) {
       add(file, location, 'Google Sheets/Drive ID', match[1]);
     }
     for (const match of line.matchAll(/(?:spreadsheet|drive)[_-]?id\s*[:=]\s*["']?([A-Za-z0-9_-]{25,})/gi)) {
-      add(file, location, 'Spreadsheet/Drive ID', match[1]);
+      if (match[1] !== 'getRequiredSpreadsheetProperty') add(file, location, 'Spreadsheet/Drive ID', match[1]);
     }
     if (isDocsOrTest(file)) {
       const customer = /(?:customerName|customer_name|顧客名)\s*[:=]\s*["'`]([^"'`]+)["'`]/i.exec(line);

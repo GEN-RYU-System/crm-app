@@ -11,11 +11,10 @@ function getERPEnvironment() {
 }
 
 /**
- * 環境に応じたスプレッドシートIDを取得
+ * 互換用: 旧ERPブックではなく、現在のDEVブックを返す。
  */
 function getERPSpreadsheetId() {
-  getERPEnvironment();
-  return getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID');
+  return getRequiredSpreadsheetProperty('DEV_SPREADSHEET_ID');
 }
 
 function getRequiredSpreadsheetProperty(key) {
@@ -24,16 +23,33 @@ function getRequiredSpreadsheetProperty(key) {
   return value;
 }
 
-function configureDevSpreadsheetProperties(devSpreadsheetId, erpSpreadsheetId) {
-  if (!devSpreadsheetId || !erpSpreadsheetId) throw new Error('プロパティ未設定: DEV_SPREADSHEET_ID または ERP_SPREADSHEET_ID');
-  PropertiesService.getScriptProperties().setProperties({ DEV_SPREADSHEET_ID: devSpreadsheetId, ERP_SPREADSHEET_ID: erpSpreadsheetId }, false);
-  return { configured: ['DEV_SPREADSHEET_ID', 'ERP_SPREADSHEET_ID'] };
+function configureDevSpreadsheetProperties(devSpreadsheetId) {
+  if (!devSpreadsheetId) throw new Error('プロパティ未設定: DEV_SPREADSHEET_ID');
+  PropertiesService.getScriptProperties().setProperty('DEV_SPREADSHEET_ID', devSpreadsheetId);
+  return { configured: ['DEV_SPREADSHEET_ID'] };
 }
 
 function smokeReadConfiguredSpreadsheets() {
   const dev = SpreadsheetApp.openById(getRequiredSpreadsheetProperty('DEV_SPREADSHEET_ID'));
-  const erp = SpreadsheetApp.openById(getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID'));
-  return { devReadable: Boolean(dev.getId()), erpReadable: Boolean(erp.getId()) };
+  return { devReadable: Boolean(dev.getId()) };
+}
+
+/**
+ * 一時的なERP廃止処理。IDは戻り値・ログへ出力しない。
+ * 実行後、呼出し用コードは削除する。
+ */
+function retireConfiguredErpSpreadsheet() {
+  const properties = PropertiesService.getScriptProperties();
+  const retiredId = properties.getProperty('ERP_SPREADSHEET_ID');
+  properties.deleteProperty('ERP_SPREADSHEET_ID');
+  if (!retiredId) return { erpPropertyDeleted: true, bookTrashed: false, reason: 'property_was_not_set' };
+
+  try {
+    DriveApp.getFileById(retiredId).setTrashed(true);
+    return { erpPropertyDeleted: true, bookTrashed: true };
+  } catch (error) {
+    return { erpPropertyDeleted: true, bookTrashed: false, reason: 'drive_operation_denied' };
+  }
 }
 
 const ERP_CONFIG = {
@@ -153,9 +169,9 @@ function getGeminiApiKey() {
  * 現在の環境情報を表示
  */
 function showERPEnvironment() {
-  const env = getERPEnvironment();
+  const env = getEnvironment();
   return {
     environment: env,
-    erpConfigured: Boolean(getERPSpreadsheetId())
+    devConfigured: Boolean(PropertiesService.getScriptProperties().getProperty('DEV_SPREADSHEET_ID'))
   };
 }
