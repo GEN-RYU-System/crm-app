@@ -17,10 +17,21 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Scan secrets
-        uses: gitleaks/gitleaks-action@v2
+      - name: Install verified gitleaks CLI
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: 8.18.4
+          GITLEAKS_SHA256: ba6dbb656933921c775ee5a2d1c13a91046e7952e9d919f9bac4cec61d628e7d
+        run: |
+          set -euo pipefail
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl --fail --location --silent --show-error --output "$archive" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
+          echo "${GITLEAKS_SHA256}  ${archive}" | sha256sum --check --status
+          tar -xzf "$archive" gitleaks
+          chmod +x gitleaks
+
+      - name: Scan secrets
+        run: ./gitleaks detect --source . --no-banner --redact=100
 
   sensitive-content:
     name: Sensitive Content
