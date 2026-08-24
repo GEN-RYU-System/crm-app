@@ -1024,4 +1024,18 @@ GitHub Actions 課金停止による DEV 配布失敗を、ローカル `clasp p
 5. `clasp run getDeployedSha` → `3b25543...` = develop HEAD ✓
 6. `dryRunVerifyInboxPhase1("LDI-00002")` → conversationListCount=25 / sampleMessageCount=75 ✓
 7. `dryRunVerifyInboxPhase1("LDI-00001")` → sampleMessageCount=8 ✓
-8. 25 件目（CONVERSATION_SUMMARY のみ、会話ログなし）: **LDI-00233**（Siddharth Gulrajani）
+8. 25 件目（CONVERSATION_SUMMARY のみ、会話ログなし）: **LDI-00233**（顧客実名は公開後監査で除去。詳細は `docs/PUBLIC_READINESS_SCAN.md` を参照）
+
+### 公開後監査・DEV Deploy to DEV Run 512 再実行（2026-08-24）
+
+- 合格条件（DEV）: Run 512 が成功し、`clasp run getDeployedSha` が `develop` HEAD と一致すること。
+- 実測: `gh run rerun 32699033081 --failed` の再実行は **成功**。`deploy` job は全工程成功（42秒）。
+  - `Build GAS artifact` は `npm run build:gas`（`typecheck` / `vite build` / `emit-gas-html` / design-system check）を実行。
+  - `clasp run getDeployedSha` → `e4e6b66e3d360ba162c8dd742d41d2ccdbe5e330`。
+  - `develop` HEAD → `e4e6b66e3d360ba162c8dd742d41d2ccdbe5e330`。一致。
+  - Phase A の DEV API 実測: `LDI-00002` は会話一覧25件・メッセージ75件、`LDI-00001` はメッセージ8件。
+- 画面照合: この実行環境には操作可能なブラウザ接続がなく、新規の実UI観測は未実施。上記は Phase A の DEV API 実測値。
+- 公開後監査: `gitleaks git --log-opts="--all"` は0件、`trufflehog git file://. --no-update --only-verified` は verified/unverified とも0件。
+- 補完grepで顧客実名1件を検出（本ログの旧記載、コミット `e4e6b66e3d360ba162c8dd742d41d2ccdbe5e330`）。GitHubリポジトリは `PRIVATE` へ復帰済み。現行ファイルから実名を除去した。履歴書換えは実施しない。
+- 変更内容: 実名をID参照へ置換し、`docs/PUBLIC_READINESS_SCAN.md` を追加。
+- 戻し方: この監査PRのsquash mergeコミットを `git revert <merge-sha>` で戻す（実名の再公開はしない）。
