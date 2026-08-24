@@ -1,5 +1,7 @@
 # 自律作業ログ
 
+> **履歴書換え済み（2026-08-24）:** すべての作業者は旧クローン／旧worktreeを使用・pushせず、必ず新履歴を再クローンすること。旧SHAは `docs/SHA_REMAP_20260824.md` で新SHAへ読み替える。
+
 このファイルは Claude Code による自律実装セッションの記録です。
 各エントリは PR 単位で記述されます。
 
@@ -1039,3 +1041,10 @@ GitHub Actions 課金停止による DEV 配布失敗を、ローカル `clasp p
 - 補完grepで顧客実名1件を検出（本ログの旧記載、コミット `e4e6b66e3d360ba162c8dd742d41d2ccdbe5e330`）。GitHubリポジトリは `PRIVATE` へ復帰済み。現行ファイルから実名を除去した。履歴書換えは実施しない。
 - 変更内容: 実名をID参照へ置換し、`docs/PUBLIC_READINESS_SCAN.md` を追加。
 - 戻し方: 監査PR #462 のsquash mergeコミット `bc4453579a7f49bf3fda69b1223f0dfa4c53bc16` は `git revert bc4453579a7f49bf3fda69b1223f0dfa4c53bc16` で戻せる（実名の再公開はしない）。
+
+### 履歴書換え（2026-08-24）
+
+- バックアップ: `git clone --mirror` と `git bundle create --all` を実行し、バンドルから復元した `origin/develop` が書換え前の `3c16588c73e13ed639e76b6ace07a3d0e17ff4cc` と一致。
+- 実施: `git-filter-repo --replace-text` で顧客実名のフルネーム・姓・名の3パターンを `[REDACTED]` へ置換。全パターンは同一の4コミットにのみ出現。
+- SHA対応: `docs/SHA_REMAP_20260824.md` に filter-repo の commit-map（旧SHA→新SHA、1,108行）を保存。
+- 読み替え: 過去のrevert SHAを含むすべての旧SHAは、同ファイルで新SHAに読み替えること。
