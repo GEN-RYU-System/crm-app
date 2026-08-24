@@ -22,6 +22,7 @@
 var CORE_ORDER_WRITE_ID_PREFIX = 'OD-';
 /** 明細ID接頭辞: ODL-00001 形式 */
 var CORE_ORDER_WRITE_LINE_ID_PREFIX = 'ODL-';
+var CORE_ORDER_WRITE_INVOICE_ID_PREFIX = 'INV-';
 /** ID の連番部桁数 */
 var CORE_ORDER_WRITE_ID_DIGITS = 5;
 
@@ -278,6 +279,34 @@ function coreOrderWriteGenerateNextOrderId(sheet, headerIndexes) {
     });
   }
   return CORE_ORDER_WRITE_ID_PREFIX + String(maxNum + 1).padStart(CORE_ORDER_WRITE_ID_DIGITS, '0');
+}
+
+/**
+ * 請求書番号（INV-00001 形式）を採番する。既存の INV- 系のみを対象にする。
+ * @returns {string}
+ */
+function generateNextInvoiceNumber() {
+  var ss = getSpreadsheet();
+  var ordersResult = validateCoreSchemaV1TableForWrite(ss, 'ORDERS');
+  var sheet = ordersResult.sheet;
+  var invoiceHeader = getCoreSchemaV1HeaderName('ORDERS', 'INVOICE_NUMBER');
+  var colIdx = ordersResult.headerIndexes[invoiceHeader];
+  var maxNum = 0;
+  var lastRow = sheet.getLastRow();
+  if (lastRow >= 2 && colIdx) {
+    sheet.getRange(2, colIdx, lastRow - 1, 1).getValues().forEach(function(row) {
+      var value = String(row[0] || '').trim();
+      if (!value.startsWith(CORE_ORDER_WRITE_INVOICE_ID_PREFIX)) return;
+      var num = parseInt(value.slice(CORE_ORDER_WRITE_INVOICE_ID_PREFIX.length), 10);
+      if (!isNaN(num) && num > maxNum) maxNum = num;
+    });
+  }
+  return CORE_ORDER_WRITE_INVOICE_ID_PREFIX + String(maxNum + 1).padStart(CORE_ORDER_WRITE_ID_DIGITS, '0');
+}
+
+/** テスト用の読み取り専用ラッパー。 */
+function testGenerateNextInvoiceNumber() {
+  return generateNextInvoiceNumber();
 }
 
 /**
