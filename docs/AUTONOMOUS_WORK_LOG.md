@@ -90,6 +90,30 @@
 
 ---
 
+## 【Phase 0】Lead detail keyed cache 再調査
+
+### canonical上の根拠
+
+- `frontend/src/pages/leads/LeadListCacheContext.tsx` は `createListCache<LeadRecord, LeadListTabType>` を使い、一覧を `all` / リード種別で保持している。
+- `frontend/src/pages/leads/LeadEditorPage.tsx` は一覧に対象leadIdがない場合、`repository.getDetail(leadId)` を直接呼び出している。
+- `frontend/src/features/leads/contracts.ts` と `gasAdapter.ts` は、詳細取得の境界として `LeadRepository.getDetail` を提供している。
+- `frontend/src/preview/gasRunnerMock.ts` は `__gasMockCallCounts` で `getLeadDetail` を関数名別に計数できる。
+
+### 計画1の合格条件
+
+- `/leads/:leadId` を開き、一覧へ戻って同じ詳細を再度開いたとき、`getLeadDetail` の生出力が初回の `1` から増えない。
+- 一覧に未命中のleadIdでは `LeadRepository.getDetail` を `createListCache` のleadIdキーで取得し、nullはmissingとしてキャッシュする。
+
+### 計画1の生出力
+
+```text
+first:  getLeadDetail = 1
+second: getLeadDetail = 1
+PASS: detail reopen did not issue another getLeadDetail call
+```
+
+---
+
 ## 【発行元マスタseed匿名化】公開記載ルール準拠 — PR #493
 
 ### 変更内容
