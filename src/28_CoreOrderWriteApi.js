@@ -73,6 +73,8 @@ function createCoreOrderForFrontend(sessionId, payload) {
   var paymentDestinationId = coreOrderWriteValue(payload.paymentDestinationId);
   var currency = coreOrderWriteValue(payload.currency);
   var paymentMethod = coreOrderWriteValue(payload.paymentMethod);
+  var isDraft = payload.isDraft !== false;
+  var requestedInvoiceNumber = coreOrderWriteValue(payload.invoiceNumber);
   var lines = Array.isArray(payload.lines) ? payload.lines : [];
 
   if (!customerId) throw new Error('MISSING_CUSTOMER_ID');
@@ -81,6 +83,17 @@ function createCoreOrderForFrontend(sessionId, payload) {
   if (!currency) throw new Error('MISSING_CURRENCY');
   if (!paymentMethod) throw new Error('MISSING_PAYMENT_METHOD');
   if (!lines.length) throw new Error('MISSING_LINES');
+  var invoiceIssuedAt = '';
+  var invoiceNumber = '';
+  if (!isDraft) {
+    invoiceIssuedAt = new Date();
+    if (paymentMethod.toUpperCase() === 'WISE') invoiceNumber = generateNextInvoiceNumber();
+    else if (paymentMethod.toUpperCase() === 'PAYPAL') {
+      // 将来は PayPal API から請求書番号を取得する。
+      if (!requestedInvoiceNumber) throw new Error('INVOICE_NUMBER_REQUIRED');
+      invoiceNumber = requestedInvoiceNumber;
+    }
+  }
 
   // 在庫バリデーション（condition / productId が指定された行のみ）
   validateQuoteLineInventory_(lines);
@@ -175,6 +188,8 @@ function createCoreOrderForFrontend(sessionId, payload) {
       setOrderCell('OTHER_FEE', otherFee);
       setOrderCell('DISCOUNT', discount);
       setOrderCell('INVOICE_TOTAL', invoiceTotal);
+      setOrderCell('INVOICE_ISSUED_AT', invoiceIssuedAt);
+      setOrderCell('INVOICE_NUMBER', invoiceNumber);
       setOrderCell('PAYMENT_METHOD', paymentMethodValue);
       setOrderCell('PAYMENT_DUE_AT', paymentDueDate);
       setOrderCell('PAYMENT_TERMS', paymentTermsLabel);
