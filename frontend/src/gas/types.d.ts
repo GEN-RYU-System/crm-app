@@ -47,6 +47,8 @@ interface GoogleScriptRun {
   getDiscordChannelsForFrontend(sessionId: string | null): void;
   generateDiscordOAuthUrl(sessionId: string | null): void;
   getDiscordOAuthStatus(sessionId: string | null): void;
+  runDiscordAutoSetup(sessionId: string | null): void;
+  getDiscordSetupStatus(sessionId: string | null): void;
   getInboxConversationsForFrontend(sessionId: string | null, forceRefresh: boolean): void;
   getInboxConversationDetailForFrontend(sessionId: string | null, leadId: string): void;
 }

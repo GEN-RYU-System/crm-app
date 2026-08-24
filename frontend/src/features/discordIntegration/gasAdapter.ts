@@ -5,6 +5,8 @@ import {
   getDiscordChannels,
   generateDiscordOAuthUrl,
   getDiscordOAuthStatus,
+  runDiscordAutoSetup,
+  getDiscordSetupStatus,
 } from '../../gas/client';
 import type { DiscordIntegrationRepository } from './contracts';
 
@@ -15,4 +17,6 @@ export const discordIntegrationGasRepository: DiscordIntegrationRepository = {
   getChannels: () => getDiscordChannels(),
   generateOAuthUrl: () => generateDiscordOAuthUrl(),
   getOAuthStatus: () => getDiscordOAuthStatus(),
+  runAutoSetup: () => runDiscordAutoSetup(),
+  getSetupStatus: () => getDiscordSetupStatus(),
 };

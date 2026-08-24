@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Card, PageHeader, Spinner, StatusMessage, TextField } from '../../components/ui';
 import { discordIntegrationCopy } from '../../content/ja/discordIntegration';
-import type { DiscordConnectionStatus, DiscordIntegrationRepository } from '../../features/discordIntegration/contracts';
+import type { DiscordConnectionStatus, DiscordIntegrationRepository, DiscordSetupStatus } from '../../features/discordIntegration/contracts';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type SaveState = 'idle' | 'saving' | 'success' | 'error';
 type TestState = 'idle' | 'testing' | 'success' | 'error';
 type InviteState = 'idle' | 'opening' | 'error';
 type StatusCheckState = 'idle' | 'checking';
+type SetupState = 'idle' | 'running' | 'success' | 'error';
 
 type Props = {
   repository: DiscordIntegrationRepository;
@@ -41,18 +42,25 @@ export function DiscordIntegrationPage({ repository }: Props) {
   const [inviteError, setInviteError] = useState('');
   const [statusCheckState, setStatusCheckState] = useState<StatusCheckState>('idle');
 
+  const [setupStatus, setSetupStatus] = useState<DiscordSetupStatus>({ guildId: null, categoryId: null, ticketChannelId: null });
+  const [setupState, setSetupState] = useState<SetupState>('idle');
+  const [setupError, setSetupError] = useState('');
+  const [setupResult, setSetupResult] = useState<{ categoryId: string; ticketChannelId: string } | null>(null);
+
   const load = useCallback(async () => {
     setLoadState('loading');
     setLoadError('');
     try {
-      const [status, channelsResult, oauthStatus] = await Promise.all([
+      const [status, channelsResult, oauthStatus, setupStatusResult] = await Promise.all([
         repository.getConnectionStatus(),
         repository.getChannels(),
         repository.getOAuthStatus(),
+        repository.getSetupStatus(),
       ]);
       setConnectionStatus(status);
       setChannels(channelsResult.channels);
       setGuildId(oauthStatus.guildId);
+      setSetupStatus(setupStatusResult);
       setLoadState('ready');
     } catch (cause) {
       setLoadError(cause instanceof Error ? cause.message : discordIntegrationCopy.loadError);
@@ -173,6 +181,27 @@ export function DiscordIntegrationPage({ repository }: Props) {
     } catch (cause) {
       setChannelSaveError(cause instanceof Error ? cause.message : discordIntegrationCopy.channelAddError);
       setChannelSaveState('error');
+    }
+  };
+
+  const handleRunSetup = async () => {
+    setSetupState('running');
+    setSetupError('');
+    setSetupResult(null);
+    try {
+      const result = await repository.runAutoSetup();
+      if (result.success && result.categoryId && result.ticketChannelId) {
+        setSetupState('success');
+        setSetupResult({ categoryId: result.categoryId, ticketChannelId: result.ticketChannelId });
+        const nextStatus = await repository.getSetupStatus();
+        setSetupStatus(nextStatus);
+      } else {
+        setSetupError(result.error ?? discordIntegrationCopy.setupError);
+        setSetupState('error');
+      }
+    } catch (cause) {
+      setSetupError(cause instanceof Error ? cause.message : discordIntegrationCopy.setupError);
+      setSetupState('error');
     }
   };
 
@@ -390,6 +419,70 @@ export function DiscordIntegrationPage({ repository }: Props) {
               {discordIntegrationCopy.refreshStatus}
             </Button>
           </div>
+        </div>
+      </Card>
+
+      <Card>
+        <h2 style={{ marginBottom: 'var(--space-lg)', fontSize: 'var(--font-md)', fontWeight: 600 }}>
+          {discordIntegrationCopy.setupSection}
+        </h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+          <div style={{ fontSize: 'var(--font-sm)' }}>
+            {setupStatus.categoryId && setupStatus.ticketChannelId ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+                <p style={{ color: 'var(--color-success, green)', fontWeight: 600 }}>
+                  {discordIntegrationCopy.setupStatusDone}
+                </p>
+                <p>
+                  <span style={{ fontWeight: 600 }}>{discordIntegrationCopy.setupCategoryLabel}: </span>
+                  <code>{setupStatus.categoryId}</code>
+                </p>
+                <p>
+                  <span style={{ fontWeight: 600 }}>{discordIntegrationCopy.setupTicketLabel}: </span>
+                  <code>{setupStatus.ticketChannelId}</code>
+                </p>
+              </div>
+            ) : (
+              <p style={{ color: 'var(--color-text-muted, gray)' }}>
+                {discordIntegrationCopy.setupStatusNotDone}
+              </p>
+            )}
+          </div>
+          {setupState === 'success' && setupResult && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+              <p role="status" style={{ color: 'var(--color-success, green)', fontSize: 'var(--font-sm)', fontWeight: 600 }}>
+                {discordIntegrationCopy.setupSuccess}
+              </p>
+              <p style={{ fontSize: 'var(--font-sm)' }}>
+                <span style={{ fontWeight: 600 }}>{discordIntegrationCopy.setupCategoryLabel}: </span>
+                <code>{setupResult.categoryId}</code>
+              </p>
+              <p style={{ fontSize: 'var(--font-sm)' }}>
+                <span style={{ fontWeight: 600 }}>{discordIntegrationCopy.setupTicketLabel}: </span>
+                <code>{setupResult.ticketChannelId}</code>
+              </p>
+            </div>
+          )}
+          {setupState === 'error' && (
+            <StatusMessage variant="error">{setupError || discordIntegrationCopy.setupError}</StatusMessage>
+          )}
+          <div>
+            <Button
+              variant="primary"
+              onClick={() => void handleRunSetup()}
+              loading={setupState === 'running'}
+              loadingText={discordIntegrationCopy.setupButtonRunning}
+              disabled={!setupStatus.guildId}
+              title={!setupStatus.guildId ? discordIntegrationCopy.setupDisabledReason : undefined}
+            >
+              {discordIntegrationCopy.setupButton}
+            </Button>
+          </div>
+          {!setupStatus.guildId && (
+            <p style={{ color: 'var(--color-text-muted, gray)', fontSize: 'var(--font-sm)' }}>
+              {discordIntegrationCopy.setupDisabledReason}
+            </p>
+          )}
         </div>
       </Card>
     </>
