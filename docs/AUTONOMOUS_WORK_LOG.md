@@ -1551,6 +1551,23 @@ Playwrightを実行できるブラウザ接続を用意し、既存 `?preview` �
 - 変更: 仕入れ支払済み状態を反映する注文ステータスの読み取り専用dry-runを追加。
 - 検証: `npm run build:gas` 成功。DEVでのdry-runはマージ後に実施する。
 
+## 【公開リポジトリ実値除去】PR作成前記録
+
+### 判断・変更
+
+- `src/99_SalesMigration.js` は、全トップレベル関数のリポジトリ内参照が0件、作業ログの参照が0件、完了済みのコード内記録ありのため、一度きりの移行スクリプトとして削除する。
+- カタログの発行元サンプルは非実在のダミー値へ置換する。
+- `frontend/dist/index.html` は、`develop`向けActionsが`build:gas`を実行し、同ビルドが当該成果物をGAS用HTMLへ変換するため、Git管理を維持して再ビルドする。
+
+### 検証記録
+
+- `npm run build:gas` 成功。
+- `grep -rFf ~/crm-app-local-secrets/scan-patterns.txt`（Git管理外依存ディレクトリを除外）: ヒット0件。
+
+### 戻し方
+
+- マージ後のPRを `git revert <mergeCommit SHA>` で戻す。履歴書き換え・force pushは行わない。
+
 ### 読み替え済みSHA
 
 - マージコミット SHA: f5740e95a9ee868fe7d8d67251a2ef894643a873
