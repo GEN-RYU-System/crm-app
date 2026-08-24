@@ -1668,3 +1668,14 @@ Playwrightを実行できるブラウザ接続を用意し、既存 `?preview` �
 - マージコミット SHA: 97b005ad8c441277f63b7362e3f59f44ef95e4d8
   戻し方: git revert 97b005ad8c441277f63b7362e3f59f44ef95e4d8
   （書換え前SHA: 3c16588c73e13ed639e76b6ace07a3d0e17ff4cc ※2026-08-24の履歴書換え2回により無効）
+## 2026-08-25 関所PR-1 擬似ブロック試験
+
+```
+$ CRM_MIN_FREE_GB=99 .githooks/pre-push </dev/null
+ERROR: only 17GB free; need 99GB. Run scripts/janitor.sh first.
+exit=1
+
+$ CRM_MAX_WORKTREES=1 .githooks/pre-push </dev/null
+ERROR: 18 worktrees; limit is 1. Run scripts/janitor.sh first.
+exit=1
+```
