@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, Combobox, EmptyState, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField } from '../../components/ui';
 import { leadsCopy } from '../../content/ja';
-import type { LeadFormCountry, LeadFormOptions, LeadSource, LeadRepository, LeadType } from '../../features/leads/contracts';
+import type { LeadFormCountry, LeadSource, LeadRepository, LeadType } from '../../features/leads/contracts';
+import { useLeadFormOptionsCache } from './LeadFormOptionsCacheContext';
 import { useLeadListCache } from './LeadListCacheContext';
 import { emptyLeadEditorValues, LEAD_EDITOR_PATHS, toLeadCreateValues, toLeadEditorValues, toLeadUpdateValues, type LeadEditorValues } from './leadEditorConfig';
 import { LEAD_TYPE_TABS } from './leadListConfig';
@@ -45,6 +46,7 @@ export function LeadEditorPage({ mode, canEdit, repository }: Props) {
   const location = useLocation();
   const { leadId } = useParams();
   const { refreshAll, recordsByType } = useLeadListCache();
+  const { formOptions, ensureLoaded: ensureFormOptionsLoaded } = useLeadFormOptionsCache();
   const requestedType = (location.state as NavigationState)?.leadType;
   const selectedType = isLeadType(requestedType) ? requestedType : LEAD_TYPE_TABS[0]!.type;
   const [leadType, setLeadType] = useState<LeadType>(selectedType);
@@ -53,16 +55,14 @@ export function LeadEditorPage({ mode, canEdit, repository }: Props) {
   const [loadError, setLoadError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [formOptions, setFormOptions] = useState<LeadFormOptions | null>(null);
   const recordsByTypeRef = useRef(recordsByType);
   recordsByTypeRef.current = recordsByType;
 
-  // Load form options without blocking the form
+  // Load form options through the shared cache without blocking the form.
+  // On failure it stays null, so the form remains usable with its current values.
   useEffect(() => {
-    void repository.getFormOptions().then(setFormOptions).catch(() => {
-      // On failure, leave options null; other fields remain usable
-    });
-  }, [repository]);
+    void ensureFormOptionsLoaded();
+  }, [ensureFormOptionsLoaded]);
 
   useEffect(() => {
     if (mode !== 'detail' || !leadId) return;
