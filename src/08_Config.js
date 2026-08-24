@@ -275,12 +275,12 @@ const DROPDOWN_COLUMNS = [
 ];
 
 /**
- * ヘッダー定義（統合リード管理シート：60列）
+ * ヘッダー定義（統合リード管理シート：64列）
  * SetupIntegratedSheet.gs の LEAD_SHEET_HEADERS と同期必須
  * CLAUDE.md Section 2.2 準拠
  */
 const HEADERS = {
-  // 統合リード管理シート（61列・2026-08-06実測値に同期）
+  // 統合リード管理シート（64列・DEV実測ヘッダーに同期）
   LEADS: [
     'リードID',           // 1
     '登録日',             // 2
@@ -294,8 +294,10 @@ const HEADERS = {
     'リード担当者',       // 10
     'リード種別',         // 11
     '流入経路',           // 12
+    '流入元ID',           // 13
     'メッセージURL',      // 13
     '取り扱いタイトル',   // 14
+    '作品ID',             // 16
     'CSメモ',             // 15
     'メール',             // 16
     '電話番号',           // 17
@@ -374,7 +376,7 @@ const HEADERS = {
     'deal_view_all', 'deal_view_own', 'deal_edit', 'team_stats',
     'staff_manage', 'settings', 'admin_access', 'force_reset'
   ],
-  // 会話ログシート（リード用・商談用共通：9列）
+  // 会話ログシート（DEV実測の「会話ログ（商談用）」順）
   CONVERSATION_LOG: [
     'ログID',         // 1: 自動採番（LOG-00001）
     'リードID',       // 2: LDI-00001 / LDO-00001
@@ -382,6 +384,7 @@ const HEADERS = {
     '送受信',         // 4: 送信/受信
     '発言者',         // 5: 担当者名 or 顧客名
     '原文',           // 6: オリジナルメッセージ
+    '原文言語',       // 7: 原文の言語
     '翻訳文',         // 7: 日本語訳
     '記録者ID',       // 8: 記録した担当者ID
     '記録日時'        // 9: 記録した日時
@@ -523,7 +526,7 @@ const HEADERS = {
     '登録日',             // 2: 2026/01/23
     'Billing Name',       // 3: ABC Trading LLC
     'Billing Phone',      // 4: +1-234-567-8900
-    'Billing Email',      // 5: contact@abc.com
+    'Billing Email',      // 5: contact@example.com
     'Business ID',        // 6: 12-3456789
     'Billing Address 1',  // 7: 123 Main Street
     'Billing Address 2',  // 8: Suite 100
