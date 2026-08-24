@@ -50,6 +50,12 @@
 - `usePrefetch` は注文または見積のいずれかの権限がある場合に通貨キャッシュを取得する。
 - preview限定で `previewProfile=quotes-only` とUSD見積モックを追加した。
 
+### PR / revert
+
+- PR #503 をsquash merge。マージコミット SHA: `ed38300b6b61910a31468e57af9f46e138a307fe`。
+- 戻し方: `git revert ed38300b6b61910a31468e57af9f46e138a307fe`。
+- Deploy to DEV run `32777170062` は成功し、`getDeployedSha` は同じSHAを返した。
+
 ### 別PR候補: 重複呼出しの起点（修正なし）
 
 - `getSessionUser=2`: `AuthContext.tsx` の認証用 `useEffect`（`getSessionUser`）がReact StrictModeの開発時再実行を受ける。
