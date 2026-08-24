@@ -1472,6 +1472,12 @@ Playwrightを実行できるブラウザ接続を用意し、既存 `?preview` �
 - `frontend/npm run build:gas`: PASS（typecheck / Vite / emit-gas-html / design-system check）。
 - 生出力による画面検証: この実行環境では利用可能なブラウザ接続がなく未実施。合格条件の1・2は未達のため、PR作成・mergeは行わない。
 
+## 【PR #512】仕入れ支払済みステータス影響試算
+
+- mergeCommit: `79a9824ec8c9ddb4ceb64e4a5bdd21a490d923ba`
+- 変更: 仕入れ支払済み状態を反映する注文ステータスの読み取り専用dry-runを追加。
+- 検証: `npm run build:gas` 成功。DEVでのdry-runはマージ後に実施する。
+
 ### 読み替え済みSHA
 
 - マージコミット SHA: f5740e95a9ee868fe7d8d67251a2ef894643a873
