@@ -32,8 +32,7 @@ function setupDevelopmentEnvironment() {
   Logger.log('開発用スプレッドシートID: ' + props.getProperty('DEV_SPREADSHEET_ID'));
   Logger.log('');
   Logger.log('次のステップ:');
-  Logger.log('1. initializeERPIntegration() を再実行');
-  Logger.log('2. runAllSetupTests() で動作確認');
+  Logger.log('1. runAllSetupTests() で動作確認');
 }
 
 /**

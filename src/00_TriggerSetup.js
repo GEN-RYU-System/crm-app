@@ -25,7 +25,7 @@ function setupAllTriggers() {
     deleteAllTriggers();
 
     // 環境を確認
-    const env = getERPEnvironment();
+    const env = getEnvironment();
     Logger.log('環境: ' + env);
 
     if (env === 'development') {
@@ -350,14 +350,13 @@ function getTriggerSourceLabel(triggerSource) {
  * テスト環境で1時間ごとに実行される関数。
  */
 function testEnvironmentCheck() {
-  const env = getERPEnvironment();
-  const spreadsheetId = getERPSpreadsheetId();
+  const env = getEnvironment();
 
   Logger.log('========================================');
   Logger.log('テスト環境チェック');
   Logger.log('実行日時: ' + new Date());
   Logger.log('環境: ' + env);
-  Logger.log('スプレッドシートID: ' + spreadsheetId);
+  Logger.log('DEVスプレッドシート設定済み: ' + Boolean(PropertiesService.getScriptProperties().getProperty('DEV_SPREADSHEET_ID')));
   Logger.log('========================================');
 }
 

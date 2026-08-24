@@ -18,8 +18,7 @@ function getColumnName(index) {
  */
 function getLeadsSheetHeaders() {
   try {
-    const spreadsheetId = getERPSpreadsheetId();
-    const ss = SpreadsheetApp.openById(spreadsheetId);
+    const ss = getSpreadsheet();
     const sheet = ss.getSheetByName('リード管理');
 
     if (!sheet) {
@@ -59,8 +58,7 @@ function getLeadsSheetHeaders() {
  */
 function getDealsSheetHeaders() {
   try {
-    const spreadsheetId = getERPSpreadsheetId();
-    const ss = SpreadsheetApp.openById(spreadsheetId);
+    const ss = getSpreadsheet();
     const sheet = ss.getSheetByName('商談管理');
 
     if (!sheet) {
@@ -100,8 +98,7 @@ function getDealsSheetHeaders() {
  */
 function getAllSheetNames() {
   try {
-    const spreadsheetId = getERPSpreadsheetId();
-    const ss = SpreadsheetApp.openById(spreadsheetId);
+    const ss = getSpreadsheet();
     const sheets = ss.getSheets();
 
     return {
@@ -128,8 +125,7 @@ function getAllSheetNames() {
  */
 function checkStaffData() {
   try {
-    const spreadsheetId = getERPSpreadsheetId();
-    const ss = SpreadsheetApp.openById(spreadsheetId);
+    const ss = getSpreadsheet();
     const sheet = ss.getSheetByName('担当者マスタ');
 
     if (!sheet) {
@@ -164,8 +160,8 @@ function inspectWebAppUrl() {
     const url = ScriptApp.getService().getUrl();
     return {
       url: url,
-      environment: getERPEnvironment(),
-      spreadsheetId: getERPSpreadsheetId()
+      environment: getEnvironment(),
+      devConfigured: Boolean(PropertiesService.getScriptProperties().getProperty('DEV_SPREADSHEET_ID'))
     };
   } catch (e) {
     return { error: e.message, stack: e.stack };
@@ -1012,20 +1008,13 @@ function dumpSalesDataStructure() {
   var lines = ['=== dumpSalesDataStructure ===', ''];
 
   // ----------------------------------------------------------------
-  // シート取得: CRM本体を優先、なければ ERP スプレッドシートを試行
+  // シート取得: CRM本体のみを対象にする
   // ----------------------------------------------------------------
   var ss = getSpreadsheet();
   var sh = ss.getSheetByName(CONFIG.SHEETS.SALES_DATA);
   var sourceLabel = 'CRM: ' + CONFIG.SHEETS.SALES_DATA;
   if (!sh) {
-    try {
-      var erpSs = SpreadsheetApp.openById(CONFIG.ERP.SPREADSHEET_ID);
-      sh = erpSs.getSheetByName(CONFIG.ERP.SHEETS.SALES_DATA);
-      sourceLabel = 'ERP: ' + CONFIG.ERP.SHEETS.SALES_DATA;
-    } catch (e) { /* fall through */ }
-  }
-  if (!sh) {
-    return 'エラー: 売上データ タブが CRM / ERP どちらにも見つかりません';
+    return 'エラー: CRMに売上データ タブが見つかりません';
   }
   lines.push('【取得元】' + sourceLabel);
   lines.push('');
