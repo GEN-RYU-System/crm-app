@@ -1585,6 +1585,17 @@ Playwrightを実行できるブラウザ接続を用意し、既存 `?preview` �
 
 - 実値除去は `git revert 2030eafddd58f2656bca09fd290a75600fa9a1a4`。CI検査強化は未コミットのため戻し操作不要。
 
+## 【請求書テンプレート再混入の復旧】PR作成前記録
+
+- 再混入元はPR #519（`docs: restore sanitized invoice template layout`、`docs/restore-sanitized-invoice-template` → `develop`）であることを履歴と固定文字列検品で確認した。
+- 同PRのタイトルはsanitizedを示すが、実態として固定文字列パターンに一致する値が再混入していたため、タイトルと実態は一致しなかった。
+- PR #519のレイアウト変更を保持したまま、検出された11箇所を既存プレースホルダへ戻した。
+- 検証: `grep -Ff ~/crm-app-local-secrets/scan-patterns.txt docs/invoice-template.html` とリポジトリ全体検品はいずれもヒット0件。
+
+### 戻し方
+
+- マージ後のPRを `git revert <mergeCommit SHA>` で戻す。履歴書き換え・force pushは行わない。
+
 ### 読み替え済みSHA
 
 - マージコミット SHA: f5740e95a9ee868fe7d8d67251a2ef894643a873
