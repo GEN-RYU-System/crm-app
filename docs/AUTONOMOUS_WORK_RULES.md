@@ -13,9 +13,14 @@
 
 1. `git fetch origin`
 2. `git log --oneline origin/develop -5` で最新を確認
-3. `origin/develop` から分岐する（ローカルの `develop` から分岐しない）
-4. `git status --short` を確認。M/A があれば停止
-5. 対象ファイルの直近コミットを確認する  
+3. `git status --short` を確認する
+4. 変更がある場合は worktree で `origin/develop` から分岐する（ローカルの `develop` から分岐しない）
+   ```bash
+   git worktree add <path> -b <branch> origin/develop
+   ```
+   worktree は現在の作業ツリーがクリーンでなくても作成でき、他セッションの未コミット変更に影響しない。作業完了後は worktree を削除する。
+5. 変更がない場合は通常どおり `origin/develop` から分岐してよい
+6. 対象ファイルの直近コミットを確認する
    `git log --all --oneline -20 -- <ファイル>`  
    別ブランチの変更があれば停止して記録する
 
