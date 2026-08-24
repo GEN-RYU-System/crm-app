@@ -135,13 +135,16 @@ const CORE_SCHEMA_V1_TABLES = {
   },
   PURCHASES: {
     sheetName: '仕入れ', canonicalName: '仕入れ管理', aliases: ['仕入れ'], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
-    headers: createCoreSchemaV1Headers([['PURCHASE_ID', '仕入れID'], ['ORDER_ID', 'オーダーID'], ['PURCHASE_ASSIGNEE_ID', '仕入れ担当ID'], ['ORDERED_AT', '注文日'], ['TRANSACTION_NUMBER', '取引番号'], ['SUPPLIER', '仕入元'], ['SUPPLIER_URL', '仕入元URL'], ['QUANTITY', '数量'], ['UNIT_PRICE', '単価'], ['AMOUNT', '金額'], ['SHIPPING_OR_AGENCY_FEE', '送料/代行費'], ['CARRIER', '運送会社'], ['TRACKING_NUMBER', '送り状番号'], ['STATUS', 'ステータス'], ['NOTE', '備考'], ['REGISTERED_AT', '登録日'], ['UPDATED_AT', '更新日']]), primaryKey: 'PURCHASE_ID',
+    headers: createCoreSchemaV1Headers([['PURCHASE_ID', '仕入れID'], ['ORDER_ID', 'オーダーID'], ['PURCHASE_ASSIGNEE_ID', '仕入れ担当ID'], ['PAID_BY_ID', '仕入れ支払者ID'], ['ORDERED_AT', '注文日'], ['PAID_AT', '仕入れ支払日'], ['TRANSACTION_NUMBER', '取引番号'], ['SUPPLIER', '仕入元'], ['SUPPLIER_URL', '仕入元URL'], ['QUANTITY', '数量'], ['UNIT_PRICE', '単価'], ['AMOUNT', '金額'], ['SHIPPING_OR_AGENCY_FEE', '送料/代行費'], ['CARRIER', '運送会社'], ['TRACKING_NUMBER', '送り状番号'], ['STATUS', 'ステータス'], ['NOTE', '備考'], ['REGISTERED_AT', '登録日'], ['UPDATED_AT', '更新日']]), primaryKey: 'PURCHASE_ID',
     values: {
       STATUS: {
-        CONFIRMED: '確定済み'
+        CONFIRMED: '確定済み',
+        NOT_ORDERED: '未発注',
+        ORDERED: '発注済み',
+        PAID: '支払済み'
       }
     },
-    referenceIds: [{ headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' }, { headerKey: 'PURCHASE_ASSIGNEE_ID', targetTableKey: 'STAFF' }]
+    referenceIds: [{ headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' }, { headerKey: 'PURCHASE_ASSIGNEE_ID', targetTableKey: 'STAFF' }, { headerKey: 'PAID_BY_ID', targetTableKey: 'STAFF' }]
   },
   FORM_TOKENS: {
     sheetName: 'フォームトークン', canonicalName: 'フォームトークン', aliases: [], headerRowNumber: 1, sheetType: 'ASSOCIATION', writeAllowed: true,

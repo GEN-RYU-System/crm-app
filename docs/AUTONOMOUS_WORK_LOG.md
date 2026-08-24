@@ -11,9 +11,14 @@
 > **履歴書換え済み（2026-08-24）:** すべての作業者は旧クローン／旧worktreeを使用・pushせず、必ず新履歴を再クローンすること。旧SHAは `docs/SHA_REMAP_20260824.md` で新SHAへ読み替える。
 
 このファイルは Claude Code による自律実装セッションの記録です。
+
+> PR20知見: GASの接続先はScript Propertiesの`SPREADSHEET_ID`で決まり、コンテナバインド化だけでは付属ブックを自動で読まない。手作業列は移行後に引き継がれない場合があるため、必ず`runCoreSchemaConformanceAudit`で確認する。
 各エントリは PR 単位で記述されます。
 
 ---
+
+### 戻し方
+不要（対応するマージコミットが記録されていないため）
 
 ## 【発行元seed】Script Propertiesによる実値分離
 
@@ -40,6 +45,9 @@
 
 ---
 
+### 戻し方
+`git revert c2075ded9152f0003d5200ea02e8a1fc5f172172`
+
 ## 【Discord連携】保存と接続確認の統合 — PR #489
 
 ### 変更内容
@@ -54,6 +62,9 @@
 `c2075ded9152f0003d5200ea02e8a1fc5f172172`
 
 ---
+
+### 戻し方
+`git revert b4f2d50f7f42ae64db12105436281820844bc20d`
 
 ## 【通貨マスタ共通キャッシュ】PR作成前記録
 
@@ -89,6 +100,9 @@
 - 計画1〜11では、初期ロードのStrictMode耐性を扱う箇所に別PRとして追加する。今回の通貨キャッシュPRには実装修正を含めない。
 
 ---
+
+### 戻し方
+不要（コード変更を伴わない調査・停止・未マージ記録のため）
 
 ## 【Phase 0】Lead detail keyed cache 再調査
 
@@ -132,6 +146,9 @@ PASS: detail reopen did not issue another getLeadDetail call
 
 ## 【受信箱公開 Phase 4-1】DEVヘッダー監査関数
 
+### 戻し方
+`git revert b4f2d50f7f42ae64db12105436281820844bc20d`
+
 - `auditDevInboxSheetHeaders()` を追加。DEV限定で会話ログ・リード管理の1行目を読み、列数とヘッダー名だけをJSON文字列として返す。行データ・シートIDは返さない。
 - 実測（唯一の正）: 会話ログ（商談用）は11列: `ログID, リードID, 日時, 送受信, 発言者, 原文, 原文言語, 翻訳文, 記録者ID, 記録日時, 商談解析`。リード管理は64列: `リードID, 登録日, 顧客名, リード進捗, 商談進捗, 商談結果, 呼び方（英語）, 国, シート更新日, リード担当者, リード種別, 流入経路, 流入元ID, メッセージURL, 取り扱いタイトル, 作品ID, CSメモ, メール, 電話番号, 連絡手段, 温度感, 想定規模, 返信速度, 問い合わせ回数, アーカイブ日, アーカイブ理由, アサイン日, 営業担当者, 担当者ID, 顧客タイプ, 最終対応者ID, 見込度, 次回アクション, 次回アクション日, 商談メモ, 相手の課題, 販売形態, 月間見込み金額, 1回の発注金額, 購入頻度(月次), 競合比較中, 商談の手応え, アラート確認日, 対象外理由, 失注理由, 初回取引日, 初回取引金額, 累計取引金額, Good Point, More Point, 反省と今後の抱負, レポート提出日, レポート確認者, レポート確認日, レポートコメント, Buddyフィードバック, 会話要約, 最終会話日時, 会話数, 重複フラグ, 重複元リードID, 重複確認日, 重複確認者, リードステータス`。
 - PR #492 / squash merge SHA: `b4f2d50f7f42ae64db12105436281820844bc20d` / revert: `git revert b4f2d50f7f42ae64db12105436281820844bc20d`。DEV Deploy は成功（43秒）。
@@ -139,6 +156,9 @@ PASS: detail reopen did not issue another getLeadDetail call
 ---
 
 ## 【受信箱公開 Phase 4-2】固定添字のヘッダー名参照化
+
+### 戻し方
+不要（未マージの調査・設計記録のため）
 
 ### 全量一覧と実測判定
 
@@ -160,6 +180,9 @@ PASS: detail reopen did not issue another getLeadDetail call
 - 会話ログ11列目の「商談解析」は `rg "商談解析" .` でコード・文書とも参照0件。デプロイ済みシートにのみ存在する孤立ヘッダーで、追加元機能はリポジトリ内から特定不能。Configの列定義には実測整合のため保持する。
 - PR #499 はこの一次情報に基づく再作成のためクローズした。新PRのCI・配布・revert SHAは完了後に記録する。
 
+### 戻し方
+不要（コード変更を伴わない調査・停止・未マージ記録のため）
+
 ## 【受信箱公開 Phase 5】高速化 停止記録
 
 - 合格条件: 一覧・詳細キャッシュ実装後にフロントエンドの型検査、ビルド、設計検査がすべて成功すること。
@@ -167,6 +190,9 @@ PASS: detail reopen did not issue another getLeadDetail call
 - 判定: 2連続失敗の停止条件に該当。追加の設計対応・PR作成・配布は行わず停止する。
 
 ---
+
+### 戻し方
+不要（コード変更を伴わない調査・停止・未マージ記録のため）
 
 ## 【npmキャッシュ除外】誤コミット防止 — PR #488
 
@@ -177,6 +203,9 @@ PASS: detail reopen did not issue another getLeadDetail call
 `git revert c9a42a97e7683bb7a1ac6f7f1cd6d48ee621c8fc`
 
 ---
+
+### 戻し方
+`git revert 0816cf107217fdec2371389b73876f79ba433a95`
 
 ## 【受信箱公開 Phase 0–3】ナビゲーション昇格
 
@@ -195,19 +224,8 @@ PASS: detail reopen did not issue another getLeadDetail call
 
 ---
 
-## 【Discord設定API認証】セッション利用者を権限確認前に設定 — PR #484
-
-### 変更内容
-- `src/34_DiscordSettingsApi.js` の sessionId を受け取る4関数で、`checkPermission('admin_access')` の前に `setEmailFromSession(sessionId)` を追加した。
-- 設定保存・取得の権限確認が、渡されたセッションの利用者を基準に実行される順序へ統一した。
-
-### 検証結果
-- `npm run build:gas --prefix frontend` 成功。
-
-### mergeCommit
-`787000cc93c9ecf67452526f8639a300ff71a4a0`
-
----
+### 戻し方
+`git revert 787000cc93c9ecf67452526f8639a300ff71a4a0`
 
 ## 【Discord設定API認証】セッション利用者を権限確認前に設定 — PR #484
 
@@ -222,6 +240,27 @@ PASS: detail reopen did not issue another getLeadDetail call
 `787000cc93c9ecf67452526f8639a300ff71a4a0`
 
 ---
+
+### 戻し方
+`git revert 787000cc93c9ecf67452526f8639a300ff71a4a0`
+
+## 【Discord設定API認証】セッション利用者を権限確認前に設定 — PR #484
+
+### 変更内容
+- `src/34_DiscordSettingsApi.js` の sessionId を受け取る4関数で、`checkPermission('admin_access')` の前に `setEmailFromSession(sessionId)` を追加した。
+- 設定保存・取得の権限確認が、渡されたセッションの利用者を基準に実行される順序へ統一した。
+
+### 検証結果
+- `npm run build:gas --prefix frontend` 成功。
+
+### mergeCommit
+`787000cc93c9ecf67452526f8639a300ff71a4a0`
+
+---
+
+### 戻し方
+- PR #475: `git revert 80243a7e3b436c4727c23443255935cf1dfc4803`
+- PR #476: `git revert fccc1ea0721a180265795706f5179922785d9ef6`
 
 ## 【リポジトリ正規状態】恒久記録の追加 — PR #482
 
@@ -233,6 +272,9 @@ PASS: detail reopen did not issue another getLeadDetail call
 `git revert e99e166bcdb3ef71b4d1993621245ab68cbc7bc0`
 
 ---
+
+### 戻し方
+`git revert bc2663031ab57135572506f42f2f7e13333eaf17`
 
 ## 【redaction2後処理】Security Content Check のCLI化 — PR #472
 
@@ -251,6 +293,9 @@ PASS: detail reopen did not issue another getLeadDetail call
 `git revert 4d4b7c329e506856fc36bf387838bf96d525357f`
 
 ---
+
+### 戻し方
+`git revert bc2663031ab57135572506f42f2f7e13333eaf17`
 
 ## 【redaction2 Phase 5】DEVブック移行・ERP読取調査
 
@@ -275,6 +320,9 @@ PASS: detail reopen did not issue another getLeadDetail call
 
 ---
 
+### 戻し方
+`git revert 4b666e187a392c1596d13f31cecc91706a19d9c9`
+
 ## 【ERP旧版廃止】旧取引管理ブックの退役
 
 ### 変更内容
@@ -298,6 +346,9 @@ PASS: detail reopen did not issue another getLeadDetail call
 この廃止はゴミ箱保持期間中にブックを復元し、オーナー判断で新しいScript Propertyを設定したうえで、廃止PRのrevertを検討する。
 
 ---
+
+### 戻し方
+`git revert e6beba84381468c6792043d4e8c194dc0d2cbef5`
 
 ## 【1】Combobox 共通部品化 — PR #301
 
@@ -334,6 +385,9 @@ PASS: detail reopen did not issue another getLeadDetail call
 
 ---
 
+### 戻し方
+不要（コード変更を伴わない調査・停止・未マージ記録のため）
+
 ## 【2】カタログ未登録部品の登録 — PR #302
 
 **マージ日時**: 2026-08-19T20:41:02Z
@@ -359,6 +413,9 @@ PASS: detail reopen did not issue another getLeadDetail call
 `git revert bddf9f21ff4a3247c40325b098164f5a5e5cc576` でカタログ登録を元に戻せる
 
 ---
+
+### 戻し方
+不要（コード変更を伴わない調査・停止・未マージ記録のため）
 
 ## 【3】検査対象リストの拡充 — PR #303
 
@@ -429,6 +486,9 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 
 ## 【5】オーダー作成画面のフルページスケルトン廃止 — PR #362
 
+### 戻し方
+`git revert bc2663031ab57135572506f42f2f7e13333eaf17`
+
 **マージ日時**: 2026-08-21T21:11:51Z  
 **revert用SHA**: `bc2663031ab57135572506f42f2f7e13333eaf17`
 
@@ -446,6 +506,9 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 
 ## 【6】PR #362 差し戻し — PR #364
 
+### 戻し方
+`git revert cd41c9898bc306df1e63acf429f75f2353531711`
+
 **マージ日時**: 2026-08-21T21:24:54Z  
 **revert用SHA**: `cd41c9898bc306df1e63acf429f75f2353531711`
 
@@ -462,6 +525,9 @@ if (/google\.script\.run|gas\/client|localStorage|sessionStorage/.test(staffPage
 ---
 
 ## 【7】オーダー新規作成ボタンの navigate 修正 — PR #367
+
+### 戻し方
+`git revert 4b666e187a392c1596d13f31cecc91706a19d9c9`
 
 **マージ日時**: 2026-08-21T21:48:07Z  
 **revert用SHA**: `4b666e187a392c1596d13f31cecc91706a19d9c9`
@@ -493,6 +559,9 @@ QuoteListPage は最初から絶対パスを使っており正常動作してい
 ---
 
 ## 【8】dev preview モード — GAS モックランナー導入 — PR #370
+
+### 戻し方
+`git revert e6beba84381468c6792043d4e8c194dc0d2cbef5`
 
 **マージ日時**: 2026-08-21T21:59:29Z  
 **revert用SHA**: `e6beba84381468c6792043d4e8c194dc0d2cbef5`
@@ -748,6 +817,9 @@ git revert 986d21b6e20124be14acdf46191b5ccbadf65814
 
 ## 【13】社内メモ列の調査（調査のみ）— 実施済み
 
+### 戻し方
+不要（コード変更を伴わない調査記録のため）
+
 **調査日時**: 2026-08-22
 
 ### 1-C 調査結果
@@ -944,6 +1016,9 @@ git revert <マージコミットSHA>
 ---
 
 ## 【17】調査記録: updateCoreOrderForFrontend と recalculateOrderStatusById の乖離
+
+### 戻し方
+不要（コード変更を伴わない調査記録のため）
 
 - 調査日: 2026-08-23
 - 事実: src/28_CoreOrderUpdateApi.js は recalculateOrderStatusById を呼び出していない。
@@ -1384,6 +1459,9 @@ design-system checks passed
 ### PR / revert
 
 - PR と squash merge 後に merge SHA と `git revert <SHA>` を追記する。
+
+### 戻し方
+`git revert b10aaf6bc9695e3b930a779aebc2c47f10ae7f2e`
 ## 【28】Discord チケット発行（Phase 2-C・案α）— 着手前確認で停止
 
 - 日時: 2026-08-24
@@ -1445,6 +1523,9 @@ Playwrightを実行できるブラウザ接続を用意し、既存 `?preview` �
 - S3: 新規コードにトークン値・Webhook URL・実環境IDなし（previewの数値はモック値）。
 
 ---
+
+### 戻し方
+不要（コード変更を伴わない調査・停止・未マージ記録のため）
 
 ## 【履歴書換え後処理】revert用SHAのv1→v2連結更新
 

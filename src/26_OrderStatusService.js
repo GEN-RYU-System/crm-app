@@ -168,6 +168,44 @@ function dryRunOrderStatusRecalculation() {
   return result;
 }
 
+/** PAID（支払済み）を発送待ち条件にした場合の書き込みなし試算。DEV限定。 */
+function dryRunOrderStatusWithPurchasePaid() {
+  if (getEnvironment() !== 'development') throw new Error('dryRunOrderStatusWithPurchasePaid is available only in development');
+  var ss = getSpreadsheet();
+  var orders = readOrderStatusServiceSheet_(ss, 'ORDERS', ['ORDER_ID', 'STATUS', 'CANCELLATION_REASON', 'PAYMENT_CONFIRMED_AT', 'INVOICE_NUMBER']);
+  var shipments = readOrderStatusServiceSheet_(ss, 'SHIPMENTS', ['ORDER_ID', 'PICKUP_REQUEST', 'TRACKING_NUMBER']);
+  var purchases = readOrderStatusServiceSheet_(ss, 'PURCHASES', ['ORDER_ID', 'STATUS']);
+  var shipmentsByOrderId = buildOrderStatusLookup_(shipments.rows, 'ORDER_ID');
+  var purchasesByOrderId = buildOrderStatusLookup_(purchases.rows, 'ORDER_ID');
+  var purchaseStatusCounts = {};
+  var statusTransitionCounts = {};
+  purchases.rows.forEach(function(row) {
+    var status = isOrderStatusEmptyValue_(row.STATUS) ? '（空欄）' : String(row.STATUS);
+    purchaseStatusCounts[status] = (purchaseStatusCounts[status] || 0) + 1;
+  });
+  orders.rows.forEach(function(row) {
+    var orderId = String(row.ORDER_ID || '').trim(); if (!orderId) return;
+    var relatedShipments = (shipmentsByOrderId[orderId] || []).map(function(item) { return { pickupRequest: item.PICKUP_REQUEST, trackingNumber: item.TRACKING_NUMBER }; });
+    var relatedPurchases = (purchasesByOrderId[orderId] || []).map(function(item) { return { status: item.STATUS }; });
+    var calculated = calculateOrderStatusWithPurchasePaid_({ cancellationReason: row.CANCELLATION_REASON, status: row.STATUS, paymentConfirmedAt: row.PAYMENT_CONFIRMED_AT, invoiceNumber: row.INVOICE_NUMBER }, relatedShipments, relatedPurchases);
+    var transition = String(row.STATUS || '（空欄）') + ' → ' + calculated;
+    statusTransitionCounts[transition] = (statusTransitionCounts[transition] || 0) + 1;
+  });
+  return { purchaseStatusCounts: purchaseStatusCounts, statusTransitionCounts: statusTransitionCounts };
+}
+
+function calculateOrderStatusWithPurchasePaid_(order, shipments, purchases) {
+  var trouble = getCoreSchemaV1Value('ORDERS', 'STATUS', 'TROUBLE');
+  if (!isOrderStatusEmptyValue_(order.cancellationReason)) return getCoreSchemaV1Value('ORDERS', 'STATUS', 'CANCELLED');
+  if (order.status === trouble) return trouble;
+  if ((shipments || []).some(function(s) { return !isOrderStatusEmptyValue_(s.pickupRequest) && !isOrderStatusEmptyValue_(s.trackingNumber); })) return getCoreSchemaV1Value('ORDERS', 'STATUS', 'COMPLETED');
+  var paid = getCoreSchemaV1Value('PURCHASES', 'STATUS', 'PAID');
+  if ((purchases || []).some(function(p) { return p.status === paid; })) return getCoreSchemaV1Value('ORDERS', 'STATUS', 'AWAITING_SHIPPING');
+  if (!isOrderStatusEmptyValue_(order.paymentConfirmedAt)) return getCoreSchemaV1Value('ORDERS', 'STATUS', 'SOURCING');
+  if (!isOrderStatusEmptyValue_(order.invoiceNumber)) return getCoreSchemaV1Value('ORDERS', 'STATUS', 'AWAITING_PAYMENT');
+  return getCoreSchemaV1Value('ORDERS', 'STATUS', 'UNKNOWN');
+}
+
 // ─── private helpers ─────────────────────────────────────────────────────────
 
 /**
