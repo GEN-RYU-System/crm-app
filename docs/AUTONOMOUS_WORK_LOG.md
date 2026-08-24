@@ -1092,3 +1092,51 @@ design-system checks passed
 ### PR / revert
 
 - PR と squash merge 後に merge SHA と `git revert <SHA>` を追記する。
+## 【28】Discord チケット発行（Phase 2-C・案α）— 着手前確認で停止
+
+- 日時: 2026-08-24
+- ブランチ: `feat/discord-ticket-issuance`
+- PR番号: #465
+- mergedAt: 2026-08-24T07:46:37Z
+- mergeCommit SHA: `02ef6614cd28d3aae6a591f8f85e6e0e10a72bcc`
+- 対象環境: DEV のみ（本番操作なし）
+- 変更ファイル: 本ログのみ。実装・デプロイ・スプレッドシート変更は行っていない。
+
+### 実読した根拠パス
+
+| 根拠パス | 確認した事項 |
+| --- | --- |
+| `docs/AUTONOMOUS_WORK_LOG.md`（PR #438 / #456 / #458 / #459 のエントリ） | Phase 2-A/B の既存API・フロント中間層・過去の検証記録 |
+| `docs/DISCORD_FEATURE_CATCHUP.md` | 案αの定義、チケットは顧客専用チャンネル、移植元の保存先・冪等性 |
+| `docs/HANDOFF_FRONTEND.md` | 9ステップ金型、CustomerDetailPage の repository 経由の中間層方式、`window.google?.script?.run` の利用方式 |
+| `src/33_DiscordIntegrationService.js` | `DISCORD_BOT_TOKEN` の既存接続確認・Discord REST v10の利用 |
+| `src/34_DiscordSettingsApi.js` | admin_access ガードとトークンをフロントへ返さない既存制約 |
+| `src/35_DiscordOAuthApi.js` / `src/36_DiscordChannelSetupApi.js` | Phase 2-A/B の OAuth/Guild 設定および既存のチャンネル作成ヘルパー |
+| `src/00_CoreSchemaRegistry.js` | 保存先は既存 `CUSTOMERS.DISCORD_CHANNEL_ID`。新規シート／Registry追加は不要 |
+| `src/28_CoreCustomerReadApi.js` / `frontend/src/pages/customers/CustomerDetailPage.tsx` | 顧客詳細は customerId と customerName を確定でき、顧客マスタ保存と整合する配置先 |
+| `.claspignore` | `src/` の新規GASファイルは除外されない（ただし今回新規GASファイルなし） |
+
+### 実装前の判断
+
+- チケット作成ボタンの候補は顧客詳細とリード詳細だった。保存先が既存の `CUSTOMERS.DISCORD_CHANNEL_ID` であり、顧客詳細は顧客ID・顧客名を確定して取得するため、実装再開時は顧客詳細に配置する。
+- 同一顧客は `DISCORD_CHANNEL_ID` が設定済みなら新規作成せず、そのIDを返す方式で二重作成を防ぐ設計が必要。移植元の「既存チャンネルを再利用」の冪等性と整合する。
+
+### V1 着手前確認（停止理由）
+
+`frontend/` で `npm run dev -- --host 127.0.0.1` を実行し、`http://127.0.0.1:5173/?preview` のVite起動を確認した。その後、Browser skill のPlaywright実行面へ接続を試行したが、結果は `No browser is available` だった。
+
+したがって、指示書V1の「`?preview` のボタン表示・押下・結果表示をPlaywrightでPASS」は**未実測**である。指示書の「推測禁止」および「確認できない事項が出たら停止」に従い、チケット実装には着手しない。
+
+| 項目 | 実測結果 |
+| --- | --- |
+| S1 | 未実装のため未測定 |
+| S2 | 未実装のため未測定 |
+| S3 | 未実装のため未測定 |
+| V1 | 未達: Playwright実行面が利用不可（上記） |
+| V2 | 未実装のため未測定（`emit-gas-html` 未実行） |
+| V3 | 未実装のため未測定 |
+| V4 | 未実装のため未測定 |
+
+### 再開条件
+
+Playwrightを実行できるブラウザ接続を用意し、既存 `?preview` の画面確認をPASSさせること。その後に限り、案αの実装・S/V検証・DEVのみの配布を再開する。
