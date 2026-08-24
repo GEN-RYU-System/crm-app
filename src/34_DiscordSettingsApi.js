@@ -20,6 +20,7 @@
  */
 function saveDiscordBotToken(sessionId, token) {
   try {
+    setEmailFromSession(sessionId);
     checkPermission('admin_access');
 
     if (!token || typeof token !== 'string' || token.trim() === '') {
@@ -48,6 +49,7 @@ function saveDiscordBotToken(sessionId, token) {
  */
 function getDiscordConnectionStatusForFrontend(sessionId) {
   try {
+    setEmailFromSession(sessionId);
     checkPermission('admin_access');
 
     const token = PropertiesService.getScriptProperties().getProperty('DISCORD_BOT_TOKEN');
@@ -109,6 +111,7 @@ function getDiscordConnectionStatusForFrontend(sessionId) {
  */
 function saveDiscordChannels(sessionId, channelIds) {
   try {
+    setEmailFromSession(sessionId);
     checkPermission('admin_access');
 
     if (!Array.isArray(channelIds)) {
@@ -135,6 +138,7 @@ function saveDiscordChannels(sessionId, channelIds) {
  */
 function getDiscordChannelsForFrontend(sessionId) {
   try {
+    setEmailFromSession(sessionId);
     checkPermission('admin_access');
 
     const raw = PropertiesService.getScriptProperties().getProperty('DISCORD_CHANNEL_IDS');
