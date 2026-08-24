@@ -8,7 +8,7 @@
  *
  * seedIssuerMaster()
  *   - データが既に1行以上あれば何もしない
- *   - HIGH LIFE JAPAN の1行を投入（住所分離型 18列構造）
+ *   - ダミー値の1行を投入（住所分離型 18列構造）。実際の発行元情報はシートへ手入力する
  *   - LockService で保護
  *
  * buildAddressLines(addr)
@@ -104,7 +104,7 @@ function seedIssuerMaster() {
 
     sheet.getRange(startRow, colIssuerId).setValue('ISS-00001');
     sheet.getRange(startRow, colCompanyName).setValue('HIGH LIFE JAPAN');
-    sheet.getRange(startRow, colContactName).setValue('Shingo Tanizawa');
+    sheet.getRange(startRow, colContactName).setValue('Taro Yamada');
     sheet.getRange(startRow, colAddressLine1).setValue('2F, Nishishinjuku Mizuma Building');
     sheet.getRange(startRow, colAddressLine2).setValue('3-3-13 Nishishinjuku');
     sheet.getRange(startRow, colAddressLine3).setValue('');
@@ -115,9 +115,9 @@ function seedIssuerMaster() {
     sheet.getRange(startRow, colPhone).setValue('000-0000-0000');
     sheet.getRange(startRow, colEmail).setValue('billing@example.com');
     sheet.getRange(startRow, colRegistrationNo).setValue('T0000000000000');
-    sheet.getRange(startRow, colPayeeName).setValue('Hitoshi Morimoto');
+    sheet.getRange(startRow, colPayeeName).setValue('Hanako Suzuki');
     sheet.getRange(startRow, colPaymentEmail).setValue('billing@example.com');
-    sheet.getRange(startRow, colPaymentNote).setValue('Our Wise account is registered under the name Hitoshi Morimoto, who is responsible for financial and billing operations within our company. This is the official and authorized payment account for all transactions of Treasure Island Japan / HIGH LIFE JAPAN.');
+    sheet.getRange(startRow, colPaymentNote).setValue('Our Wise account is registered under the name Hanako Suzuki, who is responsible for financial and billing operations within our company. This is the official and authorized payment account for all transactions of Treasure Island Japan / HIGH LIFE JAPAN.');
     sheet.getRange(startRow, colClosingMessage).setValue('Thank you for your business!');
     sheet.getRange(startRow, colIsActive).setValue(true);
 
