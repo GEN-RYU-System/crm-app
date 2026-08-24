@@ -100,25 +100,30 @@ function seedIssuerMaster() {
     var colClosingMessage = colOf('CLOSING_MESSAGE');
     var colIsActive       = colOf('IS_ACTIVE');
 
+    var seedProperties = PropertiesService.getScriptProperties();
+    function seedValue(propertyKey, fallback) {
+      return seedProperties.getProperty(propertyKey) || fallback;
+    }
+
     var startRow = table.headerRowNumber + 1;
 
     sheet.getRange(startRow, colIssuerId).setValue('ISS-00001');
-    sheet.getRange(startRow, colCompanyName).setValue('HIGH LIFE JAPAN');
-    sheet.getRange(startRow, colContactName).setValue('Taro Yamada');
-    sheet.getRange(startRow, colAddressLine1).setValue('2F, Nishishinjuku Mizuma Building');
-    sheet.getRange(startRow, colAddressLine2).setValue('3-3-13 Nishishinjuku');
-    sheet.getRange(startRow, colAddressLine3).setValue('');
-    sheet.getRange(startRow, colCity).setValue('Shinjuku-ku');
-    sheet.getRange(startRow, colState).setValue('Tokyo');
-    sheet.getRange(startRow, colZip).setValue('1600023');
-    sheet.getRange(startRow, colCountry).setValue('Japan');
-    sheet.getRange(startRow, colPhone).setValue('000-0000-0000');
-    sheet.getRange(startRow, colEmail).setValue('billing@example.com');
-    sheet.getRange(startRow, colRegistrationNo).setValue('T0000000000000');
-    sheet.getRange(startRow, colPayeeName).setValue('Hanako Suzuki');
-    sheet.getRange(startRow, colPaymentEmail).setValue('billing@example.com');
-    sheet.getRange(startRow, colPaymentNote).setValue('Our Wise account is registered under the name Hanako Suzuki, who is responsible for financial and billing operations within our company. This is the official and authorized payment account for all transactions of Treasure Island Japan / HIGH LIFE JAPAN.');
-    sheet.getRange(startRow, colClosingMessage).setValue('Thank you for your business!');
+    sheet.getRange(startRow, colCompanyName).setValue(seedValue('ISSUER_SEED_COMPANY_NAME', 'Example Trading Co., Ltd.'));
+    sheet.getRange(startRow, colContactName).setValue(seedValue('ISSUER_SEED_CONTACT_NAME', 'Example Contact'));
+    sheet.getRange(startRow, colAddressLine1).setValue(seedValue('ISSUER_SEED_ADDRESS_LINE1', '1 Example Street'));
+    sheet.getRange(startRow, colAddressLine2).setValue(seedValue('ISSUER_SEED_ADDRESS_LINE2', 'Example Building'));
+    sheet.getRange(startRow, colAddressLine3).setValue(seedValue('ISSUER_SEED_ADDRESS_LINE3', ''));
+    sheet.getRange(startRow, colCity).setValue(seedValue('ISSUER_SEED_CITY', 'Example City'));
+    sheet.getRange(startRow, colState).setValue(seedValue('ISSUER_SEED_STATE', 'Example State'));
+    sheet.getRange(startRow, colZip).setValue(seedValue('ISSUER_SEED_ZIP', '0000000'));
+    sheet.getRange(startRow, colCountry).setValue(seedValue('ISSUER_SEED_COUNTRY', 'Example Country'));
+    sheet.getRange(startRow, colPhone).setValue(seedValue('ISSUER_SEED_PHONE', '000-0000-0000'));
+    sheet.getRange(startRow, colEmail).setValue(seedValue('ISSUER_SEED_EMAIL', 'billing@example.com'));
+    sheet.getRange(startRow, colRegistrationNo).setValue(seedValue('ISSUER_SEED_REGISTRATION_NO', 'T0000000000000'));
+    sheet.getRange(startRow, colPayeeName).setValue(seedValue('ISSUER_SEED_PAYEE_NAME', 'Example Payee'));
+    sheet.getRange(startRow, colPaymentEmail).setValue(seedValue('ISSUER_SEED_PAYMENT_EMAIL', 'billing@example.com'));
+    sheet.getRange(startRow, colPaymentNote).setValue(seedValue('ISSUER_SEED_PAYMENT_NOTE', 'Example payment instructions.'));
+    sheet.getRange(startRow, colClosingMessage).setValue(seedValue('ISSUER_SEED_CLOSING_MESSAGE', 'Thank you for your business!'));
     sheet.getRange(startRow, colIsActive).setValue(true);
 
     Logger.log('[seedIssuerMaster] 投入完了: 1件');
@@ -139,10 +144,10 @@ function seedIssuerMaster() {
  *   [1] "city, state, country zip"（空欄省略）
  *
  * 例（発行元）:
- *   line1="2F, Nishishinjuku Mizuma Building", line2="3-3-13 Nishishinjuku",
- *   line3="", city="Shinjuku-ku", state="Tokyo", zip="1600023", country="Japan"
- *   → ["2F, Nishishinjuku Mizuma Building, 3-3-13 Nishishinjuku",
- *       "Shinjuku-ku, Tokyo, Japan 1600023"]
+ *   line1="1 Example Street", line2="Example Building",
+ *   line3="", city="Example City", state="Example State", zip="0000000", country="Example Country"
+ *   → ["1 Example Street, Example Building",
+ *       "Example City, Example State, Example Country 0000000"]
  */
 function buildAddressLines(addr) {
   var streetParts = [addr.line1, addr.line2, addr.line3].filter(function(v) {
