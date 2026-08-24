@@ -15,6 +15,17 @@
 
 ---
 
+## 【受信箱公開 Phase 4再開】実測の停止記録
+
+- 作業場所: メイン作業ツリーを変更せず、専用worktree `work/phase4-header-migration` で開始した。恒久ルール（同時作業はworktreeで分離しメイン作業ツリーを直接切替しない）の正規状態文書への追記は、オーナーの「例の追記PRを出して」指示で別PRとして扱う。
+- 実測: `compareLeadHeaders()` はDEVのリード管理が64列、ローカル `HEADERS.LEADS` が62列であることを返した。実シートは13列目が「流入元ID」、16列目が「作品ID」であり、Configはこれら2列を欠落させて以降が全て2列ずれている。
+- 実測: `surveyLeadSourceIdColumn()` は流入元IDの値分布を返し、既存データを読み取れた。`dryRunVerifyInboxPhase1("LDI-00002")` は一覧25件、対象メッセージ75件。
+- 連続失敗1: worktreeにはgit管理外の `.clasp.json` がないため、直接の `clasp run` は "Project settings not found" で失敗。メインツリーの設定を読み取り参照する `--project` で回復した。
+- 連続失敗2: `verifyConversationLogAlignment()` はApps Script CLIが返却オブジェクトを非対応型として拒否し、続く `clasp logs --json` もGCPプロジェクトID未設定で失敗した。
+- 判定: 連続2失敗の停止条件により、固定添字の全量確定・移行PR・Config整合PR・Phase 5には未着手。
+
+---
+
 ## 【受信箱公開 Phase 0–3】ナビゲーション昇格
 
 - セッション健全性: `true` は exit 0・hook エラーなし。
