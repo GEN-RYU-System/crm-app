@@ -934,8 +934,8 @@ design-system checks passed
 
 ### mergeCommit SHA
 
-PR #458 マージ後に記録予定: `gh pr view 458 --json mergeCommit`
+`8575fcbef423b06eaacfa466a02fee24f4761851`（2026-08-24T00:00:59Z）
 
 ### 戻し方
 
-`git revert <mergeCommitSHA>`
+`git revert 8575fcbef423b06eaacfa466a02fee24f4761851`
