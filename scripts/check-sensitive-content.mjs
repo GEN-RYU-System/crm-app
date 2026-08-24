@@ -21,6 +21,17 @@ const safeEmailDomains = new Set(['example.com', 'example.org', 'example.net', '
 const safePhone = /^(?:0{2,}|1{2,}|2{2,}|9{2,}|123(?:[- ]?456){1,2})/;
 const safeCustomerValues = new Set(['test customer', 'example customer', 'sample customer', 'customer a', 'customer b', '顧客a', '顧客b', 'サンプル顧客', 'テスト顧客']);
 
+function isKnownNonContactNumber(line, match) {
+  const prefix = line.slice(Math.max(0, match.index - 80), match.index);
+  if (/(?:github actions|deploy to dev|security content check|ci).*?run\s*#?\s*[`'"]?\s*$/i.test(prefix)) return true;
+  if (/\bgh\s+run\s+rerun\s*$/i.test(prefix)) return true;
+  return [...line.matchAll(/[0-9a-f]{40}/gi)].some((sha) => {
+    const start = sha.index;
+    const end = start + sha[0].length;
+    return match.index >= start && match.index < end;
+  });
+}
+
 function add(file, line, kind, value) {
   violations.push(`${file}:${line}: ${kind}: ${value}`);
 }
@@ -37,7 +48,7 @@ for (const file of files) {
     }
     for (const match of line.matchAll(/(?:\+?\d{1,3}[-. ]?)?(?:\(?\d{2,4}\)?[-. ]?){2,3}\d{3,4}/g)) {
       const digits = match[0].replace(/\D/g, '');
-      if (digits.length >= 10 && !safePhone.test(digits)) add(file, location, '実電話番号の可能性', match[0]);
+      if (digits.length >= 10 && !safePhone.test(digits) && !isKnownNonContactNumber(line, match)) add(file, location, '実電話番号の可能性', match[0]);
     }
     for (const match of line.matchAll(/(?:docs\.google\.com\/(?:spreadsheets|document)\/d\/|drive\.google\.com\/(?:drive\/folders\/|open\?id=))([A-Za-z0-9_-]{25,})/g)) {
       add(file, location, 'Google Sheets/Drive ID', match[1]);
