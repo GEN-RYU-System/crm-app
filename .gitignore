@@ -2,3 +2,6 @@
 .clasprc.json
 node_modules/
 src/ReactPoc.html
+
+/.npm-cache/
+/frontend/.npm-cache/
