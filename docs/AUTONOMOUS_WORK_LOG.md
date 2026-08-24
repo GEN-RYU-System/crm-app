@@ -31,6 +31,29 @@
 
 ---
 
+## 【redaction2 Phase 5】DEVブック移行・ERP読取調査
+
+### 一時管理関数
+- PR #475 でGASの一時管理関数を追加し、Driveスコープは既存マニフェストの明示設定を使用した（追加なし）。merge/revert SHA: `80243a7e3b436c4727c23443255935cf1dfc4803`
+- PR #476 で退役状態の読取確認を追加した。merge/revert SHA: `fccc1ea0721a180265795706f5179922785d9ef6`
+- 作業完了後の本PRで一時関数を削除する。実IDはコード・戻り値・ログに記録しない。
+
+### DEV移行の実測
+- DEVブックをコピーし、`DEV_SPREADSHEET_ID` を新コピーへ切替済み（新ID値は非掲載）。
+- `smokeReadConfiguredSpreadsheets` → `devReadable: true`, `erpReadable: true`。
+- `dryRunVerifyInboxPhase1("LDI-00002")` → 会話一覧25件、メッセージ75件。
+- `getDeployedSha` は移行用関数配布時のdevelop HEADと一致。
+- 旧DEVブックは `_RETIRED_20260824` へ改名済みで、直接編集者0件・直接閲覧者0件を確認。
+- リンク共有は `ANYONE_WITH_LINK / VIEW` のまま。GASからの `setSharing(PRIVATE, NONE)` はDriveポリシーにより `Access denied` で拒否された。ID非掲載のまま、オーナーがDrive UIまたは組織管理設定でリンク共有を制限付きへ変更する必要がある。
+
+### ERP読取調査（切替はオーナー判断待ち）
+- 読取実測: オーナーは実行主体、直接編集者0件、直接閲覧者0件、シート数28、最終更新日時は2026-01-23T15:05:13.897Z。
+- DriveAppが返す最終更新日時は確認できるが、更新頻度の履歴は取得できないため頻度は未確定（推測しない）。
+- 参照用途: `01_Initialize.js` のERP連携初期化、`15_ERPSync.js` のERP取得／同期、`99_DataTransfer.js` の全シート・個別シート転記、`99_ERPAnalyzer.js` の構造・サンプル読取、`99_ERPDataCleaning.js` の配送レート等の整形、`Config.js` の共通ERP ID取得。
+- 切替案: オーナー承認後にERPコピーを作成し、上記の同期・転記・分析・整形処理を新コピーで読取検証してから `ERP_SPREADSHEET_ID` を切替える。不合格時はプロパティを旧値へ戻す。今回は切替操作を実施しない。
+
+---
+
 ## 【1】Combobox 共通部品化 — PR #301
 
 **マージ日時**: 2026-08-19T20:35:28Z
