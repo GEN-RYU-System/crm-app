@@ -987,6 +987,8 @@ export type DiscordSetupStatus = {
   categoryId: string | null;
   ticketChannelId: string | null;
 };
+export type DiscordTicketResult = { success: boolean; reused?: boolean; channelId?: string; channelName?: string; error?: string; };
+export function createDiscordTicketForCustomer(customerId: string): Promise<DiscordTicketResult> { const runner = window.google?.script?.run; if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly)); return new Promise((resolve, reject) => { runner.withSuccessHandler((value) => resolve(value as DiscordTicketResult)).withFailureHandler((error) => reject(toError(error))).createDiscordTicketForCustomer(getStoredSessionId(), customerId); }); }
 
 export function runDiscordAutoSetup(): Promise<DiscordAutoSetupResult> {
   const runner = window.google?.script?.run;

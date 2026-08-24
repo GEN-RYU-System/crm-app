@@ -1,4 +1,5 @@
 .ui-status-message { margin-top: var(--space-xl); border-radius: var(--radius-control); padding: var(--space-lg); }
 .ui-status-message--loading { background: var(--color-accent-subtle); color: var(--color-accent); }
 .ui-status-message--error { background: var(--color-danger-subtle); color: var(--color-danger); }
+.ui-status-message--success { background: var(--color-success-subtle); color: var(--color-success-strong); }
 .ui-status-message--empty { border: var(--border-width) dashed var(--color-border); background: var(--color-surface); color: var(--color-text-muted); }

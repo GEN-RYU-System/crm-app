@@ -22,6 +22,7 @@ export type CustomerProfileDto = {
   salesAssigneeName: string;
   contactTool: string;
   shippingNote: string;
+  discordChannelId: string;
   shippingAddressCount: number;
   paymentProfileCount: number;
 };
@@ -60,9 +61,11 @@ export type CustomerAggregatesRecord = Readonly<Record<string, {
   shippingAddresses: readonly ShippingAddressDto[];
   paymentProfiles: readonly PaymentProfileDto[];
 }>>;
+export type DiscordTicketResult = { success: boolean; reused?: boolean; channelId?: string; channelName?: string; error?: string; };
 
 export type CustomerRepository = {
   listCustomers: (forceRefresh?: boolean) => Promise<readonly CustomerSummaryDto[]>;
   getCustomer: (customerId: string) => Promise<CustomerAggregateDto | null>;
   listCustomerAggregates: () => Promise<CustomerAggregatesRecord>;
+  createDiscordTicket: (customerId: string) => Promise<DiscordTicketResult>;
 };
