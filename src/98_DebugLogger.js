@@ -2,6 +2,16 @@
  * Logger出力でデバッグ用関数
  */
 
+function getColumnName(index) {
+  let name = '';
+  while (index > 0) {
+    const remainder = (index - 1) % 26;
+    name = String.fromCharCode(65 + remainder) + name;
+    index = Math.floor((index - 1) / 26);
+  }
+  return name;
+}
+
 /**
  * リード管理シートのヘッダーをログ出力
  */
