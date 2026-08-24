@@ -841,7 +841,7 @@ function fixShiftedShippingRows(mode) {
         'AD-00050', 'CT-00051', 'ARSEL SLU',
         'Carrer Hort de Godi', 'Edifici Tintorell', 'Ground Floor, 2nd Door',
         'Encamp', 'Andorra', 'AD200', 'Andorra',
-        '367830', '376', 'arselcontacto@gmail.com', 'L-718880-G',
+        '367830', '376', 'customer@example.com', 'L-718880-G',
         true, true
       ],
       textCols: [9, 11, 12]  // Zip, 電話, 国番号
@@ -852,7 +852,7 @@ function fixShiftedShippingRows(mode) {
         'AD-00051', 'CT-00052', 'Vishal Rajasekhar',
         '27124 Silver Oak Lane', '1222', '',
         'Santa Clarita', 'CA', '91387', 'United States',
-        '4082024995', '1', 'kantokillz@gmail.com', '332796234',
+        '0000000000', '1', 'customer2@example.com', '332796234',
         true, true
       ],
       textCols: [5, 9, 11, 12, 14]  // Address 2, Zip, 電話, 国番号, D Tax ID
@@ -922,7 +922,7 @@ function fixShiftedShippingRows(mode) {
     var e50 = row50[h2.indexOf('D Email')];
     var ok50 = (p50 === '367830' && typeof p50 === 'string') &&
                (d50 === '376'    && typeof d50 === 'string') &&
-               (e50 === 'arselcontacto@gmail.com' && typeof e50 === 'string');
+               (e50 === 'customer@example.com' && typeof e50 === 'string');
     lines.push('① AD-00050: 電話="' + p50 + '"(' + typeof p50 + ') 国番号="' + d50 + '"(' + typeof d50 + ') Email="' + e50 + '"(' + typeof e50 + ') → ' + (ok50 ? '✓' : '✗'));
   } else {
     lines.push('① AD-00050: 行なし ✗');
@@ -946,7 +946,7 @@ function fixShiftedShippingRows(mode) {
                (typeof zip51 === 'string' && zip51 === '91387') &&
                (koku51 === 'United States') &&
                (String(addr3 || '') === '') &&
-               (typeof p51 === 'string' && p51 === '4082024995') &&
+               (typeof p51 === 'string' && p51 === '0000000000') &&
                (typeof d51 === 'string' && d51 === '1');
     lines.push('② AD-00051: City="' + city51 + '" State="' + state51 + '" Zip="' + zip51 + '"(' + typeof zip51 + ') 国="' + koku51 + '" Addr3="' + String(addr3 || '') + '" 電話="' + p51 + '"(' + typeof p51 + ') 国番号="' + d51 + '"(' + typeof d51 + ') → ' + (ok51 ? '✓' : '✗'));
   } else {

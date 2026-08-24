@@ -71,7 +71,7 @@ function findEmailColumnIndex(headers, data) {
  */
 function findUserByEmailSmart(email) {
   try {
-    const ss = SpreadsheetApp.openById('1kF-o4jCrbQePktWaFEBvWhJJjRXhkuw5-AcISa4ClAk');
+    const ss = SpreadsheetApp.openById(getRequiredSpreadsheetProperty('PRODUCTION_SPREADSHEET_ID'));
     const sheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
 
     if (!sheet || sheet.getLastRow() < 2) {

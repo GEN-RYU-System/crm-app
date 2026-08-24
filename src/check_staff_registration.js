@@ -22,9 +22,9 @@ function checkStaffRegistration() {
       return { success: false, error: 'メール列が見つかりません', headers };
     }
     
-    // shingo@treasureislandjp.com を検索
+    // admin@example.com を検索
     let found = false;
-    const targetEmail = 'shingo@treasureislandjp.com';
+    const targetEmail = 'admin@example.com';
     
     for (let i = 1; i < data.length; i++) {
       const email = data[i][emailIdx];

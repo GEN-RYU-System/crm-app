@@ -112,11 +112,11 @@ function seedIssuerMaster() {
     sheet.getRange(startRow, colState).setValue('Tokyo');
     sheet.getRange(startRow, colZip).setValue('1600023');
     sheet.getRange(startRow, colCountry).setValue('Japan');
-    sheet.getRange(startRow, colPhone).setValue('+81 9060727767');
-    sheet.getRange(startRow, colEmail).setValue('payment@treasureislandjp.com');
-    sheet.getRange(startRow, colRegistrationNo).setValue('T3810449547408');
+    sheet.getRange(startRow, colPhone).setValue('000-0000-0000');
+    sheet.getRange(startRow, colEmail).setValue('billing@example.com');
+    sheet.getRange(startRow, colRegistrationNo).setValue('T0000000000000');
     sheet.getRange(startRow, colPayeeName).setValue('Hitoshi Morimoto');
-    sheet.getRange(startRow, colPaymentEmail).setValue('Payment@treasureislandjp.com');
+    sheet.getRange(startRow, colPaymentEmail).setValue('billing@example.com');
     sheet.getRange(startRow, colPaymentNote).setValue('Our Wise account is registered under the name Hitoshi Morimoto, who is responsible for financial and billing operations within our company. This is the official and authorized payment account for all transactions of Treasure Island Japan / HIGH LIFE JAPAN.');
     sheet.getRange(startRow, colClosingMessage).setValue('Thank you for your business!');
     sheet.getRange(startRow, colIsActive).setValue(true);
