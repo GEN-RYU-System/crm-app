@@ -244,9 +244,13 @@ function getConversationLogs(leadId, type) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
+  const leadIdIdx = headers.indexOf('リードID');
+  if (leadIdIdx === -1) {
+    throw new Error('会話ログに「リードID」列がありません: ' + sheetName);
+  }
 
   for (let i = 1; i < data.length; i++) {
-    if (data[i][1] === leadId) {
+    if (data[i][leadIdIdx] === leadId) {
       const log = {};
       headers.forEach((header, idx) => {
         log[header] = data[i][idx];
