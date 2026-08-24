@@ -138,6 +138,7 @@ function applyPermissionOverwrites_(botToken, channelId, guildId, botId) {
  * @returns {{ success: boolean, categoryId?: string, ticketChannelId?: string, error?: string }}
  */
 function runDiscordAutoSetup(sessionId) {
+  setEmailFromSession(sessionId);
   try {
     checkPermission('admin_access');
 
@@ -249,6 +250,7 @@ function runDiscordAutoSetup(sessionId) {
  * @returns {{ guildId: string|null, categoryId: string|null, ticketChannelId: string|null }}
  */
 function getDiscordSetupStatus(sessionId) {
+  setEmailFromSession(sessionId);
   try {
     checkPermission('admin_access');
 

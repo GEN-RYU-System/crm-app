@@ -27,6 +27,7 @@ var DISCORD_OAUTH_PERMISSIONS = '805432400';
  * @returns {{ success: boolean, url?: string, error?: string }}
  */
 function generateDiscordOAuthUrl(sessionId) {
+  setEmailFromSession(sessionId);
   try {
     checkPermission('admin_access');
 
@@ -66,6 +67,7 @@ function generateDiscordOAuthUrl(sessionId) {
  * @returns {{ guildId: string | null }}
  */
 function getDiscordOAuthStatus(sessionId) {
+  setEmailFromSession(sessionId);
   try {
     checkPermission('admin_access');
 

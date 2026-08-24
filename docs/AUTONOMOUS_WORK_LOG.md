@@ -1679,6 +1679,23 @@ Playwrightを実行できるブラウザ接続を用意し、既存 `?preview` �
 - PR #525のCIで、`Check configured secret patterns` ステップはsuccessを確認した。
 - ワークフローは`pull_request`専用のため、developへのpush単独では同ステップを起動しない。後続のdocs PRで同一develop内容に対するステップ成功を確認する。
 
+## 【Discord招待・Guild連携・チャンネルセットアップ認証補完】PR作成前記録
+
+### 対象
+
+- `src/35_DiscordOAuthApi.js`: `generateDiscordOAuthUrl`、`getDiscordOAuthStatus`。
+- `src/36_DiscordChannelSetupApi.js`: `runDiscordAutoSetup`、`getDiscordSetupStatus`。
+
+### 変更・検証
+
+- 各関数で`checkPermission('admin_access')`の前に`setEmailFromSession(sessionId)`を追加した。
+- フロントのGASクライアントは対象4操作すべてでsessionIdを渡しているため、フロント変更は不要だった。
+- 全Discord GAS関数の順序監査で不備0件、`npm run build:gas`成功、`?preview#/discord-integration`のPlaywright操作確認が成功した。
+
+### 戻し方
+
+- マージ後のPRを `git revert <mergeCommit SHA>` で戻す。
+
 ### 読み替え済みSHA
 
 - マージコミット SHA: f5740e95a9ee868fe7d8d67251a2ef894643a873
