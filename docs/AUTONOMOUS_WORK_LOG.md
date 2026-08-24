@@ -1596,6 +1596,16 @@ Playwrightを実行できるブラウザ接続を用意し、既存 `?preview` �
 
 - マージ後のPRを `git revert <mergeCommit SHA>` で戻す。履歴書き換え・force pushは行わない。
 
+## 【Secrets固定文字列CI検査】要件変更・PR作成前記録
+
+- 形式ベースの登録番号検査は、ダミー値との原理的衝突により採用しない。既存のSensitive Contentチェックは変更しない。
+- PR #526（請求書テンプレートの再復旧）のmergeCommitは `7beb26ccfbda417ab818562307c3a2b8fec21372`。
+- `SECRET_SCAN_PATTERNS` を実行時にのみ読み込み、Git管理ファイルを固定文字列検索するステップを追加する。パターン本文は出力せず、検出時はファイル名と行番号だけを出力する。Secret未設定時は警告してスキップする。
+
+### 戻し方
+
+- マージ後のPRを `git revert <mergeCommit SHA>` で戻す。既存のSensitive Contentチェックには影響しない。
+
 ### 読み替え済みSHA
 
 - マージコミット SHA: f5740e95a9ee868fe7d8d67251a2ef894643a873
