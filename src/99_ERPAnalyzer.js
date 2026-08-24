@@ -8,7 +8,7 @@
  * ERPスプレッドシートの全シート構造を取得
  */
 function analyzeERPStructure() {
-  const ERP_SPREADSHEET_ID = '[REDACTED]';
+  const ERP_SPREADSHEET_ID = getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID');
 
   try {
     const ss = SpreadsheetApp.openById(ERP_SPREADSHEET_ID);
@@ -69,7 +69,7 @@ function logERPStructure() {
  * 特定のシートの詳細データを取得（サンプル行含む）
  */
 function getSheetDetails(sheetName, sampleRows = 5) {
-  const ERP_SPREADSHEET_ID = '[REDACTED]';
+  const ERP_SPREADSHEET_ID = getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID');
 
   try {
     const ss = SpreadsheetApp.openById(ERP_SPREADSHEET_ID);
@@ -116,7 +116,7 @@ function getSheetDetails(sheetName, sampleRows = 5) {
  * 全シートの詳細を取得
  */
 function getAllSheetsDetails() {
-  const ERP_SPREADSHEET_ID = '[REDACTED]';
+  const ERP_SPREADSHEET_ID = getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID');
 
   try {
     const ss = SpreadsheetApp.openById(ERP_SPREADSHEET_ID);

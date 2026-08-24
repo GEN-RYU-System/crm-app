@@ -1,6 +1,6 @@
 /**
  * データ転記機能（全書式込み）
- * 移行元: [REDACTED]
+ * 移行元: Script Properties の ERP_SPREADSHEET_ID
  * 移行先: 現在のスプレッドシート（開発環境）
  */
 
@@ -8,7 +8,7 @@
  * 全シート順次転記（メニューから実行）
  */
 function transferAllSheetsSequentially() {
-  const sourceId = '[REDACTED]';
+  const sourceId = getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID');
   const targetId = SpreadsheetApp.getActiveSpreadsheet().getId();
 
   const sheetMappings = [
@@ -170,7 +170,7 @@ function getSheetByGidDT(spreadsheet, gid) {
 
 // 個別転記関数
 function transfer_UPS_ShippingRates() {
-  const sourceId = '[REDACTED]';
+  const sourceId = getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID');
   const targetId = SpreadsheetApp.getActiveSpreadsheet().getId();
   const result = transferSingleSheetDT(sourceId, targetId, 1195813452, 826682661);
 
@@ -185,7 +185,7 @@ function transfer_UPS_ShippingRates() {
 }
 
 function transfer_DHL_ShippingRates() {
-  const sourceId = '[REDACTED]';
+  const sourceId = getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID');
   const targetId = SpreadsheetApp.getActiveSpreadsheet().getId();
   const result = transferSingleSheetDT(sourceId, targetId, 1214726714, 130115565);
 
@@ -200,7 +200,7 @@ function transfer_DHL_ShippingRates() {
 }
 
 function transfer_FedEx_ShippingRates() {
-  const sourceId = '[REDACTED]';
+  const sourceId = getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID');
   const targetId = SpreadsheetApp.getActiveSpreadsheet().getId();
   const result = transferSingleSheetDT(sourceId, targetId, 264167304, 427573081);
 
@@ -215,7 +215,7 @@ function transfer_FedEx_ShippingRates() {
 }
 
 function transfer_M_Zones() {
-  const sourceId = '[REDACTED]';
+  const sourceId = getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID');
   const targetId = SpreadsheetApp.getActiveSpreadsheet().getId();
   const result = transferSingleSheetDT(sourceId, targetId, 833993881, 1508396503);
 
@@ -230,7 +230,7 @@ function transfer_M_Zones() {
 }
 
 function transfer_InvoiceFormat() {
-  const sourceId = '[REDACTED]';
+  const sourceId = getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID');
   const targetId = SpreadsheetApp.getActiveSpreadsheet().getId();
   const result = transferSingleSheetDT(sourceId, targetId, 74688869, 1863910716);
 
@@ -245,7 +245,7 @@ function transfer_InvoiceFormat() {
 }
 
 function transfer_InvoiceCreate() {
-  const sourceId = '[REDACTED]';
+  const sourceId = getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID');
   const targetId = SpreadsheetApp.getActiveSpreadsheet().getId();
   const result = transferSingleSheetDT(sourceId, targetId, 1761617187, 496016280);
 
@@ -260,7 +260,7 @@ function transfer_InvoiceCreate() {
 }
 
 function transfer_SalesData() {
-  const sourceId = '[REDACTED]';
+  const sourceId = getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID');
   const targetId = SpreadsheetApp.getActiveSpreadsheet().getId();
   const result = transferSingleSheetDT(sourceId, targetId, 600397303, 182417310);
 
@@ -275,7 +275,7 @@ function transfer_SalesData() {
 }
 
 function transfer_StockList() {
-  const sourceId = '[REDACTED]';
+  const sourceId = getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID');
   const targetId = SpreadsheetApp.getActiveSpreadsheet().getId();
   const result = transferSingleSheetDT(sourceId, targetId, 1186337887, 1708307083);
 
@@ -290,7 +290,7 @@ function transfer_StockList() {
 }
 
 function transfer_M_Product() {
-  const sourceId = '[REDACTED]';
+  const sourceId = getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID');
   const targetId = SpreadsheetApp.getActiveSpreadsheet().getId();
   const result = transferSingleSheetDT(sourceId, targetId, 548021217, 1729733820);
 
@@ -305,7 +305,7 @@ function transfer_M_Product() {
 }
 
 function transfer_M_Customer() {
-  const sourceId = '[REDACTED]';
+  const sourceId = getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID');
   const targetId = SpreadsheetApp.getActiveSpreadsheet().getId();
   const result = transferSingleSheetDT(sourceId, targetId, 884228295, 222220248);
 
@@ -320,7 +320,7 @@ function transfer_M_Customer() {
 }
 
 function transfer_CommercialInvoice() {
-  const sourceId = '[REDACTED]';
+  const sourceId = getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID');
   const targetId = SpreadsheetApp.getActiveSpreadsheet().getId();
   const result = transferSingleSheetDT(sourceId, targetId, 645231413, 1240290016);
 

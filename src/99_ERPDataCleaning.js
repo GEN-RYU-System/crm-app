@@ -102,7 +102,7 @@ function previewAllNoiseData() {
  * 汎用: 配送料金表シートのクリーンアップ
  */
 function cleanShippingRatesSheet(sheetName, showDialog = true) {
-  const ss = SpreadsheetApp.openById('[REDACTED]');
+  const ss = SpreadsheetApp.openById(getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID'));
   const sheet = ss.getSheetByName(sheetName);
 
   if (!sheet) {
@@ -163,7 +163,7 @@ function cleanShippingRatesSheet(sheetName, showDialog = true) {
  * 汎用: シートのノイズデータプレビュー
  */
 function previewSheetNoiseData(sheetName) {
-  const ss = SpreadsheetApp.openById('[REDACTED]');
+  const ss = SpreadsheetApp.openById(getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID'));
   const sheet = ss.getSheetByName(sheetName);
 
   if (!sheet) {
@@ -205,7 +205,7 @@ function previewSheetNoiseData(sheetName) {
  * FedEx_ShippingRatesシートのデータを調査
  */
 function investigateFedExData() {
-  const ss = SpreadsheetApp.openById('[REDACTED]');
+  const ss = SpreadsheetApp.openById(getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID'));
   const sheet = ss.getSheetByName('FedEx_ShippingRates');
 
   if (!sheet) {
@@ -307,7 +307,7 @@ function investigateFedExData() {
  * 4. 実行ボタン（▶️）をクリック
  */
 function cleanUPSShippingRatesNoiseData() {
-  const ss = SpreadsheetApp.openById('[REDACTED]');
+  const ss = SpreadsheetApp.openById(getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID'));
   const sheet = ss.getSheetByName('UPS_ShippingRates');
 
   if (!sheet) {
@@ -398,7 +398,7 @@ function cleanUPSShippingRatesNoiseData() {
  * 実行前にこの関数で削除対象を確認することを推奨
  */
 function previewUPSNoiseData() {
-  const ss = SpreadsheetApp.openById('[REDACTED]');
+  const ss = SpreadsheetApp.openById(getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID'));
   const sheet = ss.getSheetByName('UPS_ShippingRates');
 
   if (!sheet) {
@@ -460,7 +460,7 @@ function previewUPSNoiseData() {
  * 正常データの構造を確認
  */
 function checkValidDataStructure() {
-  const ss = SpreadsheetApp.openById('[REDACTED]');
+  const ss = SpreadsheetApp.openById(getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID'));
   const sheet = ss.getSheetByName('UPS_ShippingRates');
 
   if (!sheet) {
@@ -504,7 +504,7 @@ function checkValidDataStructure() {
  * クレンジング前にUPS_ShippingRatesシートのコピーを作成
  */
 function createBackupBeforeCleaning() {
-  const ss = SpreadsheetApp.openById('[REDACTED]');
+  const ss = SpreadsheetApp.openById(getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID'));
   const sheet = ss.getSheetByName('UPS_ShippingRates');
 
   if (!sheet) {
@@ -532,7 +532,7 @@ function createBackupBeforeCleaning() {
  * 目的: clasp runでの削除権限を確認
  */
 function testDeleteOneRow() {
-  const ss = SpreadsheetApp.openById('[REDACTED]');
+  const ss = SpreadsheetApp.openById(getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID'));
   const sheet = ss.getSheetByName('FedEx_ShippingRates');
 
   if (!sheet) {

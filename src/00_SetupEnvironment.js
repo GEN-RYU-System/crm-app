@@ -20,9 +20,9 @@ function setupDevelopmentEnvironment() {
   Logger.log('✓ 環境を development に設定しました');
 
   // 開発用スプレッドシートIDを設定
-  const devSpreadsheetId = '[REDACTED]';
+  const devSpreadsheetId = getRequiredSpreadsheetProperty('DEV_SPREADSHEET_ID');
   props.setProperty('DEV_SPREADSHEET_ID', devSpreadsheetId);
-  Logger.log('✓ 開発用スプレッドシートIDを設定しました: ' + devSpreadsheetId);
+  Logger.log('✓ 開発用スプレッドシートIDの設定を確認しました');
 
   // 確認
   Logger.log('\n========================================');
