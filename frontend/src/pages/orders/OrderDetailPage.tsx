@@ -6,9 +6,10 @@ import { Badge } from '../../components/ui/Badge/Badge';
 import { ordersCopy, PAYMENT_STATUS_BADGE_VARIANT } from '../../content/ja';
 import { ISSUER_HEADER } from '../../content/ja/issuer';
 import { InvoiceDocument } from '../../features/documents/InvoiceDocument';
-import type { InventoryProductOption, OrderRepository, OrderUpdatePayload } from '../../features/orders/contracts';
+import type { OrderRepository, OrderUpdatePayload } from '../../features/orders/contracts';
 import { getCoreIssuer, getCoreOrderDetail, type IssuerRecord, type OrderDetailRecord } from '../../gas/client';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
+import { useInventoryProductOptionsCache } from '../inventory/InventoryProductOptionsCacheContext';
 import { formatAmountWithJpy } from '../shared/amountFormat';
 import { formatDate } from '../shared/dateFormat';
 import {
@@ -118,8 +119,7 @@ export function OrderDetailPage({ repository }: Props) {
   const [editPanel, setEditPanel] = useState<EditPanel>('none');
   const [shippingValues, setShippingValues] = useState<ShippingEditValues>(emptyShippingValues());
   const [amountValues, setAmountValues] = useState<AmountEditValues>(emptyAmountValues());
-  const [inventoryProducts, setInventoryProducts] = useState<InventoryProductOption[]>([]);
-  const [productsLoading, setProductsLoading] = useState(false);
+  const { products: inventoryProducts, loading: productsLoading, ensureLoaded: ensureInventoryProductOptions } = useInventoryProductOptionsCache();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [detail, setDetail] = useState<OrderDetailRecord | null | undefined>(undefined);
@@ -161,12 +161,7 @@ export function OrderDetailPage({ repository }: Props) {
     setAmountValues(emptyAmountValues());
     setSaveError('');
     setEditPanel('amount');
-    if (inventoryProducts.length === 0) {
-      setProductsLoading(true);
-      void repository.listInventoryProducts()
-        .then((products) => setInventoryProducts([...products]))
-        .finally(() => setProductsLoading(false));
-    }
+    void ensureInventoryProductOptions();
   };
 
   const handleCancelEdit = () => {
