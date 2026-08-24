@@ -4,6 +4,8 @@
  * Never included in production builds.
  */
 import { ISSUER_HEADER } from '../content/ja/issuer';
+import { leadsCopy } from '../content/ja/leads';
+import { NAVIGATION_BY_ID, type NavigationItemId, type NavigationPermission } from '../app/navigation';
 
 const MOCK_SESSION_ID = 'preview-mock-session';
 const mockCallCounts: Record<string, number> = {};
@@ -46,6 +48,31 @@ const MOCK_PERMISSIONS = {
   settings: true,
   issuer_manage: true,
 };
+
+const MOCK_QUOTES_ONLY_PERMISSIONS = { lead_view: true };
+// The data-management route is rooted at /leads, so its parent guard must remain
+// accessible for the quote-only preview profile to render #/quotes.
+const QUOTES_ONLY_HIDDEN_NAVIGATION_IDS: readonly NavigationItemId[] = ['customers', 'orders', 'salesOrders', 'inbox'];
+const defaultNavigationPermissions = new Map(
+  QUOTES_ONLY_HIDDEN_NAVIGATION_IDS.map((id) => [id, NAVIGATION_BY_ID[id].requiredPermission]),
+);
+let mockPermissions: Record<string, boolean> = MOCK_PERMISSIONS;
+
+function configurePreviewProfile(): void {
+  for (const [id, requiredPermission] of defaultNavigationPermissions) {
+    NAVIGATION_BY_ID[id].requiredPermission = requiredPermission;
+  }
+
+  if (new URLSearchParams(window.location.search).get('previewProfile') !== 'quotes-only') {
+    mockPermissions = MOCK_PERMISSIONS;
+    return;
+  }
+
+  for (const id of QUOTES_ONLY_HIDDEN_NAVIGATION_IDS) {
+    NAVIGATION_BY_ID[id].requiredPermission = 'settings' as NavigationPermission;
+  }
+  mockPermissions = MOCK_QUOTES_ONLY_PERMISSIONS;
+}
 
 const MOCK_CUSTOMERS = [
   {
@@ -178,10 +205,33 @@ const MOCK_CURRENCIES = [
   { currencyCode: 'EUR', symbol: 'EUR', name: 'Euro',         rateToJpy: 165 },
 ];
 
+const MOCK_QUOTES = [
+  {
+    quoteId: 'QUO-PREVIEW-0001', leadId: 'LDI-0001', customerId: 'CUS-0002', customerName: 'Preview Customer B', orderId: '', staffId: 'EMP-00001',
+    issuedDate: '2026-08-25', expiryDate: '2026-09-24', status: 'ISSUED', currency: 'USD', exchangeRate: 150,
+    subtotal: 1000, shippingFee: 0, discount: 0, totalAmount: 1000, totalAmountJpy: 150000, pdfUrl: '', note: '',
+    createdAt: '2026-08-25T00:00:00.000Z', updatedAt: '2026-08-25T00:00:00.000Z',
+  },
+];
+
 const MOCK_LEAD_OPTIONS = [
   { leadId: 'LDI-0001', customerName: 'Preview Lead A' },
   { leadId: 'LDI-0002', customerName: 'Preview Lead B' },
 ];
+
+const MOCK_LEAD_DETAILS: Record<string, Record<string, unknown>> = {
+  'LDI-0001': {
+    [leadsCopy.fields.leadId]: 'LDI-0001',
+    [leadsCopy.fields.customerName]: 'Preview Lead A',
+    [leadsCopy.fields.leadType]: leadsCopy.leadTypes.inbound,
+    [leadsCopy.fields.sourceId]: 'preview-source',
+    [leadsCopy.fields.source]: 'Preview Source',
+    [leadsCopy.fields.country]: 'JP',
+    [leadsCopy.fields.productTitle]: 'Preview Product',
+    [leadsCopy.fields.responseSpeed]: 'Fast',
+    [leadsCopy.fields.csMemo]: 'Preview lead detail not present in list cache.',
+  },
+};
 
 const MOCK_SYNC_SIGNALS = {
   leads: null, quotes: null, orders: null,
@@ -216,11 +266,11 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
 
     getDashboardKPIs(_sessionId: string | null) { succeed(MOCK_KPIS); },
     getCurrentUser(_sessionId: string | null) {
-      succeed({ success: true, permissions: MOCK_PERMISSIONS });
+      succeed({ success: true, permissions: mockPermissions });
     },
     getSessionUser(_sessionId: string) { succeed(MOCK_SESSION_USER); },
     getLeadsByType(_sessionId: string | null, _leadType?: string, _force?: boolean) { succeed([]); },
-    getLeadDetail(_sessionId: string | null, _leadId: string) { succeed(null); },
+    getLeadDetail(_sessionId: string | null, leadId: string) { succeed(MOCK_LEAD_DETAILS[leadId] ?? null); },
     createLead(_sessionId: string | null, _data: unknown) { succeed({ success: true, leadId: 'LDI-NEW' }); },
     updateLead(_sessionId: string | null, _sheet: string, _leadId: string, _data: unknown) { succeed({ success: true }); },
 
@@ -240,7 +290,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     changeOwnPasswordForFrontend(_s: string | null, _c: string, _n: string) { succeed({ success: true }); },
 
     getSharedInventoryForFrontend(_s: string | null, _force: boolean) { succeed(MOCK_SHARED_INVENTORY); },
-    getCoreQuotesForFrontend(_s: string | null, _force: boolean) { succeed([]); },
+    getCoreQuotesForFrontend(_s: string | null, _force: boolean) { succeed(MOCK_QUOTES); },
     getCoreQuoteForFrontend(_s: string | null, _quoteId: string) { succeed(null); },
     getCoreOrdersForFrontend(_s: string | null, _force: boolean) {
       succeed([
@@ -449,6 +499,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
 
 export function installGASMock(): void {
   for (const name of Object.keys(mockCallCounts)) delete mockCallCounts[name];
+  configurePreviewProfile();
   mockDiscordConnectionStatus = { isTokenSet: false, tokenMask: 'not-set', botName: '', botId: '', connected: false };
   sessionStorage.setItem('crm_session_id', MOCK_SESSION_ID);
   const runner = buildChain(

@@ -15,6 +15,31 @@
 
 ---
 
+## 【発行元seed】Script Propertiesによる実値分離
+
+### 変更内容
+- 発行元seedは、設定済みの場合にScript Propertiesを参照し、未設定の場合は公開可能なダミー値を使用する。
+
+### 必要なプロパティキー
+- `ISSUER_SEED_COMPANY_NAME`
+- `ISSUER_SEED_CONTACT_NAME`
+- `ISSUER_SEED_ADDRESS_LINE1`
+- `ISSUER_SEED_ADDRESS_LINE2`
+- `ISSUER_SEED_ADDRESS_LINE3`
+- `ISSUER_SEED_CITY`
+- `ISSUER_SEED_STATE`
+- `ISSUER_SEED_ZIP`
+- `ISSUER_SEED_COUNTRY`
+- `ISSUER_SEED_PHONE`
+- `ISSUER_SEED_EMAIL`
+- `ISSUER_SEED_REGISTRATION_NO`
+- `ISSUER_SEED_PAYEE_NAME`
+- `ISSUER_SEED_PAYMENT_EMAIL`
+- `ISSUER_SEED_PAYMENT_NOTE`
+- `ISSUER_SEED_CLOSING_MESSAGE`
+
+---
+
 ## 【Discord連携】保存と接続確認の統合 — PR #489
 
 ### 変更内容
@@ -27,6 +52,65 @@
 
 ### mergeCommit
 `c2075ded9152f0003d5200ea02e8a1fc5f172172`
+
+---
+
+## 【通貨マスタ共通キャッシュ】PR作成前記録
+
+### SHA訂正
+
+- PR #467 の旧revert SHA `b38f145759607c23f74873a20783352550dfee22` は履歴書き換えにより無効化された。
+- 正しいrevert対象: `b10aaf6bc9695e3b930a779aebc2c47f10ae7f2e`（`git revert b10aaf6bc9695e3b930a779aebc2c47f10ae7f2e`）。
+
+### 合格条件と実測
+
+- `?preview&previewProfile=quotes-only#/quotes` の背景プリフェッチ完了時: `getCoreCurrenciesForFrontend: 1`。
+- 同プロファイルはUSD見積を1件返し、見積一覧は `JPY150,000（$1,000）` を表示。注文ナビゲーションは非表示。
+- `frontend/npm run build:gas`: PASS（typecheck / Vite / emit-gas-html / design-system check）。
+
+### 変更内容
+
+- `CurrencyMasterCacheContext` を `CurrencyRecord[]` の唯一の正本とし、`useCurrencySymbolMap` だけが記号mapを派生する。
+- 注文／見積一覧Contextと注文／見積編集画面の直接通貨取得を共通Context参照に置換した。
+- `usePrefetch` は注文または見積のいずれかの権限がある場合に通貨キャッシュを取得する。
+- preview限定で `previewProfile=quotes-only` とUSD見積モックを追加した。
+
+### PR / revert
+
+- PR #503 をsquash merge。マージコミット SHA: `ed38300b6b61910a31468e57af9f46e138a307fe`。
+- 戻し方: `git revert ed38300b6b61910a31468e57af9f46e138a307fe`。
+- Deploy to DEV run `32777170062` は成功し、`getDeployedSha` は同じSHAを返した。
+
+### 別PR候補: 重複呼出しの起点（修正なし）
+
+- `getSessionUser=2`: `AuthContext.tsx` の認証用 `useEffect`（`getSessionUser`）がReact StrictModeの開発時再実行を受ける。
+- `getCurrentUser=2` / `getDashboardKPIs=2`: `App.tsx` の初期 `useEffect` が `loadPermissions` / `load` を同時に起動し、同じStrictMode再実行を受ける。
+- `getCoreOrdersForFrontend=2`: `usePrefetch.ts` の `ensureOrders` がStrictModeの開発時再実行を受ける。通常のキャッシュ内重複ではなく、StrictModeでProviderを再生成するプレビュー実測に起因する。
+- 計画1〜11では、初期ロードのStrictMode耐性を扱う箇所に別PRとして追加する。今回の通貨キャッシュPRには実装修正を含めない。
+
+---
+
+## 【Phase 0】Lead detail keyed cache 再調査
+
+### canonical上の根拠
+
+- `frontend/src/pages/leads/LeadListCacheContext.tsx` は `createListCache<LeadRecord, LeadListTabType>` を使い、一覧を `all` / リード種別で保持している。
+- `frontend/src/pages/leads/LeadEditorPage.tsx` は一覧に対象leadIdがない場合、`repository.getDetail(leadId)` を直接呼び出している。
+- `frontend/src/features/leads/contracts.ts` と `gasAdapter.ts` は、詳細取得の境界として `LeadRepository.getDetail` を提供している。
+- `frontend/src/preview/gasRunnerMock.ts` は `__gasMockCallCounts` で `getLeadDetail` を関数名別に計数できる。
+
+### 計画1の合格条件
+
+- `/leads/:leadId` を開き、一覧へ戻って同じ詳細を再度開いたとき、`getLeadDetail` の生出力が初回の `1` から増えない。
+- 一覧に未命中のleadIdでは `LeadRepository.getDetail` を `createListCache` のleadIdキーで取得し、nullはmissingとしてキャッシュする。
+
+### 計画1の生出力
+
+```text
+first:  getLeadDetail = 1
+second: getLeadDetail = 1
+PASS: detail reopen did not issue another getLeadDetail call
+```
 
 ---
 

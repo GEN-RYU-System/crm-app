@@ -307,8 +307,7 @@ function testLoginServiceAll() {
 //      期待: { value: null }
 //
 // 合格条件: 手順2で { value: null } が返ること。
-// 注意: 99_TestFunctions.js は .claspignore で除外されているため
-//       デプロイ対象のこのファイルに定義する。
+// 注意: デプロイ対象のこのファイルに定義する。
 
 var _gasGlobalStateTest = null;
 

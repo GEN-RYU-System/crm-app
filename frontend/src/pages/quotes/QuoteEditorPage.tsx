@@ -6,8 +6,9 @@ import { quotesCopy } from '../../content/ja';
 import { ISSUER_HEADER } from '../../content/ja/issuer';
 import { QuoteDocument } from '../../features/documents/QuoteDocument';
 import { formatDate } from '../shared/dateFormat';
-import { createCoreQuote, getCoreIssuer, getCoreQuoteDetail, getCoreCurrencies, getInventoryProductOptions, getLeadOptionsForFrontend, updateCoreQuote, type CurrencyRecord, type InventoryProductOption, type IssuerRecord, type LeadOption } from '../../gas/client';
+import { createCoreQuote, getCoreIssuer, getCoreQuoteDetail, getInventoryProductOptions, getLeadOptionsForFrontend, updateCoreQuote, type InventoryProductOption, type IssuerRecord, type LeadOption } from '../../gas/client';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
+import { useCurrencyMasterCache } from '../currency/CurrencyMasterCacheContext';
 import { emptyLineValues, emptyQuoteEditorValues, isValidDiscount, QUOTE_EDITOR_PATHS, toHalfwidthDigits, toQuoteEditorValues, toQuotePayload, type QuoteEditorValues, type QuoteLineEditorValues } from './quoteEditorConfig';
 import { LeadCombobox } from './LeadCombobox';
 import './QuoteEditorPage.css';
@@ -68,7 +69,6 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
   const [loadError, setLoadError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [savingState, setSavingState] = useState<SavingState>('idle');
-  const [currencies, setCurrencies] = useState<CurrencyRecord[]>([]);
   const [leads, setLeads] = useState<LeadOption[]>([]);
   const [inventoryProducts, setInventoryProducts] = useState<InventoryProductOption[]>([]);
   const [lineErrors, setLineErrors] = useState<Map<number, string>>(new Map());
@@ -84,17 +84,17 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
 
   // Derive conditions from the prefetched inventory cache (no GAS call needed).
   const conditionsMap = useInventoryConditionsMap();
+  const { currencies, ensureLoaded: ensureCurrencies } = useCurrencyMasterCache();
 
   useEffect(() => {
     setMasterState('loading');
-    void Promise.all([getCoreCurrencies(), getLeadOptionsForFrontend()])
-      .then(([currencyData, leadData]) => {
-        setCurrencies([...currencyData]);
+    void Promise.all([ensureCurrencies(), getLeadOptionsForFrontend()])
+      .then(([, leadData]) => {
         setLeads([...leadData]);
         setMasterState('ready');
       })
       .catch(() => setMasterState('error'));
-  }, []);
+  }, [ensureCurrencies]);
 
   useEffect(() => {
     void getInventoryProductOptions()

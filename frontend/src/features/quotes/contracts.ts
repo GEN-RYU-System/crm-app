@@ -4,5 +4,4 @@ export type { QuoteRecord };
 
 export type QuoteRepository = {
   listQuotes: (forceRefresh?: boolean) => Promise<readonly QuoteRecord[]>;
-  listCurrencySymbols: () => Promise<Record<string, string>>;
 };

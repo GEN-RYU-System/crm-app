@@ -64,7 +64,6 @@ export type InventoryProductOption = {
 
 export type OrderRepository = {
   listOrders: (forceRefresh?: boolean) => Promise<readonly OrderRecord[]>;
-  listCurrencySymbols: () => Promise<Record<string, string>>;
   createOrder: (payload: OrderCreatePayload) => Promise<OrderCreateResult>;
   updateOrder: (orderId: string, payload: OrderUpdatePayload) => Promise<OrderUpdateResult>;
   listInventoryProducts: () => Promise<readonly InventoryProductOption[]>;

@@ -5,6 +5,7 @@ import { leadsCopy } from '../../content/ja';
 import type { LeadFormCountry, LeadSource, LeadRepository, LeadType } from '../../features/leads/contracts';
 import { useLeadFormOptionsCache } from './LeadFormOptionsCacheContext';
 import { useLeadListCache } from './LeadListCacheContext';
+import { useLeadDetailCache } from './LeadDetailCacheContext';
 import { emptyLeadEditorValues, LEAD_EDITOR_PATHS, toLeadCreateValues, toLeadEditorValues, toLeadUpdateValues, type LeadEditorValues } from './leadEditorConfig';
 import { LEAD_TYPE_TABS } from './leadListConfig';
 import './LeadEditorPage.css';
@@ -46,6 +47,7 @@ export function LeadEditorPage({ mode, canEdit, repository }: Props) {
   const location = useLocation();
   const { leadId } = useParams();
   const { refreshAll, recordsByType } = useLeadListCache();
+  const { recordsByLeadId, errorsByLeadId, ensureLoaded: ensureDetailLoaded } = useLeadDetailCache();
   const { formOptions, ensureLoaded: ensureFormOptionsLoaded } = useLeadFormOptionsCache();
   const requestedType = (location.state as NavigationState)?.leadType;
   const selectedType = isLeadType(requestedType) ? requestedType : LEAD_TYPE_TABS[0]!.type;
@@ -76,9 +78,15 @@ export function LeadEditorPage({ mode, canEdit, repository }: Props) {
       setDetailState('ready');
       return;
     }
-    setDetailState('loading');
-    setLoadError('');
-    void repository.getDetail(leadId).then((record) => {
+    const detailRecords = recordsByLeadId[leadId];
+    const detailError = errorsByLeadId[leadId];
+    if (detailError !== undefined) {
+      setLoadError(detailError);
+      setDetailState('error');
+      return;
+    }
+    if (detailRecords !== undefined) {
+      const record = detailRecords[0];
       if (!record) {
         setDetailState('missing');
         return;
@@ -87,11 +95,12 @@ export function LeadEditorPage({ mode, canEdit, repository }: Props) {
       const detailType = record[leadsCopy.fields.leadType];
       if (isLeadType(detailType)) setLeadType(detailType);
       setDetailState('ready');
-    }).catch((cause) => {
-      setLoadError(cause instanceof Error ? cause.message : leadsCopy.detailLoadError);
-      setDetailState('error');
-    });
-  }, [leadId, mode]);
+      return;
+    }
+    setDetailState('loading');
+    setLoadError('');
+    void ensureDetailLoaded(leadId);
+  }, [ensureDetailLoaded, errorsByLeadId, leadId, mode, recordsByLeadId]);
 
   const editable = mode === 'create' || canEdit;
   const optionsReady = formOptions !== null;
