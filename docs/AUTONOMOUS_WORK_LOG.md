@@ -15,6 +15,16 @@
 
 ---
 
+## 【npmキャッシュ除外】誤コミット防止 — PR #488
+
+### 変更内容
+- ルートおよび frontend の npm キャッシュディレクトリを .gitignore に追加した。
+
+### 戻し方
+`git revert c9a42a97e7683bb7a1ac6f7f1cd6d48ee621c8fc`
+
+---
+
 ## 【受信箱公開 Phase 0–3】ナビゲーション昇格
 
 - セッション健全性: `true` は exit 0・hook エラーなし。
