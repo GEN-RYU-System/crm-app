@@ -1,5 +1,7 @@
 # 自律作業ログ
 
+> リポジトリ・クローンの正誤は `docs/REPOSITORY_CANONICAL_STATE.md` を参照。
+
 > **develop凍結解除（2026-08-24）:** redaction2 v2 の履歴書換え・全履歴再スキャンを完了し、凍結を解除した。Actions を通常のDEVデプロイ経路とし、ローカル clasp は障害時のバックアップ経路とする。
 >
 > **並行作業者への必須告知:** 既存クローン／worktree は使用・push・fetch 禁止。新履歴を必ず再クローンすること。作業ログ内の旧SHA（revert SHAを含む）は `docs/SHA_REMAP_20260824.md`（v1）から `docs/SHA_REMAP_20260824_v2.md`（v2）へ順に連結して読み替える。
