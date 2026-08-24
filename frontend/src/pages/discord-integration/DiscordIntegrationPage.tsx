@@ -5,7 +5,7 @@ import type { DiscordConnectionStatus, DiscordIntegrationRepository, DiscordSetu
 
 type LoadState = 'loading' | 'ready' | 'error';
 type SaveState = 'idle' | 'saving' | 'success' | 'error';
-type TestState = 'idle' | 'testing' | 'success' | 'error';
+type TokenConnectionState = 'idle' | 'saving' | 'connected' | 'connection-error' | 'save-error';
 type InviteState = 'idle' | 'opening' | 'error';
 type StatusCheckState = 'idle' | 'checking';
 type SetupState = 'idle' | 'running' | 'success' | 'error';
@@ -26,11 +26,8 @@ export function DiscordIntegrationPage({ repository }: Props) {
   });
 
   const [tokenInput, setTokenInput] = useState('');
-  const [tokenSaveState, setTokenSaveState] = useState<SaveState>('idle');
+  const [tokenConnectionState, setTokenConnectionState] = useState<TokenConnectionState>('idle');
   const [tokenSaveError, setTokenSaveError] = useState('');
-
-  const [testState, setTestState] = useState<TestState>('idle');
-  const [testError, setTestError] = useState('');
 
   const [channels, setChannels] = useState<string[]>([]);
   const [channelInput, setChannelInput] = useState('');
@@ -72,38 +69,26 @@ export function DiscordIntegrationPage({ repository }: Props) {
 
   const handleSaveToken = async () => {
     if (!tokenInput.trim()) return;
-    setTokenSaveState('saving');
+    setTokenConnectionState('saving');
     setTokenSaveError('');
     try {
       const result = await repository.saveBotToken(tokenInput.trim());
       if (result.success) {
         setTokenInput('');
-        setTokenSaveState('success');
         const status = await repository.getConnectionStatus();
         setConnectionStatus(status);
+        if (status.connected) {
+          setTokenConnectionState('connected');
+        } else {
+          setTokenConnectionState('connection-error');
+        }
       } else {
         setTokenSaveError(result.error ?? discordIntegrationCopy.tokenSaveError);
-        setTokenSaveState('error');
+        setTokenConnectionState('save-error');
       }
     } catch (cause) {
       setTokenSaveError(cause instanceof Error ? cause.message : discordIntegrationCopy.tokenSaveError);
-      setTokenSaveState('error');
-    }
-  };
-
-  const handleTestConnection = async () => {
-    setTestState('testing');
-    setTestError('');
-    try {
-      const status = await repository.getConnectionStatus();
-      setConnectionStatus(status);
-      setTestState(status.connected ? 'success' : 'error');
-      if (!status.connected) {
-        setTestError(discordIntegrationCopy.connectionFailed);
-      }
-    } catch (cause) {
-      setTestError(cause instanceof Error ? cause.message : discordIntegrationCopy.testFailed);
-      setTestState('error');
+      setTokenConnectionState('save-error');
     }
   };
 
@@ -244,27 +229,30 @@ export function DiscordIntegrationPage({ repository }: Props) {
             label={discordIntegrationCopy.tokenLabel}
             type="password"
             value={tokenInput}
-            onChange={(e) => { setTokenSaveState('idle'); setTokenInput(e.target.value); }}
+            onChange={(e) => { setTokenConnectionState('idle'); setTokenInput(e.target.value); }}
             placeholder={discordIntegrationCopy.tokenPlaceholder}
             fullWidth
           />
-          {tokenSaveState === 'success' && (
-            <p role="status" style={{ color: 'var(--color-success, green)', fontSize: 'var(--font-sm)' }}>
-              {discordIntegrationCopy.tokenSaved}
-            </p>
+          {tokenConnectionState === 'connected' && (
+            <StatusMessage variant="success">
+              {discordIntegrationCopy.saveAndConnectSuccess} {discordIntegrationCopy.connectedBot}{connectionStatus.botName} (ID: {connectionStatus.botId})
+            </StatusMessage>
           )}
-          {tokenSaveState === 'error' && (
+          {tokenConnectionState === 'connection-error' && (
+            <StatusMessage variant="error">{discordIntegrationCopy.savedButConnectionFailed}</StatusMessage>
+          )}
+          {tokenConnectionState === 'save-error' && (
             <StatusMessage variant="error">{tokenSaveError || discordIntegrationCopy.tokenSaveError}</StatusMessage>
           )}
           <div>
             <Button
               variant="primary"
               onClick={() => void handleSaveToken()}
-              loading={tokenSaveState === 'saving'}
-              loadingText={discordIntegrationCopy.savingToken}
+              loading={tokenConnectionState === 'saving'}
+              loadingText={discordIntegrationCopy.savingAndTesting}
               disabled={!tokenInput.trim()}
             >
-              {discordIntegrationCopy.saveToken}
+              {discordIntegrationCopy.saveAndConnect}
             </Button>
           </div>
         </div>
@@ -297,25 +285,6 @@ export function DiscordIntegrationPage({ repository }: Props) {
                 {discordIntegrationCopy.connectionStatus.notSet}
               </p>
             )}
-          </div>
-          {testState === 'error' && (
-            <StatusMessage variant="error">{testError}</StatusMessage>
-          )}
-          {testState === 'success' && (
-            <p role="status" style={{ color: 'var(--color-success, green)', fontSize: 'var(--font-sm)' }}>
-              {discordIntegrationCopy.connectionSuccess}
-            </p>
-          )}
-          <div>
-            <Button
-              variant="outline"
-              onClick={() => void handleTestConnection()}
-              loading={testState === 'testing'}
-              loadingText={discordIntegrationCopy.testingConnection}
-              disabled={!connectionStatus.isTokenSet}
-            >
-              {discordIntegrationCopy.testConnection}
-            </Button>
           </div>
         </div>
       </Card>
