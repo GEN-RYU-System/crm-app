@@ -943,6 +943,35 @@ export function getDiscordChannels(): Promise<DiscordChannelsResult> {
 }
 
 // ============================================================
+// Discord OAuth Bot invite flow
+// ============================================================
+
+export type DiscordOAuthUrlResult = { success: boolean; url?: string; error?: string };
+export type DiscordOAuthStatusResult = { guildId: string | null };
+
+export function generateDiscordOAuthUrl(): Promise<DiscordOAuthUrlResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => resolve(value as DiscordOAuthUrlResult))
+      .withFailureHandler((error) => reject(toError(error)))
+      .generateDiscordOAuthUrl(getStoredSessionId());
+  });
+}
+
+export function getDiscordOAuthStatus(): Promise<DiscordOAuthStatusResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => resolve(value as DiscordOAuthStatusResult))
+      .withFailureHandler((error) => reject(toError(error)))
+      .getDiscordOAuthStatus(getStoredSessionId());
+  });
+}
+
+// ============================================================
 // Discord channel setup (auto-setup)
 // ============================================================
 

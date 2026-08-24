@@ -394,6 +394,14 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     getDiscordChannelsForFrontend(_s: string | null) {
       succeed({ channels: ['1234567890123456789'] });
     },
+
+    // Discord OAuth Bot invite flow
+    generateDiscordOAuthUrl(_s: string | null) {
+      succeed({ success: true, url: 'https://discord.com/api/oauth2/authorize?client_id=mock&permissions=805432400&scope=bot%20applications.commands&response_type=code&redirect_uri=https%3A%2F%2Fscript.google.com%2Fmacros%2Fs%2Fmock&state=mock-state' });
+    },
+    getDiscordOAuthStatus(_s: string | null) {
+      succeed({ guildId: null });
+    },
     runDiscordAutoSetup(_s: string | null) {
       succeed({ success: true, categoryId: '1111111111111111111', ticketChannelId: '2222222222222222222' });
     },
