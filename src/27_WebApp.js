@@ -53,6 +53,13 @@ function doGet(e) {
     }
   }
 
+  // Discord OAuth コールバック（Botサーバー招待後のリダイレクト受信）
+  // state と guild_id の両方が存在する場合にDiscordからのコールバックと判断する
+  // state のみでは将来別機能が state を使う場合に衝突するリスクがある
+  if (params.state && params.guild_id) {
+    return handleDiscordOAuthCallback(params);
+  }
+
   // 旧画面プレビュー（移植作業の参考用・移植完了後に削除すること）
   if (params.page === 'legacy') {
     return HtmlService.createTemplateFromFile('index')

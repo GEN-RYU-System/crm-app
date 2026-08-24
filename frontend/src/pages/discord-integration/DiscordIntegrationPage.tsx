@@ -6,6 +6,8 @@ import type { DiscordConnectionStatus, DiscordIntegrationRepository, DiscordSetu
 type LoadState = 'loading' | 'ready' | 'error';
 type SaveState = 'idle' | 'saving' | 'success' | 'error';
 type TestState = 'idle' | 'testing' | 'success' | 'error';
+type InviteState = 'idle' | 'opening' | 'error';
+type StatusCheckState = 'idle' | 'checking';
 type SetupState = 'idle' | 'running' | 'success' | 'error';
 
 type Props = {
@@ -35,6 +37,11 @@ export function DiscordIntegrationPage({ repository }: Props) {
   const [channelSaveState, setChannelSaveState] = useState<SaveState>('idle');
   const [channelSaveError, setChannelSaveError] = useState('');
 
+  const [guildId, setGuildId] = useState<string | null>(null);
+  const [inviteState, setInviteState] = useState<InviteState>('idle');
+  const [inviteError, setInviteError] = useState('');
+  const [statusCheckState, setStatusCheckState] = useState<StatusCheckState>('idle');
+
   const [setupStatus, setSetupStatus] = useState<DiscordSetupStatus>({ guildId: null, categoryId: null, ticketChannelId: null });
   const [setupState, setSetupState] = useState<SetupState>('idle');
   const [setupError, setSetupError] = useState('');
@@ -44,13 +51,15 @@ export function DiscordIntegrationPage({ repository }: Props) {
     setLoadState('loading');
     setLoadError('');
     try {
-      const [status, channelsResult, setupStatusResult] = await Promise.all([
+      const [status, channelsResult, oauthStatus, setupStatusResult] = await Promise.all([
         repository.getConnectionStatus(),
         repository.getChannels(),
+        repository.getOAuthStatus(),
         repository.getSetupStatus(),
       ]);
       setConnectionStatus(status);
       setChannels(channelsResult.channels);
+      setGuildId(oauthStatus.guildId);
       setSetupStatus(setupStatusResult);
       setLoadState('ready');
     } catch (cause) {
@@ -122,6 +131,37 @@ export function DiscordIntegrationPage({ repository }: Props) {
     } catch (cause) {
       setChannelSaveError(cause instanceof Error ? cause.message : discordIntegrationCopy.channelAddError);
       setChannelSaveState('error');
+    }
+  };
+
+  const handleInviteBot = async () => {
+    setInviteState('opening');
+    setInviteError('');
+    try {
+      const result = await repository.generateOAuthUrl();
+      if (result.success && result.url) {
+        window.open(result.url, '_blank');
+        setInviteState('idle');
+      } else {
+        const errorMsg = result.error === 'CLIENT_ID_NOT_SET'
+          ? discordIntegrationCopy.clientIdNotSet
+          : (result.error ?? discordIntegrationCopy.inviteError);
+        setInviteError(errorMsg);
+        setInviteState('error');
+      }
+    } catch (cause) {
+      setInviteError(cause instanceof Error ? cause.message : discordIntegrationCopy.inviteError);
+      setInviteState('error');
+    }
+  };
+
+  const handleRefreshOAuthStatus = async () => {
+    setStatusCheckState('checking');
+    try {
+      const result = await repository.getOAuthStatus();
+      setGuildId(result.guildId);
+    } finally {
+      setStatusCheckState('idle');
     }
   };
 
@@ -335,6 +375,49 @@ export function DiscordIntegrationPage({ repository }: Props) {
                 ))}
               </ul>
             )}
+          </div>
+        </div>
+      </Card>
+
+      <Card>
+        <h2 style={{ marginBottom: 'var(--space-lg)', fontSize: 'var(--font-md)', fontWeight: 600 }}>
+          {discordIntegrationCopy.inviteSection}
+        </h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+          <p style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-muted, gray)' }}>
+            {discordIntegrationCopy.inviteDescription}
+          </p>
+          <div style={{ fontSize: 'var(--font-sm)' }}>
+            {guildId ? (
+              <p style={{ color: 'var(--color-success, green)', fontWeight: 500 }}>
+                {discordIntegrationCopy.guildLinked}{guildId})
+              </p>
+            ) : (
+              <p style={{ color: 'var(--color-text-muted, gray)' }}>
+                {discordIntegrationCopy.guildNotLinked}
+              </p>
+            )}
+          </div>
+          {inviteState === 'error' && (
+            <StatusMessage variant="error">{inviteError}</StatusMessage>
+          )}
+          <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
+            <Button
+              variant="primary"
+              onClick={() => void handleInviteBot()}
+              loading={inviteState === 'opening'}
+              loadingText={discordIntegrationCopy.invitingBot}
+            >
+              {discordIntegrationCopy.inviteButton}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => void handleRefreshOAuthStatus()}
+              loading={statusCheckState === 'checking'}
+              loadingText={discordIntegrationCopy.refreshingStatus}
+            >
+              {discordIntegrationCopy.refreshStatus}
+            </Button>
           </div>
         </div>
       </Card>
