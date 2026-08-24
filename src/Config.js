@@ -15,7 +15,25 @@ function getERPEnvironment() {
  */
 function getERPSpreadsheetId() {
   getERPEnvironment();
-  return getRequiredScriptProperty('ERP_SPREADSHEET_ID');
+  return getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID');
+}
+
+function getRequiredSpreadsheetProperty(key) {
+  const value = PropertiesService.getScriptProperties().getProperty(key);
+  if (!value) throw new Error('プロパティ未設定: ' + key);
+  return value;
+}
+
+function configureDevSpreadsheetProperties(devSpreadsheetId, erpSpreadsheetId) {
+  if (!devSpreadsheetId || !erpSpreadsheetId) throw new Error('プロパティ未設定: DEV_SPREADSHEET_ID または ERP_SPREADSHEET_ID');
+  PropertiesService.getScriptProperties().setProperties({ DEV_SPREADSHEET_ID: devSpreadsheetId, ERP_SPREADSHEET_ID: erpSpreadsheetId }, false);
+  return { configured: ['DEV_SPREADSHEET_ID', 'ERP_SPREADSHEET_ID'] };
+}
+
+function smokeReadConfiguredSpreadsheets() {
+  const dev = SpreadsheetApp.openById(getRequiredSpreadsheetProperty('DEV_SPREADSHEET_ID'));
+  const erp = SpreadsheetApp.openById(getRequiredSpreadsheetProperty('ERP_SPREADSHEET_ID'));
+  return { devReadable: Boolean(dev.getId()), erpReadable: Boolean(erp.getId()) };
 }
 
 const ERP_CONFIG = {
