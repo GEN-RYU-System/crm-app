@@ -191,6 +191,12 @@ dist/index.html  477.03 kB │ gzip: 123.57 kB
 design-system checks passed
 ```
 
+### PR / revert / deploy
+
+- PR #516 を squash merge。マージコミット SHA: `2ed32ed1f9860bfed0257dc4d1c8f5f2adc57695`。
+- 戻し方: `git revert 2ed32ed1f9860bfed0257dc4d1c8f5f2adc57695`
+- Deploy to DEV run `32781866020` は成功。`getDeployedSha` 生出力: `{ sha: '2ed32ed1f9860bfed0257dc4d1c8f5f2adc57695', deployedAt: '2026-08-24T21:54:05.630Z' }`。
+
 ---
 
 ## 【発行元マスタseed匿名化】公開記載ルール準拠 — PR #493
