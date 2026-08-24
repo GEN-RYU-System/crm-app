@@ -939,3 +939,89 @@ design-system checks passed
 ### 戻し方
 
 `git revert 8575fcbef423b06eaacfa466a02fee24f4761851`
+
+---
+
+## 【23】LEADS に IP_IDS（作品ID）列追加 — PR #437
+
+- mergedAt: 2026-08-23T21:35:41Z
+- マージコミット SHA: `5af2fd6dfe084675f40d1e4e509cc299fa9842eb`
+- 戻し方: `git revert 5af2fd6dfe084675f40d1e4e509cc299fa9842eb`
+
+---
+
+## 【24】受信箱 GAS 読み取り API（Phase 1） — PR #445
+
+- mergedAt: 2026-08-23T22:10:54Z
+- マージコミット SHA: `b62e200ee59137b67a510f92e82f097a01671922`
+- 戻し方: `git revert b62e200ee59137b67a510f92e82f097a01671922`
+
+### 変更内容
+
+- `src/28_CoreInboxApi.js` 新規作成
+  - `getInboxConversationsForFrontend(sessionId, forceRefresh)` — 会話一覧（CacheService TTL 600s）
+  - `getInboxConversationDetailForFrontend(sessionId, leadId)` — 会話詳細（messages + karte）
+  - `buildInboxConversations_()` — 会話ログをリードID集約 + リード管理結合
+  - `readInboxMessages_()` — 指定リードのメッセージ一覧（日時昇順）
+  - `resolveConversationLogSheet_()` — '会話ログ' → '会話ログ（商談用）' 動的解決
+  - `LEAD_PROGRESS_TO_INBOX_STATUS` — 進捗→InboxStatus マッピング
+
+### 検証結果（dryRunVerifyInboxPhase1 実測）
+
+- conversationListCount: 25（会話ログあり 24 + CONVERSATION_SUMMARY のみ 1）
+- sheetUniqueLeadCount: 24
+- LDI-00002 sampleMessageCount: 75
+- LDI-00001 sampleMessageCount: 8
+
+---
+
+## 【25】DEV 診断: dryRunVerifyInboxPhase1 追加 — PR #447
+
+- mergedAt: 2026-08-23T22:20:02Z
+- マージコミット SHA: `db3676e06c887f02df30d654c812e9c104e41f97`
+- 戻し方: `git revert db3676e06c887f02df30d654c812e9c104e41f97`
+
+---
+
+## 【26】受信箱フロント接続（Phase 2） — PR #449
+
+- mergedAt: 2026-08-23T22:37:05Z
+- マージコミット SHA: `d14bb3bb8960d92e9abb9789ff5a1183cf9508c8`
+- 戻し方: `git revert d14bb3bb8960d92e9abb9789ff5a1183cf9508c8`
+
+### 変更内容
+
+- `frontend/src/features/inbox/gasAdapter.ts` 新規作成（InboxRepository → GAS クライアント橋渡し）
+- `frontend/src/gas/client.ts` — getInboxConversations / getInboxConversationDetail 追加
+- `frontend/src/gas/types.d.ts` — GoogleScriptRun 型に 2 メソッド追加
+- `frontend/src/App.tsx` — inboxPreviewRepository → inboxGasRepository に差し替え
+- `frontend/src/preview/gasRunnerMock.ts` — 5件モック（alpha/bravo/charlie/delta/echo）追加
+
+---
+
+## 【27】受信箱 3 ペイン UI 実装（Phase 3） — PR #453
+
+- mergedAt: 2026-08-23T22:57:43Z
+- マージコミット SHA: `f1237217a83fb0359a148fdadef995b8fbb67490`
+- 戻し方: `git revert f1237217a83fb0359a148fdadef995b8fbb67490`
+
+### 変更内容
+
+- `frontend/src/pages/inbox/InboxPreviewPage.tsx` 全面書き換え — 遅延ロード（mount 時に listConversations のみ、選択時に getConversation + Map キャッシュ）
+- `frontend/src/content/ja/inbox.ts` — eyebrow を 'Inbox preview' → 'Inbox' に変更
+- `frontend/src/features/inbox/previewAdapter.ts` 削除（dead code）
+- Deploy to DEV: CI 課金限度超過により **失敗**（GitHub Actions spending limit）
+
+### Phase A DEV リカバリ（2026-08-24 実施）
+
+GitHub Actions 課金停止による DEV 配布失敗を、ローカル `clasp push` で回復。
+
+1. `.claspignore` 確認: `docs/`, `28_CoreInboxApi.js` は除外なし → 全ファイル対象 ✓
+2. `npm run build:gas` → PASS（typecheck + vite + emit-gas-html + design-system check）
+3. `clasp push --force` → 183 ファイル push 完了
+4. `clasp run recordDeployedSha ["3b25543839071fa5ac4366302b63e04bb47f1977"]`
+   → `{ sha: '3b25543...', deployedAt: '2026-08-24T06:45:39.695Z' }` ✓
+5. `clasp run getDeployedSha` → `3b25543...` = develop HEAD ✓
+6. `dryRunVerifyInboxPhase1("LDI-00002")` → conversationListCount=25 / sampleMessageCount=75 ✓
+7. `dryRunVerifyInboxPhase1("LDI-00001")` → sampleMessageCount=8 ✓
+8. 25 件目（CONVERSATION_SUMMARY のみ、会話ログなし）: **LDI-00233**（[REDACTED]）
