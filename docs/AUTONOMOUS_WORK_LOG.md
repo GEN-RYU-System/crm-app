@@ -251,6 +251,21 @@ design-system checks passed
 
 ---
 
+## 【InventoryProductOptions cache】Order editor の直接取得置換
+
+### 合格条件（実装前定義）
+
+- orders または quotes 権限の裏読み完了時点で `getInventoryProductOptions` は全体で1回。
+- 新規注文編集を開いても同呼び出しは増えない。注文編集は保存操作を持つが、今回変更するのは商品選択肢取得のみで、既存の保存処理は変更しない。
+
+### 変更と生出力
+
+- `OrderEditorPage` の `repository.listInventoryProducts()` を `InventoryProductOptionsCacheContext` の `ensureLoaded` と `products` 参照へ置換した。
+- `OrderEditorPage` 表示後の `__gasMockCallCounts.getInventoryProductOptions`: `1`。新規注文編集画面の表示を確認。
+- `npm run build:gas`: typecheck / Vite build / design-system checks passed。
+
+---
+
 ## 【発行元マスタseed匿名化】公開記載ルール準拠 — PR #493
 
 ### 変更内容
