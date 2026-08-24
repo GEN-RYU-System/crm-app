@@ -17,6 +17,7 @@ import {
   type OrderEditorValues,
 } from './orderEditorConfig';
 import { useOrderListCache } from './OrderListCacheContext';
+import { useCurrencyMasterCache } from '../currency/CurrencyMasterCacheContext';
 import './OrderEditorPage.css';
 
 type Props = {
@@ -49,7 +50,6 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
     paymentProfiles: readonly PaymentProfileDto[];
   } | null>(null);
   const [inventoryProducts, setInventoryProducts] = useState<InventoryProductOption[]>([]);
-  const [currencies, setCurrencies] = useState<string[]>(['USD', 'JPY', 'EUR', 'GBP']);
   const [pendingCustomerId, setPendingCustomerId] = useState<string | null>(null);
 
   const conditionsMap = useInventoryConditionsMap();
@@ -60,26 +60,25 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
 
   // In edit mode: get existing data from OrderListCacheContext
   const { items: orderItems } = useOrderListCache();
+  const { currencies, ensureLoaded: ensureCurrencies } = useCurrencyMasterCache();
 
   useEffect(() => {
     setMasterState('loading');
     void Promise.all([
       customerRepository.listCustomers(),
       repository.listInventoryProducts(),
-      repository.listCurrencySymbols(),
+      ensureCurrencies(),
     ])
-      .then(([customerList, products, symbolMap]) => {
+      .then(([customerList, products]) => {
         setCustomers(customerList.map((c) => ({ customerId: c.customerId, customerName: c.customerName })));
         setInventoryProducts([...products]);
-        const codes = Object.keys(symbolMap);
-        if (codes.length > 0) setCurrencies(codes);
         setMasterState('ready');
       })
       .catch((cause) => {
         setMasterError(cause instanceof Error ? cause.message : ordersCopy.editor.masterLoadError);
         setMasterState('error');
       });
-  }, [repository, customerRepository]);
+  }, [repository, customerRepository, ensureCurrencies]);
 
   // In edit mode: set initial values once order list is loaded
   useEffect(() => {
@@ -367,7 +366,9 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
     label: p.displayName || [p.country, p.address].filter(Boolean).join(' / '),
   })) ?? [];
 
-  const currencyOptions = currencies.map((c) => ({ value: c, label: c }));
+  const currencyOptions = currencies.length > 0
+    ? currencies.map((currency) => ({ value: currency.currencyCode, label: currency.currencyCode }))
+    : [{ value: values.currency, label: values.currency }];
 
   const paymentMethodOptions = PAYMENT_METHODS.map((m) => ({
     value: m,

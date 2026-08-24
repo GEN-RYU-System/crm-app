@@ -39,6 +39,7 @@ import { InventoryListCacheProvider } from './pages/inventory/InventoryListCache
 import { QuoteEditorPage } from './pages/quotes/QuoteEditorPage';
 import { QuoteListPage } from './pages/quotes/QuoteListPage';
 import { QuoteListCacheProvider } from './pages/quotes/QuoteListCacheContext';
+import { CurrencyMasterCacheProvider } from './pages/currency/CurrencyMasterCacheContext';
 import { QUOTE_ROUTE_SEGMENTS } from './pages/quotes/quoteListConfig';
 import { OrderEditorPage } from './pages/orders/OrderEditorPage';
 import { OrderDetailPage } from './pages/orders/OrderDetailPage';
@@ -238,7 +239,7 @@ function AppRouter() {
     ]
   };
 
-  return <HashRouter><LeadListCacheProvider><LeadFormOptionsCacheProvider repository={leadGasRepository}><CustomerListCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><CustomerAggregateCacheProvider repository={customerGasRepository}><SalesOrderListCacheProvider><><SyncPoller /><AppShellWithPrefetch permissions={permissions} navigationGroups={navigationGroups}><Routes>
+  return <HashRouter><LeadListCacheProvider><LeadFormOptionsCacheProvider repository={leadGasRepository}><CustomerListCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><CurrencyMasterCacheProvider><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><CustomerAggregateCacheProvider repository={customerGasRepository}><SalesOrderListCacheProvider><><SyncPoller /><AppShellWithPrefetch permissions={permissions} navigationGroups={navigationGroups}><Routes>
     <Route path={NAVIGATION_BY_ID.dashboard.hash} element={<DashboardPage kpis={kpis} state={state} error={error} onRefresh={() => void load()} />} />
     {DATA_MANAGEMENT_ITEMS
       .filter((item) => item.state !== 'planned' && hubIndexRoutes[item.id] != null)
@@ -258,5 +259,5 @@ function AppRouter() {
     <Route path={NAVIGATION_BY_ID.components.hash} element={<ComponentCatalogPage />} />
     <Route path="/change-password" element={<ChangePasswordPage />} />
     <Route path="*" element={<Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />} />
-  </Routes></AppShellWithPrefetch></></SalesOrderListCacheProvider></CustomerAggregateCacheProvider></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></InventoryListCacheProvider></CustomerListCacheProvider></LeadFormOptionsCacheProvider></LeadListCacheProvider></HashRouter>;
+  </Routes></AppShellWithPrefetch></></SalesOrderListCacheProvider></CustomerAggregateCacheProvider></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></CurrencyMasterCacheProvider></InventoryListCacheProvider></CustomerListCacheProvider></LeadFormOptionsCacheProvider></LeadListCacheProvider></HashRouter>;
 }

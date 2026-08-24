@@ -30,6 +30,35 @@
 
 ---
 
+## 【通貨マスタ共通キャッシュ】PR作成前記録
+
+### SHA訂正
+
+- PR #467 の旧revert SHA `b38f145759607c23f74873a20783352550dfee22` は履歴書き換えにより無効化された。
+- 正しいrevert対象: `b10aaf6bc9695e3b930a779aebc2c47f10ae7f2e`（`git revert b10aaf6bc9695e3b930a779aebc2c47f10ae7f2e`）。
+
+### 合格条件と実測
+
+- `?preview&previewProfile=quotes-only#/quotes` の背景プリフェッチ完了時: `getCoreCurrenciesForFrontend: 1`。
+- 同プロファイルはUSD見積を1件返し、見積一覧は `JPY150,000（$1,000）` を表示。注文ナビゲーションは非表示。
+- `frontend/npm run build:gas`: PASS（typecheck / Vite / emit-gas-html / design-system check）。
+
+### 変更内容
+
+- `CurrencyMasterCacheContext` を `CurrencyRecord[]` の唯一の正本とし、`useCurrencySymbolMap` だけが記号mapを派生する。
+- 注文／見積一覧Contextと注文／見積編集画面の直接通貨取得を共通Context参照に置換した。
+- `usePrefetch` は注文または見積のいずれかの権限がある場合に通貨キャッシュを取得する。
+- preview限定で `previewProfile=quotes-only` とUSD見積モックを追加した。
+
+### 別PR候補: 重複呼出しの起点（修正なし）
+
+- `getSessionUser=2`: `AuthContext.tsx` の認証用 `useEffect`（`getSessionUser`）がReact StrictModeの開発時再実行を受ける。
+- `getCurrentUser=2` / `getDashboardKPIs=2`: `App.tsx` の初期 `useEffect` が `loadPermissions` / `load` を同時に起動し、同じStrictMode再実行を受ける。
+- `getCoreOrdersForFrontend=2`: `usePrefetch.ts` の `ensureOrders` がStrictModeの開発時再実行を受ける。通常のキャッシュ内重複ではなく、StrictModeでProviderを再生成するプレビュー実測に起因する。
+- 計画1〜11では、初期ロードのStrictMode耐性を扱う箇所に別PRとして追加する。今回の通貨キャッシュPRには実装修正を含めない。
+
+---
+
 ## 【発行元マスタseed匿名化】公開記載ルール準拠 — PR #493
 
 ### 変更内容
