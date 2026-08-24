@@ -15,6 +15,31 @@
 
 ---
 
+## 【発行元seed】Script Propertiesによる実値分離
+
+### 変更内容
+- 発行元seedは、設定済みの場合にScript Propertiesを参照し、未設定の場合は公開可能なダミー値を使用する。
+
+### 必要なプロパティキー
+- `ISSUER_SEED_COMPANY_NAME`
+- `ISSUER_SEED_CONTACT_NAME`
+- `ISSUER_SEED_ADDRESS_LINE1`
+- `ISSUER_SEED_ADDRESS_LINE2`
+- `ISSUER_SEED_ADDRESS_LINE3`
+- `ISSUER_SEED_CITY`
+- `ISSUER_SEED_STATE`
+- `ISSUER_SEED_ZIP`
+- `ISSUER_SEED_COUNTRY`
+- `ISSUER_SEED_PHONE`
+- `ISSUER_SEED_EMAIL`
+- `ISSUER_SEED_REGISTRATION_NO`
+- `ISSUER_SEED_PAYEE_NAME`
+- `ISSUER_SEED_PAYMENT_EMAIL`
+- `ISSUER_SEED_PAYMENT_NOTE`
+- `ISSUER_SEED_CLOSING_MESSAGE`
+
+---
+
 ## 【Discord連携】保存と接続確認の統合 — PR #489
 
 ### 変更内容
