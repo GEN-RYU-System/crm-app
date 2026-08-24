@@ -402,6 +402,12 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     getDiscordOAuthStatus(_s: string | null) {
       succeed({ guildId: null });
     },
+    runDiscordAutoSetup(_s: string | null) {
+      succeed({ success: true, categoryId: '1111111111111111111', ticketChannelId: '2222222222222222222' });
+    },
+    getDiscordSetupStatus(_s: string | null) {
+      succeed({ guildId: null, categoryId: null, ticketChannelId: null });
+    },
   };
 
   return chain;
