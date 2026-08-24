@@ -280,6 +280,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
           currency: values.currency,
           paymentMethod: values.paymentMethod,
           isDraft,
+          invoiceNumber: values.invoiceNumber,
           shippingFee: values.shippingFee,
           duty: values.duty,
           otherFee: values.otherFee,
@@ -319,6 +320,8 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
           internalNote: values.internalNote,
           cancellationReason: values.cancellationReason,
           cancellationNote: values.cancellationNote,
+          isDraft,
+          invoiceNumber: values.invoiceNumber,
         };
         // Include amount fields only before invoice is issued
         if (!isAmountLocked) {
@@ -502,6 +505,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
             onChange={(e) => updateValue('currency', e.target.value)}
             width="sm"
           />
+          {values.paymentMethod === 'PAYPAL' && <Input label={ordersCopy.editor.invoiceNumber} description={ordersCopy.editor.invoiceNumberPaypalDescription} value={values.invoiceNumber} onChange={(e) => updateValue('invoiceNumber', e.target.value)} />}
           <Select
             label={ordersCopy.editor.paymentMethod}
             options={paymentMethodOptions}

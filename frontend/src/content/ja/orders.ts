@@ -67,6 +67,8 @@ export const ordersCopy = {
     discount: '値引き',
     invoiceTotal: '請求総額（自動計算）',
     paymentMethod: '決済手段',
+    invoiceNumber: '請求書番号',
+    invoiceNumberPaypalDescription: 'PayPal で発行した番号を入力してください',
     addLine: '明細を追加',
     removeLine: '削除',
     productName: '商品名',
