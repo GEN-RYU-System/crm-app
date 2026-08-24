@@ -234,6 +234,21 @@ dist/index.html  477.55 kB │ gzip: 123.65 kB
 design-system checks passed
 ```
 
+### PR / revert / deploy
+
+- PR #524 を squash merge。マージコミット SHA: `499dd9a27859d6c8e6a2e71d0b63dabca95a4ee9`。
+- 戻し方: `git revert 499dd9a27859d6c8e6a2e71d0b63dabca95a4ee9`
+- Deploy to DEV run `32786150669` は成功。`getDeployedSha` 生出力: `{ sha: '499dd9a27859d6c8e6a2e71d0b63dabca95a4ee9', deployedAt: '2026-08-24T22:46:20.060Z' }`。
+
+---
+
+## 【記録のみ】frontend/dist の rebase 競合
+
+- `frontend/dist/index.html` は Git 管理対象であり、PR #524 を `origin/develop` へ rebase した際に同ファイルで content conflict が発生した。
+- 解消は手編集せず、rebase 側を採用した後に `frontend/npm ci && npm run build` で生成し直した。
+- 同じ生成物を複数PRが変更すると同様の競合が発生しうる構造的課題である。修正はこのPRでは行わない。
+- デプロイ経路が Git 管理された `frontend/dist/index.html` を参照する必要性は未調査。追跡対象から外す／CI生成物へ移行する等の判断は、別途デプロイ経路の一次調査後に行う。
+
 ---
 
 ## 【発行元マスタseed匿名化】公開記載ルール準拠 — PR #493
