@@ -135,13 +135,13 @@ export function ComponentCatalogPage() {
 
   // ── Document template sample data ──────────────────────────────────────────
   const sampleIssuer: IssuerInfo = {
-    name: 'SAMPLE COMPANY LTD.',
+    name: 'Sample Issuer Inc.',
     lines: [
-      'Taro Yamada',
-      '2F, Sample Building, 1-2-3 Shinjuku',
-      'Shinjuku-ku, Tokyo, Japan 160-0000',
-      'Phone: +81-90-0000-0000',
-      'E-mail: billing@example.com',
+      '000 Sample Street',
+      'Sample District, Example City',
+      'TEL: SAMPLE-PHONE',
+      'contact@example.com',
+      'Registration No: SAMPLE-REGISTRATION-NUMBER',
     ],
   };
   const sampleBilledTo = {
