@@ -1,6 +1,8 @@
 # 自律作業ログ
 
 > **develop凍結中（redaction2実施中）:** 本作業のPR以外のpush・マージ・PR作成を禁止する。履歴書換え完了後に解除記録を追加する。
+>
+> **redaction2 v2:** 実ID 3件・実メール 5件・電話番号／登録番号 3件を置換対象とし、除外した数値列はシートgid・Git SHA・Actions run ID・ビルド生成物であり個人連絡先ではない。旧SHAは `docs/SHA_REMAP_20260824.md` と `docs/SHA_REMAP_20260824_v2.md` を順に参照する。
 
 > **履歴書換え済み（2026-08-24）:** すべての作業者は旧クローン／旧worktreeを使用・pushせず、必ず新履歴を再クローンすること。旧SHAは `docs/SHA_REMAP_20260824.md` で新SHAへ読み替える。
 
