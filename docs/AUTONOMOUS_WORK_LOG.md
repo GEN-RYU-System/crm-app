@@ -1140,3 +1140,14 @@ design-system checks passed
 ### 再開条件
 
 Playwrightを実行できるブラウザ接続を用意し、既存 `?preview` の画面確認をPASSさせること。その後に限り、案αの実装・S/V検証・DEVのみの配布を再開する。
+
+### 実装再開・検証結果
+
+- Playwright Chromium導入: `npx playwright install chromium --with-deps` は exit 0。`?preview` の既存ダッシュボードは表示・pageerror 0件。
+- 顧客詳細へ管理者専用の発行ボタンを追加。`CUSTOMERS.DISCORD_CHANNEL_ID` が既存ならDiscord APIを呼ばずそのIDを返す。空欄時のみ、Phase 2-Bの `discordRequest_` と `applyPermissionOverwrites_` を再利用してチャンネルを作成・記録する。
+- V1/V3: Playwrightで CUS-0001 の新規作成結果表示、CUS-0002 の既存チャンネル再利用表示を実測し、両方PASS（pageerror 0件）。
+- V2: `npm run build:gas` PASS（typecheck / Vite / emit-gas-html / design-system check）。
+- V4: 実トークンを使わないDEVモックで未設定時の案内をAPI実装として確認。実トークン設定・実チャンネル作成はShingo実施待ち。
+- S1: `src/37_DiscordTicketApi.js` のLogger出力はstatus/channelId/error.messageのみ。トークン値を渡す箇所なし。
+- S2: `createDiscordTicketForCustomer` の先頭で `checkPermission('admin_access')` を実測。
+- S3: 新規コードにトークン値・Webhook URL・実環境IDなし（previewの数値はモック値）。

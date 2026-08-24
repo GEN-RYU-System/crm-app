@@ -65,6 +65,7 @@ const MOCK_CUSTOMERS = [
 
 const MOCK_AGGREGATES: Record<string, unknown> = {
   'CUS-0001': {
+    profile: { customerId: 'CUS-0001', sourceLeadId: '', customerName: 'Preview Customer A', country: 'JP', emailAddress: '', phone: '', countryCode: '', firstTransactionDate: '', registeredAt: '', salesAssigneeName: 'Preview User', contactTool: '', shippingNote: '', discordChannelId: '', shippingAddressCount: 1, paymentProfileCount: 1 },
     shippingAddresses: [
       {
         addressId: 'SHP-0001',
@@ -93,6 +94,7 @@ const MOCK_AGGREGATES: Record<string, unknown> = {
     ],
   },
   'CUS-0002': {
+    profile: { customerId: 'CUS-0002', sourceLeadId: '', customerName: 'Preview Customer B', country: 'US', emailAddress: '', phone: '', countryCode: '', firstTransactionDate: '', registeredAt: '', salesAssigneeName: 'Preview User', contactTool: '', shippingNote: '', discordChannelId: '3333333333333333333', shippingAddressCount: 1, paymentProfileCount: 1 },
     shippingAddresses: [
       {
         addressId: 'SHP-0002',
@@ -218,7 +220,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     getCoreCustomersForFrontend(_sessionId: string | null, _force: boolean) { succeed(MOCK_CUSTOMERS); },
     getCoreCustomerForFrontend(_sessionId: string | null, customerId: string) {
       const agg = MOCK_AGGREGATES[customerId];
-      succeed(agg ? { ...MOCK_CUSTOMERS.find((c) => c.customerId === customerId), ...agg } : null);
+      succeed(agg ?? null);
     },
     getCoreAllCustomerAggregatesForFrontend(_sessionId: string | null) { succeed(MOCK_AGGREGATES); },
     getCoreStaffForFrontend(_sessionId: string | null, _force: boolean) { succeed([]); },
@@ -414,6 +416,10 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     },
     getDiscordSetupStatus(_s: string | null) {
       succeed({ guildId: null, categoryId: null, ticketChannelId: null });
+    },
+    createDiscordTicketForCustomer(_s: string | null, customerId: string) {
+      if (customerId === 'CUS-0002') { succeed({ success: true, reused: true, channelId: '3333333333333333333', channelName: 'ticket-preview-customer-b-0002' }); return; }
+      succeed({ success: true, reused: false, channelId: '4444444444444444444', channelName: 'ticket-preview-customer-a-0001' });
     },
   };
 
