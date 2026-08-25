@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Card, PageHeader, Spinner, StatusMessage, TextField } from '../../components/ui';
 import { discordIntegrationCopy } from '../../content/ja/discordIntegration';
-import type { DiscordConnectionStatus, DiscordIntegrationRepository, DiscordSetupStatus } from '../../features/discordIntegration/contracts';
+import type { DiscordConnectionStatus, DiscordIntegrationRepository, DiscordOAuthStatusResult, DiscordSetupStatus } from '../../features/discordIntegration/contracts';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type SaveState = 'idle' | 'saving' | 'success' | 'error';
@@ -39,6 +39,10 @@ export function DiscordIntegrationPage({ repository }: Props) {
   const [channelSaveError, setChannelSaveError] = useState('');
 
   const [guildId, setGuildId] = useState<string | null>(null);
+  const [oauthStatus, setOauthStatus] = useState<DiscordOAuthStatusResult>({ status: 'unlinked', guildId: null, guilds: [] });
+  const [selectedGuildId, setSelectedGuildId] = useState('');
+  const [guildSaveState, setGuildSaveState] = useState<SaveState>('idle');
+  const [guildSaveError, setGuildSaveError] = useState('');
   const [inviteState, setInviteState] = useState<InviteState>('idle');
   const [inviteError, setInviteError] = useState('');
   const [statusCheckState, setStatusCheckState] = useState<StatusCheckState>('idle');
@@ -61,6 +65,8 @@ export function DiscordIntegrationPage({ repository }: Props) {
       setConnectionStatus(status);
       setChannels(channelsResult.channels);
       setGuildId(oauthStatus.guildId);
+      setOauthStatus(oauthStatus);
+      setSelectedGuildId(oauthStatus.guildId ?? '');
       setSetupStatus(setupStatusResult);
       setLoadState('ready');
     } catch (cause) {
@@ -170,8 +176,30 @@ export function DiscordIntegrationPage({ repository }: Props) {
     try {
       const result = await repository.getOAuthStatus();
       setGuildId(result.guildId);
+      setOauthStatus(result);
+      setSelectedGuildId(result.guildId ?? '');
     } finally {
       setStatusCheckState('idle');
+    }
+  };
+
+  const handleSaveGuild = async () => {
+    if (!selectedGuildId) return;
+    setGuildSaveState('saving');
+    setGuildSaveError('');
+    try {
+      const result = await repository.saveGuildId(selectedGuildId);
+      if (!result.success) {
+        setGuildSaveError(result.error ?? discordIntegrationCopy.guildSaveError);
+        setGuildSaveState('error');
+        return;
+      }
+      setGuildId(selectedGuildId);
+      setOauthStatus((current) => ({ ...current, status: 'linked', guildId: selectedGuildId }));
+      setGuildSaveState('success');
+    } catch (cause) {
+      setGuildSaveError(cause instanceof Error ? cause.message : discordIntegrationCopy.guildSaveError);
+      setGuildSaveState('error');
     }
   };
 
@@ -422,16 +450,32 @@ export function DiscordIntegrationPage({ repository }: Props) {
             {discordIntegrationCopy.inviteDescription}
           </p>
           <div style={{ fontSize: 'var(--font-sm)' }}>
-            {guildId ? (
+            {oauthStatus.status === 'linked' && guildId ? (
               <p style={{ color: 'var(--color-success, green)', fontWeight: 500 }}>
                 {discordIntegrationCopy.guildLinked}{guildId})
               </p>
+            ) : oauthStatus.status === 'multiple' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                <p style={{ color: 'var(--color-text-muted, gray)', margin: 0 }}>{discordIntegrationCopy.guildSelectGuide}</p>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', fontWeight: 600 }}>
+                  {discordIntegrationCopy.guildSelectLabel}
+                  <select value={selectedGuildId} onChange={(event) => { setSelectedGuildId(event.target.value); setGuildSaveState('idle'); }}>
+                    <option value="">{discordIntegrationCopy.guildSelectPlaceholder}</option>
+                    {oauthStatus.guilds.map((guild) => <option key={guild.id} value={guild.id}>{guild.name} ({guild.id})</option>)}
+                  </select>
+                </label>
+                {guildSaveState === 'error' && <StatusMessage variant="error">{guildSaveError || discordIntegrationCopy.guildSaveError}</StatusMessage>}
+                <div><Button variant="secondary" onClick={() => void handleSaveGuild()} loading={guildSaveState === 'saving'} loadingText={discordIntegrationCopy.savingGuild} disabled={!selectedGuildId}>{discordIntegrationCopy.saveGuild}</Button></div>
+              </div>
+            ) : oauthStatus.status === 'error' ? (
+              <StatusMessage variant="error">{oauthStatus.error || discordIntegrationCopy.guildStatusError}</StatusMessage>
             ) : (
               <p style={{ color: 'var(--color-text-muted, gray)' }}>
                 {discordIntegrationCopy.guildNotLinked}
               </p>
             )}
           </div>
+          {guildSaveState === 'success' && <StatusMessage variant="success">{discordIntegrationCopy.guildSaveSuccess}</StatusMessage>}
           {inviteState === 'error' && (
             <StatusMessage variant="error">{inviteError}</StatusMessage>
           )}

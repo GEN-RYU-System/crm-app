@@ -6,6 +6,7 @@ import {
   getDiscordChannels,
   generateDiscordOAuthUrl,
   getDiscordOAuthStatus,
+  saveDiscordGuildId,
   runDiscordAutoSetup,
   getDiscordSetupStatus,
 } from '../../gas/client';
@@ -19,6 +20,7 @@ export const discordIntegrationGasRepository: DiscordIntegrationRepository = {
   getChannels: () => getDiscordChannels(),
   generateOAuthUrl: () => generateDiscordOAuthUrl(),
   getOAuthStatus: () => getDiscordOAuthStatus(),
+  saveGuildId: (guildId) => saveDiscordGuildId(guildId),
   runAutoSetup: () => runDiscordAutoSetup(),
   getSetupStatus: () => getDiscordSetupStatus(),
 };

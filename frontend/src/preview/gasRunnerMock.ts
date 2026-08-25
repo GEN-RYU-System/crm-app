@@ -481,10 +481,13 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
 
     // Discord OAuth Bot invite flow
     generateDiscordOAuthUrl(_s: string | null) {
-      succeed({ success: true, url: 'https://discord.com/api/oauth2/authorize?client_id=mock&permissions=805432400&scope=bot%20applications.commands&response_type=code&redirect_uri=https%3A%2F%2Fscript.google.com%2Fmacros%2Fs%2Fmock&state=mock-state' });
+      succeed({ success: true, url: 'https://discord.com/api/oauth2/authorize?client_id=mock&permissions=805432400&scope=bot%20applications.commands' });
     },
     getDiscordOAuthStatus(_s: string | null) {
-      succeed({ guildId: null });
+      succeed({ status: 'multiple', guildId: null, guilds: [{ id: 'preview-guild-1', name: 'Preview Guild One' }, { id: 'preview-guild-2', name: 'Preview Guild Two' }] });
+    },
+    saveDiscordGuildId(_s: string | null, guildId: string) {
+      succeed({ success: guildId === 'preview-guild-1' || guildId === 'preview-guild-2' });
     },
     runDiscordAutoSetup(_s: string | null) {
       succeed({ success: true, categoryId: 'preview-category', ticketChannelId: 'preview-ticket-channel' });

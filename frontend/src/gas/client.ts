@@ -959,7 +959,12 @@ export function getDiscordChannels(): Promise<DiscordChannelsResult> {
 // ============================================================
 
 export type DiscordOAuthUrlResult = { success: boolean; url?: string; error?: string };
-export type DiscordOAuthStatusResult = { guildId: string | null };
+export type DiscordOAuthStatusResult = {
+  status: 'linked' | 'unlinked' | 'multiple' | 'error';
+  guildId: string | null;
+  guilds: readonly { id: string; name: string }[];
+  error?: string;
+};
 
 export function generateDiscordOAuthUrl(): Promise<DiscordOAuthUrlResult> {
   const runner = window.google?.script?.run;
@@ -980,6 +985,17 @@ export function getDiscordOAuthStatus(): Promise<DiscordOAuthStatusResult> {
       .withSuccessHandler((value) => resolve(value as DiscordOAuthStatusResult))
       .withFailureHandler((error) => reject(toError(error)))
       .getDiscordOAuthStatus(getStoredSessionId());
+  });
+}
+
+export function saveDiscordGuildId(guildId: string): Promise<DiscordSaveResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => resolve(value as DiscordSaveResult))
+      .withFailureHandler((error) => reject(toError(error)))
+      .saveDiscordGuildId(getStoredSessionId(), guildId);
   });
 }
 
