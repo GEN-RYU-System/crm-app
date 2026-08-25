@@ -496,6 +496,17 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
       if (customerId === 'CUS-0002') { succeed({ success: true, reused: true, channelId: 'preview-existing-channel', channelName: 'ticket-preview-customer-b-0002' }); return; }
       succeed({ success: true, reused: false, channelId: 'preview-new-channel', channelName: 'ticket-preview-customer-a-0001' });
     },
+    upsertCorePurchaseForFrontend(_s: string | null, _payload: unknown) {
+      succeed({ success: true, purchaseId: 'PC-00001' });
+    },
+    getCorePurchaseStatusOptionsForFrontend(_s: string | null) {
+      succeed([
+        { key: 'NOT_ORDERED', label: 'preview-not-ordered' },
+        { key: 'ORDERED',     label: 'preview-ordered' },
+        { key: 'CONFIRMED',   label: 'preview-confirmed' },
+        { key: 'PAID',        label: 'preview-paid' },
+      ]);
+    },
   };
 
   return new Proxy(chain, {

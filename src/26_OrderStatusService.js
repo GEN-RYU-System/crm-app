@@ -16,7 +16,7 @@
  *   1. キャンセル  : order.cancellationReason に値がある
  *   2. トラブル   : order.status が TROUBLE と一致（手動設定のため計算では変えない）
  *   3. 完了       : shipments のうち少なくとも1件で pickupRequest と trackingNumber 両方に値がある
- *   4. 発送待ち   : purchases のうち少なくとも1件で status が CONFIRMED と一致
+ *   4. 発送待ち   : purchases のうち少なくとも1件で status が PAID と一致
  *   5. 仕入れ中   : order.paymentConfirmedAt に値がある
  *   6. 支払い待ち : order.invoiceNumber に値がある
  *   7. 不明       : 上記すべて非該当
@@ -34,7 +34,7 @@ function calculateOrderStatus(order, shipments, purchases) {
   var awaitingPaymentValue  = getCoreSchemaV1Value('ORDERS',    'STATUS', 'AWAITING_PAYMENT');
   var cancelledValue        = getCoreSchemaV1Value('ORDERS',    'STATUS', 'CANCELLED');
   var unknownValue          = getCoreSchemaV1Value('ORDERS',    'STATUS', 'UNKNOWN');
-  var purchaseConfirmedValue = getCoreSchemaV1Value('PURCHASES', 'STATUS', 'CONFIRMED');
+  var purchasePaidValue = getCoreSchemaV1Value('PURCHASES', 'STATUS', 'PAID');
 
   // 1. キャンセル
   if (!isOrderStatusEmptyValue_(order.cancellationReason)) {
@@ -54,11 +54,11 @@ function calculateOrderStatus(order, shipments, purchases) {
     return completedValue;
   }
 
-  // 4. 発送待ち: 仕入れ行のうち少なくとも1件でステータスが CONFIRMED
-  var hasPurchaseConfirmed = (purchases || []).some(function(p) {
-    return p.status === purchaseConfirmedValue;
+  // 4. 発送待ち: 仕入れ行のうち少なくとも1件でステータスが PAID（支払済み）
+  var hasPurchasePaid = (purchases || []).some(function(p) {
+    return p.status === purchasePaidValue;
   });
-  if (hasPurchaseConfirmed) {
+  if (hasPurchasePaid) {
     return awaitingShippingValue;
   }
 

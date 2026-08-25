@@ -3,9 +3,18 @@ import { useParams } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { Button, DataTable, EmptyState, StatusMessage } from '../../components/ui';
+import { Select } from '../../components/ui/Select/Select';
+import { TextField } from '../../components/ui/TextField/TextField';
 import type { DataTableColumn } from '../../components/ui';
 import { salesOrdersCopy } from '../../content/ja';
-import { confirmCoreOrderPayment, type OrderDetailRecord } from '../../gas/client';
+import {
+  confirmCoreOrderPayment,
+  getCorePurchaseStatusOptions,
+  upsertCorePurchase,
+  type OrderDetailRecord,
+  type PurchaseStatusOption,
+  type UpsertPurchasePayload,
+} from '../../gas/client';
 import { useSalesOrderListCache } from './SalesOrderListCacheContext';
 import { useSalesOrderDetailCache } from './SalesOrderDetailCacheContext';
 import { PAYMENT_DUE_WARNING_DAYS } from './salesOrderListConfig';
@@ -74,6 +83,22 @@ function AddressBlock({ name, line1, line2, line3, city, state, zip, country }: 
   );
 }
 
+const EMPTY_PURCHASE_FORM: UpsertPurchasePayload = {
+  orderId: '',
+  purchaseId: undefined,
+  orderedAt: '',
+  supplier: '',
+  supplierUrl: '',
+  quantity: '',
+  unitPrice: '',
+  amount: '',
+  shippingOrAgencyFee: '',
+  carrier: '',
+  trackingNumber: '',
+  status: '',
+  note: '',
+};
+
 export function SalesOrderDetailPage() {
   const { orderId } = useParams<{ orderId: string }>();
 
@@ -81,6 +106,14 @@ export function SalesOrderDetailPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | undefined>(undefined);
+
+  // purchase form state
+  const [purchaseFormOpen, setPurchaseFormOpen] = useState(false);
+  const [purchaseFormStep, setPurchaseFormStep] = useState<'input' | 'confirm'>('input');
+  const [purchaseFormData, setPurchaseFormData] = useState<UpsertPurchasePayload>(EMPTY_PURCHASE_FORM);
+  const [purchaseSaving, setPurchaseSaving] = useState(false);
+  const [purchaseFormError, setPurchaseFormError] = useState<string | undefined>(undefined);
+  const [purchaseStatusOptions, setPurchaseStatusOptions] = useState<readonly PurchaseStatusOption[]>([]);
 
   const { refresh } = useSalesOrderListCache();
   const { recordsByOrderId, errorsByOrderId, ensureLoaded, refresh: refreshDetail } = useSalesOrderDetailCache();
@@ -93,11 +126,59 @@ export function SalesOrderDetailPage() {
     void ensureLoaded(orderId);
   }, [ensureLoaded, orderId]);
 
+  useEffect(() => {
+    getCorePurchaseStatusOptions()
+      .then((opts) => setPurchaseStatusOptions(opts))
+      .catch(() => { /* ignore: status options fetch failed, keep empty */ });
+  }, []);
+
   const copy = salesOrdersCopy.detail;
 
   const order = detail?.order;
 
   const canConfirmPayment = !!order?.awaitingPaymentStatus && order.STATUS === order.awaitingPaymentStatus;
+
+  const openPurchaseForm = (existing?: OrderDetail['purchases'][number]) => {
+    if (!orderId) return;
+    setPurchaseFormData(
+      existing
+        ? {
+            orderId,
+            purchaseId: existing.PURCHASE_ID,
+            orderedAt: String(existing.ORDERED_AT ?? ''),
+            supplier: String(existing.SUPPLIER ?? ''),
+            supplierUrl: String(existing.SUPPLIER_URL ?? ''),
+            quantity: String(existing.QUANTITY ?? ''),
+            unitPrice: String(existing.UNIT_PRICE ?? ''),
+            amount: String(existing.AMOUNT ?? ''),
+            shippingOrAgencyFee: String(existing.SHIPPING_OR_AGENCY_FEE ?? ''),
+            carrier: String(existing.CARRIER ?? ''),
+            trackingNumber: String(existing.TRACKING_NUMBER ?? ''),
+            status: String(existing.STATUS ?? ''),
+            note: String(existing.NOTE ?? ''),
+          }
+        : { ...EMPTY_PURCHASE_FORM, orderId }
+    );
+    setPurchaseFormStep('input');
+    setPurchaseFormError(undefined);
+    setPurchaseFormOpen(true);
+  };
+
+  const handlePurchaseSave = async () => {
+    if (!orderId) return;
+    setPurchaseSaving(true);
+    setPurchaseFormError(undefined);
+    try {
+      await upsertCorePurchase(purchaseFormData);
+      setPurchaseFormOpen(false);
+      void refresh();
+      await refreshDetail(orderId);
+    } catch (e: unknown) {
+      setPurchaseFormError(e instanceof Error ? e.message : copy.purchaseFormSaveError);
+    } finally {
+      setPurchaseSaving(false);
+    }
+  };
 
   const handleConfirmPayment = async () => {
     if (!orderId) return;
@@ -288,7 +369,7 @@ export function SalesOrderDetailPage() {
                 <div>
                   <div className="sales-order-detail-page__section-header">
                     <h2 className="sales-order-detail-page__section-title">{copy.sectionPurchases}</h2>
-                    <Button variant="ghost" size="sm" disabled>
+                    <Button variant="ghost" size="sm" onClick={() => openPurchaseForm()}>
                       {copy.btnAddPurchase}
                     </Button>
                   </div>
@@ -300,6 +381,7 @@ export function SalesOrderDetailPage() {
                       columns={purchaseColumns}
                       rows={detail.purchases}
                       rowKey={(r) => String(r.PURCHASE_ID)}
+                      onRowClick={(r) => openPurchaseForm(r)}
                       surface="embedded"
                     />
                   )}
@@ -367,6 +449,135 @@ export function SalesOrderDetailPage() {
                       {confirming ? copy.confirmPaymentTitle : copy.confirmPaymentConfirm}
                     </Button>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* purchase form dialog */}
+            {purchaseFormOpen && (
+              <div className="sales-order-detail-page__confirm-overlay">
+                <div className="sales-order-detail-page__purchase-dialog">
+                  {purchaseFormStep === 'input' ? (
+                    <>
+                      <h3 className="sales-order-detail-page__section-title">
+                        {purchaseFormData.purchaseId ? copy.purchaseFormEditTitle : copy.purchaseFormTitle}
+                      </h3>
+                      <div className="sales-order-detail-page__purchase-form-grid">
+                        <TextField
+                          label={copy.labelPurchaseOrderedAt}
+                          type="date"
+                          value={purchaseFormData.orderedAt ?? ''}
+                          onChange={(e) => setPurchaseFormData((prev) => ({ ...prev, orderedAt: e.target.value }))}
+                        />
+                        <TextField
+                          label={copy.labelPurchaseSupplier}
+                          value={purchaseFormData.supplier ?? ''}
+                          onChange={(e) => setPurchaseFormData((prev) => ({ ...prev, supplier: e.target.value }))}
+                        />
+                        <TextField
+                          label={copy.labelPurchaseSupplierUrl}
+                          value={purchaseFormData.supplierUrl ?? ''}
+                          onChange={(e) => setPurchaseFormData((prev) => ({ ...prev, supplierUrl: e.target.value }))}
+                        />
+                        <TextField
+                          label={copy.labelPurchaseQuantity}
+                          type="number"
+                          value={purchaseFormData.quantity ?? ''}
+                          onChange={(e) => setPurchaseFormData((prev) => ({ ...prev, quantity: e.target.value }))}
+                        />
+                        <TextField
+                          label={copy.labelPurchaseUnitPrice}
+                          type="number"
+                          value={purchaseFormData.unitPrice ?? ''}
+                          onChange={(e) => setPurchaseFormData((prev) => ({ ...prev, unitPrice: e.target.value }))}
+                        />
+                        <TextField
+                          label={copy.labelPurchaseAmount}
+                          type="number"
+                          value={purchaseFormData.amount ?? ''}
+                          onChange={(e) => setPurchaseFormData((prev) => ({ ...prev, amount: e.target.value }))}
+                        />
+                        <TextField
+                          label={copy.labelPurchaseShippingOrAgencyFee}
+                          type="number"
+                          value={purchaseFormData.shippingOrAgencyFee ?? ''}
+                          onChange={(e) => setPurchaseFormData((prev) => ({ ...prev, shippingOrAgencyFee: e.target.value }))}
+                        />
+                        <TextField
+                          label={copy.labelPurchaseCarrier}
+                          value={purchaseFormData.carrier ?? ''}
+                          onChange={(e) => setPurchaseFormData((prev) => ({ ...prev, carrier: e.target.value }))}
+                        />
+                        <TextField
+                          label={copy.labelPurchaseTrackingNumber}
+                          value={purchaseFormData.trackingNumber ?? ''}
+                          onChange={(e) => setPurchaseFormData((prev) => ({ ...prev, trackingNumber: e.target.value }))}
+                        />
+                        <Select
+                          label={copy.labelPurchaseStatus}
+                          value={purchaseFormData.status ?? ''}
+                          options={purchaseStatusOptions.map((opt) => ({ value: opt.label, label: opt.label }))}
+                          placeholder={purchaseStatusOptions.length === 0 ? copy.purchaseFormStatusLoading : copy.labelPurchaseStatus}
+                          onChange={(e) => setPurchaseFormData((prev) => ({ ...prev, status: e.target.value }))}
+                        />
+                        <TextField
+                          label={copy.labelPurchaseNote}
+                          value={purchaseFormData.note ?? ''}
+                          onChange={(e) => setPurchaseFormData((prev) => ({ ...prev, note: e.target.value }))}
+                          className="sales-order-detail-page__purchase-form-full"
+                        />
+                      </div>
+                      <div className="sales-order-detail-page__confirm-actions">
+                        <Button
+                          variant="secondary"
+                          onClick={() => { setPurchaseFormOpen(false); setPurchaseFormError(undefined); }}
+                        >
+                          {copy.purchaseFormCancel}
+                        </Button>
+                        <Button
+                          variant="primary"
+                          onClick={() => { setPurchaseFormStep('confirm'); }}
+                        >
+                          {copy.purchaseFormConfirmTitle}
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="sales-order-detail-page__section-title">{copy.purchaseFormConfirmTitle}</h3>
+                      <p className="sales-order-detail-page__purchase-confirm-body">{copy.purchaseFormConfirmBody}</p>
+                      <dl className="sales-order-detail-page__purchase-confirm-dl">
+                        {purchaseFormData.orderedAt       && <><dt>{copy.labelPurchaseOrderedAt}</dt><dd>{purchaseFormData.orderedAt}</dd></>}
+                        {purchaseFormData.supplier        && <><dt>{copy.labelPurchaseSupplier}</dt><dd>{purchaseFormData.supplier}</dd></>}
+                        {purchaseFormData.supplierUrl     && <><dt>{copy.labelPurchaseSupplierUrl}</dt><dd>{purchaseFormData.supplierUrl}</dd></>}
+                        {purchaseFormData.quantity        && <><dt>{copy.labelPurchaseQuantity}</dt><dd>{purchaseFormData.quantity}</dd></>}
+                        {purchaseFormData.unitPrice       && <><dt>{copy.labelPurchaseUnitPrice}</dt><dd>{purchaseFormData.unitPrice}</dd></>}
+                        {purchaseFormData.amount          && <><dt>{copy.labelPurchaseAmount}</dt><dd>{purchaseFormData.amount}</dd></>}
+                        {purchaseFormData.shippingOrAgencyFee && <><dt>{copy.labelPurchaseShippingOrAgencyFee}</dt><dd>{purchaseFormData.shippingOrAgencyFee}</dd></>}
+                        {purchaseFormData.carrier         && <><dt>{copy.labelPurchaseCarrier}</dt><dd>{purchaseFormData.carrier}</dd></>}
+                        {purchaseFormData.trackingNumber  && <><dt>{copy.labelPurchaseTrackingNumber}</dt><dd>{purchaseFormData.trackingNumber}</dd></>}
+                        {purchaseFormData.status          && <><dt>{copy.labelPurchaseStatus}</dt><dd>{purchaseFormData.status}</dd></>}
+                        {purchaseFormData.note            && <><dt>{copy.labelPurchaseNote}</dt><dd>{purchaseFormData.note}</dd></>}
+                      </dl>
+                      {purchaseFormError && <StatusMessage variant="error">{purchaseFormError}</StatusMessage>}
+                      <div className="sales-order-detail-page__confirm-actions">
+                        <Button
+                          variant="secondary"
+                          disabled={purchaseSaving}
+                          onClick={() => { setPurchaseFormStep('input'); setPurchaseFormError(undefined); }}
+                        >
+                          {copy.purchaseFormBack}
+                        </Button>
+                        <Button
+                          variant="primary"
+                          disabled={purchaseSaving}
+                          onClick={() => { void handlePurchaseSave(); }}
+                        >
+                          {purchaseSaving ? copy.purchaseFormSaving : copy.purchaseFormConfirm}
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
