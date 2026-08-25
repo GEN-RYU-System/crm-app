@@ -73,7 +73,6 @@ function getDiscordOAuthStatus(sessionId) {
     if (guilds.length === 1) {
       var guildId = guilds[0].id;
       PropertiesService.getScriptProperties().setProperty('DISCORD_GUILD_ID', guildId);
-      writeSyncSignalDomains_(['discord']);
       return { status: 'linked', guildId: guildId, guilds: guilds };
     }
     return { status: 'multiple', guildId: null, guilds: guilds };
