@@ -119,7 +119,7 @@ const MOCK_CUSTOMERS = [
 
 const MOCK_AGGREGATES: Record<string, unknown> = {
   'CUS-0001': {
-    profile: { customerId: 'CUS-0001', sourceLeadId: '', customerName: 'Preview Customer A', country: 'JP', emailAddress: '', phone: '', countryCode: '', firstTransactionDate: '', registeredAt: '', salesAssigneeName: 'Preview User', contactTool: '', shippingNote: '', discordChannelId: '', shippingAddressCount: 1, paymentProfileCount: 1 },
+    profile: { customerId: 'CUS-0001', sourceLeadId: '', customerName: 'Preview Customer A', country: 'JP', emailAddress: '', phone: '', countryCode: '', firstTransactionDate: '', registeredAt: '', salesAssigneeName: 'Preview User', contactTool: '', shippingNote: '', discordChannelId: '', customerScale: 'Small', shippingAddressCount: 1, paymentProfileCount: 1 },
     shippingAddresses: [
       {
         addressId: 'SHP-0001',
@@ -148,7 +148,7 @@ const MOCK_AGGREGATES: Record<string, unknown> = {
     ],
   },
   'CUS-0002': {
-    profile: { customerId: 'CUS-0002', sourceLeadId: '', customerName: 'Preview Customer B', country: 'US', emailAddress: '', phone: '', countryCode: '', firstTransactionDate: '', registeredAt: '', salesAssigneeName: 'Preview User', contactTool: '', shippingNote: '', discordChannelId: 'preview-discord-channel', shippingAddressCount: 1, paymentProfileCount: 1 },
+    profile: { customerId: 'CUS-0002', sourceLeadId: '', customerName: 'Preview Customer B', country: 'US', emailAddress: '', phone: '', countryCode: '', firstTransactionDate: '', registeredAt: '', salesAssigneeName: 'Preview User', contactTool: '', shippingNote: '', discordChannelId: 'preview-discord-channel', customerScale: 'Large', shippingAddressCount: 1, paymentProfileCount: 1 },
     shippingAddresses: [
       {
         addressId: 'SHP-0002',
@@ -560,6 +560,12 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     },
     createDiscordInviteForCustomer(_s: string | null, customerId: string) {
       succeed({ success: true, reused: customerId === 'CUS-0002', url: 'https://discord.gg/preview-customer-invite' });
+    },
+    getDiscordCustomerScaleOptionsForFrontend(_s: string | null) {
+      succeed([{ key: 'SMALL', label: 'Small' }, { key: 'LARGE', label: 'Large' }]);
+    },
+    updateDiscordCustomerScale(_s: string | null, _customerId: string, _scaleKey: string) {
+      succeed({ success: true });
     },
     upsertCorePurchaseForFrontend(_s: string | null, _payload: unknown) {
       succeed({ success: true, purchaseId: 'PC-00001' });
