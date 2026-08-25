@@ -67,8 +67,13 @@ function getDiscordOAuthStatus(sessionId) {
     }
 
     var guilds = guildsResult.guilds;
+    var savedGuildId = PropertiesService.getScriptProperties().getProperty('DISCORD_GUILD_ID');
     if (guilds.length === 0) {
       return { status: 'unlinked', guildId: null, guilds: [] };
+    }
+    var savedGuild = guilds.filter(function(guild) { return guild.id === savedGuildId; })[0];
+    if (savedGuild) {
+      return { status: 'linked', guildId: savedGuild.id, guilds: guilds };
     }
     if (guilds.length === 1) {
       var guildId = guilds[0].id;

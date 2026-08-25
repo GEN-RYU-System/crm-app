@@ -512,7 +512,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
       succeed({ success: true, url: 'https://discord.com/api/oauth2/authorize?client_id=mock&permissions=805432400&scope=bot%20applications.commands' });
     },
     getDiscordOAuthStatus(_s: string | null) {
-      succeed({ status: 'multiple', guildId: null, guilds: [{ id: 'preview-guild-1', name: 'Preview Guild One' }, { id: 'preview-guild-2', name: 'Preview Guild Two' }] });
+      succeed({ status: 'linked', guildId: 'preview-guild-1', guilds: [{ id: 'preview-guild-1', name: 'Preview Guild One' }, { id: 'preview-guild-2', name: 'Preview Guild Two' }] });
     },
     saveDiscordGuildId(_s: string | null, guildId: string) {
       succeed({ success: guildId === 'preview-guild-1' || guildId === 'preview-guild-2' });
