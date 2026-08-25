@@ -48,6 +48,8 @@ export const ordersCopy = {
     inventoryLoadError: '在庫商品の読み込みに失敗しました。',
     backToList: '一覧に戻る',
     saveOrder: '保存',
+    saveDraft: '一時保存',
+    issueInvoice: '発行',
     saving: '保存中...',
     saveErrorPrefix: '保存に失敗しました:',
     saveErrorFallback: '不明なエラーが発生しました。',

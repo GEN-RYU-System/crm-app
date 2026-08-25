@@ -505,7 +505,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
             onChange={(e) => updateValue('currency', e.target.value)}
             width="sm"
           />
-          {values.paymentMethod === 'PAYPAL' && <Input label={ordersCopy.editor.invoiceNumber} description={ordersCopy.editor.invoiceNumberPaypalDescription} value={values.invoiceNumber} onChange={(e) => updateValue('invoiceNumber', e.target.value)} />}
+          {values.paymentMethod === 'PAYPAL' && <TextField label={ordersCopy.editor.invoiceNumber} helperText={ordersCopy.editor.invoiceNumberPaypalDescription} value={values.invoiceNumber} onChange={(e) => updateValue('invoiceNumber', e.target.value)} />}
           <Select
             label={ordersCopy.editor.paymentMethod}
             options={paymentMethodOptions}
@@ -694,8 +694,8 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
             <Button variant="outline" onClick={() => navigate(ORDER_EDITOR_PATHS.list)} disabled={saving}>
               {ordersCopy.editor.backToList}
             </Button>
-            {!isAmountLocked && <Button variant="outline" onClick={() => void handleSave(true)} loading={saving} loadingText={savingLabel} disabled={saving}>一時保存</Button>}
-            <Button onClick={() => void handleSave(false)} loading={saving} loadingText={savingLabel} disabled={saving}>発行</Button>
+            {!isAmountLocked && <Button variant="outline" onClick={() => void handleSave(true)} loading={saving} loadingText={savingLabel} disabled={saving}>{ordersCopy.editor.saveDraft}</Button>}
+            <Button onClick={() => void handleSave(false)} loading={saving} loadingText={savingLabel} disabled={saving}>{ordersCopy.editor.issueInvoice}</Button>
           </div>
         }
       />

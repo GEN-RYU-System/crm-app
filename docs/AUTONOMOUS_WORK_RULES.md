@@ -19,6 +19,7 @@
    git worktree add <path> -b <branch> origin/develop
    ```
    worktree は現在の作業ツリーがクリーンでなくても作成でき、他セッションの未コミット変更に影響しない。作業完了後は worktree を削除する。
+   worktree 作成後は最初に `cd frontend && npm ci` を実行する。`node_modules` は worktree ごとに独立しており、これを省略すると `tsc` / Vite が見つからず `build:gas` が失敗する。
 5. 変更がない場合は通常どおり `origin/develop` から分岐してよい
 6. 対象ファイルの直近コミットを確認する
    `git log --all --oneline -20 -- <ファイル>`  
