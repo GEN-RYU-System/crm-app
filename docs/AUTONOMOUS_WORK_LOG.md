@@ -1921,3 +1921,11 @@ PASS=true
 - PR #543 を squash merge。マージコミット SHA: `9457b42fd13c38657ecec8a9a67c760a8e27be72`。
 - 戻し方: `git revert 9457b42fd13c38657ecec8a9a67c760a8e27be72`。
 - Deploy to DEV run `32799722980` は成功。`clasp run getDeployedSha` 生出力: `{ sha: '9457b42fd13c38657ecec8a9a67c760a8e27be72', deployedAt: '2026-08-25T02:01:14.918Z' }`。
+
+---
+
+## 請求書発行フロー A-1 / A-2 / A-3
+
+- 2026-08-25 — PR #523（A-1、請求書番号の次番号生成）。squash SHA: `86ca5bcb92047707714f4ca11f49effb61ea8a96`。`INV-` 系列の最大連番から5桁ゼロ埋めで採番し、既存系列を変更しない。build・CI・Core Schema V1監査は成功。戻し方: `git revert 86ca5bcb92047707714f4ca11f49effb61ea8a96`。
+- 2026-08-25 — PR #530（A-2、下書き／発行のGAS処理）。squash SHA: `d943ce98196f7ae4e652f0382deeec58d4b906b8`。`isDraft` を作成・更新APIに追加し、Wise自動採番、PayPal番号必須、再発行の既存値維持を実装。build・CI・Core Schema V1監査は成功。戻し方: `git revert d943ce98196f7ae4e652f0382deeec58d4b906b8`。
+- 2026-08-25 — PR #537（A-3、請求書画面の一時保存／発行）。squash SHA: `8b49dbd0c4b3a680de0f87a6cff83122c2b25b76`。PayPal時の請求書番号入力、発行済み時の一時保存非表示、`isDraft`／`invoiceNumber` のAPI伝達を実装。Deploy to DEV・SHA照合・Core Schema V1監査は成功。戻し方: `git revert 8b49dbd0c4b3a680de0f87a6cff83122c2b25b76`。
