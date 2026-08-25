@@ -16,3 +16,12 @@
 .ui-data-table__row:last-child .ui-data-table__cell { border-bottom: 0; }
 .ui-data-table__row--interactive { cursor: pointer; }
 .ui-data-table__row--interactive:focus { outline: var(--border-width) solid var(--data-table-focus); outline-offset: calc(var(--border-width) * -1); }
+/* sticky-header: thead sticks at top of viewport below the page sticky band.
+   overflow:clip preserves border-radius clipping without creating a scroll container
+   (unlike overflow:hidden which would block position:sticky on thead).
+   overflow-x:clip on the scroll wrapper clips wide content without creating
+   a horizontal scroll container; horizontal scroll is intentionally disabled
+   in sticky-header mode to allow the thead to be sticky within the page scroll. */
+.ui-data-table--sticky-header { overflow: clip; }
+.ui-data-table--sticky-header .ui-data-table__scroll { overflow-x: clip; }
+.ui-data-table--sticky-header .ui-data-table__header { position: sticky; top: var(--_sticky-band-h, 0px); z-index: 10; background: var(--data-table-header-surface); }

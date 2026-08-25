@@ -191,12 +191,15 @@
 本文が長い場合でもサブメニューが画面外へ消えないよう、`position: sticky` を使う。
 `position: fixed` は使わない（周囲レイアウトが崩れるため）。
 
+ページ上部に固定ヘッダー帯がある場合（後述の「一覧ページのスクロール固定」参照）は、
+サイドバーの `top` を帯の高さ分だけずらして重なりを防ぐこと:
+
 ```css
 .your-page__sidebar {
   position: sticky;
-  top: 0;
-  max-height: 100vh;
-  overflow-y: auto;   /* サイドバー自体が長い場合はその中でスクロール */
+  top: var(--_sticky-band-h, 0px);                    /* 固定帯の高さ分だけずらす */
+  max-height: calc(100vh - var(--_sticky-band-h, 0px));
+  overflow-y: auto;
 }
 ```
 
@@ -211,6 +214,80 @@
   }
 }
 ```
+
+---
+
+## 一覧ページのスクロール固定
+
+PageHeader・PageToolbar・DataTable thead を固定する場合の実装パターン。
+`position: fixed` は使わない（ページ幅と合わなくなるため）。
+
+### 3 段の役割と z-index
+
+| 段 | 要素 | position | top | z-index |
+|----|------|----------|-----|---------|
+| 段1+2 | PageHeader + PageToolbar を包む `sticky-band` div | `sticky` | 0 | 20 |
+| 段3 | DataTable `<thead>` | `sticky` | `var(--_sticky-band-h)` | 10 |
+
+`--_sticky-band-h` は `sticky-band` の実測高さを JavaScript（ResizeObserver）で計測し、
+ラッパー div の `style` 属性で渡すプライベート CSS 変数（`--_` プレフィックス）。
+
+```tsx
+// ページコンポーネント
+const stickyBandRef = useRef<HTMLDivElement>(null);
+const [stickyBandH, setStickyBandH] = useState(0);
+useEffect(() => {
+  const el = stickyBandRef.current;
+  if (!el) return;
+  const ro = new ResizeObserver(() => setStickyBandH(el.getBoundingClientRect().height));
+  ro.observe(el);
+  return () => ro.disconnect();
+}, []);
+
+return (
+  // --_sticky-band-h を CSS カスケードで DataTable の th に届ける
+  <div style={{ '--_sticky-band-h': `${stickyBandH}px` } as React.CSSProperties}>
+    <div ref={stickyBandRef} className="your-page__sticky-band">
+      <PageHeader ... />
+      <PageToolbar className="your-page__toolbar" ... />
+    </div>
+    <DataTable ... stickyHeader />
+  </div>
+);
+```
+
+```css
+/* sticky-band: PageHeader + PageToolbar を1枚のバックグラウンドで覆う */
+.your-page__sticky-band {
+  position: sticky;
+  top: 0;
+  z-index: 20;                                       /* DataTable thead (z-index:10) より手前 */
+  background: var(--color-page);                     /* スクロール時に下の行が透けないように */
+  padding-bottom: var(--page-toolbar-margin-bottom); /* PageToolbar の margin を吸収 */
+}
+/* PageToolbar 自身の margin-bottom は padding-bottom で代替するので 0 にする */
+.your-page__toolbar { margin-bottom: var(--space-none); }
+```
+
+### `overflow: clip` を使う理由
+
+DataTable に `stickyHeader` を渡すと内部で `.ui-data-table--sticky-header` クラスが付き、
+`overflow: clip` が設定される。`overflow: hidden` は**スクロールコンテナを作るため**、
+子孫の `position: sticky` が無効になる。`clip` は視覚的なクリッピングのみで
+スクロールコンテナを作らないため、`<thead>` が page scroll に対して sticky として機能する。
+
+### DataTable の stickyHeader prop
+
+```tsx
+<DataTable ... stickyHeader />
+```
+
+`stickyHeader` を渡すと:
+- `.ui-data-table--sticky-header` クラスが付与される
+- `overflow: clip` / `overflow-x: clip` が適用される（横スクロールは無効化）
+- `<thead>` が `position: sticky; top: var(--_sticky-band-h, 0px); z-index: 10` になる
+
+横スクロールが必要なテーブルには `stickyHeader` を付けないこと。
 
 ---
 

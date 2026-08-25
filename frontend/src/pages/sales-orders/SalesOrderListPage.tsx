@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CRM_SEARCH_ICON, CRM_SORT_ICONS } from '../../app/icons';
 import { Badge } from '../../components/ui/Badge/Badge';
@@ -73,6 +73,17 @@ export function SalesOrderListPage() {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SalesOrderSort>(SALES_ORDER_LIST_INITIAL_SORT);
   const [activeTabLabel, setActiveTabLabel] = useState<string | null>(null);
+
+  // Measure sticky band (PageHeader + PageToolbar) height for DataTable thead top offset
+  const stickyBandRef = useRef<HTMLDivElement>(null);
+  const [stickyBandH, setStickyBandH] = useState(0);
+  useEffect(() => {
+    const el = stickyBandRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setStickyBandH(el.getBoundingClientRect().height));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   void ensureLoaded();
 
@@ -160,25 +171,31 @@ export function SalesOrderListPage() {
   const isEmpty = !isLoading && error === undefined && filteredRows.length === 0;
 
   return (
-    <>
-      <PageHeader eyebrow={salesOrdersCopy.eyebrow} title={salesOrdersCopy.title} subtitle={salesOrdersCopy.subtitle} />
-      <PageToolbar
-        start={
-          <TextField
-            aria-label={salesOrdersCopy.searchLabel}
-            placeholder={salesOrdersCopy.searchPlaceholder}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            width="sm"
-            startIcon={<CRM_SEARCH_ICON aria-hidden="true" />}
-          />
-        }
-        end={
-          <Button variant="secondary" onClick={() => void refresh()} loading={refreshing} loadingText={salesOrdersCopy.refreshing}>
-            {salesOrdersCopy.refresh}
-          </Button>
-        }
-      />
+    // --_sticky-band-h is a private CSS var consumed by DataTable stickyHeader
+    // eslint-disable-next-line react/forbid-dom-props
+    <div className="sales-order-list-page__page" style={{ '--_sticky-band-h': `${stickyBandH}px` } as React.CSSProperties}>
+      {/* Segments 1+2: PageHeader and PageToolbar combined into one sticky band (z-index: 20) */}
+      <div ref={stickyBandRef} className="sales-order-list-page__sticky-band">
+        <PageHeader eyebrow={salesOrdersCopy.eyebrow} title={salesOrdersCopy.title} subtitle={salesOrdersCopy.subtitle} />
+        <PageToolbar
+          className="sales-order-list-page__toolbar"
+          start={
+            <TextField
+              aria-label={salesOrdersCopy.searchLabel}
+              placeholder={salesOrdersCopy.searchPlaceholder}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              width="sm"
+              startIcon={<CRM_SEARCH_ICON aria-hidden="true" />}
+            />
+          }
+          end={
+            <Button variant="secondary" onClick={() => void refresh()} loading={refreshing} loadingText={salesOrdersCopy.refreshing}>
+              {salesOrdersCopy.refresh}
+            </Button>
+          }
+        />
+      </div>
       <div className="sales-order-list-page__layout">
         <nav className="sales-order-list-page__sidebar" aria-label="Status filter">
           <div className="sales-order-list-page__sidebar-nav">
@@ -208,6 +225,7 @@ export function SalesOrderListPage() {
                 loadingLabel={salesOrdersCopy.loading}
                 skeletonRows={4}
                 surface="embedded"
+                stickyHeader
               />
             )}
             {error !== undefined && (
@@ -236,11 +254,12 @@ export function SalesOrderListPage() {
                 rowKey={(row) => row.orderId}
                 onRowClick={(row) => navigate(`/sales-orders/${row.orderId}`)}
                 surface="embedded"
+                stickyHeader
               />
             )}
           </Card>
         </div>
       </div>
-    </>
+    </div>
   );
 }
