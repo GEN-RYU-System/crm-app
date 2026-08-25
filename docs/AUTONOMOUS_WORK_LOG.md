@@ -2235,3 +2235,72 @@ PASS=true
 - **V-C1**: `runDiscordAutoSetup` を2回実行し Customer/Partner カテゴリ・ロールが重複しないこと。
 - **V-C2**: SMALL/LARGE 各スケールで招待発行し、参加後に正しいロールが付与されること。
 - **V-C3**: スケール未設定顧客への招待でチャンネル作成が続行し Logger に警告が出ること。
+
+
+---
+
+## DEV一時障害の記録 (2026-08-26 03:53〜04:10)
+
+### 症状
+- **症状1**: `Exception: 「ReactPoc」という HTML ファイルは見つかりませんでした。（行 66、ファイル「27_WebApp」）`
+- **症状2**: 「認証情報を確認中...」から進まない（`google.script.run.getSessionUser` が handler を呼ばない）
+
+いずれも待機・再読み込みで自然復旧した。
+
+### 調査結果（事実のみ）
+- `src/ReactPoc.html` は最新配布ログで 187 ファイル中に確認（`clasp push --force` 出力）
+- `ログインセッション` シート: 存在・30行（`testGetLoginSessionSheetState` 実行値）
+- `担当者マスタ` シート: 存在・24列・必須ヘッダー全あり（`auditDevCoreSchemaV1HeaderDetailV3` 実行値）
+- 配布 SHA `8bc8410` = `origin/develop` HEAD と完全一致（`getDeployedSha` + `git log` 突合）
+- コード・データともに異常なし
+
+### 状況
+03:28〜03:52 の 25 分間に 7 件の配布が連続実行されていた:
+`#583 → #584 → #582 → #585 → #587 → #588 → #589`
+
+### 判断（推定・確定不可）
+`clasp push` によるファイル入れ替えの最中に発生した一時的な事象と推定される。GAS 内部の挙動は外部から観測できないため確定不可。
+
+### 対策
+配布直後に DEV 画面でエラーが出た場合、まず 1〜2 分待って再読み込みする。それでも解消しない場合に調査を開始する。
+
+---
+
+## PR26: 受注一覧 sticky thead オフセット修正 (2026-08-26)
+
+### 症状
+`/sales-orders` のスクロール時、列見出し（thead）がデータ行の下に沈む。
+
+### 根本原因
+
+**Root cause 1 — padding-bottom が `--_sticky-band-h` を 16px 過大計測**
+
+`SalesOrderListPage.css` の `.sales-order-list-page__sticky-band` に
+`padding-bottom: var(--page-toolbar-margin-bottom)` (= 16px) が付いていた。
+`getBoundingClientRect().height` は padding を含むため、ResizeObserver が計測した
+`stickyBandH` が実際の視覚高さより 16px 大きくなり、DataTable `<th>` の
+`top: var(--_sticky-band-h)` が 16px 低すぎる位置に固定されていた。
+
+**Root cause 2 — `overflow: hidden` がスクロールコンテナを生成**
+
+`.sales-order-list-page__data-card { overflow: hidden }` は CSS 仕様上
+スクロールコンテナを作成し、`position: sticky` な `<th>` がカード内で固定される
+問題があった。
+
+### 修正内容
+- `.sales-order-list-page__sticky-band` から `padding-bottom` を削除
+  → PageToolbar 自然の `margin-bottom: 16px` で間隔確保（`margin` は `getBoundingClientRect().height` に含まれない）
+- `.sales-order-list-page__data-card`: `overflow: hidden` → `overflow: clip`
+  → スクロールコンテナを生成せずに border-radius をクリップ
+
+### 変更ファイル
+`frontend/src/pages/sales-orders/SalesOrderListPage.css` のみ
+
+### 検証
+- `npm run build:gas` → SUCCESS
+- `npm run check:design-system` → `design-system checks passed`
+
+### PR / SHA
+- PR: GEN-RYU-System/crm-app#593 (base: develop)
+- commit SHA: `67e76bf` (release/fix-sticky-offset HEAD)
+- revert用: `git revert 67e76bf`
