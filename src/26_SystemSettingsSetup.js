@@ -155,6 +155,11 @@ function seedSystemSettings() {
         value:       '#2f4f4f',
         valueType:   table.values.VALUE_TYPE.TEXT,
         description: '帳票末尾の "Thank you for your business!" の文字色（例: #2f4f4f）'
+      },
+      { key: '帳票_見積書保存先フォルダID', value: '', valueType: table.values.VALUE_TYPE.TEXT, description: '見積書の保存先Google DriveフォルダID' },
+      { key: '帳票_請求書保存先フォルダID', value: '', valueType: table.values.VALUE_TYPE.TEXT, description: '請求書の保存先Google DriveフォルダID' },
+      { key: '帳票_発送ラベル保存先フォルダID', value: '', valueType: table.values.VALUE_TYPE.TEXT, description: '発送ラベルの保存先Google DriveフォルダID' },
+      { key: '帳票_仕入請求書保存先フォルダID', value: '', valueType: table.values.VALUE_TYPE.TEXT, description: '仕入請求書の保存先Google DriveフォルダID' }
       }
     ];
 
