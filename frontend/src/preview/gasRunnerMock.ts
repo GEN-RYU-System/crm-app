@@ -421,13 +421,6 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     },
     getInboxConversationsForFrontend(_s: string | null, _force: boolean) {
       succeed(MOCK_INBOX_CONVERSATIONS);
-      /* succeed([
-        { id: 'preview-inbox-alpha', customerName: 'Preview Atlas',  platform: 'messenger',  status: 'lead',     summary: 'Preview lead conversation',             updatedAt: '10:20',    unread: true  },
-        { id: 'preview-inbox-bravo', customerName: 'Preview Bravo',  platform: 'instagram',  status: 'deal',     summary: 'Preview deal conversation',             updatedAt: '09:45',    unread: false },
-        { id: 'preview-inbox-charlie', customerName: 'Preview Charlie', platform: 'discord', status: 'existing', summary: 'Preview existing customer conversation', updatedAt: 'Yesterday', unread: false },
-        { id: 'preview-inbox-delta', customerName: 'Preview Delta',  platform: 'messenger',  status: 'followup', summary: 'Preview follow-up conversation',         updatedAt: 'Monday',   unread: true  },
-        { id: 'preview-inbox-echo',  customerName: 'Preview Echo',   platform: 'instagram',  status: 'archive',  summary: 'Preview archived conversation',          updatedAt: 'Last week', unread: false },
-      ]); */
     },
     getInboxConversationDetailForFrontend(_s: string | null, leadId: string) {
       const conversation = MOCK_INBOX_CONVERSATIONS.find((item) => item.id === leadId);
