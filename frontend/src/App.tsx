@@ -40,7 +40,7 @@ import { LeadListPage } from './pages/leads/LeadListPage';
 import { InboxPreviewPage } from './pages/inbox/InboxPreviewPage';
 import { InventoryListPage } from './pages/inventory/InventoryListPage';
 import { InventoryListCacheProvider } from './pages/inventory/InventoryListCacheContext';
-import { InventoryProductOptionsCacheProvider } from './pages/inventory/InventoryProductOptionsCacheContext';
+import { InventoryProductOptionsCacheProvider, useInventoryProductOptionsCache } from './pages/inventory/InventoryProductOptionsCacheContext';
 import { QuoteEditorPage } from './pages/quotes/QuoteEditorPage';
 import { QuoteListPage } from './pages/quotes/QuoteListPage';
 import { QuoteListCacheProvider } from './pages/quotes/QuoteListCacheContext';
@@ -96,6 +96,7 @@ function SyncPoller() {
   const { refresh: refreshLeadFormOptions } = useLeadFormOptionsCache();
   const { refresh: refreshCustomers } = useCustomerListCache();
   const { refresh: refreshInventory } = useInventoryListCache();
+  const { refresh: refreshInventoryProductOptions } = useInventoryProductOptionsCache();
   const { refresh: refreshOrders } = useOrderListCache();
   const { refresh: refreshSalesOrders } = useSalesOrderListCache();
   const { refresh: refreshStaff } = useStaffListCache();
@@ -105,11 +106,11 @@ function SyncPoller() {
   const refreshers = useMemo<DomainRefreshers>(() => ({
     leads:     () => Promise.all([refreshLeads(), refreshLeadFormOptions(), refreshDashboardKpis()]).then(() => undefined),
     customers: () => refreshCustomers(),
-    inventory: () => refreshInventory(),
+    inventory: () => Promise.all([refreshInventory(), refreshInventoryProductOptions()]).then(() => undefined),
     orders:    () => Promise.all([refreshOrders(), refreshSalesOrders()]).then(() => undefined),
     staff:     () => refreshStaff(),
     quotes:    () => refreshQuotes(),
-  }), [refreshLeads, refreshLeadFormOptions, refreshDashboardKpis, refreshCustomers, refreshInventory, refreshOrders, refreshSalesOrders, refreshStaff, refreshQuotes]);
+  }), [refreshLeads, refreshLeadFormOptions, refreshDashboardKpis, refreshCustomers, refreshInventory, refreshInventoryProductOptions, refreshOrders, refreshSalesOrders, refreshStaff, refreshQuotes]);
 
   useSyncPolling(refreshers);
   return null;

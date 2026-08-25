@@ -1968,6 +1968,14 @@ PASS=true
 
 ---
 
+## 【同期登録】InventoryProductOptions → inventory
+
+- 合格条件: 信号なしで `getInventoryProductOptions` が増えず、inventory信号後に1回増えること。
+- `SyncPoller` の inventory refresher に `refreshInventoryProductOptions()` を登録した。
+- 検証結果は PR 作成前に `__gasMockCallCounts` の生出力で記録する。
+
+---
+
 ## Discord Guild 選択状態の再取得時保持（PR #550）
 
 - `frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx` の「状態を確認する」処理を修正した。再取得結果が複数Guildで、現在選択中のIDが結果一覧に含まれる場合はその選択を維持する。一覧から消えた場合のみ未選択へ戻す。
