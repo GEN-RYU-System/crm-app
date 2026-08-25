@@ -1,11 +1,10 @@
-/* sticky band: PageHeader + PageToolbar combined; sits above DataTable thead (z-index 20 > 10).
-   No padding-bottom here: PageToolbar's natural margin-bottom provides the gap and is excluded
-   from getBoundingClientRect().height, so --_sticky-band-h stays accurate for thead top offset. */
-.sales-order-list-page__sticky-band { position: sticky; top: 0; z-index: 20; background: var(--color-page); }
+/* sticky-band: PageHeader + PageToolbar; normal block flow (no sticky) in box-scroll mode.
+   DataTable thead sticks at top:0 within the table's own scroll box. */
+.sales-order-list-page__sticky-band { background: var(--color-page); }
 .sales-order-list-page__layout { display: flex; gap: var(--space-lg); align-items: flex-start; }
-/* sticky sidebar: sticks below the sticky band (top = band height via --_sticky-band-h);
-   avoids position:fixed; max-height matches remaining viewport height */
-.sales-order-list-page__sidebar { flex-shrink: 0; width: 11rem; position: sticky; top: var(--_sticky-band-h, 0px); max-height: calc(100vh - var(--_sticky-band-h, 0px)); overflow-y: auto; }
+/* sticky sidebar: sticks at top:0 (no sticky band to offset against in box-scroll mode);
+   avoids position:fixed; max-height matches viewport height */
+.sales-order-list-page__sidebar { flex-shrink: 0; width: 11rem; position: sticky; top: 0; max-height: 100vh; overflow-y: auto; }
 .sales-order-list-page__sidebar-nav { display: flex; flex-direction: column; gap: var(--space-xs); }
 .sales-order-list-page__tab { display: flex; justify-content: space-between; align-items: center; padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-button); border: none; background: transparent; cursor: pointer; text-align: left; font-size: var(--font-sm); color: var(--color-text-muted); transition: background 0.1s; width: 100%; }
 .sales-order-list-page__tab:hover { background: var(--color-tab-surface-hover); color: var(--color-tab-text-active); }

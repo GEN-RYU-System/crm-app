@@ -191,14 +191,13 @@
 本文が長い場合でもサブメニューが画面外へ消えないよう、`position: sticky` を使う。
 `position: fixed` は使わない（周囲レイアウトが崩れるため）。
 
-ページ上部に固定ヘッダー帯がある場合（後述の「一覧ページのスクロール固定」参照）は、
-サイドバーの `top` を帯の高さ分だけずらして重なりを防ぐこと:
+箱スクロール方式ではページ上部に固定帯を置かないため、サイドバーは `top: 0` で固定する:
 
 ```css
 .your-page__sidebar {
   position: sticky;
-  top: var(--_sticky-band-h, 0px);                    /* 固定帯の高さ分だけずらす */
-  max-height: calc(100vh - var(--_sticky-band-h, 0px));
+  top: 0;
+  max-height: 100vh;
   overflow-y: auto;
 }
 ```
@@ -219,64 +218,18 @@
 
 ## 一覧ページのスクロール固定
 
-PageHeader・PageToolbar・DataTable thead を固定する場合の実装パターン。
+DataTable thead を固定する場合の実装パターン。
 `position: fixed` は使わない（ページ幅と合わなくなるため）。
 
-### 3 段の役割と z-index
+### 採用方式: 箱スクロール（box-scroll）
 
-| 段 | 要素 | position | top | z-index |
-|----|------|----------|-----|---------|
-| 段1+2 | PageHeader + PageToolbar を包む `sticky-band` div | `sticky` | 0 | 20 |
-| 段3 | DataTable `<thead>` | `sticky` | `var(--_sticky-band-h)` | 10 |
+スクロールラッパー自体を高さ制限付きコンテナにし、thead を `top: 0` で固定する方式。
+JS（ResizeObserver）不要。CSS 5行で完結する。
 
-`--_sticky-band-h` は `sticky-band` の実測高さを JavaScript（ResizeObserver）で計測し、
-ラッパー div の `style` 属性で渡すプライベート CSS 変数（`--_` プレフィックス）。
-
-```tsx
-// ページコンポーネント
-const stickyBandRef = useRef<HTMLDivElement>(null);
-const [stickyBandH, setStickyBandH] = useState(0);
-useEffect(() => {
-  const el = stickyBandRef.current;
-  if (!el) return;
-  const ro = new ResizeObserver(() => setStickyBandH(el.getBoundingClientRect().height));
-  ro.observe(el);
-  return () => ro.disconnect();
-}, []);
-
-return (
-  // --_sticky-band-h を CSS カスケードで DataTable の th に届ける
-  <div style={{ '--_sticky-band-h': `${stickyBandH}px` } as React.CSSProperties}>
-    <div ref={stickyBandRef} className="your-page__sticky-band">
-      <PageHeader ... />
-      <PageToolbar className="your-page__toolbar" ... />
-    </div>
-    <DataTable ... stickyHeader />
-  </div>
-);
-```
-
-```css
-/* sticky-band: PageHeader + PageToolbar を1枚のバックグラウンドで覆う */
-.your-page__sticky-band {
-  position: sticky;
-  top: 0;
-  z-index: 20;                                       /* DataTable thead (z-index:10) より手前 */
-  background: var(--color-page);                     /* スクロール時に下の行が透けないように */
-  padding-bottom: var(--page-toolbar-margin-bottom); /* PageToolbar の margin を吸収 */
-}
-/* PageToolbar 自身の margin-bottom は padding-bottom で代替するので 0 にする */
-.your-page__toolbar { margin-bottom: var(--space-none); }
-```
-
-### `overflow: clip` を使う理由
-
-DataTable に `stickyHeader` を渡すと内部で `.ui-data-table--sticky-header` クラスが付き、
-`overflow: clip` が設定される。`overflow: hidden` は**スクロールコンテナを作るため**、
-子孫の `position: sticky` が無効になる。`clip` は視覚的なクリッピングのみで
-スクロールコンテナを作らないため、`<thead>` が page scroll に対して sticky として機能する。
-
-### DataTable の stickyHeader prop
+| 要素 | position | top | z-index |
+|------|----------|-----|---------|
+| `.ui-data-table__scroll`（ラッパー） | `relative` + `overflow-y: auto` | — | — |
+| DataTable `<thead>` | `sticky` | `0` | `10` |
 
 ```tsx
 <DataTable ... stickyHeader />
@@ -284,10 +237,42 @@ DataTable に `stickyHeader` を渡すと内部で `.ui-data-table--sticky-heade
 
 `stickyHeader` を渡すと:
 - `.ui-data-table--sticky-header` クラスが付与される
-- `overflow: clip` / `overflow-x: clip` が適用される（横スクロールは無効化）
-- `<thead>` が `position: sticky; top: var(--_sticky-band-h, 0px); z-index: 10` になる
+- スクロールラッパーに `max-height: var(--data-table-scroll-max-height); overflow-y: auto; position: relative` が適用される
+- `<thead>` が `position: sticky; top: 0; z-index: 10` になる
+- 横スクロールは `overflow-x: auto`（有効）
 
-横スクロールが必要なテーブルには `stickyHeader` を付けないこと。
+PageHeader・PageToolbar はページ通常フローで配置する（sticky にしない）。
+ユーザーが上にスクロールすると PageHeader 等は視界から消えるが、
+テーブル内ヘッダーは常に表示される。
+
+```css
+/* max-height トークン（palette → tokens の順に定義）*/
+--palette-data-table-scroll-max-height: calc(100vh - 22rem);
+--data-table-scroll-max-height: var(--palette-data-table-scroll-max-height);
+```
+
+外部根拠:
+- Stanford UIT — `overflow-y: auto; height: fixed` + `thead th { position: sticky; top: 0 }`: "Simple and reliable." (CSS 5 lines, JS 0 lines)
+- Filament — `max-height: 600px; position: relative` + sticky thead: `z-index: 30/40`
+- OpenProject — 見出しの複製や JS 制御は動的テーブルで列幅がずれると報告
+
+### 採用しない方式
+
+**ページスクロール + JS 実測オフセット**（PR #560 / #585 / #593 で試行）
+
+PageHeader + PageToolbar を `position: sticky` にして一緒に固定し、
+ResizeObserver でその高さを実測して `--_sticky-band-h` を計算し、
+DataTable thead の `top` に渡す方式。
+
+採用しない理由:
+- `getBoundingClientRect().height` が `padding` を含むため、`padding-bottom` が過大計測を引き起こした（PR #593 で発見）
+- `overflow: hidden` をアンカー要素に置くと `position: sticky` が無効になる（PR #585 で発見）
+- ブラウザの計測タイミングと React レンダリングの非同期性により、初回描画で thead が正位置に来るとは限らない
+- 外部事例での成功報告が確認できなかった
+
+**見出しの複製・JS 列幅制御**
+
+動的なデータで列幅がずれる（OpenProject 報告）。採用しない。
 
 ---
 
