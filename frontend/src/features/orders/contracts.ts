@@ -17,6 +17,8 @@ export type OrderCreatePayload = {
   paymentDestinationId: string;
   currency: string;
   paymentMethod: string;
+  isDraft: boolean;
+  invoiceNumber?: string;
   shippingFee: string;
   duty: string;
   otherFee: string;
@@ -49,6 +51,8 @@ export type OrderUpdatePayload = {
   internalNote?: string;
   cancellationReason?: string;
   cancellationNote?: string;
+  isDraft?: boolean;
+  invoiceNumber?: string;
 };
 
 export type OrderUpdateResult = {

@@ -266,7 +266,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
     return true;
   };
 
-  const handleSave = async () => {
+  const handleSave = async (isDraft = true) => {
     setSaveError('');
 
     if (mode === 'create') {
@@ -279,6 +279,8 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
           paymentDestinationId: values.paymentDestinationId,
           currency: values.currency,
           paymentMethod: values.paymentMethod,
+          isDraft,
+          invoiceNumber: values.invoiceNumber,
           shippingFee: values.shippingFee,
           duty: values.duty,
           otherFee: values.otherFee,
@@ -295,6 +297,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
           })),
         };
         await repository.createOrder(payload);
+        if (!isDraft) window.print();
         navigate(ORDER_EDITOR_PATHS.list);
       } catch (cause) {
         setSaveError(
@@ -317,6 +320,8 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
           internalNote: values.internalNote,
           cancellationReason: values.cancellationReason,
           cancellationNote: values.cancellationNote,
+          isDraft,
+          invoiceNumber: values.invoiceNumber,
         };
         // Include amount fields only before invoice is issued
         if (!isAmountLocked) {
@@ -500,6 +505,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
             onChange={(e) => updateValue('currency', e.target.value)}
             width="sm"
           />
+          {values.paymentMethod === 'PAYPAL' && <TextField label={ordersCopy.editor.invoiceNumber} helperText={ordersCopy.editor.invoiceNumberPaypalDescription} value={values.invoiceNumber} onChange={(e) => updateValue('invoiceNumber', e.target.value)} />}
           <Select
             label={ordersCopy.editor.paymentMethod}
             options={paymentMethodOptions}
@@ -688,9 +694,8 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
             <Button variant="outline" onClick={() => navigate(ORDER_EDITOR_PATHS.list)} disabled={saving}>
               {ordersCopy.editor.backToList}
             </Button>
-            <Button onClick={() => void handleSave()} loading={saving} loadingText={savingLabel} disabled={saving}>
-              {saveLabel}
-            </Button>
+            {!isAmountLocked && <Button variant="outline" onClick={() => void handleSave(true)} loading={saving} loadingText={savingLabel} disabled={saving}>{ordersCopy.editor.saveDraft}</Button>}
+            <Button onClick={() => void handleSave(false)} loading={saving} loadingText={savingLabel} disabled={saving}>{ordersCopy.editor.issueInvoice}</Button>
           </div>
         }
       />
