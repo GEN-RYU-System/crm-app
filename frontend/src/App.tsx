@@ -37,6 +37,8 @@ import { LeadEditorPage } from './pages/leads/LeadEditorPage';
 import { LEAD_EDITOR_SEGMENTS } from './pages/leads/leadEditorConfig';
 import { LeadListPage } from './pages/leads/LeadListPage';
 import { InboxPreviewPage } from './pages/inbox/InboxPreviewPage';
+import { InboxCacheProviders } from './pages/inbox/InboxCacheProviders';
+import { useInboxListCache } from './pages/inbox/InboxListCacheContext';
 import { InventoryListPage } from './pages/inventory/InventoryListPage';
 import { InventoryListCacheProvider } from './pages/inventory/InventoryListCacheContext';
 import { InventoryProductOptionsCacheProvider } from './pages/inventory/InventoryProductOptionsCacheContext';
@@ -99,15 +101,16 @@ function SyncPoller() {
   const { refresh: refreshStaff } = useStaffListCache();
   const { refresh: refreshQuotes } = useQuoteListCache();
   const { refresh: refreshDashboardKpis } = useDashboardKpiCache();
+  const { refresh: refreshInbox } = useInboxListCache();
 
   const refreshers = useMemo<DomainRefreshers>(() => ({
-    leads:     () => Promise.all([refreshLeads(), refreshDashboardKpis()]).then(() => undefined),
+    leads:     () => Promise.all([refreshLeads(), refreshDashboardKpis(), refreshInbox()]).then(() => undefined),
     customers: () => refreshCustomers(),
     inventory: () => refreshInventory(),
     orders:    () => Promise.all([refreshOrders(), refreshSalesOrders()]).then(() => undefined),
     staff:     () => refreshStaff(),
     quotes:    () => refreshQuotes(),
-  }), [refreshLeads, refreshDashboardKpis, refreshCustomers, refreshInventory, refreshOrders, refreshSalesOrders, refreshStaff, refreshQuotes]);
+  }), [refreshLeads, refreshDashboardKpis, refreshInbox, refreshCustomers, refreshInventory, refreshOrders, refreshSalesOrders, refreshStaff, refreshQuotes]);
 
   useSyncPolling(refreshers);
   return null;
@@ -181,7 +184,7 @@ function AppRouter() {
   const canAddLeads = hasNavigationPermission(permissions, 'lead_add');
   const canEditLeads = hasNavigationPermission(permissions, 'lead_edit');
   const leadsRoute = permissionState.status === 'checking' ? <LeadPermissionLoading /> : canAccessLeads ? <LeadListPage canAdd={canAddLeads} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
-  const inboxRoute = permissionState.status === 'checking' ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={inboxCopy.loading} />{inboxCopy.loading}</StatusMessage> : canAccessInbox ? <InboxPreviewPage repository={inboxGasRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+  const inboxRoute = permissionState.status === 'checking' ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={inboxCopy.loading} />{inboxCopy.loading}</StatusMessage> : canAccessInbox ? <InboxPreviewPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const createRoute = canAccessLeads && canAddLeads ? <LeadEditorPage mode="create" canEdit={false} repository={leadGasRepository} /> : <Navigate to={canAccessLeads ? NAVIGATION_BY_ID.leads.hash : NAVIGATION_BY_ID.dashboard.hash} replace />;
   const detailRoute = canAccessLeads ? <LeadEditorPage mode="detail" canEdit={canEditLeads} repository={leadGasRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const customersRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerListPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
@@ -233,7 +236,7 @@ function AppRouter() {
     ]
   };
 
-  return <HashRouter><LeadListCacheProvider><LeadDetailCacheProvider repository={leadGasRepository}><LeadFormOptionsCacheProvider repository={leadGasRepository}><CustomerListCacheProvider repository={customerGasRepository}><CustomerDetailCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><InventoryProductOptionsCacheProvider><CurrencyMasterCacheProvider><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><CustomerAggregateCacheProvider repository={customerGasRepository}><SalesOrderListCacheProvider><SalesOrderDetailCacheProvider><><SyncPoller /><AppShellWithPrefetch permissions={permissions} navigationGroups={navigationGroups}><Routes>
+  return <HashRouter><LeadListCacheProvider><LeadDetailCacheProvider repository={leadGasRepository}><LeadFormOptionsCacheProvider repository={leadGasRepository}><CustomerListCacheProvider repository={customerGasRepository}><CustomerDetailCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><InventoryProductOptionsCacheProvider><CurrencyMasterCacheProvider><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><CustomerAggregateCacheProvider repository={customerGasRepository}><SalesOrderListCacheProvider><SalesOrderDetailCacheProvider><InboxCacheProviders repository={inboxGasRepository}><SyncPoller /><AppShellWithPrefetch permissions={permissions} navigationGroups={navigationGroups}><Routes>
     <Route path={NAVIGATION_BY_ID.dashboard.hash} element={<DashboardPage kpis={kpis} state={state} error={error} onRefresh={() => void refreshDashboardKpis()} />} />
     {DATA_MANAGEMENT_ITEMS
       .filter((item) => item.state !== 'planned' && hubIndexRoutes[item.id] != null)
@@ -253,5 +256,5 @@ function AppRouter() {
     <Route path={NAVIGATION_BY_ID.components.hash} element={<ComponentCatalogPage />} />
     <Route path="/change-password" element={<ChangePasswordPage />} />
     <Route path="*" element={<Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />} />
-  </Routes></AppShellWithPrefetch></></SalesOrderDetailCacheProvider></SalesOrderListCacheProvider></CustomerAggregateCacheProvider></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></CurrencyMasterCacheProvider></InventoryProductOptionsCacheProvider></InventoryListCacheProvider></CustomerDetailCacheProvider></CustomerListCacheProvider></LeadFormOptionsCacheProvider></LeadDetailCacheProvider></LeadListCacheProvider></HashRouter>;
+  </Routes></AppShellWithPrefetch></InboxCacheProviders></SalesOrderDetailCacheProvider></SalesOrderListCacheProvider></CustomerAggregateCacheProvider></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></CurrencyMasterCacheProvider></InventoryProductOptionsCacheProvider></InventoryListCacheProvider></CustomerDetailCacheProvider></CustomerListCacheProvider></LeadFormOptionsCacheProvider></LeadDetailCacheProvider></LeadListCacheProvider></HashRouter>;
 }

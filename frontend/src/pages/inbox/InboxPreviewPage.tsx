@@ -1,58 +1,52 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CRM_SEARCH_ICON } from '../../app/icons';
 import { Badge, Button, ConversationWorkspace, EmptyState, PageHeader, Select, Skeleton, TabBar, Tabs, TextField, Textarea } from '../../components/ui';
 import { inboxCopy } from '../../content/ja';
-import type { InboxConversationDetailDto, InboxConversationDto, InboxPlatform, InboxRepository, InboxStatus } from '../../features/inbox/contracts';
+import type { InboxPlatform, InboxStatus } from '../../features/inbox/contracts';
 import { INBOX_KARTE_TABS, INBOX_PLATFORM_OPTIONS, INBOX_STATUS_TABS } from './inboxConfig';
+import { useInboxListCache } from './InboxListCacheContext';
+import { useInboxDetailCache } from './InboxDetailCacheContext';
 import './InboxPreviewPage.css';
 
-export function InboxPreviewPage({ repository }: { repository: InboxRepository }) {
+export function InboxPreviewPage() {
+  const { conversations, error: listError, ensureLoaded: ensureInbox } = useInboxListCache();
+  const { details, loading: detailLoadingByKey, load: loadDetail } = useInboxDetailCache();
+
   const [status, setStatus] = useState<InboxStatus>('all');
   const [platform, setPlatform] = useState<InboxPlatform>('all');
   const [query, setQuery] = useState('');
-  const [conversations, setConversations] = useState<readonly InboxConversationDto[] | null>(null);
-  const [listError, setListError] = useState(false);
   const [selectedId, setSelectedId] = useState('');
-  const [selectedDetail, setSelectedDetail] = useState<InboxConversationDetailDto | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [karteTab, setKarteTab] = useState('customer');
-  const detailCache = useRef<Map<string, InboxConversationDetailDto>>(new Map());
 
+  // Load inbox list on mount
+  useEffect(() => { void ensureInbox(); }, [ensureInbox]);
+
+  // Set initial selectedId when conversations first arrive
   useEffect(() => {
-    let active = true;
-    void (async () => {
-      try {
-        const rows = await repository.listConversations();
-        if (!active) return;
-        setConversations(rows);
-        if (rows.length > 0) setSelectedId(rows[0].id);
-      } catch {
-        if (active) setListError(true);
-      }
-    })();
-    return () => { active = false; };
-  }, [repository]);
+    if (conversations && conversations.length > 0 && !selectedId) {
+      setSelectedId(conversations[0].id);
+    }
+  }, [conversations, selectedId]);
 
+  // Prefetch top-5 details after list loads
+  useEffect(() => {
+    if (!conversations || conversations.length === 0) return;
+    const top5 = conversations.slice(0, 5);
+    for (const c of top5) {
+      void loadDetail(c.id);
+    }
+  }, [conversations, loadDetail]);
+
+  // Load selected detail; revalidate in background on cache hit
   useEffect(() => {
     if (!selectedId) return;
-    const cached = detailCache.current.get(selectedId);
-    if (cached) { setSelectedDetail(cached); return; }
-    let active = true;
-    setDetailLoading(true);
-    void (async () => {
-      try {
-        const detail = await repository.getConversation(selectedId);
-        if (!active) return;
-        if (detail) {
-          detailCache.current.set(selectedId, detail);
-          setSelectedDetail(detail);
-        }
-      } finally {
-        if (active) setDetailLoading(false);
-      }
-    })();
-    return () => { active = false; };
-  }, [repository, selectedId]);
+    void loadDetail(selectedId);        // serve from cache immediately if available
+    void loadDetail(selectedId, true);  // background revalidate
+  }, [selectedId, loadDetail]);
+
+  const selectedDetail = details[selectedId]?.[0] ?? null;
+  // Do not show skeleton when cached data exists (stale-while-revalidate)
+  const detailLoading = (detailLoadingByKey[selectedId] ?? false) && !selectedDetail;
 
   const filtered = useMemo(() => (conversations ?? []).filter((conv) =>
     (status === 'all' || conv.status === status) &&
@@ -82,7 +76,7 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
           listLabel={inboxCopy.listLabel}
           listHeader={<TextField aria-label={inboxCopy.searchLabel} placeholder={inboxCopy.searchPlaceholder} value={query} onChange={(event) => setQuery(event.target.value)} fullWidth startIcon={<CRM_SEARCH_ICON aria-hidden="true" />} />}
           list={
-            conversations === null && !listError
+            conversations == null && !listError
               ? <Skeleton variant="list" rows={4} label={inboxCopy.loading} />
               : filtered.length === 0
               ? <EmptyState title={inboxCopy.noConversations} description={inboxCopy.noConversationsDescription} />
