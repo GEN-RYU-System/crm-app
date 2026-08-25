@@ -1851,3 +1851,43 @@ exit=1
 ## 2026-08-25 清掃員PR-2 検証
 
 - dry-run検出を受け、develop/main保護、7日mtime保護、JANITOR_ONLY_PATH隔離モードを追加。probeのみを隔離撤去し、既存worktreeは残存確認済み。
+
+## 新規クローンの画面検証前提（運用改善）
+
+- 新しい clone では、画面検証の前に `frontend/` で `npm ci` を実行し、続けて `npx playwright install chromium` と `npx playwright install chromium-headless-shell` を実行する。
+- `chromium-headless-shell` が unknown browser で失敗した場合は、`npx playwright install` を実行する。導入失敗時は生出力を記録して画面検証および PR 作成を停止する。
+
+---
+
+## 【Sales order detail keyed cache】計画3
+
+### 合格条件
+
+- 同一SPAセッションで受注詳細を開く→一覧へ戻る→同じ詳細を再度開いたとき、`getCoreOrderDetailForFrontend` の呼び出し数が増えない。
+- 入金確定後、detail key の refresh により同関数が1回追加で呼ばれ、`STATUS` を使う既存の入金確認ボタンが有効から無効へ変化する。ステータス表示UIは追加しない。
+
+### 変更と検証
+
+- `SalesOrderDetailCacheContext` を追加し、`createListCache<OrderDetailRecord, string>` を orderId key で使う。missing detail は空配列として保持する。
+- 詳細ページの mount 時直接取得を keyed cache の `ensureLoaded(orderId)` に置換した。入金確定成功時は既存の再取得を `await refresh(orderId)` に置換し、一覧refreshも維持する。
+- DEV preview mock は入金確定後の再取得で `STATUS` を支払い待ちから仕入れ中へ変更する。これは検証専用であり、本番APIは変更していない。
+
+```text
+a:getCoreOrderDetailForFrontend first=1 reopened=1
+b-2:before paymentButton.disabled=false
+b-1:getCoreOrderDetailForFrontend reopened=1 afterConfirm=2
+b-2:after paymentButton.disabled=true
+PASS=true
+```
+
+- `frontend/scripts/verify-sales-order-detail-cache.cjs` により標準出力で検証した。`frontend/npm run build:gas` は typecheck / Vite build / emit-gas-html / design-system checks をすべて通過した。
+
+### PR / revert / deploy（3件まとめて記録）
+
+- PR #529 — OrderEditorPage の InventoryProductOptions 直接取得置換。squash merge SHA: `8527a17773bc9f66f80403f6c978e29c202cae96`。戻し方: `git revert 8527a17773bc9f66f80403f6c978e29c202cae96`。DEV の `getDeployedSha` は同SHAと一致。
+- PR #531 — QuoteEditorPage の InventoryProductOptions 直接取得置換。squash merge SHA: `ce4d724c1bed360f75af763132fa218d3eaf33fd`。戻し方: `git revert ce4d724c1bed360f75af763132fa218d3eaf33fd`。DEV の `getDeployedSha` は同SHAと一致。
+- PR #539 — Sales order detail keyed cache。squash merge SHA: `569beb6dc5a1fe1f2c52ab13d6c9703ad47ff875`。戻し方: `git revert 569beb6dc5a1fe1f2c52ab13d6c9703ad47ff875`。Deploy to DEV run `32797609301` は成功。`clasp run getDeployedSha` 生出力: `{ sha: '569beb6dc5a1fe1f2c52ab13d6c9703ad47ff875', deployedAt: '2026-08-25T01:28:13.343Z' }`。
+
+### 保留
+
+- Inbox conversation list / detail cache は保留。理由: inbox 同期シグナルが未定義であり、無効化なしのcache化は新着未反映を起こす。着手には `checkSyncSignals` の契約変更が必要であり、本作業の範囲外である。

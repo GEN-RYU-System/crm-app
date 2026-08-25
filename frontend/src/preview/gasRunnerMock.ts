@@ -5,6 +5,7 @@
  */
 import { ISSUER_HEADER } from '../content/ja/issuer';
 import { leadsCopy } from '../content/ja/leads';
+import { SALES_ORDER_STATUS } from '../content/ja/salesOrders';
 import { NAVIGATION_BY_ID, type NavigationItemId, type NavigationPermission } from '../app/navigation';
 
 const MOCK_SESSION_ID = 'preview-mock-session';
@@ -17,6 +18,7 @@ let mockDiscordConnectionStatus = {
   connected: false,
   clientId: '',
 };
+let previewOrderPaymentConfirmed = false;
 
 type PreviewWindow = Window & { __gasMockCallCounts?: Readonly<Record<string, number>> };
 
@@ -344,7 +346,12 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
       succeed({ success: true, orderId: _orderId });
     },
     confirmCoreOrderPaymentForFrontend(_s: string | null, _orderId: string) {
-      succeed({ success: false, reason: 'INVALID_STATUS' });
+      if (previewOrderPaymentConfirmed) {
+        succeed({ success: false, reason: 'INVALID_STATUS' });
+        return;
+      }
+      previewOrderPaymentConfirmed = true;
+      succeed({ success: true, status: SALES_ORDER_STATUS.sourcing, paymentStatus: 'PAID' });
     },
     getCoreOrderStatusOptionsForFrontend(_s: string | null) { succeed([]); },
     getCoreOrderDetailForFrontend(_s: string | null, orderId: string) {
@@ -371,9 +378,10 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
           OTHER_FEE: 300,
           INVOICE_TOTAL: 20000,
           INVOICE_TOTAL_JPY: 3000000,
-          PAYMENT_STATUS: 'UNPAID',
-          STATUS: 'AWAITING_PAYMENT',
-          PAYMENT_CONFIRMED_AT: '',
+          PAYMENT_STATUS: previewOrderPaymentConfirmed ? 'PAID' : 'UNPAID',
+          STATUS: previewOrderPaymentConfirmed ? SALES_ORDER_STATUS.sourcing : SALES_ORDER_STATUS.awaitingPayment,
+          awaitingPaymentStatus: SALES_ORDER_STATUS.awaitingPayment,
+          PAYMENT_CONFIRMED_AT: previewOrderPaymentConfirmed ? '2026-08-25T00:00:00.000Z' : '',
           NOTE: '',
           TRANSACTION_NOTE: '',
           INTERNAL_NOTE: '',
