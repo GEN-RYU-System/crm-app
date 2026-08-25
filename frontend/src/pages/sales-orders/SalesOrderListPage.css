@@ -1,8 +1,7 @@
 /* sticky band: PageHeader + PageToolbar combined; sits above DataTable thead (z-index 20 > 10).
-   padding-bottom absorbs PageToolbar's margin so the background covers the gap. */
-.sales-order-list-page__sticky-band { position: sticky; top: 0; z-index: 20; background: var(--color-page); padding-bottom: var(--page-toolbar-margin-bottom); }
-/* neutralise PageToolbar margin-bottom; spacing is handled by sticky-band padding-bottom */
-.sales-order-list-page__toolbar { margin-bottom: var(--space-none); }
+   No padding-bottom here: PageToolbar's natural margin-bottom provides the gap and is excluded
+   from getBoundingClientRect().height, so --_sticky-band-h stays accurate for thead top offset. */
+.sales-order-list-page__sticky-band { position: sticky; top: 0; z-index: 20; background: var(--color-page); }
 .sales-order-list-page__layout { display: flex; gap: var(--space-lg); align-items: flex-start; }
 /* sticky sidebar: sticks below the sticky band (top = band height via --_sticky-band-h);
    avoids position:fixed; max-height matches remaining viewport height */
@@ -14,7 +13,9 @@
 .sales-order-list-page__tab-count { font-size: var(--font-xs); color: var(--color-text-muted); }
 .sales-order-list-page__tab--active .sales-order-list-page__tab-count { color: var(--color-text-muted); }
 .sales-order-list-page__main { flex: 1; min-width: 0; }
-.sales-order-list-page__data-card { border-radius: var(--radius-data-table); overflow: hidden; padding: var(--space-none); }
+/* overflow:clip clips border-radius without creating a scroll container
+   (overflow:hidden would trap position:sticky on thead — see DataTable.css). */
+.sales-order-list-page__data-card { border-radius: var(--radius-data-table); overflow: clip; padding: var(--space-none); }
 .sales-order-list-page__data-state { padding: var(--space-xl); }
 .sales-order-list-page__payment-due-cell { --_badge-col: 5rem; display: inline-grid; grid-template-columns: var(--_badge-col) 1fr var(--_badge-col); align-items: center; gap: var(--space-xs); }
 .sales-order-list-page__payment-due-badge-slot { justify-self: end; }
