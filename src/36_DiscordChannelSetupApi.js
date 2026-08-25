@@ -21,6 +21,21 @@ var DISCORD_API_BASE = 'https://discord.com/api/v10';
 // ============================================================
 
 /**
+ * Discord APIエラーレスポンスから安全なサマリ文字列を作る（機密値を含まない）
+ * @param {any} data - discordRequest_ の data フィールド
+ * @returns {string} e.g. " [discord_code=50013: Missing Permissions]"
+ */
+function discordErrorDetail_(data) {
+  if (data && typeof data === 'object' && data.code !== undefined) {
+    return ' [discord_code=' + data.code + ': ' + (data.message || '') + ']';
+  }
+  if (typeof data === 'string' && data.length > 0 && data.length < 300) {
+    return ' [body: ' + data + ']';
+  }
+  return '';
+}
+
+/**
  * @param {string} botToken
  * @param {string} method  - 'get' | 'post' | 'patch'
  * @param {string} path    - '/guilds/...' など
@@ -65,7 +80,7 @@ function discordRequest_(botToken, method, path, body) {
 function findExistingChannel_(botToken, guildId, name, type) {
   var result = discordRequest_(botToken, 'get', '/guilds/' + guildId + '/channels', null);
   if (result.statusCode !== 200) {
-    Logger.log('findExistingChannel_: チャンネル一覧取得エラー status=' + result.statusCode);
+    Logger.log('findExistingChannel_: チャンネル一覧取得エラー status=' + result.statusCode + discordErrorDetail_(result.data));
     return null;
   }
   var channels = result.data;
@@ -107,7 +122,7 @@ function applyPermissionOverwrites_(botToken, channelId, guildId, botId) {
     }
   );
   if (everyoneResult.statusCode !== 204) {
-    Logger.log('applyPermissionOverwrites_: @everyone deny 設定エラー status=' + everyoneResult.statusCode);
+    Logger.log('applyPermissionOverwrites_: @everyone deny 設定エラー status=' + everyoneResult.statusCode + discordErrorDetail_(everyoneResult.data));
   }
 
   // Bot: VIEW_CHANNEL + SEND_MESSAGES + READ_MESSAGE_HISTORY allow
@@ -123,7 +138,7 @@ function applyPermissionOverwrites_(botToken, channelId, guildId, botId) {
     }
   );
   if (botResult.statusCode !== 204) {
-    Logger.log('applyPermissionOverwrites_: Bot allow 設定エラー status=' + botResult.statusCode);
+    Logger.log('applyPermissionOverwrites_: Bot allow 設定エラー status=' + botResult.statusCode + discordErrorDetail_(botResult.data));
   }
 }
 
@@ -182,10 +197,11 @@ function runDiscordAutoSetup(sessionId) {
         type: 4
       });
       if (categoryResult.statusCode !== 200 && categoryResult.statusCode !== 201) {
-        Logger.log('runDiscordAutoSetup: カテゴリ作成エラー status=' + categoryResult.statusCode);
+        var catDetail = discordErrorDetail_(categoryResult.data);
+        Logger.log('runDiscordAutoSetup: カテゴリ作成エラー status=' + categoryResult.statusCode + catDetail);
         return {
           success: false,
-          error: 'カテゴリの作成に失敗しました。(status: ' + categoryResult.statusCode + ')'
+          error: 'カテゴリの作成に失敗しました。(status: ' + categoryResult.statusCode + catDetail + ')'
         };
       }
       categoryId = categoryResult.data.id;
@@ -208,10 +224,11 @@ function runDiscordAutoSetup(sessionId) {
         parent_id: categoryId
       });
       if (ticketResult.statusCode !== 200 && ticketResult.statusCode !== 201) {
-        Logger.log('runDiscordAutoSetup: ticket-startチャンネル作成エラー status=' + ticketResult.statusCode);
+        var ticketDetail = discordErrorDetail_(ticketResult.data);
+        Logger.log('runDiscordAutoSetup: ticket-startチャンネル作成エラー status=' + ticketResult.statusCode + ticketDetail);
         return {
           success: false,
-          error: 'ticket-startチャンネルの作成に失敗しました。(status: ' + ticketResult.statusCode + ')'
+          error: 'ticket-startチャンネルの作成に失敗しました。(status: ' + ticketResult.statusCode + ticketDetail + ')'
         };
       }
       ticketChannelId = ticketResult.data.id;
