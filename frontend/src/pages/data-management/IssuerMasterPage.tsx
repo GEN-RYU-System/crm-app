@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, Card, PageHeader, Spinner, StatusMessage, Textarea, TextField } from '../../components/ui';
 import { ISSUER_HEADER, issuerCopy } from '../../content/ja/issuer';
-import { getCoreIssuer, updateCoreIssuer, type IssuerRecord } from '../../gas/client';
+import { updateCoreIssuer, type IssuerRecord } from '../../gas/client';
+import { useIssuerMasterCache } from './IssuerMasterCacheContext';
 import './IssuerMasterPage.css';
 
 // Editable field keys (excludes ISSUER_ID and IS_ACTIVE which are read-only)
@@ -72,26 +73,13 @@ function formToIssuerData(form: FormState): IssuerRecord {
 type SaveState = 'idle' | 'saving' | 'success' | 'error';
 
 export function IssuerMasterPage({ canEdit }: { canEdit: boolean }) {
-  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [loadError, setLoadError] = useState('');
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [saveError, setSaveError] = useState('');
+  const { issuer, error, loading, ensureLoaded, refresh, retry } = useIssuerMasterCache();
 
-  const load = useCallback(async () => {
-    setLoadState('loading');
-    setLoadError('');
-    try {
-      const issuer = await getCoreIssuer();
-      setForm(issuerToForm(issuer));
-      setLoadState('ready');
-    } catch (cause) {
-      setLoadError(cause instanceof Error ? cause.message : issuerCopy.loadError);
-      setLoadState('error');
-    }
-  }, []);
-
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void ensureLoaded(); }, [ensureLoaded]);
+  useEffect(() => { if (issuer) setForm(issuerToForm(issuer)); }, [issuer]);
 
   const handleChange = (key: FieldKey) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setSaveState('idle');
@@ -103,6 +91,7 @@ export function IssuerMasterPage({ canEdit }: { canEdit: boolean }) {
     setSaveError('');
     try {
       await updateCoreIssuer(formToIssuerData(form));
+      await refresh();
       setSaveState('success');
     } catch (cause) {
       setSaveError(cause instanceof Error ? cause.message : issuerCopy.saveError);
@@ -110,7 +99,7 @@ export function IssuerMasterPage({ canEdit }: { canEdit: boolean }) {
     }
   };
 
-  const isLoading = loadState === 'loading';
+  const isLoading = loading && issuer === null;
 
   return (
     <>
@@ -122,15 +111,15 @@ export function IssuerMasterPage({ canEdit }: { canEdit: boolean }) {
             {issuerCopy.loading}
           </StatusMessage>
         )}
-        {loadState === 'error' && (
+        {error !== undefined && (
           <StatusMessage variant="error">
-            {loadError || issuerCopy.loadError}
-            <Button variant="outline" size="sm" onClick={() => void load()}>
+            {error || issuerCopy.loadError}
+            <Button variant="outline" size="sm" onClick={() => void retry()}>
               {issuerCopy.retry}
             </Button>
           </StatusMessage>
         )}
-        {loadState === 'ready' && (
+        {issuer !== null && (
           <div className="issuer-master-form">
             <TextField
               label={issuerCopy.companyName}

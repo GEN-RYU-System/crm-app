@@ -2070,3 +2070,12 @@ PASS=true
 - 検証生出力: 既存6ドメインは各 `existing-*` 値を保持、新3ドメインは非null、全書込フック検査は `true`、`PASS=true`。
 - `frontend/npm run build:gas` と DEV `runCoreSchemaConformanceAudit()` は成功（総不一致0）。
 - Sensitive Content Check ではコメントの13桁ミリ秒タイムスタンプ例示が電話番号パターンに一致した。コード内で例示する際は非数値プレースホルダを使うこと。検査ルールは変更しない。
+
+---
+
+## アプリ全体プリフェッチ標準化 Phase 2-2 — Issuer settings cache
+
+- `IssuerMasterCacheContext`（`createListCache` + `SINGLE_KEY`）を追加し、Issuer settings ページの直接 `getCoreIssuer` 読込を置換した。
+- issuer信号では `SyncPoller` が cache を refresh し、保存成功後も同じ cache を refresh して最新のフォーム値へ更新する。
+- 検証生出力: `getCoreIssuerForFrontend initial=1 reopened=1 afterSignal=2 afterSave=3`、保存後の会社名は `Preview Company Updated`、`PASS=true`。
+- `frontend/npm run build:gas` は成功。
