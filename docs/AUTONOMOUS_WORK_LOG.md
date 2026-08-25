@@ -1915,3 +1915,9 @@ reopened __gasMockCallCounts ... "getDashboardKPIs":1
 getDashboardKPIs first=1 reopened=1
 PASS=true
 ```
+
+### PR / revert / deploy
+
+- PR #543 を squash merge。マージコミット SHA: `9457b42fd13c38657ecec8a9a67c760a8e27be72`。
+- 戻し方: `git revert 9457b42fd13c38657ecec8a9a67c760a8e27be72`。
+- Deploy to DEV run `32799722980` は成功。`clasp run getDeployedSha` 生出力: `{ sha: '9457b42fd13c38657ecec8a9a67c760a8e27be72', deployedAt: '2026-08-25T02:01:14.918Z' }`。
