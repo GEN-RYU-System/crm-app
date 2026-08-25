@@ -177,7 +177,10 @@ export function DiscordIntegrationPage({ repository }: Props) {
       const result = await repository.getOAuthStatus();
       setGuildId(result.guildId);
       setOauthStatus(result);
-      setSelectedGuildId(result.guildId ?? '');
+      setSelectedGuildId((currentGuildId) => {
+        if (result.guildId) return result.guildId;
+        return result.guilds.some((guild) => guild.id === currentGuildId) ? currentGuildId : '';
+      });
     } finally {
       setStatusCheckState('idle');
     }
