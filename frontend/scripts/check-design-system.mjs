@@ -177,8 +177,6 @@ const PREFETCH_EXEMPT_PROVIDERS = new Set([
   // （実際には ensureLeadFormOptions として登録済み。より正確な検査は今後追加）
   // CustomerAggregateCacheProvider: features/ 由来・SyncPoller に登録なし
   'CustomerAggregateCacheProvider',
-  // DiscordSettingsCacheProvider: SyncPoller に登録済みだが usePrefetch 登録が意図的にない
-  'DiscordSettingsCacheProvider',
 ]);
 const SYNC_POLLER_EXEMPT_PROVIDERS = new Set([
   // CustomerAggregateCacheProvider: SyncPoller には接続せず usePrefetch のみで管理
@@ -212,7 +210,6 @@ const GAS_CLIENT_IN_PAGES_ALLOWLIST = new Set([
   'src/pages/auth/ChangePasswordPage.tsx',    // changeOwnPasswordForFrontend (auth boundary)
   'src/pages/data-management/IssuerMasterPage.tsx', // updateCoreIssuer (save operation)
   'src/pages/orders/OrderDetailPage.tsx',     // type-only import (IssuerRecord)
-  'src/pages/orders/OrderEditorPage.tsx',     // getCoreIssuer (direct call – pending refactor like 2-8)
   'src/pages/sales-orders/SalesOrderDetailPage.tsx', // confirmCoreOrderPayment / upsertCorePurchase (save+action)
 ]);
 const pagesDir = resolve(srcDir, 'pages');

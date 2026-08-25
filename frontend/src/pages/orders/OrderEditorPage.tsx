@@ -8,7 +8,8 @@ import type { ShippingAddressDto, PaymentProfileDto, CustomerRepository } from '
 import { useCustomerAggregateCache } from '../../features/customers/CustomerAggregateCacheContext';
 import type { OrderCreatePayload, OrderRepository, OrderUpdatePayload } from '../../features/orders/contracts';
 import { InvoiceDocument } from '../../features/documents/InvoiceDocument';
-import { getCoreIssuer, type IssuerRecord } from '../../gas/client';
+import { type IssuerRecord } from '../../gas/client';
+import { useIssuerMasterCache } from '../data-management/IssuerMasterCacheContext';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
 import { useInventoryProductOptionsCache } from '../inventory/InventoryProductOptionsCacheContext';
 import { formatDate } from '../shared/dateFormat';
@@ -86,7 +87,6 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
   const [isAmountLocked, setIsAmountLocked] = useState(false);
-  const [issuer, setIssuer] = useState<IssuerRecord | null>(null);
   const [showPrint, setShowPrint] = useState(false);
   const [printData, setPrintData] = useState<PrintData | null>(null);
   const printNavigatePath = useRef(ORDER_EDITOR_PATHS.list);
@@ -113,10 +113,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
   // In edit mode: get existing data from OrderListCacheContext
   const { items: orderItems } = useOrderListCache();
   const { currencies, ensureLoaded: ensureCurrencies } = useCurrencyMasterCache();
-
-  useEffect(() => {
-    void getCoreIssuer().then((data) => setIssuer(data)).catch(() => {});
-  }, []);
+  const { issuer, ensureLoaded: ensureIssuer } = useIssuerMasterCache();
 
   useEffect(() => {
     if (!showPrint) return;
@@ -130,6 +127,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
       customerRepository.listCustomers(),
       ensureInventoryProductOptions(),
       ensureCurrencies(),
+      ensureIssuer(),
     ])
       .then(([customerList]) => {
         setCustomers(customerList.map((c) => ({ customerId: c.customerId, customerName: c.customerName })));
@@ -139,7 +137,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
         setMasterError(cause instanceof Error ? cause.message : ordersCopy.editor.masterLoadError);
         setMasterState('error');
       });
-  }, [customerRepository, ensureCurrencies, ensureInventoryProductOptions]);
+  }, [customerRepository, ensureCurrencies, ensureInventoryProductOptions, ensureIssuer]);
 
   // In edit mode: set initial values once order list is loaded
   useEffect(() => {
