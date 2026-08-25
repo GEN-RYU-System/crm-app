@@ -23,7 +23,10 @@ export type DiscordOAuthUrlResult = {
 };
 
 export type DiscordOAuthStatusResult = {
+  status: 'linked' | 'unlinked' | 'multiple' | 'error';
   guildId: string | null;
+  guilds: readonly { id: string; name: string }[];
+  error?: string;
 };
 
 export type DiscordAutoSetupResult = {
@@ -47,6 +50,7 @@ export type DiscordIntegrationRepository = {
   getChannels: () => Promise<DiscordChannelsResult>;
   generateOAuthUrl: () => Promise<DiscordOAuthUrlResult>;
   getOAuthStatus: () => Promise<DiscordOAuthStatusResult>;
+  saveGuildId: (guildId: string) => Promise<DiscordSaveResult>;
   runAutoSetup: () => Promise<DiscordAutoSetupResult>;
   getSetupStatus: () => Promise<DiscordSetupStatus>;
 };

@@ -50,6 +50,7 @@ interface GoogleScriptRun {
   getDiscordChannelsForFrontend(sessionId: string | null): void;
   generateDiscordOAuthUrl(sessionId: string | null): void;
   getDiscordOAuthStatus(sessionId: string | null): void;
+  saveDiscordGuildId(sessionId: string | null, guildId: string): void;
   runDiscordAutoSetup(sessionId: string | null): void;
   getDiscordSetupStatus(sessionId: string | null): void;
   createDiscordTicketForCustomer(sessionId: string | null, customerId: string): void;
