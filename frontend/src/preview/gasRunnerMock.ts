@@ -58,6 +58,18 @@ const MOCK_PERMISSIONS = {
 };
 
 const MOCK_QUOTES_ONLY_PERMISSIONS = { lead_view: true };
+const MOCK_INBOX_CONVERSATIONS = Array.from({ length: 25 }, (_, index) => {
+  const number = index + 1;
+  return {
+    id: `LDI-${String(number).padStart(5, '0')}`,
+    customerName: `Preview Inbox Customer ${number}`,
+    platform: number % 3 === 0 ? 'discord' : number % 2 === 0 ? 'instagram' : 'messenger',
+    status: number % 5 === 0 ? 'existing' : number % 4 === 0 ? 'followup' : number % 3 === 0 ? 'deal' : 'lead',
+    summary: `Preview conversation ${number}`,
+    updatedAt: `2026-08-${String(number).padStart(2, '0')}T10:00:00.000Z`,
+    unread: number % 2 === 0,
+  };
+});
 // The data-management route is rooted at /leads, so its parent guard must remain
 // accessible for the quote-only preview profile to render #/quotes.
 const QUOTES_ONLY_HIDDEN_NAVIGATION_IDS: readonly NavigationItemId[] = ['customers', 'orders', 'salesOrders', 'inbox'];
@@ -408,15 +420,26 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
       });
     },
     getInboxConversationsForFrontend(_s: string | null, _force: boolean) {
-      succeed([
+      succeed(MOCK_INBOX_CONVERSATIONS);
+      /* succeed([
         { id: 'preview-inbox-alpha', customerName: 'Preview Atlas',  platform: 'messenger',  status: 'lead',     summary: 'Preview lead conversation',             updatedAt: '10:20',    unread: true  },
         { id: 'preview-inbox-bravo', customerName: 'Preview Bravo',  platform: 'instagram',  status: 'deal',     summary: 'Preview deal conversation',             updatedAt: '09:45',    unread: false },
         { id: 'preview-inbox-charlie', customerName: 'Preview Charlie', platform: 'discord', status: 'existing', summary: 'Preview existing customer conversation', updatedAt: 'Yesterday', unread: false },
         { id: 'preview-inbox-delta', customerName: 'Preview Delta',  platform: 'messenger',  status: 'followup', summary: 'Preview follow-up conversation',         updatedAt: 'Monday',   unread: true  },
         { id: 'preview-inbox-echo',  customerName: 'Preview Echo',   platform: 'instagram',  status: 'archive',  summary: 'Preview archived conversation',          updatedAt: 'Last week', unread: false },
-      ]);
+      ]); */
     },
     getInboxConversationDetailForFrontend(_s: string | null, leadId: string) {
+      const conversation = MOCK_INBOX_CONVERSATIONS.find((item) => item.id === leadId);
+      if (conversation) {
+        const messageCount = leadId === 'LDI-00002' ? 75 : 2;
+        succeed({
+          conversation,
+          messages: Array.from({ length: messageCount }, (_, index) => ({ id: `${leadId}-${index + 1}`, sender: index % 2 === 0 ? 'customer' : 'operator', body: `Preview message ${index + 1}`, sentAt: `2026-08-25T10:${String(index % 60).padStart(2, '0')}:00.000Z` })),
+          karte: { customerName: conversation.customerName, company: `Preview Company ${leadId}`, platform: conversation.platform, status: conversation.status, nextAction: 'Preview follow-up', note: 'Preview note only.' },
+        });
+        return;
+      }
       const MOCK_DETAILS: Record<string, unknown> = {
         'preview-inbox-alpha':   { conversation: { id: 'preview-inbox-alpha',   customerName: 'Preview Atlas',   platform: 'messenger',  status: 'lead',     summary: 'Preview lead conversation',             updatedAt: '10:20',     unread: true  }, messages: [{ id: 'alpha-1', sender: 'customer', body: 'Preview message from customer.', sentAt: '10:12' }, { id: 'alpha-2', sender: 'operator', body: 'Preview reply from operator.', sentAt: '10:20' }], karte: { customerName: 'Preview Atlas',   company: 'Preview Company A', platform: 'Messenger',  status: 'Lead',              nextAction: 'Preview follow-up',     note: 'Preview note only.' } },
         'preview-inbox-bravo':   { conversation: { id: 'preview-inbox-bravo',   customerName: 'Preview Bravo',   platform: 'instagram',  status: 'deal',     summary: 'Preview deal conversation',             updatedAt: '09:45',     unread: false }, messages: [{ id: 'bravo-1', sender: 'customer', body: 'Preview deal message.', sentAt: '09:45' }],                                                                                                                                 karte: { customerName: 'Preview Bravo',   company: 'Preview Company B', platform: 'Instagram',  status: 'Deal',              nextAction: 'Preview qualification', note: 'Preview note only.' } },

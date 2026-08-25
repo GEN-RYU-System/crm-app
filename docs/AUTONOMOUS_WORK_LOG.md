@@ -2138,3 +2138,11 @@ PASS=true
 - 保存成功後は従来の一部のみの再取得ではなく、4値をまとめて再取得する。保存頻度が低い画面であるため、この挙動変更は許容する。
 - Botトークン保存後は `await refresh()` 完了後の最新スナップショットを入力に接続済み判定を行う。旧snapshotで判定して接続失敗表示になる事象を防ぐ。
 - 検証生出力: `discordSettings initial=4 reopened=4 afterSignal=8 afterSave=12`、保存後の接続済み成功表示を確認、`PASS=true`。
+
+---
+
+## アプリ全体プリフェッチ標準化 Phase 2-4 — Inbox conversation list cache
+
+- `InboxConversationListCacheContext`（`createListCache` + `SINGLE_KEY`）を追加し、一覧の画面ローカル読込を置換した。inbox権限で `usePrefetch` に登録し、inbox信号では `SyncPoller` が公開済みの `refresh()` を呼ぶ。
+- 検証生出力: `getInboxConversationsForFrontend initial=1 reopened=1 afterSignal=2`、`inboxRows initial=25 afterSignal=25`、`PASS=true`。
+- 受信箱は現時点で読取専用のため afterSave 未検証。将来 書き込み機能を実装する際は、保存成功後に Inbox cache の `refresh()` を呼び、かつ書込側で inbox 信号を発行すること。両方を実装しないと他担当者に反映されない。
