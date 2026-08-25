@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, Card, PageHeader, Spinner, StatusMessage, TextField } from '../../components/ui';
 import { discordIntegrationCopy } from '../../content/ja/discordIntegration';
 import type { DiscordConnectionStatus, DiscordIntegrationRepository, DiscordOAuthStatusResult, DiscordSetupStatus } from '../../features/discordIntegration/contracts';
+import { useDiscordSettingsCache } from './DiscordSettingsCacheContext';
 
-type LoadState = 'loading' | 'ready' | 'error';
 type SaveState = 'idle' | 'saving' | 'success' | 'error';
 type TokenConnectionState = 'idle' | 'saving' | 'connected' | 'connection-error' | 'save-error';
 type InviteState = 'idle' | 'opening' | 'error';
@@ -15,8 +15,6 @@ type Props = {
 };
 
 export function DiscordIntegrationPage({ repository }: Props) {
-  const [loadState, setLoadState] = useState<LoadState>('loading');
-  const [loadError, setLoadError] = useState('');
   const [connectionStatus, setConnectionStatus] = useState<DiscordConnectionStatus>({
     isTokenSet: false,
     tokenMask: discordIntegrationCopy.notSet,
@@ -51,31 +49,18 @@ export function DiscordIntegrationPage({ repository }: Props) {
   const [setupState, setSetupState] = useState<SetupState>('idle');
   const [setupError, setSetupError] = useState('');
   const [setupResult, setSetupResult] = useState<{ categoryId: string; ticketChannelId: string } | null>(null);
+  const { settings, error, loading, ensureLoaded, refresh, retry, getLatestSettings } = useDiscordSettingsCache();
 
-  const load = useCallback(async () => {
-    setLoadState('loading');
-    setLoadError('');
-    try {
-      const [status, channelsResult, oauthStatus, setupStatusResult] = await Promise.all([
-        repository.getConnectionStatus(),
-        repository.getChannels(),
-        repository.getOAuthStatus(),
-        repository.getSetupStatus(),
-      ]);
-      setConnectionStatus(status);
-      setChannels(channelsResult.channels);
-      setGuildId(oauthStatus.guildId);
-      setOauthStatus(oauthStatus);
-      setSelectedGuildId(oauthStatus.guildId ?? '');
-      setSetupStatus({ ...setupStatusResult, guildId: oauthStatus.guildId });
-      setLoadState('ready');
-    } catch (cause) {
-      setLoadError(cause instanceof Error ? cause.message : discordIntegrationCopy.loadError);
-      setLoadState('error');
-    }
-  }, [repository]);
-
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void ensureLoaded(); }, [ensureLoaded]);
+  useEffect(() => {
+    if (!settings) return;
+    setConnectionStatus(settings.connectionStatus);
+    setChannels(settings.channels);
+    setGuildId(settings.oauthStatus.guildId);
+    setOauthStatus(settings.oauthStatus);
+    setSelectedGuildId((current) => settings.oauthStatus.guildId ?? (settings.oauthStatus.guilds.some((guild) => guild.id === current) ? current : ''));
+    setSetupStatus(settings.setupStatus);
+  }, [settings]);
 
   const handleSaveToken = async () => {
     if (!tokenInput.trim()) return;
@@ -85,13 +70,9 @@ export function DiscordIntegrationPage({ repository }: Props) {
       const result = await repository.saveBotToken(tokenInput.trim());
       if (result.success) {
         setTokenInput('');
-        const status = await repository.getConnectionStatus();
-        setConnectionStatus(status);
-        if (status.connected) {
-          setTokenConnectionState('connected');
-        } else {
-          setTokenConnectionState('connection-error');
-        }
+        await refresh();
+        const refreshedSettings = getLatestSettings();
+        setTokenConnectionState(refreshedSettings?.connectionStatus.connected ? 'connected' : 'connection-error');
       } else {
         setTokenSaveError(result.error ?? discordIntegrationCopy.tokenSaveError);
         setTokenConnectionState('save-error');
@@ -109,8 +90,7 @@ export function DiscordIntegrationPage({ repository }: Props) {
     try {
       const result = await repository.saveClientId(clientIdInput.trim());
       if (result.success) {
-        const status = await repository.getConnectionStatus();
-        setConnectionStatus(status);
+        await refresh();
         setClientIdInput('');
         setClientIdSaveState('success');
       } else {
@@ -137,7 +117,7 @@ export function DiscordIntegrationPage({ repository }: Props) {
     try {
       const result = await repository.saveChannels(nextChannels);
       if (result.success) {
-        setChannels(nextChannels);
+        await refresh();
         setChannelInput('');
         setChannelSaveState('success');
       } else {
@@ -198,9 +178,7 @@ export function DiscordIntegrationPage({ repository }: Props) {
         setGuildSaveState('error');
         return;
       }
-      setGuildId(selectedGuildId);
-      setOauthStatus((current) => ({ ...current, status: 'linked', guildId: selectedGuildId }));
-      setSetupStatus((currentStatus) => ({ ...currentStatus, guildId: selectedGuildId }));
+      await refresh();
       setGuildSaveState('success');
     } catch (cause) {
       setGuildSaveError(cause instanceof Error ? cause.message : discordIntegrationCopy.guildSaveError);
@@ -215,7 +193,7 @@ export function DiscordIntegrationPage({ repository }: Props) {
     try {
       const result = await repository.saveChannels(nextChannels);
       if (result.success) {
-        setChannels(nextChannels);
+        await refresh();
         setChannelSaveState('idle');
       } else {
         setChannelSaveError(result.error ?? discordIntegrationCopy.channelAddError);
@@ -236,8 +214,7 @@ export function DiscordIntegrationPage({ repository }: Props) {
       if (result.success && result.categoryId && result.ticketChannelId) {
         setSetupState('success');
         setSetupResult({ categoryId: result.categoryId, ticketChannelId: result.ticketChannelId });
-        const nextStatus = await repository.getSetupStatus();
-        setSetupStatus(nextStatus);
+        await refresh();
       } else {
         setSetupError(result.error ?? discordIntegrationCopy.setupError);
         setSetupState('error');
@@ -248,7 +225,7 @@ export function DiscordIntegrationPage({ repository }: Props) {
     }
   };
 
-  if (loadState === 'loading') {
+  if (loading && settings === null) {
     return (
       <>
         <PageHeader title={discordIntegrationCopy.title} subtitle={discordIntegrationCopy.subtitle} />
@@ -260,13 +237,13 @@ export function DiscordIntegrationPage({ repository }: Props) {
     );
   }
 
-  if (loadState === 'error') {
+  if (error !== undefined) {
     return (
       <>
         <PageHeader title={discordIntegrationCopy.title} subtitle={discordIntegrationCopy.subtitle} />
         <StatusMessage variant="error">
-          {loadError || discordIntegrationCopy.loadError}
-          <Button variant="outline" size="sm" onClick={() => void load()}>
+          {error || discordIntegrationCopy.loadError}
+          <Button variant="outline" size="sm" onClick={() => void retry()}>
             {discordIntegrationCopy.retry}
           </Button>
         </StatusMessage>
