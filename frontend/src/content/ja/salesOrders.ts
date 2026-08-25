@@ -10,6 +10,11 @@ export const SALES_ORDER_PAYMENT_STATUS_BADGE_VARIANT: Record<string, BadgeVaria
   '保留':     'info',
 } as const;
 
+export const SALES_ORDER_STATUS = {
+  awaitingPayment: '支払い待ち',
+  sourcing: '仕入れ中',
+} as const;
+
 export const salesOrdersCopy = {
   eyebrow: 'Sales order management',
   title: '受注管理',
