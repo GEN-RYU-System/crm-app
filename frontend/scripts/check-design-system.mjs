@@ -160,28 +160,62 @@ for (const file of cacheContextFiles) {
   if (!source.includes('createListCache')) violations.push(`CacheContext does not use createListCache: ${relative(frontendDir, file)}`);
 }
 
-// 検査2・3: App.tsx の *CacheProvider ごとに usePrefetch・SyncPoller への登録を確認する
+// 検査2・3: App.tsx の *CacheProvider ごとに usePrefetch・SyncPoller への実登録を解析する
 // (a) 命名拡大: *ListCacheProvider から *CacheProvider 全般に拡大
-// Provider 名 → フック名: FooCacheProvider → useFooCache
-// 除外リスト（allowlist）: 以下は意図的に登録が省略されているため検査対象外
+// (b) 実登録解析: 文字列包含ではなく、フック返値が steps.load / refreshers の値として
+//     実際に使われているかを解析する
+
+/** フック呼び出しから分割代入された変数（エイリアス名）一覧を返す。
+ *  例: const { ensureLoaded: ensureIssuer } = useIssuerMasterCache()
+ *      → ['ensureIssuer']
+ *      const { prefetchBulk } = useInboxConversationDetailCache()
+ *      → ['prefetchBulk']
+ */
+function extractHookVars(source, hookName) {
+  const m = source.match(new RegExp(`const\\s+\\{([^}]+)\\}\\s*=\\s*${hookName}\\(\\s*\\)`));
+  if (!m) return [];
+  return m[1].split(',').map(s => {
+    s = s.trim();
+    const colon = s.indexOf(':');
+    // 'foo: alias' → 'alias'; 'foo' → 'foo'
+    return ((colon > -1 ? s.slice(colon + 1) : s).trim().split(/\s+/)[0] ?? '');
+  }).filter(Boolean);
+}
+
+/** usePrefetch.ts の steps 配列の load ラムダにフックの変数が使われているか解析する */
+function isRegisteredInSteps(prefetchSrc, hookName) {
+  const vars = extractHookVars(prefetchSrc, hookName);
+  if (vars.length === 0) return false;
+  // `load: () => ...varName...` パターンを検索（最大300文字以内で変数を探す）
+  return vars.some(v =>
+    new RegExp(`load:\\s*\\(\\)\\s*=>\\s*[\\s\\S]{0,300}?\\b${v}\\b`).test(prefetchSrc)
+  );
+}
+
+/** App.tsx の SyncPoller refreshers（useMemo）の本体にフックの変数が使われているか解析する */
+function isRegisteredInRefreshers(appSrc, hookName) {
+  const vars = extractHookVars(appSrc, hookName);
+  if (vars.length === 0) return false;
+  // refreshers = useMemo<T>(() => ({ ... }), [...]) の本体を抽出
+  const m = appSrc.match(/const\s+refreshers\s*=\s*useMemo[\s\S]*?\(\s*\(\s*\)\s*=>\s*\(\s*\{([\s\S]*?)\}\s*\)\s*,\s*\[/);
+  if (!m) return false;
+  const body = m[1];
+  return vars.some(v => new RegExp(`\\b${v}\\b`).test(body));
+}
+
+// 除外リスト: 意図的に登録が省略されているProvider
 const PREFETCH_EXEMPT_PROVIDERS = new Set([
-  // 詳細系キャッシュ: ページ遷移後にオンデマンドで呼ぶため prefetch steps に登録不要
+  // 詳細系キャッシュ: ページ遷移後にオンデマンドで呼ぶため steps への登録不要
   'CustomerDetailCacheProvider',
   'LeadDetailCacheProvider',
   'SalesOrderDetailCacheProvider',
-  // DashboardKpiCacheProvider: AppRouter 内で ensureLoaded を直接呼ぶため usePrefetch に登録不要
+  // DashboardKpiCacheProvider: AppRouter 内で ensureLoaded を直接呼ぶため usePrefetch 登録不要
   'DashboardKpiCacheProvider',
-  // InboxConversationDetailCacheProvider: prefetchBulk で別名登録のため hook 名ではマッチしない
-  'InboxConversationDetailCacheProvider',
-  // LeadFormOptionsCacheProvider: usePrefetch に import されているが別名なので文字列検査ではスキップ
-  // （実際には ensureLeadFormOptions として登録済み。より正確な検査は今後追加）
-  // CustomerAggregateCacheProvider: features/ 由来・SyncPoller に登録なし
-  'CustomerAggregateCacheProvider',
 ]);
 const SYNC_POLLER_EXEMPT_PROVIDERS = new Set([
   // CustomerAggregateCacheProvider: SyncPoller には接続せず usePrefetch のみで管理
   'CustomerAggregateCacheProvider',
-  // CurrencyMasterCacheProvider: 静的マスタのため SyncPoller refreshers には登録不要（usePrefetch のみで管理）
+  // CurrencyMasterCacheProvider: 静的マスタのため refreshers 登録不要（usePrefetch のみで管理）
   'CurrencyMasterCacheProvider',
 ]);
 const prefetchSource = await readFile(resolve(srcDir, 'app/usePrefetch.ts'), 'utf8');
@@ -189,13 +223,13 @@ const allCacheProviderNames = [...new Set([...appSource.matchAll(/<(\w+CacheProv
 if (allCacheProviderNames.length === 0) violations.push('cache template check: no *CacheProvider found in App.tsx — regex may be broken');
 for (const providerName of allCacheProviderNames) {
   const hookName = 'use' + providerName.replace('Provider', '');
-  // 検査2: usePrefetch.ts にフックが含まれていること（prefetch steps への登録を保証）
-  if (!PREFETCH_EXEMPT_PROVIDERS.has(providerName) && !prefetchSource.includes(hookName)) {
-    violations.push(`${providerName} is not registered in usePrefetch steps (${hookName} not found in usePrefetch.ts)`);
+  // 検査2: usePrefetch.ts の steps.load にフックの変数が実登録されているか解析する
+  if (!PREFETCH_EXEMPT_PROVIDERS.has(providerName) && !isRegisteredInSteps(prefetchSource, hookName)) {
+    violations.push(`${providerName} is not registered in usePrefetch steps (no load: lambda references ${hookName} vars)`);
   }
-  // 検査3: App.tsx にフックが含まれていること（SyncPoller refreshers への登録を保証）
-  if (!SYNC_POLLER_EXEMPT_PROVIDERS.has(providerName) && !appSource.includes(hookName)) {
-    violations.push(`${providerName} is not registered in SyncPoller refreshers (${hookName} not found in App.tsx)`);
+  // 検査3: App.tsx の SyncPoller refreshers にフックの変数が実登録されているか解析する
+  if (!SYNC_POLLER_EXEMPT_PROVIDERS.has(providerName) && !isRegisteredInRefreshers(appSource, hookName)) {
+    violations.push(`${providerName} is not registered in SyncPoller refreshers (no refreshers value references ${hookName} vars)`);
   }
 }
 
