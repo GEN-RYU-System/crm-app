@@ -13,10 +13,7 @@ async function getCounts(page) {
 
 async function main() {
   console.log('launching browser');
-  const browser = await chromium.launch({
-    headless: true,
-    executablePath: '/Users/tanizawashingo/Library/Caches/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-mac-arm64/chrome-headless-shell',
-  });
+  const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   try {
     page.setDefaultTimeout(10_000);

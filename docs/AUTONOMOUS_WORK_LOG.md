@@ -1891,3 +1891,27 @@ PASS=true
 ### 保留
 
 - Inbox conversation list / detail cache は保留。理由: inbox 同期シグナルが未定義であり、無効化なしのcache化は新着未反映を起こす。着手には `checkSyncSignals` の契約変更が必要であり、本作業の範囲外である。
+- Issuer settings は保留。`getCoreIssuerForFrontend` に対応する同期シグナルが既存6ドメインにないため、外部更新を無効化できない。着手には `checkSyncSignals` 契約変更が必要。
+- Discord settings は保留。接続状態・チャンネル・OAuth・setup状態に対応する同期シグナルが既存6ドメインにないため、外部更新を無効化できない。着手には `checkSyncSignals` 契約変更が必要。
+
+---
+
+## 【Dashboard KPI cache】計画8
+
+### 合格条件
+
+- Dashboard を開いた後、別画面へ移動してDashboardへ戻っても `getDashboardKPIs` が増えない。
+- 初期表示時の `getDashboardKPIs` は全体で1回である。
+- Dashboard KPI は LEADS シートを読むため、既存 `leads` 同期シグナルの変更時に refresh する。
+
+### 変更と検証
+
+- `DashboardKpiCacheContext` を `createListCache + SINGLE_KEY` で追加し、AppRouter の直接取得を context の `ensureLoaded` / `refresh` 参照に置換した。
+- SyncPoller の `leads` refresher で lead list とDashboard KPIを同時にrefreshする。
+
+```text
+first __gasMockCallCounts ... "getDashboardKPIs":1
+reopened __gasMockCallCounts ... "getDashboardKPIs":1
+getDashboardKPIs first=1 reopened=1
+PASS=true
+```
