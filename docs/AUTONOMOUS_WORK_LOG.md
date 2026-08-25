@@ -2536,3 +2536,55 @@ TestViolationCacheProvider is not registered in SyncPoller refreshers (no refres
 - PR #608 squash SHA: `13b46d5ca1f22c17c907ed2bf17659c10e8e3cac`
 - 戻し方: `git revert 13b46d5ca1f22c17c907ed2bf17659c10e8e3cac`
 - `getDeployedSha`: `{ sha: "13b46d5ca1f22c17c907ed2bf17659c10e8e3cac", deployedAt: "2026-08-25T21:23:15.684Z" }` → 一致 ✓
+
+---
+
+## 【autoFillStaffId修正】担当者ID自動入力をSTAFF_ID逆引きへ変更 — PR #614
+
+### 原因
+
+`src/26_Triggers.js` の `autoFillStaffId` が担当者マスタの `Discord ID` 列を読んで
+リードの `担当者ID` 列に Discord Snowflake ID（17〜19桁の数字）を書き込んでいた。
+
+Registry（`src/00_CoreSchemaRegistry.js`）では `担当者ID` は `STAFF_ID`（LDO-xxxx形式）の外部キーと定義されており、
+関数名・実装・スキーマ定義が三者三様に乖離していた。
+
+この乖離により DEV 環境で過去 59 件の不正値（Discord Snowflake ID）が
+`担当者ID` 列に書き込まれ、`repairDevLeadAssigneeIds()` による一括修復が必要となった。
+修復後の現時点では orphan=0 だが、担当者を選び直す操作のたびに再破損するリスクが残存していた。
+
+### 変更内容
+
+**`src/26_Triggers.js`**（`autoFillStaffId` 関数のみ）
+
+| 変更前 | 変更後 |
+|--------|--------|
+| `discordCol = staffHeaders.indexOf('Discord ID')` | `staffMasterIdCol = staffHeaders.indexOf('担当者ID')` |
+| `if (discordCol === -1) return;` | `if (staffMasterIdCol === -1) return;` |
+| `const discordId = staffData[i][discordCol]` | `const staffMasterId = staffData[i][staffMasterIdCol]` |
+| `setValue(discordId)` | `setValue(staffMasterId)` |
+
+**`src/99_DevStaffDiscordIdCount.js`**（DEV読み取り専用）
+- `devCountStaffDiscordIds()`: 担当者マスタ Discord ID 列の実値件数と STAFF_ID の LDO 形式整合性を確認
+
+**`scripts/test-auto-fill-staff-id.js`**
+- 8ケース単体テスト（ローカルPASS確認済み）
+
+### clasp検証（develop merge + DEV deploy後に実施）
+
+```
+clasp run devCountStaffDiscordIds
+# → discordIdFilledCount: <N件> / autoFillWillWriteLdoOnly: true を確認
+
+clasp run runCoreSchemaConformanceAudit
+# → 総不一致 = 1（CUSTOMERS 担当者ID のみ）を確認
+```
+
+### mergeCommit
+
+`[develop squash merge後に記入]`
+
+### 戻し方
+
+`git revert <mergeCommit>` で `autoFillStaffId` が旧 Discord ID 書き込みに戻る。
+リード側 `担当者ID` の再修復は `repairDevLeadAssigneeIds()` を使う。
