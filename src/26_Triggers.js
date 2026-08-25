@@ -48,34 +48,34 @@ function updateSheetTimestamp(e) {
 }
 
 /**
- * 担当者選択時にDiscord IDを自動入力
+ * 担当者選択時にSTAFF_ID（LDO形式）を自動入力
  */
 function autoFillStaffId(e) {
   if (!e || !e.source) return;
-  
+
   const sheet = e.source.getActiveSheet();
   const sheetName = sheet.getName();
-  
+
   const targetSheets = [
     CONFIG.SHEETS.LEADS_IN,
     CONFIG.SHEETS.LEADS_OUT
   ];
-  
+
   if (!targetSheets.includes(sheetName)) return;
-  
+
   const editedRow = e.range.getRow();
   if (editedRow === 1) return;
-  
+
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const staffColIndex = headers.indexOf('担当者');
-  
+
   // 担当者列が編集された場合のみ
   if (e.range.getColumn() !== staffColIndex + 1) return;
-  
+
   const staffName = e.value;
   if (!staffName) return;
-  
-  // 担当者マスタからDiscord ID取得
+
+  // 担当者マスタからSTAFF_ID取得
   const ss = e.source;
   const staffSheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
   if (!staffSheet || staffSheet.getLastRow() < 2) return;
@@ -87,9 +87,9 @@ function autoFillStaffId(e) {
   const familyNameCol = staffHeaders.indexOf('苗字（日本語）');
   const givenNameCol = staffHeaders.indexOf('名前（日本語）');
   const oldNameCol = staffHeaders.indexOf('氏名（日本語）');
-  const discordCol = staffHeaders.indexOf('Discord ID');
+  const staffMasterIdCol = staffHeaders.indexOf('担当者ID');
 
-  if (discordCol === -1) return;
+  if (staffMasterIdCol === -1) return;
   if (familyNameCol === -1 && givenNameCol === -1 && oldNameCol === -1) return;
 
   for (let i = 1; i < staffData.length; i++) {
@@ -108,10 +108,10 @@ function autoFillStaffId(e) {
     }
 
     if (fullName === staffName) {
-      const discordId = staffData[i][discordCol];
-      const staffIdColIndex = headers.indexOf('担当者ID');
-      if (staffIdColIndex !== -1 && discordId) {
-        sheet.getRange(editedRow, staffIdColIndex + 1).setValue(discordId);
+      const staffMasterId = staffData[i][staffMasterIdCol];
+      const leadStaffIdColIndex = headers.indexOf('担当者ID');
+      if (leadStaffIdColIndex !== -1 && staffMasterId) {
+        sheet.getRange(editedRow, leadStaffIdColIndex + 1).setValue(staffMasterId);
       }
       break;
     }
