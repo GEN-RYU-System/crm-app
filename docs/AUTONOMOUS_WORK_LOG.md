@@ -2079,3 +2079,10 @@ PASS=true
 - issuer信号では `SyncPoller` が cache を refresh し、保存成功後も同じ cache を refresh して最新のフォーム値へ更新する。
 - 検証生出力: `getCoreIssuerForFrontend initial=1 reopened=1 afterSignal=2 afterSave=3`、保存後の会社名は `Preview Company Updated`、`PASS=true`。
 - `frontend/npm run build:gas` は成功。
+
+---
+
+## Discord同期信号 — 状態読込からの発行を除外
+
+- `getDiscordOAuthStatus` は単一Guildを自動保存する読込経路でもある。ここでdiscord信号を発行すると、Discord settings cache の読込が信号を生成し、SyncPoller の再読込連鎖を起こし得る。
+- 信号発行は明示保存 `saveDiscordGuildId` のみとし、読込経路の発行を除外した。
