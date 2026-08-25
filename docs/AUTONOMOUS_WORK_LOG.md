@@ -1969,8 +1969,61 @@ PR番号とrevert SHA: PR作成後に記載する（下記「PR / revert」欄�
 
 ### PR / revert
 
-- PR番号: 作成後に記載
-- 戻し方: `git revert <squash SHA>`（PR作成・マージ後に確定）
+- PR #565: https://github.com/GEN-RYU-System/crm-app/pull/565
+- 戻し方: `git revert <squash SHA>`（squash mergeのSHAが確定後に記載）
+
+---
+
+## google.script.run 送信上限調査（2026-08-25）
+
+### 1. ファイルサイズ上限
+
+**【事実】公式ドキュメント**:
+- `google.script.run` のペイロードサイズ上限は公式に記載なし。
+  - 参照: https://developers.google.com/apps-script/guides/html/communication
+  - Quotas ページにも記載なし（`UrlFetchApp` の50MB/コールは別物）
+- Apps Script の Blob サイズ上限はサーバーサイドで **50 MB（52,428,800 bytes）**。`DriveApp.createFile()` で50MB超は失敗。
+
+**【未確認】コミュニティ実測値**:
+- Google Apps Script コミュニティのスレッドに「~52,428,700 bytes（50 MiB − 100 bytes）で 'document too large' エラー」との報告あり。
+  - 出典: https://groups.google.com/g/google-apps-script-community/c/ZttIwGP6Rxk
+  - 単一報告。方向（クライアント→サーバー or サーバー→クライアント）・再現性は未確認。
+
+**実測方法**: クライアント側でランダムバイト列を生成しbase64化 → `google.script.run` で送信 → サイズを段階的に増やし失敗点を記録する。ただしCRM開発環境では未実測。
+
+### 2. 複数ファイル同時送信の制約
+
+**【事実】（公式）**:
+- 複数のbase64文字列を配列またはオブジェクトのプロパティとして1回のコールで渡すことは可能。引数の数・合計サイズの公式制限は未記載。
+- フォーム要素を渡す場合は「単独引数必須」の制約あり（base64文字列の場合は非該当）。
+- 同時並行コール上限: **最大10並列**（11件目はキューイング）。
+- スクリプト実行時間制限: **6分/実行**。
+
+**【推測】合計ペイロード**:
+- ~50MB境界はコールの「全引数の合計シリアライズサイズ」に適用される可能性がある。10MBのファイル5件をbase64化すると合計~66.6MB → 境界超過リスクあり。
+
+### 3. base64 変換による容量増加率
+
+**【事実】理論値（RFC 4648）**:
+- 3バイト入力 → 4文字出力。大きなファイルでは **4/3 = 約33.33% の増加**。
+- 例: 37.5 MB のPDFをbase64化 → 約50 MB。
+
+**【事実】GAS固有考慮事項**:
+- `Utilities.base64Encode(blob.getBytes())` / `Utilities.base64Decode(string)` で変換可能（サーバーサイド）。
+- サーバーサイドで Blob とbase64文字列が同時にメモリ上に存在する場合、30 MBファイルで最大~70 MB のピークメモリが必要（【推測】公式未記載）。
+
+**実測方法**: GAS側で `Utilities.base64Encode(Utilities.newBlob(new Array(N).fill(0)))` を N を変えて実行し、エラー発生点を記録する。
+
+### まとめ（設計判断用）
+
+| 項目 | 値 | 信頼度 |
+|------|-----|--------|
+| `google.script.run` 公式上限 | 未記載 | 高（事実） |
+| コミュニティ実測上限 | ~50 MB | 低（単一報告） |
+| base64 増加率 | 33.33% | 高（事実） |
+| base64後の実効上限（上限50MB想定） | 約37.5 MB raw | 中（推測） |
+| 同時並行コール上限 | 10 | 高（事実） |
+| スクリプト実行時間 | 6分 | 高（事実） |
 
 ---
 
