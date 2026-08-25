@@ -2189,3 +2189,14 @@ PASS=true
 - OrderDetailPage の直接 `getCoreOrderDetail` を既存 `SalesOrderDetailCacheContext` の orderId keyed cacheへ置換した。同一API・同一DTOのため新cacheは追加していない。
 - orders信号は既存の全既知キーrefreshを共用する。配送・金額の保存成功後は該当orderIdの `await refresh(orderId)` で最新化する。
 - 検証生出力: `getCoreOrderDetailForFrontend initial=1 reopened=1 afterSignal=2 afterSave=3`、`PASS=true`。
+
+---
+
+## DataTable sticky-header の border-collapse 修正 — PR #585 (2026-08-25)
+
+- `position:sticky` + `border-collapse:collapse` の組み合わせで、ブラウザが sticky `<th>` 要素を `<td>` 行の下側にペイントする既知バグを修正した。
+- 変更箇所: `frontend/src/components/ui/DataTable/DataTable.css` 1行追加。`.ui-data-table--sticky-header .ui-data-table__table { border-collapse: separate; border-spacing: 0; }` を追加。非 sticky テーブルの `border-collapse:collapse` は維持。
+- `border-top` を使用せず `border-bottom` のみのため、`separate` への切替で二重ボーダーは発生しない。
+- PR #585 マージコミット SHA: `0deb463fc7d2a554807fdb89c510702329654456`。戻し方: `git revert 0deb463fc7d2a554807fdb89c510702329654456`。
+- 教訓: `border-collapse:collapse` と `position:sticky` は共存不可。sticky thead では必ず `border-collapse:separate; border-spacing:0` を使う。
+- スキーマ監査: 顧客マスタ 1 件のみ（既知・PR#581 記録済み）、新規不一致なし。
