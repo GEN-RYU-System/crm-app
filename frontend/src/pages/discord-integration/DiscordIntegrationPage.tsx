@@ -23,11 +23,15 @@ export function DiscordIntegrationPage({ repository }: Props) {
     botName: '',
     botId: '',
     connected: false,
+    clientId: '',
   });
 
   const [tokenInput, setTokenInput] = useState('');
   const [tokenConnectionState, setTokenConnectionState] = useState<TokenConnectionState>('idle');
   const [tokenSaveError, setTokenSaveError] = useState('');
+  const [clientIdInput, setClientIdInput] = useState('');
+  const [clientIdSaveState, setClientIdSaveState] = useState<SaveState>('idle');
+  const [clientIdSaveError, setClientIdSaveError] = useState('');
 
   const [channels, setChannels] = useState<string[]>([]);
   const [channelInput, setChannelInput] = useState('');
@@ -89,6 +93,27 @@ export function DiscordIntegrationPage({ repository }: Props) {
     } catch (cause) {
       setTokenSaveError(cause instanceof Error ? cause.message : discordIntegrationCopy.tokenSaveError);
       setTokenConnectionState('save-error');
+    }
+  };
+
+  const handleSaveClientId = async () => {
+    if (!clientIdInput.trim()) return;
+    setClientIdSaveState('saving');
+    setClientIdSaveError('');
+    try {
+      const result = await repository.saveClientId(clientIdInput.trim());
+      if (result.success) {
+        const status = await repository.getConnectionStatus();
+        setConnectionStatus(status);
+        setClientIdInput('');
+        setClientIdSaveState('success');
+      } else {
+        setClientIdSaveError(result.error ?? discordIntegrationCopy.clientIdSaveError);
+        setClientIdSaveState('error');
+      }
+    } catch (cause) {
+      setClientIdSaveError(cause instanceof Error ? cause.message : discordIntegrationCopy.clientIdSaveError);
+      setClientIdSaveState('error');
     }
   };
 
@@ -256,13 +281,11 @@ export function DiscordIntegrationPage({ repository }: Props) {
             </Button>
           </div>
         </div>
-      </Card>
 
-      <Card>
-        <h2 style={{ marginBottom: 'var(--space-lg)', fontSize: 'var(--font-md)', fontWeight: 600 }}>
-          {discordIntegrationCopy.connectionSection}
-        </h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+        <div style={{ marginTop: 'var(--space-xl)', paddingTop: 'var(--space-xl)', borderTop: '1px solid var(--color-border)' }}>
+          <h3 style={{ marginBottom: 'var(--space-md)', fontSize: 'var(--font-sm)', fontWeight: 600 }}>
+            {discordIntegrationCopy.connectionSection}
+          </h3>
           <div style={{ fontSize: 'var(--font-sm)' }}>
             {connectionStatus.isTokenSet ? (
               <>
@@ -285,6 +308,48 @@ export function DiscordIntegrationPage({ repository }: Props) {
                 {discordIntegrationCopy.connectionStatus.notSet}
               </p>
             )}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 'var(--space-xl)', paddingTop: 'var(--space-xl)', borderTop: '1px solid var(--color-border)' }}>
+          <h3 style={{ marginBottom: 'var(--space-md)', fontSize: 'var(--font-sm)', fontWeight: 600 }}>
+            {discordIntegrationCopy.clientIdLabel}
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+            {!connectionStatus.clientId && (
+              <p style={{ color: 'var(--color-text-muted, gray)', fontSize: 'var(--font-sm)', margin: 0 }}>
+                {discordIntegrationCopy.clientIdGuide}
+              </p>
+            )}
+            <TextField
+              label={discordIntegrationCopy.clientIdLabel}
+              value={clientIdInput}
+              onChange={(e) => { setClientIdSaveState('idle'); setClientIdInput(e.target.value); }}
+              placeholder={connectionStatus.clientId || discordIntegrationCopy.clientIdPlaceholder}
+              fullWidth
+            />
+            {connectionStatus.clientId && (
+              <p style={{ fontSize: 'var(--font-sm)', margin: 0 }}>
+                <code>{connectionStatus.clientId}</code>
+              </p>
+            )}
+            {clientIdSaveState === 'success' && (
+              <StatusMessage variant="success">{discordIntegrationCopy.clientIdSaveSuccess}</StatusMessage>
+            )}
+            {clientIdSaveState === 'error' && (
+              <StatusMessage variant="error">{clientIdSaveError || discordIntegrationCopy.clientIdSaveError}</StatusMessage>
+            )}
+            <div>
+              <Button
+                variant="secondary"
+                onClick={() => void handleSaveClientId()}
+                loading={clientIdSaveState === 'saving'}
+                loadingText={discordIntegrationCopy.savingClientId}
+                disabled={!clientIdInput.trim()}
+              >
+                {discordIntegrationCopy.saveClientId}
+              </Button>
+            </div>
           </div>
         </div>
       </Card>

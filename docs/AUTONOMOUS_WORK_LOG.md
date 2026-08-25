@@ -266,6 +266,21 @@ design-system checks passed
 
 ---
 
+## 【InventoryProductOptions cache】Quote editor の直接取得置換
+
+### 合格条件（実装前定義）
+
+- orders または quotes 権限の裏読み完了時点で `getInventoryProductOptions` は全体で1回。
+- 見積編集を開いても同呼び出しは増えない。見積の保存処理は変更しない。
+
+### 変更と生出力
+
+- `QuoteEditorPage` の直接 `getInventoryProductOptions()` を `InventoryProductOptionsCacheContext` の `ensureLoaded` / `products` 参照に置換した。
+- Quote editor 表示後の `__gasMockCallCounts.getInventoryProductOptions`: `1`。
+- `npm run build:gas`: typecheck / Vite build / design-system checks passed。
+
+---
+
 ## 【発行元マスタseed匿名化】公開記載ルール準拠 — PR #493
 
 ### 変更内容
@@ -1100,8 +1115,8 @@ git revert <マージコミットSHA>
 
 - 日時: 2026-08-24
 - PR: #（マージ後に記録）
-- マージコミットSHA: （マージ後に記録）
-- 戻し方: git revert <マージコミットSHA>
+- マージコミットSHA: 特定できず（PR番号が未記録のため）
+- 戻し方: 特定できず。PR番号が判明次第、追記すること
 
 ### 根本原因
 
@@ -1148,11 +1163,12 @@ git revert <マージコミットSHA>
 ## 【18】PR13: 受注管理詳細ページ（読み取り専用）
 
 - PR番号: #406
-- マージコミットSHA: （マージ後に記録）
+- マージコミットSHA: be222b9fbfbe5884408cc3abaad96b0b2657e82a
+  （書換え前SHA: d32192c51fa3e9df63c67c2228c54a46ab58e635 ※2026-08-24の履歴書換え2回により無効）
 - 対象: /sales-orders/:orderId
 - 新規ファイル: SalesOrderDetailPage.tsx, SalesOrderDetailPage.css
 - GAS: getCoreOrderDetailForFrontend を 28_CoreOrderReadApi.js に追加
-- 戻し方: git revert <マージコミットSHA>
+- 戻し方: git revert be222b9fbfbe5884408cc3abaad96b0b2657e82a
 - dryRun（2026-08-23）: 175件中変更あり0件。実害なし。
 - PO実機確認: OD-00175（登録なし確認）+ OD-00164（実データ確認）が必要
 
@@ -1192,8 +1208,9 @@ git revert <マージコミットSHA>
 - 日時: 2026-08-24
 - PR: #448
 - ブランチコミット SHA: ba69a4e5ce5fc888a2b666dda544189044eb5c9c
-- マージコミット SHA: （マージ後に記録）
-- 戻し方: git revert <マージコミットSHA>
+- マージコミット SHA: dbbf1b2aa66cd749ec95304b81c45854f300ff25
+  （書換え前SHA: 16727d81766135ab5cc112acc28c11fca3e67e86 ※2026-08-24の履歴書換え2回により無効）
+- 戻し方: git revert dbbf1b2aa66cd749ec95304b81c45854f300ff25
 
 ### 変更内容
 
@@ -1249,8 +1266,9 @@ git revert <マージコミットSHA>
 - 日時: 2026-08-24
 - ブランチ: release/discord-oauth-invite
 - PR: #459
-- マージコミット SHA: （マージ後に記録）
-- 戻し方: git revert <マージコミットSHA>
+- マージコミット SHA: 22cecdde7da027b56f9a70ff58f17540e0e889ca
+  （書換え前SHA: f78b00b7dd588f13823418a973c99219cd39a6c2 ※2026-08-24の履歴書換え2回により無効）
+- 戻し方: git revert 22cecdde7da027b56f9a70ff58f17540e0e889ca
 
 ### 変更ファイル一覧と目的
 
@@ -1679,6 +1697,61 @@ Playwrightを実行できるブラウザ接続を用意し、既存 `?preview` �
 - PR #525のCIで、`Check configured secret patterns` ステップはsuccessを確認した。
 - ワークフローは`pull_request`専用のため、developへのpush単独では同ステップを起動しない。後続のdocs PRで同一develop内容に対するステップ成功を確認する。
 
+## 【Discord招待・Guild連携・チャンネルセットアップ認証補完】PR作成前記録
+
+### 対象
+
+- `src/35_DiscordOAuthApi.js`: `generateDiscordOAuthUrl`、`getDiscordOAuthStatus`。
+- `src/36_DiscordChannelSetupApi.js`: `runDiscordAutoSetup`、`getDiscordSetupStatus`。
+
+### 変更・検証
+
+- 各関数で`checkPermission('admin_access')`の前に`setEmailFromSession(sessionId)`を追加した。
+- フロントのGASクライアントは対象4操作すべてでsessionIdを渡しているため、フロント変更は不要だった。
+- 全Discord GAS関数の順序監査で不備0件、`npm run build:gas`成功、`?preview#/discord-integration`のPlaywright操作確認が成功した。
+
+### 戻し方
+
+- マージ後のPRを `git revert <mergeCommit SHA>` で戻す。
+
+## 【Discord招待・Guild連携・チャンネルセットアップ認証補完】マージ記録
+
+- PR #532 mergeCommit: `df2f636ce3e9250687e74b94584fba8e36668fd9`。
+- 対象4関数で、sessionIdからのメール設定を管理権限確認より前に行う順序へ統一した。
+
+## 【Discord連携設定カード統合・Application ID入力】PR作成前記録
+
+### 変更ファイルと目的
+
+- `src/34_DiscordSettingsApi.js`: Application ID保存APIと接続状態の公開Application ID返却を追加。
+- `frontend/src/gas/client.ts`、`frontend/src/gas/types.d.ts`、`frontend/src/features/discordIntegration/contracts.ts`、`frontend/src/features/discordIntegration/gasAdapter.ts`: GAS APIの型・呼び出しを追加。
+- `frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx`、`frontend/src/content/ja/discordIntegration.ts`、`frontend/src/preview/gasRunnerMock.ts`: 統合カード、案内文、previewモックを追加。
+
+### 着手前確定（U1〜U4）
+
+- U1: `src/35_DiscordOAuthApi.js`が`DISCORD_CLIENT_ID`を読み出す。新APIも同じキー名へ保存する。
+- U2: 実行コードとフロントにCLIENT_SECRET参照はない。`docs/DISCORD_FEATURE_CATCHUP.md`の設計上の言及だけである。
+- U3: カード構成は`frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx`が保持する。トークン設定・接続状態の2カードを1カードへ統合し、監視チャンネル・Bot招待・チャンネルセットアップは分離を維持する。
+- U4: `src/34_DiscordSettingsApi.js`の`saveDiscordBotToken`を保存APIのパターンとし、sessionメール設定後に管理権限確認してからScript Propertiesへ保存する。
+- `.claspignore`を確認し、変更したGASファイルは除外規則に一致せずDEV配布対象である。
+
+### セキュリティ・動作検証（S・V）
+
+- S1: 新APIは`setEmailFromSession(sessionId)`の後に`checkPermission('admin_access')`を実行することを静的検証した。
+- S2: 接続状態APIはBotトークンを返さず、従来どおりマスク表示だけを返す。
+- S3: 実トークン・実Application IDをログ、コミット、PR本文へ記載しない。
+- V1/V3/V4: `?preview#/discord-integration`のPlaywrightで、統合カード、トークン保存接続、Application ID未設定案内、保存後の案内消去・全文表示、既存3カード表示を確認した。
+- V2: `npm run build:gas`成功。
+
+### 戻し方
+
+- マージ後のPRを `git revert <mergeCommit SHA>` で戻す。
+
+## 【Discord連携設定カード統合・Application ID入力】マージ記録
+
+- PR #534 mergeCommit: `96a911664d4f274a4e6752afa65277aa5d819310`。
+- 統合カード、管理者限定のApplication ID保存、固定文字列機密検査、preview操作検証を完了した。
+
 ### 読み替え済みSHA
 
 - マージコミット SHA: f5740e95a9ee868fe7d8d67251a2ef894643a873
@@ -1729,8 +1802,9 @@ Playwrightを実行できるブラウザ接続を用意し、既存 `?preview` �
 - マージコミット SHA: 953338be7edf8d66df8aa139e72ee255a67105f8
   戻し方: git revert 953338be7edf8d66df8aa139e72ee255a67105f8
   （書換え前SHA: b7fb2bd00f73ef0e02637f24049eeeec68aeb335 ※2026-08-24の履歴書換え2回により無効）
-- マージコミット SHA: ba69a4e5ce5fc888a2b666dda544189044eb5c9c
-  戻し方: git revert ba69a4e5ce5fc888a2b666dda544189044eb5c9c
+- ブランチコミットSHA: ba69a4e5ce5fc888a2b666dda544189044eb5c9c（参考。revertには使用不可）
+  マージコミットSHA: dbbf1b2aa66cd749ec95304b81c45854f300ff25
+  戻し方: git revert dbbf1b2aa66cd749ec95304b81c45854f300ff25
   （書換え前SHA: fd6a22c86d15055bae64dcd873d461e38c353a25 ※2026-08-24の履歴書換え2回により無効）
 - マージコミット SHA: 6358ba06c95faad54e23cba6c970446125968b23
   戻し方: git revert 6358ba06c95faad54e23cba6c970446125968b23
@@ -1773,3 +1847,47 @@ $ CRM_MAX_WORKTREES=1 .githooks/pre-push </dev/null
 ERROR: 18 worktrees; limit is 1. Run scripts/janitor.sh first.
 exit=1
 ```
+
+## 2026-08-25 清掃員PR-2 検証
+
+- dry-run検出を受け、develop/main保護、7日mtime保護、JANITOR_ONLY_PATH隔離モードを追加。probeのみを隔離撤去し、既存worktreeは残存確認済み。
+
+## 新規クローンの画面検証前提（運用改善）
+
+- 新しい clone では、画面検証の前に `frontend/` で `npm ci` を実行し、続けて `npx playwright install chromium` と `npx playwright install chromium-headless-shell` を実行する。
+- `chromium-headless-shell` が unknown browser で失敗した場合は、`npx playwright install` を実行する。導入失敗時は生出力を記録して画面検証および PR 作成を停止する。
+
+---
+
+## 【Sales order detail keyed cache】計画3
+
+### 合格条件
+
+- 同一SPAセッションで受注詳細を開く→一覧へ戻る→同じ詳細を再度開いたとき、`getCoreOrderDetailForFrontend` の呼び出し数が増えない。
+- 入金確定後、detail key の refresh により同関数が1回追加で呼ばれ、`STATUS` を使う既存の入金確認ボタンが有効から無効へ変化する。ステータス表示UIは追加しない。
+
+### 変更と検証
+
+- `SalesOrderDetailCacheContext` を追加し、`createListCache<OrderDetailRecord, string>` を orderId key で使う。missing detail は空配列として保持する。
+- 詳細ページの mount 時直接取得を keyed cache の `ensureLoaded(orderId)` に置換した。入金確定成功時は既存の再取得を `await refresh(orderId)` に置換し、一覧refreshも維持する。
+- DEV preview mock は入金確定後の再取得で `STATUS` を支払い待ちから仕入れ中へ変更する。これは検証専用であり、本番APIは変更していない。
+
+```text
+a:getCoreOrderDetailForFrontend first=1 reopened=1
+b-2:before paymentButton.disabled=false
+b-1:getCoreOrderDetailForFrontend reopened=1 afterConfirm=2
+b-2:after paymentButton.disabled=true
+PASS=true
+```
+
+- `frontend/scripts/verify-sales-order-detail-cache.cjs` により標準出力で検証した。`frontend/npm run build:gas` は typecheck / Vite build / emit-gas-html / design-system checks をすべて通過した。
+
+### PR / revert / deploy（3件まとめて記録）
+
+- PR #529 — OrderEditorPage の InventoryProductOptions 直接取得置換。squash merge SHA: `8527a17773bc9f66f80403f6c978e29c202cae96`。戻し方: `git revert 8527a17773bc9f66f80403f6c978e29c202cae96`。DEV の `getDeployedSha` は同SHAと一致。
+- PR #531 — QuoteEditorPage の InventoryProductOptions 直接取得置換。squash merge SHA: `ce4d724c1bed360f75af763132fa218d3eaf33fd`。戻し方: `git revert ce4d724c1bed360f75af763132fa218d3eaf33fd`。DEV の `getDeployedSha` は同SHAと一致。
+- PR #539 — Sales order detail keyed cache。squash merge SHA: `569beb6dc5a1fe1f2c52ab13d6c9703ad47ff875`。戻し方: `git revert 569beb6dc5a1fe1f2c52ab13d6c9703ad47ff875`。Deploy to DEV run `32797609301` は成功。`clasp run getDeployedSha` 生出力: `{ sha: '569beb6dc5a1fe1f2c52ab13d6c9703ad47ff875', deployedAt: '2026-08-25T01:28:13.343Z' }`。
+
+### 保留
+
+- Inbox conversation list / detail cache は保留。理由: inbox 同期シグナルが未定義であり、無効化なしのcache化は新着未反映を起こす。着手には `checkSyncSignals` の契約変更が必要であり、本作業の範囲外である。

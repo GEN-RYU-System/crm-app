@@ -5,6 +5,7 @@
  */
 import { ISSUER_HEADER } from '../content/ja/issuer';
 import { leadsCopy } from '../content/ja/leads';
+import { SALES_ORDER_STATUS } from '../content/ja/salesOrders';
 import { NAVIGATION_BY_ID, type NavigationItemId, type NavigationPermission } from '../app/navigation';
 
 const MOCK_SESSION_ID = 'preview-mock-session';
@@ -15,7 +16,9 @@ let mockDiscordConnectionStatus = {
   botName: '',
   botId: '',
   connected: false,
+  clientId: '',
 };
+let previewOrderPaymentConfirmed = false;
 
 type PreviewWindow = Window & { __gasMockCallCounts?: Readonly<Record<string, number>> };
 
@@ -343,7 +346,12 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
       succeed({ success: true, orderId: _orderId });
     },
     confirmCoreOrderPaymentForFrontend(_s: string | null, _orderId: string) {
-      succeed({ success: false, reason: 'INVALID_STATUS' });
+      if (previewOrderPaymentConfirmed) {
+        succeed({ success: false, reason: 'INVALID_STATUS' });
+        return;
+      }
+      previewOrderPaymentConfirmed = true;
+      succeed({ success: true, status: SALES_ORDER_STATUS.sourcing, paymentStatus: 'PAID' });
     },
     getCoreOrderStatusOptionsForFrontend(_s: string | null) { succeed([]); },
     getCoreOrderDetailForFrontend(_s: string | null, orderId: string) {
@@ -370,9 +378,10 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
           OTHER_FEE: 300,
           INVOICE_TOTAL: 20000,
           INVOICE_TOTAL_JPY: 3000000,
-          PAYMENT_STATUS: 'UNPAID',
-          STATUS: 'AWAITING_PAYMENT',
-          PAYMENT_CONFIRMED_AT: '',
+          PAYMENT_STATUS: previewOrderPaymentConfirmed ? 'PAID' : 'UNPAID',
+          STATUS: previewOrderPaymentConfirmed ? SALES_ORDER_STATUS.sourcing : SALES_ORDER_STATUS.awaitingPayment,
+          awaitingPaymentStatus: SALES_ORDER_STATUS.awaitingPayment,
+          PAYMENT_CONFIRMED_AT: previewOrderPaymentConfirmed ? '2026-08-25T00:00:00.000Z' : '',
           NOTE: '',
           TRANSACTION_NOTE: '',
           INTERNAL_NOTE: '',
@@ -448,8 +457,16 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
         return;
       }
       mockDiscordConnectionStatus = token === 'preview-connection-fail'
-        ? { isTokenSet: true, tokenMask: '••••fail', botName: '', botId: '', connected: false }
-        : { isTokenSet: true, tokenMask: '••••mock', botName: 'Preview Bot', botId: 'preview-bot-id', connected: true };
+        ? { isTokenSet: true, tokenMask: '••••fail', botName: '', botId: '', connected: false, clientId: mockDiscordConnectionStatus.clientId }
+        : { isTokenSet: true, tokenMask: '••••mock', botName: 'Preview Bot', botId: 'preview-bot-id', connected: true, clientId: mockDiscordConnectionStatus.clientId };
+      succeed({ success: true });
+    },
+    saveDiscordClientId(_s: string | null, clientId: string) {
+      if (clientId === 'preview-client-id-save-fail') {
+        succeed({ success: false });
+        return;
+      }
+      mockDiscordConnectionStatus = { ...mockDiscordConnectionStatus, clientId };
       succeed({ success: true });
     },
     getDiscordConnectionStatusForFrontend(_s: string | null) {
@@ -500,7 +517,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
 export function installGASMock(): void {
   for (const name of Object.keys(mockCallCounts)) delete mockCallCounts[name];
   configurePreviewProfile();
-  mockDiscordConnectionStatus = { isTokenSet: false, tokenMask: 'not-set', botName: '', botId: '', connected: false };
+  mockDiscordConnectionStatus = { isTokenSet: false, tokenMask: 'not-set', botName: '', botId: '', connected: false, clientId: '' };
   sessionStorage.setItem('crm_session_id', MOCK_SESSION_ID);
   const runner = buildChain(
     () => { /* default no-op success */ },
