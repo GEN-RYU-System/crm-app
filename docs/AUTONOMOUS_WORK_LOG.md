@@ -2387,3 +2387,42 @@ Exit code: 0
 | 2-8 QuoteEditorPage issuer置換 | 完了 | `0870c9a` |
 | 3-1 check-design-system強化 + 3-0許可リスト | 完了 | `38c89b0` |
 | 3-3 pre-commitフック | 完了 | `92e595e` |
+
+---
+
+## Discord連携廃止（PR #596 docs + PR #600 実装削除）
+
+### 廃止記録ドキュメント（PR #596）
+
+- `docs/DISCORD_INTEGRATION_DISCONTINUED.md` を新規作成。
+- 廃止理由（discord_code=40333/Cloudflare・GASからの変更不可要因）、実測結果一覧、
+  廃止対象PR一覧、再着手条件（中継サーバー前提なら可能）、スクリプトプロパティ提案を記録。
+- PR #596 squash SHA: `860881aedd66638b9330be6b033bf3561758ae76`
+- 戻し方: `git revert 860881aedd66638b9330be6b033bf3561758ae76`
+
+### 実装削除（PR #600）
+
+**削除前参照確認**: GAS Discord専用ファイルの関数を非Discordファイルが参照: 0件。
+フロントエンドの参照は App.tsx / navigation.ts / dataManagement.ts / index.ts に限定（外科的削除済み）。
+
+**GAS完全削除（9ファイル）**: `33_DiscordIntegrationService.js` / `34_DiscordSettingsApi.js` /
+`34_MetaDiscord.js` / `35_DiscordOAuthApi.js` / `36_DiscordChannelSetupApi.js` /
+`37_DiscordTicketApi.js` / `38_DiscordCustomerInviteApi.js` / `39_DiscordInviteUsageSync.js` /
+`40_DiscordInviteChannelProvisioning.js`
+
+**フロント完全削除**: `pages/discord-integration/` / `features/discordIntegration/` /
+`content/ja/discordIntegration.ts`
+
+**外科的削除（GAS 13ファイル / フロント 12ファイル）**: `00_CoreSchemaRegistry.js` /
+`08_Config.js` / `16_Customer.js` / `17_NotificationService.js` / `18_CustomerRegistration.js` /
+`26_Triggers.js` / `27_WebApp.js` / `28_CoreCustomerReadApi.js` / `28_CoreInboxApi.js` /
+`28_CoreStaffReadApi.js` / `28_CoreStaffWriteApi.js` / `29_SyncSignalApi.js` /
+`03_AssignService.js` / `App.tsx` / `navigation.ts` / `gas/client.ts` / `gas/types.d.ts` /
+`content/ja/customers.ts` / `content/ja/dataManagement.ts` / `content/ja/index.ts` /
+`features/customers/contracts.ts` / `features/customers/gasAdapter.ts` /
+`pages/customers/CustomerDetailPage.tsx` / `preview/gasRunnerMock.ts`
+
+**検証**: `npm run build:gas` パス（518 modules・TypeScript エラーなし・design-system checks passed）
+
+- PR #600 squash SHA: `3b458d78d014bf919d43c9e74272abd4c21bf592`
+- 戻し方: `git revert 3b458d78d014bf919d43c9e74272abd4c21bf592`
