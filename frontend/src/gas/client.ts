@@ -1,6 +1,6 @@
 import { errorCopy, leadsCopy } from '../content/ja';
 import type { CustomerAggregateDto, CustomerAggregatesRecord, CustomerSummaryDto } from '../features/customers/contracts';
-import type { InboxConversationDetailDto, InboxConversationDto } from '../features/inbox/contracts';
+import type { InboxBulkInitialLoadDto, InboxConversationDetailDto, InboxConversationDto, InboxMessageDto } from '../features/inbox/contracts';
 import type { OrderCreatePayload, OrderCreateResult, OrderUpdatePayload, OrderUpdateResult } from '../features/orders/contracts';
 import type { StaffProfileDto, StaffSummaryDto } from '../features/staff/contracts';
 
@@ -860,6 +860,35 @@ export function getInboxConversationDetail(leadId: string): Promise<InboxConvers
       })
       .withFailureHandler((error) => reject(toError(error)))
       .getInboxConversationDetailForFrontend(getStoredSessionId(), leadId);
+  });
+}
+
+export function getInboxBulkLoad(): Promise<InboxBulkInitialLoadDto> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) { reject(new Error(errorCopy.communication)); return; }
+        resolve(value as InboxBulkInitialLoadDto);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getInboxBulkInitialLoad(getStoredSessionId(), 0, 0);
+  });
+}
+
+export function getInboxMoreMessagesChunk(conversationId: string, offsetIndex: number): Promise<{ messages: readonly InboxMessageDto[]; hasMore: boolean }> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (!value || typeof value !== 'object') { reject(new Error(errorCopy.communication)); return; }
+        const result = value as { conversationId: string; messages: InboxMessageDto[]; hasMore: boolean };
+        resolve({ messages: result.messages, hasMore: result.hasMore });
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getInboxMoreMessages(getStoredSessionId(), conversationId, offsetIndex, 0);
   });
 }
 

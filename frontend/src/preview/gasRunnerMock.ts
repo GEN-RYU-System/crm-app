@@ -430,6 +430,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
           conversation,
           messages: Array.from({ length: messageCount }, (_, index) => ({ id: `${leadId}-${index + 1}`, sender: index % 2 === 0 ? 'customer' : 'operator', body: `Preview message ${index + 1}`, sentAt: `2026-08-25T10:${String(index % 60).padStart(2, '0')}:00.000Z` })),
           karte: { customerName: conversation.customerName, company: `Preview Company ${leadId}`, platform: conversation.platform, status: conversation.status, nextAction: 'Preview follow-up', note: 'Preview note only.' },
+          hasMore: false,
         });
         return;
       }
@@ -441,6 +442,36 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
         'preview-inbox-echo':    { conversation: { id: 'preview-inbox-echo',    customerName: 'Preview Echo',    platform: 'instagram',  status: 'archive',  summary: 'Preview archived conversation',          updatedAt: 'Last week', unread: false }, messages: [{ id: 'echo-1', sender: 'operator', body: 'Preview archived message.', sentAt: 'Last week' }],                                                                                                               karte: { customerName: 'Preview Echo',    company: 'Preview Company E', platform: 'Instagram',  status: 'Archived',          nextAction: 'Preview archive review', note: 'Preview note only.' } },
       };
       succeed(MOCK_DETAILS[leadId] ?? null);
+    },
+    getInboxBulkInitialLoad(_s: string | null, _maxConv: number, _maxMsg: number) {
+      const WINDOW_SIZE = 20;
+      const MSG_LIMIT = 30;
+      const windowConvs = MOCK_INBOX_CONVERSATIONS.slice(0, WINDOW_SIZE);
+      const detailsByConversationId: Record<string, unknown> = {};
+      for (const conv of windowConvs) {
+        const totalMsgs = conv.id === 'LDI-00002' ? 75 : 2;
+        const sliceCount = Math.min(totalMsgs, MSG_LIMIT);
+        detailsByConversationId[conv.id] = {
+          conversation: conv,
+          messages: Array.from({ length: sliceCount }, (_, i) => ({ id: `${conv.id}-${i + 1}`, sender: i % 2 === 0 ? 'customer' : 'operator', body: `Preview message ${i + 1}`, sentAt: `2026-08-25T10:${String(i % 60).padStart(2, '0')}:00.000Z` })),
+          karte: { customerName: conv.customerName, company: `Preview Company ${conv.id}`, platform: conv.platform, status: conv.status, nextAction: 'Preview follow-up', note: 'Preview note only.' },
+          hasMore: totalMsgs > MSG_LIMIT,
+        };
+      }
+      succeed({ conversations: MOCK_INBOX_CONVERSATIONS, detailsByConversationId });
+    },
+    getInboxMoreMessages(_s: string | null, conversationId: string, offsetIndex: number, _maxMessages: number) {
+      const CHUNK = 30;
+      const MOCK_TOTAL: Record<string, number> = { 'LDI-00002': 75, 'preview-inbox-alpha': 5 };
+      const total = MOCK_TOTAL[conversationId] ?? 2;
+      const count = Math.max(0, Math.min(CHUNK, total - offsetIndex));
+      const messages = Array.from({ length: count }, (_, i) => ({
+        id: `${conversationId}-extra-${offsetIndex + i + 1}`,
+        sender: (offsetIndex + i) % 2 === 0 ? 'customer' : 'operator',
+        body: `Preview message ${offsetIndex + i + 1}`,
+        sentAt: `2026-08-25T11:${String((offsetIndex + i) % 60).padStart(2, '0')}:00.000Z`,
+      }));
+      succeed({ conversationId, messages, hasMore: (offsetIndex + count) < total });
     },
     checkSyncSignals(_s: string | null) { succeed(mockSyncSignals); },
     getLeadFormOptions(_s: string | null) {
