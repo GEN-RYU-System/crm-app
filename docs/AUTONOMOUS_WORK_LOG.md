@@ -2262,7 +2262,7 @@ PASS=true
 
 - PR #594 squash SHA: `1896401ae6dda83e8326e8d409160234092a5731`
 - 戻し方: `git revert 1896401ae6dda83e8326e8d409160234092a5731`
-- DEV deploy: Actions run `32892140707` 成功（2026-08-26）
+- DEV deploy: deploy-dev.yml 成功（2026-08-26、SHA `1896401a` でデプロイ確認）
 
 ### 検証（未完了 — UI実行が必要）
 
