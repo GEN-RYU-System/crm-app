@@ -522,8 +522,8 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
             <QuoteDocument
               issuer={buildIssuerInfo(issuer)}
               quoteId={quoteMetaInfo.quoteId}
-              date={quoteMetaInfo.issuedDate}
-              validUntil={quoteMetaInfo.expiryDate}
+              date={formatDate(quoteMetaInfo.issuedDate)}
+              validUntil={quoteMetaInfo.expiryDate ? formatDate(quoteMetaInfo.expiryDate) : ''}
               registrationNumber={String(issuer[ISSUER_HEADER.REGISTRATION_NO] ?? '') || undefined}
               customerName={quoteMetaInfo.customerName}
               lines={docLines}

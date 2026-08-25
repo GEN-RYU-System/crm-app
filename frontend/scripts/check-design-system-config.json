@@ -20,5 +20,12 @@
       { "component": "Combobox", "pages": ["quotes", "orders"] },
       { "component": "TwoColumnLayout", "pages": ["quotes", "orders"] }
     ]
+  },
+  "featureComponentUsageCheck": {
+    "comment": "帳票コンポーネントは各ドメインのページから正規 InvoiceDocument / QuoteDocument のみを参照すること（重複コンポーネント再発防止）",
+    "rules": [
+      { "component": "InvoiceDocument", "importPath": "features/documents/InvoiceDocument", "pages": ["orders"] },
+      { "component": "QuoteDocument", "importPath": "features/documents/QuoteDocument", "pages": ["quotes"] }
+    ]
   }
 }
