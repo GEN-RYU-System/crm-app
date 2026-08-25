@@ -2156,3 +2156,42 @@ PASS=true
 - 検証生出力: `getInboxConversationDetailForFrontend afterA=1 afterB=2 afterReturnA=2 afterSignal=4`、`PASS=true`。呼出回数の検証のみがcacheの有効な証拠である。
 - `LDI-00002 messages=75` はプレビュー用モックを75件で実装したうえで数えた結果であり、実データの件数不変を証明するものではない。実データの件数はDEV画面で目視確認する事項として残す。
 - 受信箱は現時点で読取専用のため afterSave 未検証。将来 書き込み機能を実装する際は、保存成功後に Inbox cache の `refresh()` を呼び、かつ書込側で inbox 信号を発行すること。両方を実装しないと他担当者に反映されない。
+
+---
+
+## 2026-08-25 Phase S クローズ記録 (PR #569 close / #571+#572 正式)
+
+### 経緯
+
+- Codex による先行実装: PR #571（`InboxConversationListCacheContext`）・PR #572（`InboxConversationDetailCacheContext`）が develop へ squash merge 済み・DEV 配布完了
+- Claude Code による Phase S 実装（worktree `phase-s-inbox-cache-v2`）は同機能を別命名で実装し、PR #569 を起票したが develop との CONFLICT を確認
+- PR #569 を重複として close
+
+### DEV 照合（2026-08-25）
+
+| 項目 | 値 |
+|---|---|
+| `getDeployedSha` | `9d68e6f6176989efbd511c1fc6b823752d04bec1` |
+| develop HEAD | `9d68e6f feat: cache inbox conversation details (#572)` |
+| 一致 | ✅ |
+
+### dryRunVerifyInboxPhase1 生出力
+
+```
+{
+  sampleMessageCount: 8,
+  conversationListCount: 25,
+  sheetUniqueLeadCount: 24,
+  sampleLeadId: 'LDI-00001'
+}
+```
+
+- `conversationListCount: 25` ✅（基準: 25件）
+- `sampleLeadId` = `LDI-00001`（8件）— 関数サンプリング結果。基準の LDI-00002=75件は直接確認できず。LDI-00002 の実件数はオーナー画面確認に委ねる
+
+### squash merge SHA 記録（#571・#572）
+
+- PR #571 squash SHA: `0b9d0dd`（develop 上）
+- PR #572 squash SHA: `9d68e6f`（develop 上）
+- revert #572: `git revert 9d68e6f6176989efbd511c1fc6b823752d04bec1`
+- revert #571: `git revert 0b9d0dda...`（#572 revert 後に実施）
