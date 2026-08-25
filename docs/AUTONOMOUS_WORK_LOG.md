@@ -2426,3 +2426,47 @@ Exit code: 0
 
 - PR #600 squash SHA: `3b458d78d014bf919d43c9e74272abd4c21bf592`
 - 戻し方: `git revert 3b458d78d014bf919d43c9e74272abd4c21bf592`
+
+---
+
+**アプリ全体プリフェッチ標準化 — 完了判定前追加作業 (2026-08-26)**
+
+### getDeployedSha 照合結果（PR #598/#599/#602）
+
+- `getDeployedSha` 実測値: `{ sha: "12d0a7b630cdb610dbc88d50dd9c1dae2c8e7d78", deployedAt: "2026-08-25T20:51:35.370Z" }`
+- SHA `12d0a7b630...` = PR #604 (Discord廃止記録) → #598/#599/#602 を全て包含
+- 祖先関係確認:
+  - PR #598 (`0870c9a5...`) IS ancestor of `12d0a7b6...` ✓
+  - PR #599 (`38c89b07...`) IS ancestor of `12d0a7b6...` ✓
+  - PR #602 (`92e595ef...`) IS ancestor of `12d0a7b6...` ✓
+- 判定: 3件すべて DEV 反映済み
+
+### PREFETCH_EXEMPT_PROVIDERS（現在の全内容・除外理由）
+
+```
+CustomerDetailCacheProvider   — 詳細系キャッシュ。ページ遷移後オンデマンドのため prefetch steps 不要
+LeadDetailCacheProvider       — 詳細系キャッシュ。同上
+SalesOrderDetailCacheProvider — 詳細系キャッシュ。同上
+DashboardKpiCacheProvider     — AppRouter 内で ensureLoaded を直接呼ぶため usePrefetch 登録不要
+InboxConversationDetailCacheProvider — prefetchBulk で別名登録のため hook 名では文字列マッチしない
+CustomerAggregateCacheProvider — features/ 由来・SyncPoller に登録なし（usePrefetch のみで管理）
+```
+（DiscordSettingsCacheProvider は PR #600 で Discord 機能削除につきコード上消滅→stale エントリを本作業で除去）
+
+### SYNC_POLLER_EXEMPT_PROVIDERS（現在の全内容・除外理由）
+
+```
+CustomerAggregateCacheProvider — SyncPoller には接続せず usePrefetch のみで管理
+CurrencyMasterCacheProvider   — 静的マスタ。アプリ経由の更新経路なし（手動シート編集のみ）→ refreshers 登録不要
+```
+
+### タスク2-8b: OrderEditorPage issuer 直接取得の置換
+
+- `getCoreIssuer()` 直接呼び出し（useState + useEffect）を `useIssuerMasterCache()` に置換
+- `ensureIssuer()` をマスタデータ読込 Promise.all に追加
+- `check-design-system.mjs` の `GAS_CLIENT_IN_PAGES_ALLOWLIST` から OrderEditorPage を削除
+- `check-design-system.mjs` の `PREFETCH_EXEMPT_PROVIDERS` から stale な DiscordSettingsCacheProvider を削除
+- `npm run typecheck` PASS / `npm run check:design-system` PASS
+- PR #605 squash SHA: `c49599e0c8ec936025d9a6b0786d02fe1df56207`
+- 戻し方: `git revert c49599e0c8ec936025d9a6b0786d02fe1df56207`
+- `getDeployedSha` 確認: `{ sha: "c49599e0c8ec936025d9a6b0786d02fe1df56207", deployedAt: "2026-08-25T20:57:48.162Z" }` → マージSHA と一致 ✓
