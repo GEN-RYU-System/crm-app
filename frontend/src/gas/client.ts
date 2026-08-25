@@ -725,12 +725,15 @@ export type SyncSignals = {
   inventory: string | null;
   staff: string | null;
   customers: string | null;
+  issuer: string | null;
+  discord: string | null;
+  inbox: string | null;
 };
 
 export function checkSyncSignals(): Promise<SyncSignals> {
   const runner = window.google?.script?.run;
   if (!runner) {
-    return Promise.resolve({ leads: null, quotes: null, orders: null, inventory: null, staff: null, customers: null });
+    return Promise.resolve({ leads: null, quotes: null, orders: null, inventory: null, staff: null, customers: null, issuer: null, discord: null, inbox: null });
   }
   return new Promise((resolve, reject) => {
     runner

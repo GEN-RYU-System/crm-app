@@ -73,6 +73,7 @@ function getDiscordOAuthStatus(sessionId) {
     if (guilds.length === 1) {
       var guildId = guilds[0].id;
       PropertiesService.getScriptProperties().setProperty('DISCORD_GUILD_ID', guildId);
+      writeSyncSignalDomains_(['discord']);
       return { status: 'linked', guildId: guildId, guilds: guilds };
     }
     return { status: 'multiple', guildId: null, guilds: guilds };
@@ -123,6 +124,7 @@ function saveDiscordGuildId(sessionId, guildId) {
     var exists = guildsResult.guilds.some(function(guild) { return guild.id === String(guildId); });
     if (!exists) return { success: false, error: 'GUILD_NOT_FOUND' };
     PropertiesService.getScriptProperties().setProperty('DISCORD_GUILD_ID', String(guildId));
+    writeSyncSignalDomains_(['discord']);
     return { success: true };
   } catch (error) {
     Logger.log('saveDiscordGuildId error: ' + error.message);

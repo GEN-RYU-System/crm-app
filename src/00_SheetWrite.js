@@ -48,19 +48,35 @@ function withSheetWrite_(options, writeFn) {
  */
 function writeSyncSignals_(cacheTargets) {
   if (!cacheTargets || !cacheTargets.length) return;
+  var domains = cacheTargets.map(function(target) {
+    return cacheTargetToDomain_(target.indexKey);
+  });
+  writeSyncSignalDomains_(domains);
+}
+
+/**
+ * 指定ドメインの同期シグナルを記録する。
+ * シート以外（Script Properties、外部受信）の書き込み成功後も
+ * withSheetWrite_ と同じ CacheService 契約で通知するために使用する。
+ *
+ * @param {string[]} domains
+ */
+function writeSyncSignalDomains_(domains) {
+  if (!domains || !domains.length) return;
   try {
     var cache = CacheService.getScriptCache();
     var props = {};
     var now = String(Date.now());
     var added = {};
-    cacheTargets.forEach(function(target) {
-      var domain = cacheTargetToDomain_(target.indexKey);
+    domains.forEach(function(domain) {
+      domain = String(domain || '').trim();
+      if (!domain) return;
       if (!added[domain]) {
         props['SYNC_SIGNAL_' + domain] = now;
         added[domain] = true;
       }
     });
-    cache.putAll(props, 21600);
+    if (Object.keys(props).length) cache.putAll(props, 21600);
   } catch (e) {
     // シグナル記録失敗は書き込み成功に影響させない
   }

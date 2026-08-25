@@ -10,14 +10,14 @@
 
 /* global setEmailFromSession, CacheService */
 
-var SYNC_SIGNAL_DOMAINS = ['leads', 'quotes', 'orders', 'inventory', 'staff', 'customers'];
+var SYNC_SIGNAL_DOMAINS = ['leads', 'quotes', 'orders', 'inventory', 'staff', 'customers', 'issuer', 'discord', 'inbox'];
 
 /**
  * 全種別の同期シグナルを1回の getAll で取得して返す。
  *
  * @param {string} sessionId
  * @returns {Object.<string, string|null>}
- *   例: { leads: "1755000000000", quotes: null, orders: "1755000001234", ... }
+ *   例: { leads: "<timestamp>", quotes: null, orders: "<timestamp>", ... }
  */
 function checkSyncSignals(sessionId) {
   // 認証前に「呼ばれた事実」を記録（時刻のみ・データなし・情報漏洩なし）
