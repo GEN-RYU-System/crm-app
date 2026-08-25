@@ -11,6 +11,7 @@ import { useCustomerDetailCache } from './pages/customers/CustomerDetailCacheCon
 import { useInventoryListCache } from './pages/inventory/InventoryListCacheContext';
 import { useOrderListCache } from './pages/orders/OrderListCacheContext';
 import { useSalesOrderListCache } from './pages/sales-orders/SalesOrderListCacheContext';
+import { useSalesOrderDetailCache } from './pages/sales-orders/SalesOrderDetailCacheContext';
 import { useStaffListCache } from './pages/staff/StaffListCacheContext';
 import { useQuoteListCache } from './pages/quotes/QuoteListCacheContext';
 import { AppShell } from './components/shell';
@@ -103,6 +104,7 @@ function SyncPoller() {
   const { refresh: refreshInventoryProductOptions } = useInventoryProductOptionsCache();
   const { refresh: refreshOrders } = useOrderListCache();
   const { refresh: refreshSalesOrders } = useSalesOrderListCache();
+  const { refresh: refreshSalesOrderDetails } = useSalesOrderDetailCache();
   const { refresh: refreshStaff } = useStaffListCache();
   const { refresh: refreshQuotes } = useQuoteListCache();
   const { refresh: refreshDashboardKpis } = useDashboardKpiCache();
@@ -111,10 +113,10 @@ function SyncPoller() {
     leads:     () => Promise.all([refreshLeads(), refreshLeadDetails(), refreshLeadFormOptions(), refreshDashboardKpis()]).then(() => undefined),
     customers: () => Promise.all([refreshCustomers(), refreshCustomerDetails()]).then(() => undefined),
     inventory: () => Promise.all([refreshInventory(), refreshInventoryProductOptions()]).then(() => undefined),
-    orders:    () => Promise.all([refreshOrders(), refreshSalesOrders()]).then(() => undefined),
+    orders:    () => Promise.all([refreshOrders(), refreshSalesOrders(), refreshSalesOrderDetails()]).then(() => undefined),
     staff:     () => refreshStaff(),
     quotes:    () => refreshQuotes(),
-  }), [refreshLeads, refreshLeadDetails, refreshLeadFormOptions, refreshDashboardKpis, refreshCustomers, refreshCustomerDetails, refreshInventory, refreshInventoryProductOptions, refreshOrders, refreshSalesOrders, refreshStaff, refreshQuotes]);
+  }), [refreshLeads, refreshLeadDetails, refreshLeadFormOptions, refreshDashboardKpis, refreshCustomers, refreshCustomerDetails, refreshInventory, refreshInventoryProductOptions, refreshOrders, refreshSalesOrders, refreshSalesOrderDetails, refreshStaff, refreshQuotes]);
 
   useSyncPolling(refreshers);
   return null;

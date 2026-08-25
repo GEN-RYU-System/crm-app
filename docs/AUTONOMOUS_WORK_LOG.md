@@ -1992,6 +1992,22 @@ PASS=true
 
 ---
 
+## 【同期登録】SalesOrderDetail → orders
+
+- 合格条件: 詳細を一度開いた後、信号なしでは `getCoreOrderDetailForFrontend` が増えず、orders信号後に既知の全キーを `refresh()` して1回増えること。
+- `SalesOrderDetailCacheContext` の `refresh` を引数省略可能にし、`SyncPoller` の orders refresher に引数なしの全キーrefreshを登録した。入金確定など個別キーを渡す既存呼出しは維持する。
+- 検証結果は PR 作成前に `__gasMockCallCounts` の生出力で記録する。
+
+---
+
+## アプリ全体プリフェッチ標準化 Phase 1 — 同期登録漏れの是正
+
+- `CurrencyMasterCacheProvider`、`LeadFormOptionsCacheProvider`、`InventoryProductOptionsCacheProvider`、`LeadDetailCacheProvider`、`CustomerDetailCacheProvider`、`SalesOrderDetailCacheProvider` の6件に SyncPoller refreshers 登録漏れが存在した。
+- 原因は既存の design-system 検査が `*ListCacheProvider` 命名だけを文字列検索しており、上記Providerを対象外にしていたことである。
+- CurrencyMaster は対応する既存ドメイン信号がないため、第2段階で currencies 信号を新設してから対応する。残る5件は leads / inventory / customers / orders 信号へ登録した。
+
+---
+
 ## Discord Guild 選択状態の再取得時保持（PR #550）
 
 - `frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx` の「状態を確認する」処理を修正した。再取得結果が複数Guildで、現在選択中のIDが結果一覧に含まれる場合はその選択を維持する。一覧から消えた場合のみ未選択へ戻す。
