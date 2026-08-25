@@ -58,6 +58,18 @@ const MOCK_PERMISSIONS = {
 };
 
 const MOCK_QUOTES_ONLY_PERMISSIONS = { lead_view: true };
+const MOCK_INBOX_CONVERSATIONS = Array.from({ length: 25 }, (_, index) => {
+  const number = index + 1;
+  return {
+    id: `LDI-${String(number).padStart(5, '0')}`,
+    customerName: `Preview Inbox Customer ${number}`,
+    platform: number % 3 === 0 ? 'discord' : number % 2 === 0 ? 'instagram' : 'messenger',
+    status: number % 5 === 0 ? 'existing' : number % 4 === 0 ? 'followup' : number % 3 === 0 ? 'deal' : 'lead',
+    summary: `Preview conversation ${number}`,
+    updatedAt: `2026-08-${String(number).padStart(2, '0')}T10:00:00.000Z`,
+    unread: number % 2 === 0,
+  };
+});
 // The data-management route is rooted at /leads, so its parent guard must remain
 // accessible for the quote-only preview profile to render #/quotes.
 const QUOTES_ONLY_HIDDEN_NAVIGATION_IDS: readonly NavigationItemId[] = ['customers', 'orders', 'salesOrders', 'inbox'];
@@ -408,15 +420,20 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
       });
     },
     getInboxConversationsForFrontend(_s: string | null, _force: boolean) {
-      succeed([
-        { id: 'preview-inbox-alpha', customerName: 'Preview Atlas',  platform: 'messenger',  status: 'lead',     summary: 'Preview lead conversation',             updatedAt: '10:20',    unread: true  },
-        { id: 'preview-inbox-bravo', customerName: 'Preview Bravo',  platform: 'instagram',  status: 'deal',     summary: 'Preview deal conversation',             updatedAt: '09:45',    unread: false },
-        { id: 'preview-inbox-charlie', customerName: 'Preview Charlie', platform: 'discord', status: 'existing', summary: 'Preview existing customer conversation', updatedAt: 'Yesterday', unread: false },
-        { id: 'preview-inbox-delta', customerName: 'Preview Delta',  platform: 'messenger',  status: 'followup', summary: 'Preview follow-up conversation',         updatedAt: 'Monday',   unread: true  },
-        { id: 'preview-inbox-echo',  customerName: 'Preview Echo',   platform: 'instagram',  status: 'archive',  summary: 'Preview archived conversation',          updatedAt: 'Last week', unread: false },
-      ]);
+      succeed(MOCK_INBOX_CONVERSATIONS);
     },
     getInboxConversationDetailForFrontend(_s: string | null, leadId: string) {
+      const conversation = MOCK_INBOX_CONVERSATIONS.find((item) => item.id === leadId);
+      if (conversation) {
+        const messageCount = leadId === 'LDI-00002' ? 75 : 2;
+        succeed({
+          conversation,
+          messages: Array.from({ length: messageCount }, (_, index) => ({ id: `${leadId}-${index + 1}`, sender: index % 2 === 0 ? 'customer' : 'operator', body: `Preview message ${index + 1}`, sentAt: `2026-08-25T10:${String(index % 60).padStart(2, '0')}:00.000Z` })),
+          karte: { customerName: conversation.customerName, company: `Preview Company ${leadId}`, platform: conversation.platform, status: conversation.status, nextAction: 'Preview follow-up', note: 'Preview note only.' },
+          hasMore: false,
+        });
+        return;
+      }
       const MOCK_DETAILS: Record<string, unknown> = {
         'preview-inbox-alpha':   { conversation: { id: 'preview-inbox-alpha',   customerName: 'Preview Atlas',   platform: 'messenger',  status: 'lead',     summary: 'Preview lead conversation',             updatedAt: '10:20',     unread: true  }, messages: [{ id: 'alpha-1', sender: 'customer', body: 'Preview message from customer.', sentAt: '10:12' }, { id: 'alpha-2', sender: 'operator', body: 'Preview reply from operator.', sentAt: '10:20' }], karte: { customerName: 'Preview Atlas',   company: 'Preview Company A', platform: 'Messenger',  status: 'Lead',              nextAction: 'Preview follow-up',     note: 'Preview note only.' } },
         'preview-inbox-bravo':   { conversation: { id: 'preview-inbox-bravo',   customerName: 'Preview Bravo',   platform: 'instagram',  status: 'deal',     summary: 'Preview deal conversation',             updatedAt: '09:45',     unread: false }, messages: [{ id: 'bravo-1', sender: 'customer', body: 'Preview deal message.', sentAt: '09:45' }],                                                                                                                                 karte: { customerName: 'Preview Bravo',   company: 'Preview Company B', platform: 'Instagram',  status: 'Deal',              nextAction: 'Preview qualification', note: 'Preview note only.' } },
@@ -425,6 +442,36 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
         'preview-inbox-echo':    { conversation: { id: 'preview-inbox-echo',    customerName: 'Preview Echo',    platform: 'instagram',  status: 'archive',  summary: 'Preview archived conversation',          updatedAt: 'Last week', unread: false }, messages: [{ id: 'echo-1', sender: 'operator', body: 'Preview archived message.', sentAt: 'Last week' }],                                                                                                               karte: { customerName: 'Preview Echo',    company: 'Preview Company E', platform: 'Instagram',  status: 'Archived',          nextAction: 'Preview archive review', note: 'Preview note only.' } },
       };
       succeed(MOCK_DETAILS[leadId] ?? null);
+    },
+    getInboxBulkInitialLoad(_s: string | null, _maxConv: number, _maxMsg: number) {
+      const WINDOW_SIZE = 20;
+      const MSG_LIMIT = 30;
+      const windowConvs = MOCK_INBOX_CONVERSATIONS.slice(0, WINDOW_SIZE);
+      const detailsByConversationId: Record<string, unknown> = {};
+      for (const conv of windowConvs) {
+        const totalMsgs = conv.id === 'LDI-00002' ? 75 : 2;
+        const sliceCount = Math.min(totalMsgs, MSG_LIMIT);
+        detailsByConversationId[conv.id] = {
+          conversation: conv,
+          messages: Array.from({ length: sliceCount }, (_, i) => ({ id: `${conv.id}-${i + 1}`, sender: i % 2 === 0 ? 'customer' : 'operator', body: `Preview message ${i + 1}`, sentAt: `2026-08-25T10:${String(i % 60).padStart(2, '0')}:00.000Z` })),
+          karte: { customerName: conv.customerName, company: `Preview Company ${conv.id}`, platform: conv.platform, status: conv.status, nextAction: 'Preview follow-up', note: 'Preview note only.' },
+          hasMore: totalMsgs > MSG_LIMIT,
+        };
+      }
+      succeed({ conversations: MOCK_INBOX_CONVERSATIONS, detailsByConversationId });
+    },
+    getInboxMoreMessages(_s: string | null, conversationId: string, offsetIndex: number, _maxMessages: number) {
+      const CHUNK = 30;
+      const MOCK_TOTAL: Record<string, number> = { 'LDI-00002': 75, 'preview-inbox-alpha': 5 };
+      const total = MOCK_TOTAL[conversationId] ?? 2;
+      const count = Math.max(0, Math.min(CHUNK, total - offsetIndex));
+      const messages = Array.from({ length: count }, (_, i) => ({
+        id: `${conversationId}-extra-${offsetIndex + i + 1}`,
+        sender: (offsetIndex + i) % 2 === 0 ? 'customer' : 'operator',
+        body: `Preview message ${offsetIndex + i + 1}`,
+        sentAt: `2026-08-25T11:${String((offsetIndex + i) % 60).padStart(2, '0')}:00.000Z`,
+      }));
+      succeed({ conversationId, messages, hasMore: (offsetIndex + count) < total });
     },
     checkSyncSignals(_s: string | null) { succeed(mockSyncSignals); },
     getLeadFormOptions(_s: string | null) {
@@ -496,7 +543,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
       succeed({ success: true, url: 'https://discord.com/api/oauth2/authorize?client_id=mock&permissions=805432400&scope=bot%20applications.commands' });
     },
     getDiscordOAuthStatus(_s: string | null) {
-      succeed({ status: 'multiple', guildId: null, guilds: [{ id: 'preview-guild-1', name: 'Preview Guild One' }, { id: 'preview-guild-2', name: 'Preview Guild Two' }] });
+      succeed({ status: 'linked', guildId: 'preview-guild-1', guilds: [{ id: 'preview-guild-1', name: 'Preview Guild One' }, { id: 'preview-guild-2', name: 'Preview Guild Two' }] });
     },
     saveDiscordGuildId(_s: string | null, guildId: string) {
       succeed({ success: guildId === 'preview-guild-1' || guildId === 'preview-guild-2' });

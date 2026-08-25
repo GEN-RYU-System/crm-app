@@ -9,6 +9,7 @@
 .inbox-preview__row small, .inbox-preview__message time { color: var(--color-text-muted); font-size: var(--font-xs); }
 .inbox-preview__conversation-header, .inbox-preview__composer { align-items: center; display: flex; gap: var(--space-md); }
 .inbox-preview__messages { display: grid; gap: var(--space-md); }
+.inbox-preview__load-more { display: flex; justify-content: center; padding: var(--space-sm) var(--space-none); }
 .inbox-preview__message { background: var(--color-surface); border-radius: var(--radius-control); max-width: var(--conversation-bubble-max-width); padding: var(--space-md); }
 .inbox-preview__message--operator { background: var(--color-accent-subtle); justify-self: end; }
 .inbox-preview__message p { margin: var(--space-none); }

@@ -1,58 +1,59 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CRM_SEARCH_ICON } from '../../app/icons';
 import { Badge, Button, ConversationWorkspace, EmptyState, PageHeader, Select, Skeleton, TabBar, Tabs, TextField, Textarea } from '../../components/ui';
 import { inboxCopy } from '../../content/ja';
-import type { InboxConversationDetailDto, InboxConversationDto, InboxPlatform, InboxRepository, InboxStatus } from '../../features/inbox/contracts';
+import type { InboxMessageDto, InboxPlatform, InboxRepository, InboxStatus } from '../../features/inbox/contracts';
 import { INBOX_KARTE_TABS, INBOX_PLATFORM_OPTIONS, INBOX_STATUS_TABS } from './inboxConfig';
+import { useInboxConversationListCache } from './InboxConversationListCacheContext';
+import { useInboxConversationDetailCache } from './InboxConversationDetailCacheContext';
 import './InboxPreviewPage.css';
 
 export function InboxPreviewPage({ repository }: { repository: InboxRepository }) {
   const [status, setStatus] = useState<InboxStatus>('all');
   const [platform, setPlatform] = useState<InboxPlatform>('all');
   const [query, setQuery] = useState('');
-  const [conversations, setConversations] = useState<readonly InboxConversationDto[] | null>(null);
-  const [listError, setListError] = useState(false);
   const [selectedId, setSelectedId] = useState('');
-  const [selectedDetail, setSelectedDetail] = useState<InboxConversationDetailDto | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [karteTab, setKarteTab] = useState('customer');
-  const detailCache = useRef<Map<string, InboxConversationDetailDto>>(new Map());
+  // extra messages loaded via "load more" (keyed by conversationId)
+  const [extraMessages, setExtraMessages] = useState<Record<string, readonly InboxMessageDto[]>>({});
+  const [extraHasMore, setExtraHasMore] = useState<Record<string, boolean>>({});
+  const [loadMoreLoading, setLoadMoreLoading] = useState(false);
 
+  const { conversations, error: listError, ensureLoaded } = useInboxConversationListCache();
+  const { detailsByConversationId, loadingByConversationId, ensureLoaded: ensureDetailLoaded, seed } = useInboxConversationDetailCache();
+
+  // ── 1. Load list on mount ──
+  useEffect(() => { void ensureLoaded(); }, [ensureLoaded]);
+
+  // ── 2. Set initial selection ──
   useEffect(() => {
-    let active = true;
+    if (!conversations || conversations.length === 0) return;
+    setSelectedId((current) => conversations.some((c) => c.id === current) ? current : conversations[0].id);
+  }, [conversations]);
+
+  // ── 3. Bulk hydration: seed detail cache once after list arrives ──
+  const bulkLoadedRef = useRef(false);
+  useEffect(() => {
+    if (!conversations || conversations.length === 0 || bulkLoadedRef.current) return;
+    bulkLoadedRef.current = true;
     void (async () => {
       try {
-        const rows = await repository.listConversations();
-        if (!active) return;
-        setConversations(rows);
-        if (rows.length > 0) setSelectedId(rows[0].id);
+        const bulk = await repository.getBulkInitialLoad();
+        for (const [id, detail] of Object.entries(bulk.detailsByConversationId)) {
+          seed(id, detail);
+        }
       } catch {
-        if (active) setListError(true);
+        // bulk hydration failure is non-fatal; individual loads remain available
       }
     })();
-    return () => { active = false; };
-  }, [repository]);
+  }, [conversations, repository, seed]);
 
+  // ── 4. On conversation select: ensure detail loaded; reset extra messages ──
   useEffect(() => {
     if (!selectedId) return;
-    const cached = detailCache.current.get(selectedId);
-    if (cached) { setSelectedDetail(cached); return; }
-    let active = true;
-    setDetailLoading(true);
-    void (async () => {
-      try {
-        const detail = await repository.getConversation(selectedId);
-        if (!active) return;
-        if (detail) {
-          detailCache.current.set(selectedId, detail);
-          setSelectedDetail(detail);
-        }
-      } finally {
-        if (active) setDetailLoading(false);
-      }
-    })();
-    return () => { active = false; };
-  }, [repository, selectedId]);
+    void ensureDetailLoaded(selectedId);
+    setExtraMessages((prev) => (selectedId in prev ? prev : prev)); // keep existing extras
+  }, [ensureDetailLoaded, selectedId]);
 
   const filtered = useMemo(() => (conversations ?? []).filter((conv) =>
     (status === 'all' || conv.status === status) &&
@@ -61,7 +62,35 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
   ), [conversations, platform, query, status]);
 
   const effectiveConv = filtered.find((c) => c.id === selectedId) ?? filtered[0] ?? null;
-  const detail = effectiveConv?.id === selectedDetail?.conversation.id ? selectedDetail : null;
+  const detail = effectiveConv?.id === selectedId ? detailsByConversationId[selectedId]?.[0] ?? null : null;
+  // stale-while-revalidate: only show skeleton when no cached data exists
+  const detailLoading = selectedId !== '' && (loadingByConversationId[selectedId] ?? false) && detail === null;
+
+  const baseMessages = detail?.messages ?? [];
+  const extra = extraMessages[selectedId] ?? [];
+  const allMessages = extra.length > 0 ? [...baseMessages, ...extra] : baseMessages;
+  // Show "load more" if: initial bulk set hasMore AND we either haven't loaded extras yet,
+  // OR the most recent chunk indicated there are still more messages
+  const showLoadMore = !loadMoreLoading && (
+    (detail?.hasMore === true && extra.length === 0) ||
+    extraHasMore[selectedId] === true
+  );
+
+  const handleLoadMore = useCallback(async () => {
+    if (!selectedId || loadMoreLoading) return;
+    setLoadMoreLoading(true);
+    try {
+      const offset = baseMessages.length + (extraMessages[selectedId]?.length ?? 0);
+      const { messages: more, hasMore } = await repository.getMoreMessages(selectedId, offset);
+      setExtraMessages((prev) => ({
+        ...prev,
+        [selectedId]: [...(prev[selectedId] ?? []), ...more],
+      }));
+      setExtraHasMore((prev) => ({ ...prev, [selectedId]: hasMore }));
+    } finally {
+      setLoadMoreLoading(false);
+    }
+  }, [baseMessages.length, extraMessages, loadMoreLoading, repository, selectedId]);
 
   const karteFields: [string, string][] = detail == null ? [] : karteTab === 'customer'
     ? [[inboxCopy.fields.customerName, detail.karte.customerName], [inboxCopy.fields.platform, detail.karte.platform]]
@@ -82,7 +111,7 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
           listLabel={inboxCopy.listLabel}
           listHeader={<TextField aria-label={inboxCopy.searchLabel} placeholder={inboxCopy.searchPlaceholder} value={query} onChange={(event) => setQuery(event.target.value)} fullWidth startIcon={<CRM_SEARCH_ICON aria-hidden="true" />} />}
           list={
-            conversations === null && !listError
+            conversations === undefined && listError === undefined
               ? <Skeleton variant="list" rows={4} label={inboxCopy.loading} />
               : filtered.length === 0
               ? <EmptyState title={inboxCopy.noConversations} description={inboxCopy.noConversationsDescription} />
@@ -113,12 +142,24 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
               ? <Skeleton variant="list" rows={3} label={inboxCopy.loading} />
               : detail
               ? <div className="inbox-preview__messages">
-                  {detail.messages.map((message) => (
+                  {allMessages.map((message) => (
                     <article className={`inbox-preview__message inbox-preview__message--${message.sender}`} key={message.id}>
                       <p>{message.body}</p>
                       <time>{message.sentAt}</time>
                     </article>
                   ))}
+                  {showLoadMore && (
+                    <div className="inbox-preview__load-more">
+                      <Button variant="ghost" size="sm" onClick={() => { void handleLoadMore(); }}>
+                        {inboxCopy.loadMoreMessages}
+                      </Button>
+                    </div>
+                  )}
+                  {loadMoreLoading && (
+                    <div className="inbox-preview__load-more">
+                      <Skeleton variant="list" rows={2} label={inboxCopy.loadMoreLoading} />
+                    </div>
+                  )}
                 </div>
               : <EmptyState title={inboxCopy.noConversations} description={inboxCopy.noConversationsDescription} />
           }

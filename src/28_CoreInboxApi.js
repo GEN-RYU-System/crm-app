@@ -319,6 +319,361 @@ function inboxPlatformFromSource_(leadSource) {
 // DEV専用診断
 // ───────────────────────────────────────────────
 
+// ───────────────────────────────────────────────
+// まとめ取得（窓方式）
+// ───────────────────────────────────────────────
+
+/**
+ * 受信箱：一括初期ロード（窓方式）。
+ * 会話一覧の上位 maxConversations 件 + 各会話の最新 maxMessagesPerConversation 件のメッセージを
+ * 1回のGAS呼び出しで返す。窓サイズは Script Properties で制御（引数で上書き可）。
+ *
+ * Script Properties:
+ *   INBOX_INITIAL_CONVERSATIONS  (デフォルト 20)
+ *   INBOX_INITIAL_MESSAGES       (デフォルト 30)
+ *
+ * @param {string} sessionId
+ * @param {number} [maxConversations]  省略時は Script Properties 値
+ * @param {number} [maxMessagesPerConversation]  省略時は Script Properties 値
+ * @returns {{ conversations: Array<Object>, detailsByConversationId: Object<string, Object> }}
+ */
+function getInboxBulkInitialLoad(sessionId, maxConversations, maxMessagesPerConversation) {
+  setEmailFromSession(sessionId);
+  checkPermission('lead_view');
+
+  var props = PropertiesService.getScriptProperties();
+  var maxConv = maxConversations
+    || parseInt(props.getProperty('INBOX_INITIAL_CONVERSATIONS') || '20', 10);
+  var maxMsg = maxMessagesPerConversation
+    || parseInt(props.getProperty('INBOX_INITIAL_MESSAGES') || '30', 10);
+
+  var ss = getSpreadsheet();
+
+  // ── 1. 会話ログを1回のシート読み込みで取得 ──
+  var convSheet = resolveConversationLogSheet_(ss);
+  var allMessagesByLead = {};
+
+  if (convSheet) {
+    var convData    = convSheet.getDataRange().getValues();
+    var convHeaders = convData[0];
+    var leadIdIdx   = convHeaders.indexOf('リードID');
+    var logIdIdx    = convHeaders.indexOf('ログID');
+    var datetimeIdx = convHeaders.indexOf('日時');
+    var bodyIdx     = convHeaders.indexOf('原文');
+    var dirIdx      = convHeaders.indexOf('送受信');
+
+    if (leadIdIdx !== -1) {
+      for (var r = 1; r < convData.length; r++) {
+        var row       = convData[r];
+        var rowLeadId = String(row[leadIdIdx] || '').trim();
+        if (!rowLeadId) continue;
+
+        var direction = dirIdx !== -1 ? String(row[dirIdx] || '').trim() : '';
+        var msgObj = {
+          id:     logIdIdx    !== -1 ? String(row[logIdIdx]    || '').trim() : '',
+          sender: direction === '受信' ? 'customer' : 'operator',
+          body:   bodyIdx     !== -1 ? String(row[bodyIdx]     || '').trim() : '',
+          sentAt: datetimeIdx !== -1 ? coreCustomerFrontendValue(row[datetimeIdx]) : ''
+        };
+
+        if (!allMessagesByLead[rowLeadId]) allMessagesByLead[rowLeadId] = [];
+        allMessagesByLead[rowLeadId].push(msgObj);
+      }
+    }
+  }
+
+  // 各リードのメッセージを日時昇順ソート
+  var leadIds = Object.keys(allMessagesByLead);
+  for (var k = 0; k < leadIds.length; k++) {
+    allMessagesByLead[leadIds[k]].sort(function(a, b) {
+      if (a.sentAt < b.sentAt) return -1;
+      if (a.sentAt > b.sentAt) return 1;
+      return 0;
+    });
+  }
+
+  // ── 2. 会話一覧（キャッシュ活用） ──
+  var conversations = buildInboxConversations_(ss);
+
+  // ── 3. 上位 maxConv 件の詳細を組み立て ──
+  var windowConversations = conversations.slice(0, maxConv);
+  var detailsByConversationId = {};
+
+  // リード管理（カルテ用）を1回だけ読む
+  var leads = coreCustomerFrontendReadTable(ss, 'LEADS', [
+    'LEAD_ID', 'CUSTOMER_NAME', 'LEAD_SOURCE', 'LEAD_PROGRESS',
+    'NEXT_ACTION', 'CS_NOTE', 'CONVERSATION_SUMMARY', 'LAST_CONVERSATION_AT'
+  ]);
+  var leadRowById = {};
+  for (var li = 0; li < leads.rows.length; li++) {
+    var lRow   = leads.rows[li];
+    var lId    = coreCustomerFrontendValue(lRow[leads.indexes.LEAD_ID]);
+    if (lId) leadRowById[lId] = lRow;
+  }
+
+  for (var ci = 0; ci < windowConversations.length; ci++) {
+    var conv   = windowConversations[ci];
+    var leadId = conv.id;
+    var lData  = leadRowById[leadId];
+    if (!lData) continue;
+
+    var leadProgress = coreCustomerFrontendValue(lData[leads.indexes.LEAD_PROGRESS]);
+    var inboxStatus  = LEAD_PROGRESS_TO_INBOX_STATUS[leadProgress] || 'lead';
+    var customerName = coreCustomerFrontendValue(lData[leads.indexes.CUSTOMER_NAME]);
+    var leadSource   = coreCustomerFrontendValue(lData[leads.indexes.LEAD_SOURCE]);
+    var nextAction   = coreCustomerFrontendValue(lData[leads.indexes.NEXT_ACTION]);
+    var csNote       = coreCustomerFrontendValue(lData[leads.indexes.CS_NOTE]);
+    var convSummary  = coreCustomerFrontendValue(lData[leads.indexes.CONVERSATION_SUMMARY]);
+    var lastConvAt   = coreCustomerFrontendValue(lData[leads.indexes.LAST_CONVERSATION_AT]);
+
+    var msgs = allMessagesByLead[leadId] || [];
+    // 最新 maxMsg 件のみ（末尾スライス）
+    var slicedMsgs = maxMsg > 0 && msgs.length > maxMsg
+      ? msgs.slice(msgs.length - maxMsg)
+      : msgs;
+
+    var convObj = {
+      id:           leadId,
+      customerName: customerName,
+      platform:     inboxPlatformFromSource_(leadSource),
+      status:       inboxStatus,
+      summary:      convSummary || (msgs.length > 0 ? msgs[0].body : ''),
+      updatedAt:    lastConvAt  || (msgs.length > 0 ? msgs[msgs.length - 1].sentAt : ''),
+      unread:       false
+    };
+
+    var karte = {
+      customerName: customerName,
+      company:      customerName,
+      platform:     leadSource,
+      status:       leadProgress,
+      nextAction:   nextAction,
+      note:         csNote
+    };
+
+    detailsByConversationId[leadId] = {
+      conversation: convObj,
+      messages:     slicedMsgs,
+      karte:        karte,
+      hasMore:      maxMsg > 0 && msgs.length > maxMsg
+    };
+  }
+
+  return {
+    conversations:            conversations,
+    detailsByConversationId:  detailsByConversationId
+  };
+}
+
+/**
+ * 受信箱：追加メッセージロード（窓方式 - 続き読み込み用）。
+ * 指定会話の offsetIndex 番目以降のメッセージを maxMessages 件返す。
+ *
+ * Script Properties:
+ *   INBOX_LOAD_MORE_MESSAGES (デフォルト 30)
+ *
+ * @param {string} sessionId
+ * @param {string} conversationId
+ * @param {number} offsetIndex   既取得件数（スキップ行数）
+ * @param {number} [maxMessages]  省略時は Script Properties 値
+ * @returns {{ conversationId: string, messages: Array<Object>, hasMore: boolean }}
+ */
+function getInboxMoreMessages(sessionId, conversationId, offsetIndex, maxMessages) {
+  setEmailFromSession(sessionId);
+  checkPermission('lead_view');
+
+  var props = PropertiesService.getScriptProperties();
+  var limit = maxMessages
+    || parseInt(props.getProperty('INBOX_LOAD_MORE_MESSAGES') || '30', 10);
+
+  var ss   = getSpreadsheet();
+  var msgs = readInboxMessages_(ss, conversationId);
+
+  // 古い順 → offsetIndex から limit 件
+  var offset  = offsetIndex || 0;
+  var sliced  = msgs.slice(offset, offset + limit);
+  var hasMore = (offset + limit) < msgs.length;
+
+  return {
+    conversationId: conversationId,
+    messages:       sliced,
+    hasMore:        hasMore
+  };
+}
+
+// ───────────────────────────────────────────────
+// DEV専用計測ツール
+// ───────────────────────────────────────────────
+
+/**
+ * DEV専用: Phase 1 データ規模計測。
+ * メッセージ数の分布（最大・中央値・合計）と各窓サイズの応答サイズ概算を返す。
+ *
+ * @returns {{ totalConversations: number, totalMessages: number, maxMessages: number,
+ *             medianMessages: number, distribution: Array<{leadId:string, count:number}>,
+ *             estimatedResponseKb: Object }}
+ */
+function measureInboxScale() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('measureInboxScale は DEV 環境でのみ実行できます');
+  }
+
+  var ss = getSpreadsheet();
+  var convSheet = resolveConversationLogSheet_(ss);
+  var countByLead = {};
+
+  if (convSheet) {
+    var convData  = convSheet.getDataRange().getValues();
+    var headers   = convData[0];
+    var leadIdIdx = headers.indexOf('リードID');
+    var bodyIdx   = headers.indexOf('原文');
+
+    if (leadIdIdx !== -1) {
+      for (var r = 1; r < convData.length; r++) {
+        var lid  = String(convData[r][leadIdIdx] || '').trim();
+        var body = bodyIdx !== -1 ? String(convData[r][bodyIdx] || '') : '';
+        if (!lid) continue;
+        if (!countByLead[lid]) countByLead[lid] = { count: 0, totalBytes: 0 };
+        countByLead[lid].count += 1;
+        countByLead[lid].totalBytes += body.length * 2; // UTF-16 概算
+      }
+    }
+  }
+
+  var conversations = buildInboxConversations_(ss);
+  var allCounts = conversations.map(function(c) {
+    return { leadId: c.id, count: (countByLead[c.id] || {}).count || 0 };
+  });
+
+  var sorted = allCounts.map(function(x) { return x.count; }).sort(function(a, b) { return a - b; });
+  var total  = sorted.reduce(function(s, v) { return s + v; }, 0);
+  var maxMsg = sorted[sorted.length - 1] || 0;
+  var mid    = Math.floor(sorted.length / 2);
+  var median = sorted.length > 0
+    ? (sorted.length % 2 === 0 ? Math.round((sorted[mid - 1] + sorted[mid]) / 2) : sorted[mid])
+    : 0;
+
+  // 各窓パターンの推定レスポンスサイズ（JSON概算: 1メッセージ ≈ 200 bytes）
+  var BYTES_PER_MSG   = 200;
+  var BYTES_PER_CONV  = 150;
+  var convCounts  = [10, 20, conversations.length];
+  var msgCounts   = [20, 30, 50, 999];
+  var estimated   = {};
+  for (var ci = 0; ci < convCounts.length; ci++) {
+    for (var mi = 0; mi < msgCounts.length; mi++) {
+      var nc  = convCounts[ci];
+      var nm  = msgCounts[mi];
+      var key = 'conv' + nc + '_msg' + (nm === 999 ? 'all' : nm);
+      var totalMsgs = Math.min(nm * nc, total);
+      estimated[key] = Math.round((nc * BYTES_PER_CONV + totalMsgs * BYTES_PER_MSG) / 1024);
+    }
+  }
+
+  return {
+    totalConversations: conversations.length,
+    totalMessages:      total,
+    maxMessages:        maxMsg,
+    medianMessages:     median,
+    distribution:       allCounts,
+    estimatedResponseKb: estimated
+  };
+}
+
+/**
+ * DEV専用: 窓方式まとめ取得のタイミング計測。
+ * 会話数・メッセージ数の組み合わせで実行時間を計測する。
+ *
+ * @returns {Array<{conv: number, msg: number, durationMs: number, responseSizeKb: number}>}
+ */
+function measureInboxBulkTiming() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('measureInboxBulkTiming は DEV 環境でのみ実行できます');
+  }
+
+  var ss = getSpreadsheet();
+  var conversations = buildInboxConversations_(ss);
+  var totalConv = conversations.length;
+
+  var convCounts = [10, 20, totalConv];
+  var msgCounts  = [20, 30, 50, 999];
+  var results    = [];
+
+  for (var ci = 0; ci < convCounts.length; ci++) {
+    for (var mi = 0; mi < msgCounts.length; mi++) {
+      var nc = convCounts[ci];
+      var nm = msgCounts[mi];
+
+      var t0 = new Date().getTime();
+
+      // ── 窓まとめ取得をシミュレート ──
+      var convSheet = resolveConversationLogSheet_(ss);
+      var allMessagesByLead = {};
+      if (convSheet) {
+        var convData    = convSheet.getDataRange().getValues();
+        var convHeaders = convData[0];
+        var leadIdIdx   = convHeaders.indexOf('リードID');
+        var logIdIdx    = convHeaders.indexOf('ログID');
+        var datetimeIdx = convHeaders.indexOf('日時');
+        var bodyIdx     = convHeaders.indexOf('原文');
+        var dirIdx      = convHeaders.indexOf('送受信');
+        if (leadIdIdx !== -1) {
+          for (var r = 1; r < convData.length; r++) {
+            var row       = convData[r];
+            var lid       = String(row[leadIdIdx] || '').trim();
+            if (!lid) continue;
+            var direction = dirIdx !== -1 ? String(row[dirIdx] || '').trim() : '';
+            var msgObj = {
+              id:     logIdIdx    !== -1 ? String(row[logIdIdx]    || '').trim() : '',
+              sender: direction === '受信' ? 'customer' : 'operator',
+              body:   bodyIdx     !== -1 ? String(row[bodyIdx]     || '').trim() : '',
+              sentAt: datetimeIdx !== -1 ? coreCustomerFrontendValue(row[datetimeIdx]) : ''
+            };
+            if (!allMessagesByLead[lid]) allMessagesByLead[lid] = [];
+            allMessagesByLead[lid].push(msgObj);
+          }
+        }
+      }
+
+      // 上位 nc 件の詳細を組み立て
+      var windowConvs = conversations.slice(0, nc);
+      var details = {};
+      for (var k = 0; k < windowConvs.length; k++) {
+        var leadId = windowConvs[k].id;
+        var msgs   = (allMessagesByLead[leadId] || []).slice();
+        msgs.sort(function(a, b) {
+          if (a.sentAt < b.sentAt) return -1;
+          if (a.sentAt > b.sentAt) return 1;
+          return 0;
+        });
+        var sliced = (nm > 0 && nm < 999 && msgs.length > nm)
+          ? msgs.slice(msgs.length - nm) : msgs;
+        details[leadId] = sliced;
+      }
+
+      var t1       = new Date().getTime();
+      var duration = t1 - t0;
+
+      // レスポンスサイズ概算（JSON文字列化）
+      var payload     = { conversations: windowConvs, details: details };
+      var payloadStr  = JSON.stringify(payload);
+      var sizeKb      = Math.round(payloadStr.length / 1024);
+
+      results.push({
+        conv:          nc,
+        msg:           nm === 999 ? 'all' : nm,
+        durationMs:    duration,
+        responseSizeKb: sizeKb
+      });
+    }
+  }
+
+  return results;
+}
+
+// ───────────────────────────────────────────────
+// DEV専用: Phase 1 検証
+// ───────────────────────────────────────────────
+
 /**
  * DEV専用: Phase 1 合格条件を検証する。
  * - 会話ログシートのユニークリードID数
@@ -364,5 +719,91 @@ function dryRunVerifyInboxPhase1(sampleLeadId) {
     conversationListCount: conversations.length,
     sampleLeadId:          targetLeadId,
     sampleMessageCount:    messages.length
+  };
+}
+
+/**
+ * DEV専用: 窓方式 Script Properties を一括設定する。
+ */
+function setInboxWindowProperties() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('setInboxWindowProperties は DEV 環境でのみ実行できます');
+  }
+  var props = PropertiesService.getScriptProperties();
+  props.setProperties({
+    INBOX_INITIAL_CONVERSATIONS: '20',
+    INBOX_INITIAL_MESSAGES:      '30',
+    INBOX_LOAD_MORE_MESSAGES:    '30',
+    INBOX_LOAD_MORE_CONVERSATIONS: '20'
+  });
+  return { ok: true, properties: props.getProperties() };
+}
+
+/**
+ * DEV専用: 認証バイパスで getInboxBulkInitialLoad の結果を検証する。
+ * @returns {{ conversationCount: number, detailCount: number, sampleDetail: Object }}
+ */
+function dryRunInboxBulkLoad() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('dryRunInboxBulkLoad は DEV 環境でのみ実行できます');
+  }
+
+  var props = PropertiesService.getScriptProperties();
+  var maxConv = parseInt(props.getProperty('INBOX_INITIAL_CONVERSATIONS') || '20', 10);
+  var maxMsg  = parseInt(props.getProperty('INBOX_INITIAL_MESSAGES')      || '30', 10);
+
+  var ss = getSpreadsheet();
+
+  // 1回のシート読み込みで全メッセージを取得
+  var convSheet = resolveConversationLogSheet_(ss);
+  var allMessagesByLead = {};
+  if (convSheet) {
+    var convData    = convSheet.getDataRange().getValues();
+    var convHeaders = convData[0];
+    var leadIdIdx   = convHeaders.indexOf('リードID');
+    var logIdIdx    = convHeaders.indexOf('ログID');
+    var datetimeIdx = convHeaders.indexOf('日時');
+    var bodyIdx     = convHeaders.indexOf('原文');
+    var dirIdx      = convHeaders.indexOf('送受信');
+    if (leadIdIdx !== -1) {
+      for (var r = 1; r < convData.length; r++) {
+        var row       = convData[r];
+        var lid       = String(row[leadIdIdx] || '').trim();
+        if (!lid) continue;
+        var direction = dirIdx !== -1 ? String(row[dirIdx] || '').trim() : '';
+        var msgObj = {
+          id:     logIdIdx    !== -1 ? String(row[logIdIdx]    || '').trim() : '',
+          sender: direction === '受信' ? 'customer' : 'operator',
+          body:   bodyIdx     !== -1 ? String(row[bodyIdx]     || '').trim() : '',
+          sentAt: datetimeIdx !== -1 ? coreCustomerFrontendValue(row[datetimeIdx]) : ''
+        };
+        if (!allMessagesByLead[lid]) allMessagesByLead[lid] = [];
+        allMessagesByLead[lid].push(msgObj);
+      }
+    }
+  }
+
+  var conversations = buildInboxConversations_(ss);
+  var windowConvs = conversations.slice(0, maxConv);
+
+  var detailCount = 0;
+  var sampleLead = null;
+  for (var ci = 0; ci < windowConvs.length; ci++) {
+    var leadId = windowConvs[ci].id;
+    var msgs   = (allMessagesByLead[leadId] || []).slice();
+    msgs.sort(function(a, b) { return a.sentAt < b.sentAt ? -1 : a.sentAt > b.sentAt ? 1 : 0; });
+    var sliced  = maxMsg > 0 && msgs.length > maxMsg ? msgs.slice(msgs.length - maxMsg) : msgs;
+    var hasMore = maxMsg > 0 && msgs.length > maxMsg;
+    detailCount += 1;
+    if (!sampleLead || leadId === 'LDI-00002') {
+      sampleLead = { leadId: leadId, totalMessages: msgs.length, loadedMessages: sliced.length, hasMore: hasMore };
+    }
+  }
+
+  return {
+    conversationCount: conversations.length,
+    windowSize:        windowConvs.length,
+    detailCount:       detailCount,
+    sampleDetail:      sampleLead
   };
 }

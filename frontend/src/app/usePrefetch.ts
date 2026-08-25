@@ -11,6 +11,7 @@ import { useSalesOrderListCache } from '../pages/sales-orders/SalesOrderListCach
 import { useStaffListCache } from '../pages/staff/StaffListCacheContext';
 import { useQuoteListCache } from '../pages/quotes/QuoteListCacheContext';
 import { useCurrencyMasterCache } from '../pages/currency/CurrencyMasterCacheContext';
+import { useInboxConversationListCache } from '../pages/inbox/InboxConversationListCacheContext';
 
 export function usePrefetch(permissions: NavigationPermissions | null): void {
   const { ensureLoaded: ensureLeads } = useLeadListCache();
@@ -24,6 +25,7 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
   const { ensureLoaded: ensureStaff } = useStaffListCache();
   const { ensureLoaded: ensureQuotes } = useQuoteListCache();
   const { ensureLoaded: ensureCurrencies } = useCurrencyMasterCache();
+  const { ensureLoaded: ensureInboxConversations } = useInboxConversationListCache();
   const hasRun = useRef(false);
 
   useEffect(() => {
@@ -42,6 +44,7 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
       { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.salesOrders, permissions), load: () => ensureSalesOrders() },
       { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.staff,       permissions), load: () => ensureStaff() },
       { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.quotes,      permissions), load: () => ensureQuotes() },
+      { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.inbox,       permissions), load: () => ensureInboxConversations() },
     ];
 
     const timer = setTimeout(() => {
@@ -54,6 +57,6 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [permissions, ensureLeads, ensureLeadFormOptions, ensureCustomers, ensureAggregates, ensureInventory, ensureInventoryProductOptions, ensureOrders, ensureCurrencies, ensureSalesOrders, ensureStaff, ensureQuotes]);
+  }, [permissions, ensureLeads, ensureLeadFormOptions, ensureCustomers, ensureAggregates, ensureInventory, ensureInventoryProductOptions, ensureOrders, ensureCurrencies, ensureSalesOrders, ensureStaff, ensureQuotes, ensureInboxConversations]);
 
 }

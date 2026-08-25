@@ -2129,3 +2129,45 @@ PASS=true
 
 - PR #560 — CI 結果待ち。
 - 戻し方: `git revert <merge-commit-SHA>` ※マージ後に更新する
+
+---
+
+## アプリ全体プリフェッチ標準化 Phase 2-3 — Discord settings cache
+
+- `DiscordSettingsCacheContext`（`createListCache` + `SINGLE_KEY`）を追加し、Discord設定ページの初期読込を4値（接続状態、チャンネル、OAuth状態、セットアップ状態）の単一スナップショットに置換した。discord信号では `SyncPoller` がこのcacheを `refresh()` する。
+- 保存成功後は従来の一部のみの再取得ではなく、4値をまとめて再取得する。保存頻度が低い画面であるため、この挙動変更は許容する。
+- Botトークン保存後は `await refresh()` 完了後の最新スナップショットを入力に接続済み判定を行う。旧snapshotで判定して接続失敗表示になる事象を防ぐ。
+- 検証生出力: `discordSettings initial=4 reopened=4 afterSignal=8 afterSave=12`、保存後の接続済み成功表示を確認、`PASS=true`。
+
+---
+
+## アプリ全体プリフェッチ標準化 Phase 2-4 — Inbox conversation list cache
+
+- `InboxConversationListCacheContext`（`createListCache` + `SINGLE_KEY`）を追加し、一覧の画面ローカル読込を置換した。inbox権限で `usePrefetch` に登録し、inbox信号では `SyncPoller` が公開済みの `refresh()` を呼ぶ。
+- 検証生出力: `getInboxConversationsForFrontend initial=1 reopened=1 afterSignal=2`、`PASS=true`。呼出回数の検証のみがcacheの有効な証拠である。
+- `inboxRows initial=25 afterSignal=25` はプレビュー用モックを25件で実装したうえで数えた結果であり、実データの件数不変を証明するものではない。実データの件数はDEV画面で目視確認する事項として残す。
+- 受信箱は現時点で読取専用のため afterSave 未検証。将来 書き込み機能を実装する際は、保存成功後に Inbox cache の `refresh()` を呼び、かつ書込側で inbox 信号を発行すること。両方を実装しないと他担当者に反映されない。
+
+---
+
+## Discord Guild連携状態表示改善（PR #578）
+
+- 原因: `src/35_DiscordOAuthApi.js` はBotが複数Guildに参加している場合、保存済みの`DISCORD_GUILD_ID`を照合せず`guildId: null`を返していた。`DiscordIntegrationPage.tsx`も選択UIを`multiple`状態だけに限定していたため、連携先の常時表示・切替ができなかった。
+- 修正: 保存済みGuildが参加一覧に含まれる場合は`linked`とそのGuild IDを返す。画面はGuild名とIDを常時表示し、参加先一覧のプルダウンを連携済みでも表示する。状態確認後は連携済み・未連携・エラーのいずれも結果メッセージを表示する。
+- 変更ファイル: `src/35_DiscordOAuthApi.js`、`frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx`、`frontend/src/content/ja/discordIntegration.ts`、`frontend/src/preview/gasRunnerMock.ts`。
+- 検証: `frontend/npm run build:gas` は成功。Playwright実画面確認は、利用可能なブラウザ接続がなく、既存の`?preview#/discord-integration`が権限確認待機から進まなかったため免除した。
+- PR #578 squash SHA: `ffb03a47a6c4732e13d9d61271e14fcba0e01f14`。戻し方: `git revert ffb03a47a6c4732e13d9d61271e14fcba0e01f14`。
+
+## Discord顧客別招待 Phase 3基盤（PR #574）
+- 単一の招待使用候補だけを顧客専用チャンネルへ反映する。@everyone拒否、顧客・Bot・ROLE=OWNERの担当者を許可する。担当者個別許可は氏名照合の誤許可リスクのため対象外。オーナーDiscord ID未設定時はBot＋顧客で続行し警告を記録する。
+- PR #574 squash SHA: `bef41dc4f6a6be87848496d12e3d53adf4cd92a4`。戻し方: `git revert bef41dc4f6a6be87848496d12e3d53adf4cd92a4`。
+- V2-3の5msはNode VMでの偽HTTP応答によるモック計測であり、実ネットワークを伴う実行時間は【未確認】。実測はBot権限再招待とSERVER MEMBERS INTENT有効化後、成功経路で行う。
+
+---
+
+## アプリ全体プリフェッチ標準化 Phase 2-5 — Inbox conversation detail keyed cache
+
+- `InboxConversationDetailCacheContext`（`createListCache`、会話ID key）を追加し、ページ内の `useRef` Map と直接詳細取得を置換した。inbox信号では一覧とともに、取得済みの全会話キーを `refresh()` する。
+- 検証生出力: `getInboxConversationDetailForFrontend afterA=1 afterB=2 afterReturnA=2 afterSignal=4`、`PASS=true`。呼出回数の検証のみがcacheの有効な証拠である。
+- `LDI-00002 messages=75` はプレビュー用モックを75件で実装したうえで数えた結果であり、実データの件数不変を証明するものではない。実データの件数はDEV画面で目視確認する事項として残す。
+- 受信箱は現時点で読取専用のため afterSave 未検証。将来 書き込み機能を実装する際は、保存成功後に Inbox cache の `refresh()` を呼び、かつ書込側で inbox 信号を発行すること。両方を実装しないと他担当者に反映されない。
