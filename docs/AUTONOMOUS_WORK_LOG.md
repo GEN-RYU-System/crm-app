@@ -1929,3 +1929,30 @@ PASS=true
 - 2026-08-25 — PR #523（A-1、請求書番号の次番号生成）。squash SHA: `86ca5bcb92047707714f4ca11f49effb61ea8a96`。`INV-` 系列の最大連番から5桁ゼロ埋めで採番し、既存系列を変更しない。build・CI・Core Schema V1監査は成功。戻し方: `git revert 86ca5bcb92047707714f4ca11f49effb61ea8a96`。
 - 2026-08-25 — PR #530（A-2、下書き／発行のGAS処理）。squash SHA: `d943ce98196f7ae4e652f0382deeec58d4b906b8`。`isDraft` を作成・更新APIに追加し、Wise自動採番、PayPal番号必須、再発行の既存値維持を実装。build・CI・Core Schema V1監査は成功。戻し方: `git revert d943ce98196f7ae4e652f0382deeec58d4b906b8`。
 - 2026-08-25 — PR #537（A-3、請求書画面の一時保存／発行）。squash SHA: `8b49dbd0c4b3a680de0f87a6cff83122c2b25b76`。PayPal時の請求書番号入力、発行済み時の一時保存非表示、`isDraft`／`invoiceNumber` のAPI伝達を実装。Deploy to DEV・SHA照合・Core Schema V1監査は成功。戻し方: `git revert 8b49dbd0c4b3a680de0f87a6cff83122c2b25b76`。
+
+---
+
+## Discord Bot 招待後の Guild 自動検出（PR #545）
+
+### 変更内容と判断根拠
+
+- `src/35_DiscordOAuthApi.js` の招待URLから callback 用のクエリを除去し、Bot招待に必要な `client_id`・`scope`・`permissions` のみを生成するよう変更した。配布先に Discord Developer Portal での redirect URI 事前登録を要求しないためである。
+- 同ファイルの `getDiscordOAuthStatus` は、Botトークンで Discord の guild 一覧 API を呼ぶ。1件なら `DISCORD_GUILD_ID` に保存して連携済みを返し、複数件なら名称・IDの選択肢を返し、0件なら未連携を返す。`saveDiscordGuildId` は再取得した一覧に含まれるIDだけを保存する。
+- `src/27_WebApp.js` の callback 呼出しを除去した。callback handler の参照元は当該 `doGet` 分岐のみであり、招待URLから callback パラメータを除去した後には到達経路がないためである。
+- `src/36_DiscordChannelSetupApi.js` は既存どおり `DISCORD_GUILD_ID` を読むため、上記の保存経路でチャンネルセットアップに必要な値が供給されることを確認した。
+- `frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx`、GAS client・adapter・型定義・日本語文言を更新し、複数guildの選択・保存UIを追加した。
+- `src/27_WebApp.js` の指定6箇所は、サンプルCSV生成コード中の既存ダミー値であることを実読で確認した。機密検査の誤検知を避ける明確なダミー表記へ統一した。実値は含まれていない。
+
+### 実測結果
+
+- `frontend/npm run build:gas`: 成功。
+- `?preview` Playwright: 招待URLのクエリが3種のみであること、複数guildの選択・保存、連携済み表示、ページエラー0件を確認して成功。
+- Node VMによるGAS関数検証: 招待URL、1件自動保存、複数件返却、選択保存の各ケースが成功。
+- `SENSITIVE_CONTENT_BASE_SHA=$(git merge-base origin/develop HEAD) node scripts/check-sensitive-content.mjs`: 検出0件。
+- PR CI: Frontend Check、GAS Global Namespace Check、Security Content Check（Gitleaks / Sensitive Content）すべて成功。
+- Deploy to DEV run `32802358971`: 成功。
+
+### PR / revert
+
+- PR #545 — Discord Bot 招待後のGuild検出とサンプルダミー値の誤検知解消。squash merge SHA: `0c895719c7c847c7281da8eaca38cd30f4eb4e91`。
+- 戻し方: `git revert 0c895719c7c847c7281da8eaca38cd30f4eb4e91`。
