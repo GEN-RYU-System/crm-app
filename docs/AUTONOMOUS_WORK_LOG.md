@@ -2235,3 +2235,47 @@ PASS=true
 - **V-C1**: `runDiscordAutoSetup` を2回実行し Customer/Partner カテゴリ・ロールが重複しないこと。
 - **V-C2**: SMALL/LARGE 各スケールで招待発行し、参加後に正しいロールが付与されること。
 - **V-C3**: スケール未設定顧客への招待でチャンネル作成が続行し Logger に警告が出ること。
+
+---
+
+## 【請求書PDF修正】Bugs A/D/E/F/G 解決（PR #597）
+
+- **日時**: 2026-08-26
+- **ブランチ**: `release/invoice-fix-b-g`
+- **PR**: GEN-RYU-System/crm-app#597（Draft）
+- **コミット SHA**: d62f58c
+- **戻し方**: `git revert d62f58c`
+
+### Phase 1 実測（recon）
+
+実スクリーン（OrderDetailPage・OrderEditorPage）のソースコードを精査し、全バグの根本原因を特定。
+
+| バグ | 根本原因 | 修正箇所 |
+|------|----------|----------|
+| A: exchangeRate/invoiceNo なし | `createCoreOrderForFrontend` が `{success,orderId}` のみ返却 | `28_CoreOrderWriteApi.js` |
+| D: billedTo 住所なし | GAS が `DISPLAY_NAME/BILLING_NAME` のみ読込 | `28_CoreOrderReadApi.js` + 両Page |
+| E: shipTo 名前誤り | `shippingDestinationName` が display name 優先 | `28_CoreOrderReadApi.js` + 両Page |
+| F: 英語商品名なし | GAS に `ENGLISH_TITLE` 取得なし | `28_CoreInventoryOptionApi.js` + `28_CoreOrderReadApi.js` + 両Page |
+| G: 支払先メールなし | `DocTerms` に `paymentEmail` prop なし | `DocumentParts.tsx` + `InvoiceDocument.tsx` |
+
+### Phase 2 検証スクリプト
+
+`verify-invoice-print.mjs` を rewrite。カタログ（`#/components`）→ 実画面（`?preview#/orders/ORD-00001`）に変更。
+`page.exposeFunction` でブラウザ→Node.js 通知を実装し、`window.print` スピン中に `page.pdf()` を安全に呼び出す方式を採用。
+
+### Phase 3 検証結果（全 8 PASS）
+
+```
+[PASS] #1 ポータル DOM テキストが 1 件以上抽出される（964 文字）
+[PASS] #2 日付に T や Z が含まれない（2026/01/15, 2026/02/15）
+[PASS] #3 請求先名 "Preview Billing Co." が描画されている（Bug D）
+[PASS] #4 届先名 "Preview Customer A" が描画されている（Bug E）
+[PASS] #5 英語商品名 "Pikachu ex SAR" が描画されている（Bug F）
+[PASS] #6 USD 注文で "Exchange Rate" が描画されている（Bug A）
+[PASS] #7 支払方法 "Wise" + 支払先メール "preview-payment-email" が描画されている（Bug G）
+[PASS] #8 ページ番号 "Page 1 / 1" が存在し X ≤ Y
+```
+
+### build チェック
+- `npm run build:gas`: SUCCESS（typecheck + vite build + emit-gas-html + check:design-system）
+- `check:design-system`: PASS（`gasRunnerMock.ts` の日本語文字列を ASCII に修正済み）
