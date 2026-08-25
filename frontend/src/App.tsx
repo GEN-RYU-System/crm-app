@@ -4,6 +4,7 @@ import { canAccessNavigationItem, DATA_MANAGEMENT_ITEMS, hasNavigationPermission
 import { usePrefetch } from './app/usePrefetch';
 import { useSyncPolling, type DomainRefreshers } from './app/useSyncPolling';
 import { useLeadListCache } from './pages/leads/LeadListCacheContext';
+import { useLeadDetailCache } from './pages/leads/LeadDetailCacheContext';
 import { useLeadFormOptionsCache } from './pages/leads/LeadFormOptionsCacheContext';
 import { useCustomerListCache } from './pages/customers/CustomerListCacheContext';
 import { useInventoryListCache } from './pages/inventory/InventoryListCacheContext';
@@ -93,6 +94,7 @@ function StaffPermissionLoading() {
  */
 function SyncPoller() {
   const { refreshAll: refreshLeads } = useLeadListCache();
+  const { refresh: refreshLeadDetails } = useLeadDetailCache();
   const { refresh: refreshLeadFormOptions } = useLeadFormOptionsCache();
   const { refresh: refreshCustomers } = useCustomerListCache();
   const { refresh: refreshInventory } = useInventoryListCache();
@@ -104,13 +106,13 @@ function SyncPoller() {
   const { refresh: refreshDashboardKpis } = useDashboardKpiCache();
 
   const refreshers = useMemo<DomainRefreshers>(() => ({
-    leads:     () => Promise.all([refreshLeads(), refreshLeadFormOptions(), refreshDashboardKpis()]).then(() => undefined),
+    leads:     () => Promise.all([refreshLeads(), refreshLeadDetails(), refreshLeadFormOptions(), refreshDashboardKpis()]).then(() => undefined),
     customers: () => refreshCustomers(),
     inventory: () => Promise.all([refreshInventory(), refreshInventoryProductOptions()]).then(() => undefined),
     orders:    () => Promise.all([refreshOrders(), refreshSalesOrders()]).then(() => undefined),
     staff:     () => refreshStaff(),
     quotes:    () => refreshQuotes(),
-  }), [refreshLeads, refreshLeadFormOptions, refreshDashboardKpis, refreshCustomers, refreshInventory, refreshInventoryProductOptions, refreshOrders, refreshSalesOrders, refreshStaff, refreshQuotes]);
+  }), [refreshLeads, refreshLeadDetails, refreshLeadFormOptions, refreshDashboardKpis, refreshCustomers, refreshInventory, refreshInventoryProductOptions, refreshOrders, refreshSalesOrders, refreshStaff, refreshQuotes]);
 
   useSyncPolling(refreshers);
   return null;

@@ -14,12 +14,13 @@ export function LeadDetailCacheProvider({ repository, children }: PropsWithChild
 }
 
 export function useLeadDetailCache() {
-  const { itemsByKey, errorByKey, loadingByKey, ensureLoaded, retry } = useCache();
+  const { itemsByKey, errorByKey, loadingByKey, ensureLoaded, refresh, retry } = useCache();
   return {
     recordsByLeadId: itemsByKey,
     errorsByLeadId: errorByKey,
     loadingByLeadId: loadingByKey,
     ensureLoaded: useCallback((leadId: string) => ensureLoaded(leadId), [ensureLoaded]),
+    refresh: useCallback(() => refresh(), [refresh]),
     retry: useCallback((leadId: string) => retry(leadId), [retry]),
   };
 }
