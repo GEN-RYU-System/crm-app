@@ -6147,8 +6147,8 @@ function exportLeadsSampleCSV() {
         'XYZ Corporation',              // 顧客名
         'XYZ',                          // 呼び方（英語）
         'Japan',                        // 国
-        'xyz@example.jp',               // メール
-        '03-1234-5678',                 // 電話番号
+        'sample@example.com',            // メール
+        '000-0000-0000',                 // 電話番号
         'メール',                        // 連絡手段
         '',                             // メッセージURL
         '2026-01-25',                   // 初回接触日
@@ -6328,7 +6328,7 @@ function exportCustomerMasterSampleCSV() {
         '2026-01-20',                         // 登録日
         'ABC Trading LLC',                    // Billing Name
         '+1-234-567-8900',                    // Billing Phone
-        'contact@abc.com',                    // Billing Email
+        'billing@example.com',                // Billing Email
         '12-3456789',                         // Business ID
         '123 Main Street',                    // Billing Address 1
         'Suite 100',                          // Billing Address 2
@@ -6357,8 +6357,8 @@ function exportCustomerMasterSampleCSV() {
         'CT-00002',                           // 顧客ID
         '2026-01-25',                         // 登録日
         'XYZ Corporation',                    // Billing Name
-        '+44-20-1234-5678',                   // Billing Phone
-        'info@xyzcorp.co.uk',                 // Billing Email
+        '000-0000-0000',                      // Billing Phone
+        'contact@example.com',                // Billing Email
         'GB123456789',                        // Business ID
         '789 High Street',                    // Billing Address 1
         'Floor 3',                            // Billing Address 2
@@ -6367,7 +6367,7 @@ function exportCustomerMasterSampleCSV() {
         'SW1A 1AA',                           // Billing ZIP
         'United Kingdom',                     // Billing Country
         'XYZ Corporation',                    // Delivery Name
-        '+44-20-1234-5678',                   // Delivery Phone
+        '000-0000-0000',                      // Delivery Phone
         '789 High Street',                    // Delivery Address 1
         'Floor 3',                            // Delivery Address 2
         'London',                             // Delivery City
