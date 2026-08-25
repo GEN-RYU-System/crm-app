@@ -2052,3 +2052,20 @@ PASS=true
 - PR #555 — LeadDetail の既知全キーを leads 信号で refresh。squash merge SHA: `13bf207b1d2409ae254b27a2a697201688588dae`。戻し方: `git revert 13bf207b1d2409ae254b27a2a697201688588dae`。Deploy to DEV / `getDeployedSha` 一致を確認。
 - PR #556 — CustomerDetail の既知全キーを customers 信号で refresh。squash merge SHA: `9a6beebfd21cea13a8fe1d024f795c786107de25`。戻し方: `git revert 9a6beebfd21cea13a8fe1d024f795c786107de25`。Deploy to DEV / `getDeployedSha` 一致を確認。
 - PR #557 — SalesOrderDetail の既知全キーを orders 信号で refresh。squash merge SHA: `26b8cf40e178e97434230cb464c0e6f33f2a73da`。戻し方: `git revert 26b8cf40e178e97434230cb464c0e6f33f2a73da`。Deploy to DEV / `getDeployedSha` 一致を確認。
+
+---
+
+## アプリ全体プリフェッチ標準化 Phase 2 — 通貨マスタの同期対象外判断
+
+- 通貨マスタは手動シート編集が唯一の更新経路のため同期信号の対象外とした。通貨を変更した場合は各利用者の画面再読み込みが必要。
+- 将来、通貨編集UIを実装する際は、同時に `currencies` 信号の追加が必要になる。
+
+---
+
+## アプリ全体プリフェッチ標準化 Phase 2-1 — issuer / discord / inbox 同期信号
+
+- `checkSyncSignals` の読出ドメインを既存6件から issuer / discord / inbox を加えた9件へ拡張した。
+- `writeSyncSignalDomains_` を追加し、既存の `withSheetWrite_` もこの共通処理を経由するようにした。既存の cache target 起点の発行契約は保持する。
+- issuer保存、Discordのトークン・Application ID・チャンネル・Guild・自動セットアップ保存、および Discord受信会話ログの一括保存成功後に、それぞれの信号を発行する。
+- 検証生出力: 既存6ドメインは各 `existing-*` 値を保持、新3ドメインは非null、全書込フック検査は `true`、`PASS=true`。
+- `frontend/npm run build:gas` と DEV `runCoreSchemaConformanceAudit()` は成功（総不一致0）。

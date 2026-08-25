@@ -224,6 +224,7 @@ function runDiscordAutoSetup(sessionId) {
     // スクリプトプロパティに保存
     scriptProps.setProperty('DISCORD_CATEGORY_ID', categoryId);
     scriptProps.setProperty('DISCORD_TICKET_CHANNEL_ID', ticketChannelId);
+    writeSyncSignalDomains_(['discord']);
     Logger.log('runDiscordAutoSetup: セットアップ完了 categoryId=' + categoryId + ' ticketChannelId=' + ticketChannelId);
 
     return {

@@ -10,7 +10,7 @@
 
 /* global setEmailFromSession, CacheService */
 
-var SYNC_SIGNAL_DOMAINS = ['leads', 'quotes', 'orders', 'inventory', 'staff', 'customers'];
+var SYNC_SIGNAL_DOMAINS = ['leads', 'quotes', 'orders', 'inventory', 'staff', 'customers', 'issuer', 'discord', 'inbox'];
 
 /**
  * 全種別の同期シグナルを1回の getAll で取得して返す。

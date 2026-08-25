@@ -19,7 +19,7 @@ let mockDiscordConnectionStatus = {
   clientId: '',
 };
 let previewOrderPaymentConfirmed = false;
-type MockSyncDomain = 'leads' | 'quotes' | 'orders' | 'inventory' | 'staff' | 'customers';
+type MockSyncDomain = 'leads' | 'quotes' | 'orders' | 'inventory' | 'staff' | 'customers' | 'issuer' | 'discord' | 'inbox';
 
 type PreviewWindow = Window & {
   __gasMockCallCounts?: Readonly<Record<string, number>>;
@@ -243,6 +243,7 @@ const MOCK_LEAD_DETAILS: Record<string, Record<string, unknown>> = {
 const INITIAL_MOCK_SYNC_SIGNALS = {
   leads: null, quotes: null, orders: null,
   inventory: null, staff: null, customers: null,
+  issuer: null, discord: null, inbox: null,
 };
 let mockSyncSignals: Record<MockSyncDomain, string | null> = { ...INITIAL_MOCK_SYNC_SIGNALS };
 
