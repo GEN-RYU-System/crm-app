@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CRM_SEARCH_ICON, CRM_SORT_ICONS } from '../../app/icons';
 import { Badge } from '../../components/ui/Badge/Badge';
@@ -73,17 +73,6 @@ export function SalesOrderListPage() {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SalesOrderSort>(SALES_ORDER_LIST_INITIAL_SORT);
   const [activeTabLabel, setActiveTabLabel] = useState<string | null>(null);
-
-  // Measure sticky band (PageHeader + PageToolbar) height for DataTable thead top offset
-  const stickyBandRef = useRef<HTMLDivElement>(null);
-  const [stickyBandH, setStickyBandH] = useState(0);
-  useEffect(() => {
-    const el = stickyBandRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setStickyBandH(el.getBoundingClientRect().height));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   void ensureLoaded();
 
@@ -171,14 +160,10 @@ export function SalesOrderListPage() {
   const isEmpty = !isLoading && error === undefined && filteredRows.length === 0;
 
   return (
-    // --_sticky-band-h is a private CSS var consumed by DataTable stickyHeader
-    // eslint-disable-next-line react/forbid-dom-props
-    <div className="sales-order-list-page__page" style={{ '--_sticky-band-h': `${stickyBandH}px` } as React.CSSProperties}>
-      {/* Segments 1+2: PageHeader and PageToolbar combined into one sticky band (z-index: 20) */}
-      <div ref={stickyBandRef} className="sales-order-list-page__sticky-band">
+    <div className="sales-order-list-page__page">
+      <div className="sales-order-list-page__sticky-band">
         <PageHeader eyebrow={salesOrdersCopy.eyebrow} title={salesOrdersCopy.title} subtitle={salesOrdersCopy.subtitle} />
         <PageToolbar
-          className="sales-order-list-page__toolbar"
           start={
             <TextField
               aria-label={salesOrdersCopy.searchLabel}
