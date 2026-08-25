@@ -1847,3 +1847,7 @@ $ CRM_MAX_WORKTREES=1 .githooks/pre-push </dev/null
 ERROR: 18 worktrees; limit is 1. Run scripts/janitor.sh first.
 exit=1
 ```
+
+## 2026-08-25 清掃員PR-2 検証
+
+- dry-run検出を受け、develop/main保護、7日mtime保護、JANITOR_ONLY_PATH隔離モードを追加。probeのみを隔離撤去し、既存worktreeは残存確認済み。
