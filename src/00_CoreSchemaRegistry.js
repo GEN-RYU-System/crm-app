@@ -13,7 +13,7 @@ const CORE_SCHEMA_V1_TABLES = {
   },
   CUSTOMERS: {
     sheetName: '顧客マスタ', canonicalName: '顧客マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
-    headers: createCoreSchemaV1Headers([['CUSTOMER_ID', '顧客ID'], ['SOURCE_LEAD_ID', '源流リードID'], ['CUSTOMER_NAME', '顧客名'], ['COUNTRY', '国'], ['EMAIL', 'メール'], ['PHONE', '電話番号'], ['COUNTRY_CODE', '国番号'], ['FIRST_TRANSACTION_DATE', '初回取引日'], ['REGISTERED_AT', '登録日'], ['SALES_ASSIGNEE_NAME', '営業担当者'], ['CONTACT_TOOL', '連絡ツール'], ['FEDEX_ID', 'FedEx ID'], ['SHIPPING_NOTE', '発送時メモ'], ['SHIPMENT_WEBHOOK', 'Shippment webhook'], ['DISCORD_GUILD_ID', 'Discord Guild ID'], ['DISCORD_CHANNEL_ID', 'Discord チャンネルID'], ['DISCORD_INVITE_URL', 'Discord 招待URL'], ['DISCORD_INVITE_ISSUED_AT', 'Discord 招待発行日時'], ['DISCORD_LINK_STATUS', 'Discord 連携状態'], ['CUSTOMER_SCALE', '顧客規模']]),
+    headers: createCoreSchemaV1Headers([['CUSTOMER_ID', '顧客ID'], ['SOURCE_LEAD_ID', '源流リードID'], ['CUSTOMER_NAME', '顧客名'], ['COUNTRY', '国'], ['EMAIL', 'メール'], ['PHONE', '電話番号'], ['COUNTRY_CODE', '国番号'], ['FIRST_TRANSACTION_DATE', '初回取引日'], ['REGISTERED_AT', '登録日'], ['SALES_ASSIGNEE_NAME', '営業担当者'], ['CONTACT_TOOL', '連絡ツール'], ['FEDEX_ID', 'FedEx ID'], ['SHIPPING_NOTE', '発送時メモ'], ['SHIPMENT_WEBHOOK', 'Shippment webhook'], ['DISCORD_CHANNEL_ID', 'Discord チャンネルID'], ['CUSTOMER_SCALE', '顧客規模']]),
     primaryKey: 'CUSTOMER_ID',
     referenceIds: [{ headerKey: 'SOURCE_LEAD_ID', targetTableKey: 'LEADS' }]
   },
