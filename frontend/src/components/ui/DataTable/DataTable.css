@@ -21,7 +21,12 @@
    (unlike overflow:hidden which would block position:sticky on thead).
    overflow-x:clip on the scroll wrapper clips wide content without creating
    a horizontal scroll container; horizontal scroll is intentionally disabled
-   in sticky-header mode to allow the thead to be sticky within the page scroll. */
+   in sticky-header mode to allow the thead to be sticky within the page scroll.
+   border-collapse:separate is required because border-collapse:collapse causes browsers
+   to paint sticky <th> elements below <td> rows (known z-index interaction).
+   border-spacing:0 keeps cell spacing identical to the collapse layout.
+   Doubling of borders does not occur because only border-bottom is used (no border-top). */
 .ui-data-table--sticky-header { overflow: clip; }
 .ui-data-table--sticky-header .ui-data-table__scroll { overflow-x: clip; }
+.ui-data-table--sticky-header .ui-data-table__table { border-collapse: separate; border-spacing: 0; }
 .ui-data-table--sticky-header .ui-data-table__header { position: sticky; top: var(--_sticky-band-h, 0px); z-index: 10; background: var(--data-table-header-surface); }
