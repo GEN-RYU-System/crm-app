@@ -2470,3 +2470,69 @@ CurrencyMasterCacheProvider   — 静的マスタ。アプリ経由の更新経�
 - PR #605 squash SHA: `c49599e0c8ec936025d9a6b0786d02fe1df56207`
 - 戻し方: `git revert c49599e0c8ec936025d9a6b0786d02fe1df56207`
 - `getDeployedSha` 確認: `{ sha: "c49599e0c8ec936025d9a6b0786d02fe1df56207", deployedAt: "2026-08-25T20:57:48.162Z" }` → マージSHA と一致 ✓
+
+---
+
+**アプリ全体プリフェッチ標準化 — 完了判定前追加作業(2) (2026-08-26)**
+
+### PR #600 内容
+
+- **タイトル**: chore: Discord連携の全実装を削除（廃止）
+- **マージSHA**: `3b458d78d014bf919d43c9e74272abd4c21bf592`
+- **変更規模**: 37ファイル変更、-3825行/-38行（大規模削除）
+- **主な削除内容**:
+  - `src/33_DiscordIntegrationService.js`（744行）
+  - `src/34_DiscordSettingsApi.js`（200行）
+  - `src/34_MetaDiscord.js`（123行）
+  - `src/35_DiscordOAuthApi.js`（137行）
+  - `src/36_DiscordChannelSetupApi.js`（487行）
+  - `src/37_DiscordTicketApi.js`（47行）
+  - `src/38_DiscordCustomerInviteApi.js`（61行）
+  - `src/39_DiscordInviteUsageSync.js`（41行）
+  - `src/40_DiscordInviteChannelProvisioning.js`（81行）
+  - `frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx`（579行）
+  - `frontend/src/pages/discord-integration/DiscordSettingsCacheContext.tsx`（45行）
+  - `frontend/src/features/discordIntegration/`（contracts.ts 56行・gasAdapter.ts 26行）
+  - `frontend/src/content/ja/discordIntegration.ts`（76行）
+  - `frontend/src/gas/client.ts`、`gas/types.d.ts`（Discord関連API削除）
+  - `CustomerDetailPage.tsx` の Discord呼び出し削除、`gasRunnerMock.ts` Discord mock削除
+  - `src/00_CoreSchemaRegistry.js` の CUSTOMER_SCALE 追加列削除
+  - `src/08_Config.js` の Discord設定削除
+
+### タスク2-8b Playwright 合格条件実測
+
+実行: `node frontend/scripts/verify-editor-issuer-cache.cjs`（dev server http://127.0.0.1:5187/?preview 使用）
+
+```
+after-dashboard __gasMockCallCounts: {..., "getCoreIssuerForFrontend":1, ...}
+after-quote-editor-url __gasMockCallCounts: {..., "getCoreIssuerForFrontend":1, ...}
+after-order-editor-url __gasMockCallCounts: {..., "getCoreIssuerForFrontend":1, ...}
+getCoreIssuerForFrontend afterDashboard=1 afterQuoteEditorUrl=1 afterOrderEditorUrl=1
+PASS=true
+```
+
+### タスク3-1(b) 再実装（PR #608）
+
+- `PREFETCH_EXEMPT_PROVIDERS` から `InboxConversationDetailCacheProvider` を削除
+  - 旧理由「文字列マッチが通らない」は誤り。`useInboxConversationDetailCache` は usePrefetch.ts に存在した
+  - 新解析: `prefetchBulk` が `steps.load: () => prefetchBulk()` に実登録されており、新関数で正しく検出可能
+- `PREFETCH_EXEMPT_PROVIDERS` から `CustomerAggregateCacheProvider` を削除
+  - `ensureAggregates` が `steps.load: () => ensureAggregates()` に実登録されており、新関数で正しく検出可能
+- 追加した3関数:
+  - `extractHookVars(source, hookName)`: 分割代入エイリアスを抽出
+  - `isRegisteredInSteps(prefetchSrc, hookName)`: `load: () => ...var...` パターンを解析
+  - `isRegisteredInRefreshers(appSrc, hookName)`: `refreshers = useMemo(() => ({...var...}), [...])` を解析
+
+合格条件生出力:
+```
+# 既存コード（PASS）
+design-system checks passed
+
+# 意図的違反（FAIL）
+TestViolationCacheProvider is not registered in usePrefetch steps (no load: lambda references useTestViolationCache vars)
+TestViolationCacheProvider is not registered in SyncPoller refreshers (no refreshers value references useTestViolationCache vars)
+```
+
+- PR #608 squash SHA: `13b46d5ca1f22c17c907ed2bf17659c10e8e3cac`
+- 戻し方: `git revert 13b46d5ca1f22c17c907ed2bf17659c10e8e3cac`
+- `getDeployedSha`: `{ sha: "13b46d5ca1f22c17c907ed2bf17659c10e8e3cac", deployedAt: "2026-08-25T21:23:15.684Z" }` → 一致 ✓
