@@ -6,3 +6,4 @@ src/ReactPoc.html
 /.npm-cache/
 /frontend/.npm-cache/
 /frontend/test-results/
+/frontend/dist/

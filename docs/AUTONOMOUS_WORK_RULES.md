@@ -20,6 +20,11 @@
    ```
    worktree は現在の作業ツリーがクリーンでなくても作成でき、他セッションの未コミット変更に影響しない。作業完了後は worktree を削除する。
    worktree 作成後は最初に `cd frontend && npm ci` を実行する。`node_modules` は worktree ごとに独立しており、これを省略すると `tsc` / Vite が見つからず `build:gas` が失敗する。
+   `clasp` コマンドは canonical クローン直下で実行する。`.clasp.json` は Git 追跡外のため worktree にはコピーされず、worktree 内で実行すると `Project settings not found` となる。
+   ```bash
+   cd ~/crm-app-canonical-20260824
+   clasp run <関数名>
+   ```
 5. 変更がない場合は通常どおり `origin/develop` から分岐してよい
 6. 対象ファイルの直近コミットを確認する
    `git log --all --oneline -20 -- <ファイル>`  
