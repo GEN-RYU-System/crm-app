@@ -2148,6 +2148,11 @@ PASS=true
 - `inboxRows initial=25 afterSignal=25` はプレビュー用モックを25件で実装したうえで数えた結果であり、実データの件数不変を証明するものではない。実データの件数はDEV画面で目視確認する事項として残す。
 - 受信箱は現時点で読取専用のため afterSave 未検証。将来 書き込み機能を実装する際は、保存成功後に Inbox cache の `refresh()` を呼び、かつ書込側で inbox 信号を発行すること。両方を実装しないと他担当者に反映されない。
 
+## Discord顧客別招待 Phase 3基盤（PR #574）
+- 単一の招待使用候補だけを顧客専用チャンネルへ反映する。@everyone拒否、顧客・Bot・ROLE=OWNERの担当者を許可する。担当者個別許可は氏名照合の誤許可リスクのため対象外。オーナーDiscord ID未設定時はBot＋顧客で続行し警告を記録する。
+- PR #574 squash SHA: `bef41dc4f6a6be87848496d12e3d53adf4cd92a4`。戻し方: `git revert bef41dc4f6a6be87848496d12e3d53adf4cd92a4`。
+- V2-3の5msはNode VMでの偽HTTP応答によるモック計測であり、実ネットワークを伴う実行時間は【未確認】。実測はBot権限再招待とSERVER MEMBERS INTENT有効化後、成功経路で行う。
+
 ---
 
 ## アプリ全体プリフェッチ標準化 Phase 2-5 — Inbox conversation detail keyed cache
