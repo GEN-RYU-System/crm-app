@@ -67,7 +67,7 @@ export function DiscordIntegrationPage({ repository }: Props) {
       setGuildId(oauthStatus.guildId);
       setOauthStatus(oauthStatus);
       setSelectedGuildId(oauthStatus.guildId ?? '');
-      setSetupStatus(setupStatusResult);
+      setSetupStatus({ ...setupStatusResult, guildId: oauthStatus.guildId });
       setLoadState('ready');
     } catch (cause) {
       setLoadError(cause instanceof Error ? cause.message : discordIntegrationCopy.loadError);
@@ -177,6 +177,7 @@ export function DiscordIntegrationPage({ repository }: Props) {
       const result = await repository.getOAuthStatus();
       setGuildId(result.guildId);
       setOauthStatus(result);
+      setSetupStatus((currentStatus) => ({ ...currentStatus, guildId: result.guildId }));
       setSelectedGuildId((currentGuildId) => {
         if (result.guildId) return result.guildId;
         return result.guilds.some((guild) => guild.id === currentGuildId) ? currentGuildId : '';
@@ -199,6 +200,7 @@ export function DiscordIntegrationPage({ repository }: Props) {
       }
       setGuildId(selectedGuildId);
       setOauthStatus((current) => ({ ...current, status: 'linked', guildId: selectedGuildId }));
+      setSetupStatus((currentStatus) => ({ ...currentStatus, guildId: selectedGuildId }));
       setGuildSaveState('success');
     } catch (cause) {
       setGuildSaveError(cause instanceof Error ? cause.message : discordIntegrationCopy.guildSaveError);
