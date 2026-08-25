@@ -53,7 +53,8 @@ function discordRequest_(botToken, method, path, body) {
     method: method,
     headers: {
       'Authorization': 'Bot ' + botToken,
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'User-Agent': 'DiscordBot (https://github.com/GEN-RYU-System/crm-app, 1)'
     },
     muteHttpExceptions: true
   };
