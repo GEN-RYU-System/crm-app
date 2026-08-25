@@ -14,6 +14,7 @@ export type CacheValue<K extends string, T> = {
   ensureLoaded: (key?: K) => Promise<void>;
   refresh: (key?: K) => Promise<void>;
   retry: (key?: K) => Promise<void>;
+  seed: (key: K, items: readonly T[]) => void;
 };
 
 export function createListCache<T, K extends string = SingleKey>(options: { name: string; keys?: readonly K[] }) {
@@ -72,8 +73,17 @@ export function createListCache<T, K extends string = SingleKey>(options: { name
       return requestKey(k);
     }, [requestKey]);
 
+    const seed = useCallback((key: K, items: readonly T[]) => {
+      setItemsByKey((prev) => {
+        if (prev[key] !== undefined) return prev;
+        const next = { ...prev, [key]: items };
+        itemsRef.current = next;
+        return next;
+      });
+    }, []);
+
     return (
-      <Context.Provider value={{ itemsByKey, errorByKey, loadingByKey, refreshing, ensureLoaded, refresh, retry }}>
+      <Context.Provider value={{ itemsByKey, errorByKey, loadingByKey, refreshing, ensureLoaded, refresh, retry, seed }}>
         {children}
       </Context.Provider>
     );

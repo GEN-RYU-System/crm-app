@@ -13,7 +13,7 @@ export function InboxConversationDetailCacheProvider({ repository, children }: P
 }
 
 export function useInboxConversationDetailCache() {
-  const { itemsByKey, errorByKey, loadingByKey, ensureLoaded, refresh, retry } = useCache();
+  const { itemsByKey, errorByKey, loadingByKey, ensureLoaded, refresh, retry, seed } = useCache();
   return {
     detailsByConversationId: itemsByKey,
     errorsByConversationId: errorByKey,
@@ -21,5 +21,6 @@ export function useInboxConversationDetailCache() {
     ensureLoaded: useCallback((conversationId: string) => ensureLoaded(conversationId), [ensureLoaded]),
     refresh: useCallback(() => refresh(), [refresh]),
     retry: useCallback((conversationId: string) => retry(conversationId), [retry]),
+    seed: useCallback((conversationId: string, detail: InboxConversationDetailDto) => seed(conversationId, [detail]), [seed]),
   };
 }

@@ -57,6 +57,8 @@ interface GoogleScriptRun {
   createDiscordInviteForCustomer(sessionId: string | null, customerId: string): void;
   getInboxConversationsForFrontend(sessionId: string | null, forceRefresh: boolean): void;
   getInboxConversationDetailForFrontend(sessionId: string | null, leadId: string): void;
+  getInboxBulkInitialLoad(sessionId: string | null, maxConversations: number, maxMessages: number): void;
+  getInboxMoreMessages(sessionId: string | null, conversationId: string, offsetIndex: number, maxMessages: number): void;
 }
 
 interface Window {
