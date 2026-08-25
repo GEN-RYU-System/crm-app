@@ -596,7 +596,7 @@ function testRegisterCustomer() {
   var p1 = {
     token: token1,
     billing: {
-      name: 'TEST Customer PR18', phone: '0300000000',
+      name: 'TEST Customer PR18', phone: '0011234567',
       email: 'test.pr18@example.com', taxId: 'TX001',
       addr1: '1-2-3 Test Street', addr2: 'Suite 100', addr3: '',
       city: 'Tokyo', state: 'Tokyo', zip: '4710006', country: 'Japan'
@@ -696,7 +696,7 @@ function testRegisterCustomer() {
   var p2 = {
     token: token2,
     billing: {
-      name: 'TEST Customer PR18', phone: '06-0000-0000',
+      name: 'TEST Customer PR18', phone: '009-8765-4321',
       email: 'test.pr18.2nd@example.com', taxId: '',
       addr1: '4-5-6 Another St', addr2: '', addr3: '',
       city: 'Osaka', state: 'Osaka', zip: '530-0001', country: 'Japan'

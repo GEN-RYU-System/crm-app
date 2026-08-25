@@ -574,7 +574,7 @@ function testCreateCustomer() {
   const testData = {
     billingName: 'ABC Trading LLC',
     billingPhone: '+1-234-567-8900',
-    billingEmail: 'contact@example.invalid',
+    billingEmail: 'contact@example.com',
     businessId: '12-3456789',
     billingAddress1: '123 Main Street',
     billingAddress2: 'Suite 100',
@@ -613,7 +613,7 @@ function testGetCustomer() {
  * メールアドレスで顧客検索テスト
  */
 function testGetCustomerByEmail() {
-  const email = 'contact@example.invalid';
+  const email = 'contact@example.com';
   const result = getCustomerByEmail(email);
   Logger.log('テスト結果: ' + JSON.stringify(result));
   return result;
