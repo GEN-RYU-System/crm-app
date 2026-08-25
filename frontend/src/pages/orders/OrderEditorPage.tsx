@@ -4,8 +4,9 @@ import { Button, Card, Combobox, LineItemEditor, PageHeader, Select, Skeleton, S
 import { ordersCopy } from '../../content/ja/orders';
 import type { ShippingAddressDto, PaymentProfileDto, CustomerRepository } from '../../features/customers/contracts';
 import { useCustomerAggregateCache } from '../../features/customers/CustomerAggregateCacheContext';
-import type { InventoryProductOption, OrderCreatePayload, OrderRepository, OrderUpdatePayload } from '../../features/orders/contracts';
+import type { OrderCreatePayload, OrderRepository, OrderUpdatePayload } from '../../features/orders/contracts';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
+import { useInventoryProductOptionsCache } from '../inventory/InventoryProductOptionsCacheContext';
 import { formatDate } from '../shared/dateFormat';
 import {
   calcInvoiceTotal,
@@ -49,10 +50,10 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
     shippingAddresses: readonly ShippingAddressDto[];
     paymentProfiles: readonly PaymentProfileDto[];
   } | null>(null);
-  const [inventoryProducts, setInventoryProducts] = useState<InventoryProductOption[]>([]);
   const [pendingCustomerId, setPendingCustomerId] = useState<string | null>(null);
 
   const conditionsMap = useInventoryConditionsMap();
+  const { products: inventoryProducts, ensureLoaded: ensureInventoryProductOptions } = useInventoryProductOptionsCache();
 
   const { state: aggregateCache } = useCustomerAggregateCache();
   const customerRepositoryRef = useRef(customerRepository);
@@ -66,19 +67,18 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
     setMasterState('loading');
     void Promise.all([
       customerRepository.listCustomers(),
-      repository.listInventoryProducts(),
+      ensureInventoryProductOptions(),
       ensureCurrencies(),
     ])
-      .then(([customerList, products]) => {
+      .then(([customerList]) => {
         setCustomers(customerList.map((c) => ({ customerId: c.customerId, customerName: c.customerName })));
-        setInventoryProducts([...products]);
         setMasterState('ready');
       })
       .catch((cause) => {
         setMasterError(cause instanceof Error ? cause.message : ordersCopy.editor.masterLoadError);
         setMasterState('error');
       });
-  }, [repository, customerRepository, ensureCurrencies]);
+  }, [customerRepository, ensureCurrencies, ensureInventoryProductOptions]);
 
   // In edit mode: set initial values once order list is loaded
   useEffect(() => {

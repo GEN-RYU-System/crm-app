@@ -6,8 +6,9 @@ import { quotesCopy } from '../../content/ja';
 import { ISSUER_HEADER } from '../../content/ja/issuer';
 import { QuoteDocument } from '../../features/documents/QuoteDocument';
 import { formatDate } from '../shared/dateFormat';
-import { createCoreQuote, getCoreIssuer, getCoreQuoteDetail, getInventoryProductOptions, getLeadOptionsForFrontend, updateCoreQuote, type InventoryProductOption, type IssuerRecord, type LeadOption } from '../../gas/client';
+import { createCoreQuote, getCoreIssuer, getCoreQuoteDetail, getLeadOptionsForFrontend, updateCoreQuote, type IssuerRecord, type LeadOption } from '../../gas/client';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
+import { useInventoryProductOptionsCache } from '../inventory/InventoryProductOptionsCacheContext';
 import { useCurrencyMasterCache } from '../currency/CurrencyMasterCacheContext';
 import { emptyLineValues, emptyQuoteEditorValues, isValidDiscount, QUOTE_EDITOR_PATHS, toHalfwidthDigits, toQuoteEditorValues, toQuotePayload, type QuoteEditorValues, type QuoteLineEditorValues } from './quoteEditorConfig';
 import { LeadCombobox } from './LeadCombobox';
@@ -70,7 +71,6 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
   const [saveError, setSaveError] = useState('');
   const [savingState, setSavingState] = useState<SavingState>('idle');
   const [leads, setLeads] = useState<LeadOption[]>([]);
-  const [inventoryProducts, setInventoryProducts] = useState<InventoryProductOption[]>([]);
   const [lineErrors, setLineErrors] = useState<Map<number, string>>(new Map());
   const [inventoryError, setInventoryError] = useState('');
   const [quoteMetaInfo, setQuoteMetaInfo] = useState<{
@@ -84,6 +84,7 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
 
   // Derive conditions from the prefetched inventory cache (no GAS call needed).
   const conditionsMap = useInventoryConditionsMap();
+  const { products: inventoryProducts, ensureLoaded: ensureInventoryProductOptions } = useInventoryProductOptionsCache();
   const { currencies, ensureLoaded: ensureCurrencies } = useCurrencyMasterCache();
 
   useEffect(() => {
@@ -97,10 +98,9 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
   }, [ensureCurrencies]);
 
   useEffect(() => {
-    void getInventoryProductOptions()
-      .then((products) => setInventoryProducts([...products]))
+    void ensureInventoryProductOptions()
       .catch(() => setInventoryError(quotesCopy.editor.inventoryLoadError));
-  }, []);
+  }, [ensureInventoryProductOptions]);
 
   useEffect(() => {
     if (mode !== 'detail' || !quoteId) return;

@@ -37,6 +37,30 @@ function saveDiscordBotToken(sessionId, token) {
   }
 }
 
+/**
+ * Discord Application IDをスクリプトプロパティに保存
+ * @param {string} sessionId - セッションID
+ * @param {string} clientId - Discord Application ID
+ * @returns {Object} { success: boolean, error?: string }
+ */
+function saveDiscordClientId(sessionId, clientId) {
+  try {
+    setEmailFromSession(sessionId);
+    checkPermission('admin_access');
+
+    if (!clientId || typeof clientId !== 'string' || clientId.trim() === '') {
+      return { success: false, error: 'Application IDが空です' };
+    }
+
+    PropertiesService.getScriptProperties().setProperty('DISCORD_CLIENT_ID', clientId.trim());
+    Logger.log('saveDiscordClientId: Discord Application IDを保存しました');
+    return { success: true };
+  } catch (error) {
+    Logger.log('saveDiscordClientId error: ' + error.message);
+    return { success: false, error: error.message || 'Application IDの保存に失敗しました' };
+  }
+}
+
 // ============================================================
 // 接続状態取得（フロントエンド向け）
 // ============================================================
@@ -45,14 +69,16 @@ function saveDiscordBotToken(sessionId, token) {
  * Discord接続状態をフロントエンド向けに返す
  * トークン本体は返さず、末尾4文字のマスク表示のみ返す
  * @param {string} sessionId - セッションID
- * @returns {Object} { isTokenSet, tokenMask, botName, botId, connected }
+ * @returns {Object} { isTokenSet, tokenMask, botName, botId, connected, clientId }
  */
 function getDiscordConnectionStatusForFrontend(sessionId) {
   try {
     setEmailFromSession(sessionId);
     checkPermission('admin_access');
 
-    const token = PropertiesService.getScriptProperties().getProperty('DISCORD_BOT_TOKEN');
+    const properties = PropertiesService.getScriptProperties();
+    const token = properties.getProperty('DISCORD_BOT_TOKEN');
+    const clientId = properties.getProperty('DISCORD_CLIENT_ID') || '';
 
     if (!token) {
       return {
@@ -60,7 +86,8 @@ function getDiscordConnectionStatusForFrontend(sessionId) {
         tokenMask: '未設定',
         botName: '',
         botId: '',
-        connected: false
+        connected: false,
+        clientId: clientId
       };
     }
 
@@ -76,7 +103,8 @@ function getDiscordConnectionStatusForFrontend(sessionId) {
         tokenMask: tokenMask,
         botName: connectionResult.botInfo.username || '',
         botId: connectionResult.botInfo.id || '',
-        connected: true
+        connected: true,
+        clientId: clientId
       };
     }
 
@@ -85,7 +113,8 @@ function getDiscordConnectionStatusForFrontend(sessionId) {
       tokenMask: tokenMask,
       botName: '',
       botId: '',
-      connected: false
+      connected: false,
+      clientId: clientId
     };
   } catch (error) {
     Logger.log('getDiscordConnectionStatusForFrontend error: ' + error.message);
@@ -94,7 +123,8 @@ function getDiscordConnectionStatusForFrontend(sessionId) {
       tokenMask: '未設定',
       botName: '',
       botId: '',
-      connected: false
+      connected: false,
+      clientId: ''
     };
   }
 }

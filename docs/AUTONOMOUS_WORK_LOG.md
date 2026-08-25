@@ -199,6 +199,88 @@ design-system checks passed
 
 ---
 
+## 【InventoryProductOptions cache】Order detail の直接取得置換
+
+### 合格条件（実装前定義）
+
+- orders または quotes 権限の裏読み完了時点で、`getInventoryProductOptions` は全体で1回。
+- 注文詳細で「金額を編集」を開いても、その呼び出し数は増えない。
+- Order detail の金額保存は既存の `updateOrder` を維持し、商品選択肢の取得経路だけを置換する。
+
+### 変更
+
+- `frontend/src/pages/inventory/InventoryProductOptionsCacheContext.tsx` を追加。`getInventoryProductOptions()` の戻り値を変換せず、`createListCache` + `SINGLE_KEY` で保持する。
+- `frontend/src/App.tsx` に Provider を登録し、`frontend/src/app/usePrefetch.ts` は orders または quotes 権限で `ensureLoaded` を実行する。
+- `frontend/src/pages/orders/OrderDetailPage.tsx` の `repository.listInventoryProducts()` 直接取得を context の `ensureLoaded` / `products` / `loading` 参照に置換した。OrderEditorPage と QuoteEditorPage は未変更。
+
+### 生出力
+
+```text
+__gasMockCallCounts (prefetch complete):
+getInventoryProductOptions: 1
+
+__gasMockCallCounts (after opening amount edit):
+getInventoryProductOptions: 1
+
+PASS: opening order amount edit did not call getInventoryProductOptions again
+```
+
+```text
+npm run build:gas
+> npm run typecheck && npm run build && node scripts/emit-gas-html.mjs && npm run check:design-system
+✓ 516 modules transformed.
+dist/index.html  477.55 kB │ gzip: 123.65 kB
+✓ built in 831ms
+design-system checks passed
+```
+
+### PR / revert / deploy
+
+- PR #524 を squash merge。マージコミット SHA: `499dd9a27859d6c8e6a2e71d0b63dabca95a4ee9`。
+- 戻し方: `git revert 499dd9a27859d6c8e6a2e71d0b63dabca95a4ee9`
+- Deploy to DEV run `32786150669` は成功。`getDeployedSha` 生出力: `{ sha: '499dd9a27859d6c8e6a2e71d0b63dabca95a4ee9', deployedAt: '2026-08-24T22:46:20.060Z' }`。
+
+---
+
+## 【記録のみ】frontend/dist の rebase 競合
+
+- `frontend/dist/index.html` は Git 管理対象であり、PR #524 を `origin/develop` へ rebase した際に同ファイルで content conflict が発生した。
+- 解消は手編集せず、rebase 側を採用した後に `frontend/npm ci && npm run build` で生成し直した。
+- 同じ生成物を複数PRが変更すると同様の競合が発生しうる構造的課題である。修正はこのPRでは行わない。
+- デプロイ経路が Git 管理された `frontend/dist/index.html` を参照する必要性は未調査。追跡対象から外す／CI生成物へ移行する等の判断は、別途デプロイ経路の一次調査後に行う。
+
+---
+
+## 【InventoryProductOptions cache】Order editor の直接取得置換
+
+### 合格条件（実装前定義）
+
+- orders または quotes 権限の裏読み完了時点で `getInventoryProductOptions` は全体で1回。
+- 新規注文編集を開いても同呼び出しは増えない。注文編集は保存操作を持つが、今回変更するのは商品選択肢取得のみで、既存の保存処理は変更しない。
+
+### 変更と生出力
+
+- `OrderEditorPage` の `repository.listInventoryProducts()` を `InventoryProductOptionsCacheContext` の `ensureLoaded` と `products` 参照へ置換した。
+- `OrderEditorPage` 表示後の `__gasMockCallCounts.getInventoryProductOptions`: `1`。新規注文編集画面の表示を確認。
+- `npm run build:gas`: typecheck / Vite build / design-system checks passed。
+
+---
+
+## 【InventoryProductOptions cache】Quote editor の直接取得置換
+
+### 合格条件（実装前定義）
+
+- orders または quotes 権限の裏読み完了時点で `getInventoryProductOptions` は全体で1回。
+- 見積編集を開いても同呼び出しは増えない。見積の保存処理は変更しない。
+
+### 変更と生出力
+
+- `QuoteEditorPage` の直接 `getInventoryProductOptions()` を `InventoryProductOptionsCacheContext` の `ensureLoaded` / `products` 参照に置換した。
+- Quote editor 表示後の `__gasMockCallCounts.getInventoryProductOptions`: `1`。
+- `npm run build:gas`: typecheck / Vite build / design-system checks passed。
+
+---
+
 ## 【発行元マスタseed匿名化】公開記載ルール準拠 — PR #493
 
 ### 変更内容
@@ -1585,6 +1667,88 @@ Playwrightを実行できるブラウザ接続を用意し、既存 `?preview` �
 
 - 実値除去は `git revert 2030eafddd58f2656bca09fd290a75600fa9a1a4`。CI検査強化は未コミットのため戻し操作不要。
 
+## 【請求書テンプレート再混入の復旧】PR作成前記録
+
+- 再混入元はPR #519（`docs: restore sanitized invoice template layout`、`docs/restore-sanitized-invoice-template` → `develop`）であることを履歴と固定文字列検品で確認した。
+- 同PRのタイトルはsanitizedを示すが、実態として固定文字列パターンに一致する値が再混入していたため、タイトルと実態は一致しなかった。
+- PR #519のレイアウト変更を保持したまま、検出された11箇所を既存プレースホルダへ戻した。
+- 検証: `grep -Ff ~/crm-app-local-secrets/scan-patterns.txt docs/invoice-template.html` とリポジトリ全体検品はいずれもヒット0件。
+
+### 戻し方
+
+- マージ後のPRを `git revert <mergeCommit SHA>` で戻す。履歴書き換え・force pushは行わない。
+
+## 【Secrets固定文字列CI検査】要件変更・PR作成前記録
+
+- 形式ベースの登録番号検査は、ダミー値との原理的衝突により採用しない。既存のSensitive Contentチェックは変更しない。
+- PR #526（請求書テンプレートの再復旧）のmergeCommitは `7beb26ccfbda417ab818562307c3a2b8fec21372`。
+- `SECRET_SCAN_PATTERNS` を実行時にのみ読み込み、Git管理ファイルを固定文字列検索するステップを追加する。パターン本文は出力せず、検出時はファイル名と行番号だけを出力する。Secret未設定時は警告してスキップする。
+
+### 戻し方
+
+- マージ後のPRを `git revert <mergeCommit SHA>` で戻す。既存のSensitive Contentチェックには影響しない。
+
+## 【Secrets固定文字列CI検査】マージ記録
+
+- PR #525 mergeCommit: `64d912a92c70d06fa399ec4bec4487e77fbbc865`。
+- PR #525のCIで、`Check configured secret patterns` ステップはsuccessを確認した。
+- ワークフローは`pull_request`専用のため、developへのpush単独では同ステップを起動しない。後続のdocs PRで同一develop内容に対するステップ成功を確認する。
+
+## 【Discord招待・Guild連携・チャンネルセットアップ認証補完】PR作成前記録
+
+### 対象
+
+- `src/35_DiscordOAuthApi.js`: `generateDiscordOAuthUrl`、`getDiscordOAuthStatus`。
+- `src/36_DiscordChannelSetupApi.js`: `runDiscordAutoSetup`、`getDiscordSetupStatus`。
+
+### 変更・検証
+
+- 各関数で`checkPermission('admin_access')`の前に`setEmailFromSession(sessionId)`を追加した。
+- フロントのGASクライアントは対象4操作すべてでsessionIdを渡しているため、フロント変更は不要だった。
+- 全Discord GAS関数の順序監査で不備0件、`npm run build:gas`成功、`?preview#/discord-integration`のPlaywright操作確認が成功した。
+
+### 戻し方
+
+- マージ後のPRを `git revert <mergeCommit SHA>` で戻す。
+
+## 【Discord招待・Guild連携・チャンネルセットアップ認証補完】マージ記録
+
+- PR #532 mergeCommit: `df2f636ce3e9250687e74b94584fba8e36668fd9`。
+- 対象4関数で、sessionIdからのメール設定を管理権限確認より前に行う順序へ統一した。
+
+## 【Discord連携設定カード統合・Application ID入力】PR作成前記録
+
+### 変更ファイルと目的
+
+- `src/34_DiscordSettingsApi.js`: Application ID保存APIと接続状態の公開Application ID返却を追加。
+- `frontend/src/gas/client.ts`、`frontend/src/gas/types.d.ts`、`frontend/src/features/discordIntegration/contracts.ts`、`frontend/src/features/discordIntegration/gasAdapter.ts`: GAS APIの型・呼び出しを追加。
+- `frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx`、`frontend/src/content/ja/discordIntegration.ts`、`frontend/src/preview/gasRunnerMock.ts`: 統合カード、案内文、previewモックを追加。
+
+### 着手前確定（U1〜U4）
+
+- U1: `src/35_DiscordOAuthApi.js`が`DISCORD_CLIENT_ID`を読み出す。新APIも同じキー名へ保存する。
+- U2: 実行コードとフロントにCLIENT_SECRET参照はない。`docs/DISCORD_FEATURE_CATCHUP.md`の設計上の言及だけである。
+- U3: カード構成は`frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx`が保持する。トークン設定・接続状態の2カードを1カードへ統合し、監視チャンネル・Bot招待・チャンネルセットアップは分離を維持する。
+- U4: `src/34_DiscordSettingsApi.js`の`saveDiscordBotToken`を保存APIのパターンとし、sessionメール設定後に管理権限確認してからScript Propertiesへ保存する。
+- `.claspignore`を確認し、変更したGASファイルは除外規則に一致せずDEV配布対象である。
+
+### セキュリティ・動作検証（S・V）
+
+- S1: 新APIは`setEmailFromSession(sessionId)`の後に`checkPermission('admin_access')`を実行することを静的検証した。
+- S2: 接続状態APIはBotトークンを返さず、従来どおりマスク表示だけを返す。
+- S3: 実トークン・実Application IDをログ、コミット、PR本文へ記載しない。
+- V1/V3/V4: `?preview#/discord-integration`のPlaywrightで、統合カード、トークン保存接続、Application ID未設定案内、保存後の案内消去・全文表示、既存3カード表示を確認した。
+- V2: `npm run build:gas`成功。
+
+### 戻し方
+
+- マージ後のPRを `git revert <mergeCommit SHA>` で戻す。
+
+## 【Discord連携設定カード統合・Application ID入力】マージ記録
+
+- PR #534 mergeCommit: `96a911664d4f274a4e6752afa65277aa5d819310`。
+- 統合カード、管理者限定のApplication ID保存、固定文字列機密検査、preview操作検証を完了した。
+
 ### 読み替え済みSHA
 
 - マージコミット SHA: f5740e95a9ee868fe7d8d67251a2ef894643a873
@@ -1679,8 +1843,7 @@ $ CRM_MAX_WORKTREES=1 .githooks/pre-push </dev/null
 ERROR: 18 worktrees; limit is 1. Run scripts/janitor.sh first.
 exit=1
 ```
+
 ## 2026-08-25 清掃員PR-2 検証
 
-- dry-runは当初、マージ済み2件をREMOVEとして事前検出した。本実行前にdevelop/main常時保護、ディレクトリmtime 7日保護、`JANITOR_ONLY_PATH`限定隔離モードを追加した。
-- 隔離実測: `JANITOR_ONLY_PATH=/private/tmp/crm-app-janitor-probe JANITOR_PROTECT_DAYS=0 scripts/janitor.sh` はprobeだけをREMOVEし、`phase5-inbox-cache`と`pr20b-worklog`はworktree listに残存した。
-- launchd実測: install、list、uninstall、再install、listを完了。ラベル`com.crm-app.janitor`は登録済み。
+- dry-run検出を受け、develop/main保護、7日mtime保護、JANITOR_ONLY_PATH隔離モードを追加。probeのみを隔離撤去し、既存worktreeは残存確認済み。
