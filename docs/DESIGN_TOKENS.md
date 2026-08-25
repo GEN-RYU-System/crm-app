@@ -158,6 +158,62 @@
 
 ---
 
+## サブメニューの実装ルール
+
+新しくサブメニュー付きページを作る場合は、このセクションに従うこと。
+
+### 選択状態・ホバー状態のトークン
+
+| 状態 | 背景色トークン | 文字色トークン |
+|------|---------------|---------------|
+| 通常 | `transparent` | `--color-text-muted` |
+| ホバー | `--color-tab-surface-hover` | `--color-tab-text-active` |
+| 選択中 | `--color-tab-surface-active` | `--color-tab-text-active` |
+
+実装例（`frontend/src/pages/sales-orders/SalesOrderListPage.css` より）:
+
+```css
+.sales-order-list-page__tab:hover {
+  background: var(--color-tab-surface-hover);
+  color: var(--color-tab-text-active);
+}
+.sales-order-list-page__tab--active {
+  background: var(--color-tab-surface-active);
+  color: var(--color-tab-text-active);
+  font-weight: var(--font-weight-semibold);
+}
+```
+
+> `--color-text-primary` は **使わない**。アクティブ状態には必ず `--color-tab-text-active` を使うこと。
+
+### スクロール分離の実装
+
+本文が長い場合でもサブメニューが画面外へ消えないよう、`position: sticky` を使う。
+`position: fixed` は使わない（周囲レイアウトが崩れるため）。
+
+```css
+.your-page__sidebar {
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  overflow-y: auto;   /* サイドバー自体が長い場合はその中でスクロール */
+}
+```
+
+モバイル幅（`max-width: 767px`）では `position: sticky` を解除し縦積みに戻すこと:
+
+```css
+@media (max-width: 767px) {
+  .your-page__sidebar {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+```
+
+---
+
 ## 禁止事項
 
 - **ハードコードした色値・px値を CSS に直接書かない**。`#3158d4` ではなく `var(--color-accent)` を使う

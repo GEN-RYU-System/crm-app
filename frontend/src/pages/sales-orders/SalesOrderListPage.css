@@ -1,9 +1,10 @@
 .sales-order-list-page__layout { display: flex; gap: var(--space-lg); align-items: flex-start; }
-.sales-order-list-page__sidebar { flex-shrink: 0; width: 11rem; }
+/* sticky sidebar: keeps nav visible while content scrolls; avoids position:fixed */
+.sales-order-list-page__sidebar { flex-shrink: 0; width: 11rem; position: sticky; top: 0; max-height: 100vh; overflow-y: auto; }
 .sales-order-list-page__sidebar-nav { display: flex; flex-direction: column; gap: var(--space-xs); }
 .sales-order-list-page__tab { display: flex; justify-content: space-between; align-items: center; padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-button); border: none; background: transparent; cursor: pointer; text-align: left; font-size: var(--font-sm); color: var(--color-text-muted); transition: background 0.1s; width: 100%; }
-.sales-order-list-page__tab:hover { background: var(--color-tab-surface-hover); color: var(--color-text-primary); }
-.sales-order-list-page__tab--active { background: var(--color-tab-surface-active); color: var(--color-text-primary); font-weight: var(--font-weight-semibold); }
+.sales-order-list-page__tab:hover { background: var(--color-tab-surface-hover); color: var(--color-tab-text-active); }
+.sales-order-list-page__tab--active { background: var(--color-tab-surface-active); color: var(--color-tab-text-active); font-weight: var(--font-weight-semibold); }
 .sales-order-list-page__tab-count { font-size: var(--font-xs); color: var(--color-text-muted); }
 .sales-order-list-page__tab--active .sales-order-list-page__tab-count { color: var(--color-text-muted); }
 .sales-order-list-page__main { flex: 1; min-width: 0; }
@@ -11,3 +12,7 @@
 .sales-order-list-page__data-state { padding: var(--space-xl); }
 .sales-order-list-page__payment-due-cell { --_badge-col: 5rem; display: inline-grid; grid-template-columns: var(--_badge-col) 1fr var(--_badge-col); align-items: center; gap: var(--space-xs); }
 .sales-order-list-page__payment-due-badge-slot { justify-self: end; }
+@media (max-width: 767px) {
+  .sales-order-list-page__layout { flex-direction: column; }
+  .sales-order-list-page__sidebar { position: static; max-height: none; overflow-y: visible; width: 100%; }
+}

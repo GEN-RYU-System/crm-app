@@ -3,8 +3,8 @@
  * 物理シート名・物理ヘッダー名は 00_CoreSchemaRegistry.js から解決する。
  */
 
-var CORE_ORDERS_CACHE_INDEX      = 'CORE_ORDERS_CACHE_INDEX_V2';
-var CORE_ORDERS_CACHE_PREFIX     = 'CORE_ORDERS_CACHE_V2_';
+var CORE_ORDERS_CACHE_INDEX      = 'CORE_ORDERS_CACHE_INDEX_V3';
+var CORE_ORDERS_CACHE_PREFIX     = 'CORE_ORDERS_CACHE_V3_';
 var CORE_ORDERS_CACHE_CHUNK_SIZE = 90000;
 var CORE_ORDERS_CACHE_TTL        = 600;
 
@@ -34,7 +34,7 @@ function getCoreOrdersForFrontend(sessionId, forceRefresh) {
     'ORDER_ID', 'CUSTOMER_ID', 'INVOICE_NUMBER', 'INVOICE_ISSUED_AT',
     'PAYMENT_METHOD', 'INVOICE_TOTAL', 'CURRENCY',
     'PAYMENT_DUE_AT', 'PAYMENT_STATUS', 'INVOICE_TOTAL_JPY',
-    'STATUS'
+    'STATUS', 'PAYMENT_CONFIRMED_AT'
   ]);
 
   var rows = orders.rows
@@ -51,10 +51,11 @@ function getCoreOrdersForFrontend(sessionId, forceRefresh) {
         paymentMethod:   coreCustomerFrontendValue(row[orders.indexes.PAYMENT_METHOD]),
         invoiceTotal:    coreCustomerFrontendValue(row[orders.indexes.INVOICE_TOTAL]),
         currency:        coreCustomerFrontendValue(row[orders.indexes.CURRENCY]),
-        paymentDueAt:     coreCustomerFrontendValue(row[orders.indexes.PAYMENT_DUE_AT]),
-        paymentStatus:    coreCustomerFrontendValue(row[orders.indexes.PAYMENT_STATUS]),
-        invoiceTotalJpy:  coreCustomerFrontendValue(row[orders.indexes.INVOICE_TOTAL_JPY]),
-        status:           coreCustomerFrontendValue(row[orders.indexes.STATUS])
+        paymentDueAt:         coreCustomerFrontendValue(row[orders.indexes.PAYMENT_DUE_AT]),
+        paymentStatus:        coreCustomerFrontendValue(row[orders.indexes.PAYMENT_STATUS]),
+        invoiceTotalJpy:      coreCustomerFrontendValue(row[orders.indexes.INVOICE_TOTAL_JPY]),
+        status:               coreCustomerFrontendValue(row[orders.indexes.STATUS]),
+        paymentConfirmedAt:   coreCustomerFrontendValue(row[orders.indexes.PAYMENT_CONFIRMED_AT])
       };
     });
 

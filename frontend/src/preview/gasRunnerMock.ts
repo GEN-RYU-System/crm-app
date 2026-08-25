@@ -305,10 +305,11 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
           paymentMethod: 'WISE',
           invoiceTotal: '20000',
           currency: 'USD',
-          paymentDueAt: '',
+          paymentDueAt: '2026-01-01',
           paymentStatus: 'UNPAID',
           invoiceTotalJpy: '3000000',
           status: 'AWAITING_PAYMENT',
+          paymentConfirmedAt: '',
         },
         {
           orderId: 'ORD-00002',
@@ -322,6 +323,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
           paymentStatus: 'PAID',
           invoiceTotalJpy: '750000',
           status: 'COMPLETED',
+          paymentConfirmedAt: '2026-02-10',
         },
       ]);
     },

@@ -9,6 +9,8 @@ export type SalesOrderRow = {
   invoiceTotal: string;
   /** Raw ISO string from GAS API (e.g. "2026-08-24T00:00:00.000Z"). Empty string when absent. Formatted in renderCell. */
   paymentDueAt: string;
+  /** Raw ISO string from GAS API. Non-empty when payment has been confirmed; empty otherwise. */
+  paymentConfirmedAt: string;
   status: string;
   invoiceIssuedAt: string;
 };
@@ -30,8 +32,9 @@ export function toSalesOrderRow(record: OrderRecord): SalesOrderRow {
     shippingAddress: '-', // Future: shippingAddress not yet in GAS API
     currency:        text(record.currency),
     invoiceTotal:    text(record.invoiceTotal),
-    paymentDueAt:    record.paymentDueAt || '',
-    status:          text(record.status),
-    invoiceIssuedAt: formatDate(record.invoiceIssuedAt),
+    paymentDueAt:        record.paymentDueAt || '',
+    paymentConfirmedAt:  record.paymentConfirmedAt || '',
+    status:              text(record.status),
+    invoiceIssuedAt:     formatDate(record.invoiceIssuedAt),
   };
 }
