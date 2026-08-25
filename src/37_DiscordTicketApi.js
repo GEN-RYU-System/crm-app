@@ -32,7 +32,7 @@ function createDiscordTicketForCustomer(sessionId, customerId) {
     if (!connectionResult.success || !connectionResult.botInfo || !connectionResult.botInfo.id) return { success: false, error: 'Discord Botに接続できませんでした。トークンを確認してください。' };
     var channelName = buildDiscordTicketChannelName_(customerName, discordUserId);
     var result = discordRequest_(botToken, 'post', '/guilds/' + guildId + '/channels', { name: channelName, type: 0, parent_id: categoryId });
-    if (result.statusCode !== 200 && result.statusCode !== 201) { Logger.log('createDiscordTicketForCustomer: channel create error status=' + result.statusCode); return { success: false, error: 'チケットチャンネルの作成に失敗しました。(status: ' + result.statusCode + ')' }; }
+    if (result.statusCode !== 200 && result.statusCode !== 201) { var chDetail = discordErrorDetail_(result.data); Logger.log('createDiscordTicketForCustomer: channel create error status=' + result.statusCode + chDetail); return { success: false, error: 'チケットチャンネルの作成に失敗しました。(status: ' + result.statusCode + chDetail + ')' }; }
     var channelId = String(result.data && result.data.id || '').trim();
     if (!channelId) return { success: false, error: 'チケットチャンネルIDを取得できませんでした。' };
     applyPermissionOverwrites_(botToken, channelId, guildId, connectionResult.botInfo.id);
