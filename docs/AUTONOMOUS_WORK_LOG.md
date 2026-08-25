@@ -2148,6 +2148,16 @@ PASS=true
 - `inboxRows initial=25 afterSignal=25` はプレビュー用モックを25件で実装したうえで数えた結果であり、実データの件数不変を証明するものではない。実データの件数はDEV画面で目視確認する事項として残す。
 - 受信箱は現時点で読取専用のため afterSave 未検証。将来 書き込み機能を実装する際は、保存成功後に Inbox cache の `refresh()` を呼び、かつ書込側で inbox 信号を発行すること。両方を実装しないと他担当者に反映されない。
 
+---
+
+## Discord Guild連携状態表示改善（PR #578）
+
+- 原因: `src/35_DiscordOAuthApi.js` はBotが複数Guildに参加している場合、保存済みの`DISCORD_GUILD_ID`を照合せず`guildId: null`を返していた。`DiscordIntegrationPage.tsx`も選択UIを`multiple`状態だけに限定していたため、連携先の常時表示・切替ができなかった。
+- 修正: 保存済みGuildが参加一覧に含まれる場合は`linked`とそのGuild IDを返す。画面はGuild名とIDを常時表示し、参加先一覧のプルダウンを連携済みでも表示する。状態確認後は連携済み・未連携・エラーのいずれも結果メッセージを表示する。
+- 変更ファイル: `src/35_DiscordOAuthApi.js`、`frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx`、`frontend/src/content/ja/discordIntegration.ts`、`frontend/src/preview/gasRunnerMock.ts`。
+- 検証: `frontend/npm run build:gas` は成功。Playwright実画面確認は、利用可能なブラウザ接続がなく、既存の`?preview#/discord-integration`が権限確認待機から進まなかったため免除した。
+- PR #578 squash SHA: `ffb03a47a6c4732e13d9d61271e14fcba0e01f14`。戻し方: `git revert ffb03a47a6c4732e13d9d61271e14fcba0e01f14`。
+
 ## Discord顧客別招待 Phase 3基盤（PR #574）
 - 単一の招待使用候補だけを顧客専用チャンネルへ反映する。@everyone拒否、顧客・Bot・ROLE=OWNERの担当者を許可する。担当者個別許可は氏名照合の誤許可リスクのため対象外。オーナーDiscord ID未設定時はBot＋顧客で続行し警告を記録する。
 - PR #574 squash SHA: `bef41dc4f6a6be87848496d12e3d53adf4cd92a4`。戻し方: `git revert bef41dc4f6a6be87848496d12e3d53adf4cd92a4`。
