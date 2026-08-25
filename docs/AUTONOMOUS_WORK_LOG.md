@@ -2181,3 +2181,11 @@ PASS=true
 - PR23（ヘッダー固定・frontend/docs のみ変更）とは無関係。
 - `git log -- src/00_CoreSchemaRegistry.js` 直近 10 件に CUSTOMERS を変更した PR は存在しない。別セッションがシートに先行追加し Registry 反映が未完と判断される。
 - 本セッションでは Registry 修正・シート操作ともに行わず、事実のみ記録する。対応は別途 PO 判断。
+
+---
+
+## アプリ全体プリフェッチ標準化 Phase 2-6 — Order detail shared cache
+
+- OrderDetailPage の直接 `getCoreOrderDetail` を既存 `SalesOrderDetailCacheContext` の orderId keyed cacheへ置換した。同一API・同一DTOのため新cacheは追加していない。
+- orders信号は既存の全既知キーrefreshを共用する。配送・金額の保存成功後は該当orderIdの `await refresh(orderId)` で最新化する。
+- 検証生出力: `getCoreOrderDetailForFrontend initial=1 reopened=1 afterSignal=2 afterSave=3`、`PASS=true`。
