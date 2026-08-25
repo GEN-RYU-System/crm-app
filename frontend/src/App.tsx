@@ -25,6 +25,7 @@ import { CustomerDetailPage } from './pages/customers/CustomerDetailPage';
 import { CustomerListPage } from './pages/customers/CustomerListPage';
 import { CUSTOMER_ROUTE_SEGMENTS } from './pages/customers/customerConfig';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
+import { DashboardKpiCacheProvider, useDashboardKpiCache } from './pages/dashboard/DashboardKpiCacheContext';
 import { DataManagementPage } from './pages/data-management/DataManagementPage';
 import { IssuerMasterPage } from './pages/data-management/IssuerMasterPage';
 import { CustomerListCacheProvider } from './pages/customers/CustomerListCacheContext';
@@ -97,15 +98,16 @@ function SyncPoller() {
   const { refresh: refreshSalesOrders } = useSalesOrderListCache();
   const { refresh: refreshStaff } = useStaffListCache();
   const { refresh: refreshQuotes } = useQuoteListCache();
+  const { refresh: refreshDashboardKpis } = useDashboardKpiCache();
 
   const refreshers = useMemo<DomainRefreshers>(() => ({
-    leads:     () => refreshLeads(),
+    leads:     () => Promise.all([refreshLeads(), refreshDashboardKpis()]).then(() => undefined),
     customers: () => refreshCustomers(),
     inventory: () => refreshInventory(),
     orders:    () => Promise.all([refreshOrders(), refreshSalesOrders()]).then(() => undefined),
     staff:     () => refreshStaff(),
     quotes:    () => refreshQuotes(),
-  }), [refreshLeads, refreshCustomers, refreshInventory, refreshOrders, refreshSalesOrders, refreshStaff, refreshQuotes]);
+  }), [refreshLeads, refreshDashboardKpis, refreshCustomers, refreshInventory, refreshOrders, refreshSalesOrders, refreshStaff, refreshQuotes]);
 
   useSyncPolling(refreshers);
   return null;
@@ -127,7 +129,7 @@ function AppContent() {
   }
 
   // authState.status === 'authenticated'
-  return <AppRouter />;
+  return <DashboardKpiCacheProvider repository={dashboardGasRepository}><AppRouter /></DashboardKpiCacheProvider>;
 }
 
 export default function App() {
@@ -135,21 +137,9 @@ export default function App() {
 }
 
 function AppRouter() {
-  const [state, setState] = useState<LoadState>('loading');
-  const [kpis, setKpis] = useState<DashboardKpis | null>(null);
-  const [error, setError] = useState('');
   const [permissionState, setPermissionState] = useState<PermissionState>({ status: 'checking' });
-  const load = useCallback(async () => {
-    setState('loading');
-    setError('');
-    try {
-      setKpis(await dashboardGasRepository.getKpis());
-      setState('ready');
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : errorCopy.genericLoad);
-      setState('error');
-    }
-  }, []);
+  const { kpis, error, loading, ensureLoaded: ensureDashboardKpis, refresh: refreshDashboardKpis } = useDashboardKpiCache();
+  const state: LoadState = error ? 'error' : kpis ? 'ready' : 'loading';
   const loadPermissions = useCallback(async () => {
     setPermissionState({ status: 'checking' });
     try {
@@ -159,7 +149,7 @@ function AppRouter() {
       setPermissionState({ status: 'failed' });
     }
   }, []);
-  useEffect(() => { void load(); void loadPermissions(); }, [load, loadPermissions]);
+  useEffect(() => { void ensureDashboardKpis(); void loadPermissions(); }, [ensureDashboardKpis, loadPermissions]);
 
   const permissions = permissionState.status === 'ready' ? permissionState.permissions : null;
   const navigationGroups = visibleNavigationGroups(permissions);
@@ -244,7 +234,7 @@ function AppRouter() {
   };
 
   return <HashRouter><LeadListCacheProvider><LeadDetailCacheProvider repository={leadGasRepository}><LeadFormOptionsCacheProvider repository={leadGasRepository}><CustomerListCacheProvider repository={customerGasRepository}><CustomerDetailCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><InventoryProductOptionsCacheProvider><CurrencyMasterCacheProvider><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><CustomerAggregateCacheProvider repository={customerGasRepository}><SalesOrderListCacheProvider><SalesOrderDetailCacheProvider><><SyncPoller /><AppShellWithPrefetch permissions={permissions} navigationGroups={navigationGroups}><Routes>
-    <Route path={NAVIGATION_BY_ID.dashboard.hash} element={<DashboardPage kpis={kpis} state={state} error={error} onRefresh={() => void load()} />} />
+    <Route path={NAVIGATION_BY_ID.dashboard.hash} element={<DashboardPage kpis={kpis} state={state} error={error} onRefresh={() => void refreshDashboardKpis()} />} />
     {DATA_MANAGEMENT_ITEMS
       .filter((item) => item.state !== 'planned' && hubIndexRoutes[item.id] != null)
       .map((item) => (
