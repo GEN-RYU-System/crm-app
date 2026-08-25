@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+branch=$(git symbolic-ref HEAD 2>/dev/null | sed 's|refs/heads/||')
+if [ "$branch" = "develop" ] || [ "$branch" = "main" ]; then
+  echo "ERROR: Direct commits to '$branch' are forbidden. Use a feature/release branch."
+  exit 1
+fi
+exit 0
