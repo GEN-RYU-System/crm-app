@@ -4,6 +4,7 @@ export type DiscordConnectionStatus = {
   botName: string;
   botId: string;
   connected: boolean;
+  clientId: string;
 };
 
 export type DiscordChannelsResult = {
@@ -40,6 +41,7 @@ export type DiscordSetupStatus = {
 
 export type DiscordIntegrationRepository = {
   saveBotToken: (token: string) => Promise<DiscordSaveResult>;
+  saveClientId: (clientId: string) => Promise<DiscordSaveResult>;
   getConnectionStatus: () => Promise<DiscordConnectionStatus>;
   saveChannels: (channelIds: string[]) => Promise<DiscordSaveResult>;
   getChannels: () => Promise<DiscordChannelsResult>;

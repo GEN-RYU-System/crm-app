@@ -888,6 +888,7 @@ export type DiscordConnectionStatus = {
   botName: string;
   botId: string;
   connected: boolean;
+  clientId: string;
 };
 export type DiscordChannelsResult = { channels: string[] };
 
@@ -899,6 +900,17 @@ export function saveDiscordBotToken(token: string): Promise<DiscordSaveResult> {
       .withSuccessHandler((value) => resolve(value as DiscordSaveResult))
       .withFailureHandler((error) => reject(toError(error)))
       .saveDiscordBotToken(getStoredSessionId(), token);
+  });
+}
+
+export function saveDiscordClientId(clientId: string): Promise<DiscordSaveResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => resolve(value as DiscordSaveResult))
+      .withFailureHandler((error) => reject(toError(error)))
+      .saveDiscordClientId(getStoredSessionId(), clientId);
   });
 }
 

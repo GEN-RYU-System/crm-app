@@ -1716,6 +1716,34 @@ Playwrightを実行できるブラウザ接続を用意し、既存 `?preview` �
 - PR #532 mergeCommit: `df2f636ce3e9250687e74b94584fba8e36668fd9`。
 - 対象4関数で、sessionIdからのメール設定を管理権限確認より前に行う順序へ統一した。
 
+## 【Discord連携設定カード統合・Application ID入力】PR作成前記録
+
+### 変更ファイルと目的
+
+- `src/34_DiscordSettingsApi.js`: Application ID保存APIと接続状態の公開Application ID返却を追加。
+- `frontend/src/gas/client.ts`、`frontend/src/gas/types.d.ts`、`frontend/src/features/discordIntegration/contracts.ts`、`frontend/src/features/discordIntegration/gasAdapter.ts`: GAS APIの型・呼び出しを追加。
+- `frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx`、`frontend/src/content/ja/discordIntegration.ts`、`frontend/src/preview/gasRunnerMock.ts`: 統合カード、案内文、previewモックを追加。
+
+### 着手前確定（U1〜U4）
+
+- U1: `src/35_DiscordOAuthApi.js`が`DISCORD_CLIENT_ID`を読み出す。新APIも同じキー名へ保存する。
+- U2: 実行コードとフロントにCLIENT_SECRET参照はない。`docs/DISCORD_FEATURE_CATCHUP.md`の設計上の言及だけである。
+- U3: カード構成は`frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx`が保持する。トークン設定・接続状態の2カードを1カードへ統合し、監視チャンネル・Bot招待・チャンネルセットアップは分離を維持する。
+- U4: `src/34_DiscordSettingsApi.js`の`saveDiscordBotToken`を保存APIのパターンとし、sessionメール設定後に管理権限確認してからScript Propertiesへ保存する。
+- `.claspignore`を確認し、変更したGASファイルは除外規則に一致せずDEV配布対象である。
+
+### セキュリティ・動作検証（S・V）
+
+- S1: 新APIは`setEmailFromSession(sessionId)`の後に`checkPermission('admin_access')`を実行することを静的検証した。
+- S2: 接続状態APIはBotトークンを返さず、従来どおりマスク表示だけを返す。
+- S3: 実トークン・実Application IDをログ、コミット、PR本文へ記載しない。
+- V1/V3/V4: `?preview#/discord-integration`のPlaywrightで、統合カード、トークン保存接続、Application ID未設定案内、保存後の案内消去・全文表示、既存3カード表示を確認した。
+- V2: `npm run build:gas`成功。
+
+### 戻し方
+
+- マージ後のPRを `git revert <mergeCommit SHA>` で戻す。
+
 ### 読み替え済みSHA
 
 - マージコミット SHA: f5740e95a9ee868fe7d8d67251a2ef894643a873
