@@ -240,3 +240,53 @@
   justify-content: flex-end;
   gap: var(--space-sm);
 }
+
+/* 仕入れフォームダイアログ */
+.sales-order-detail-page__purchase-dialog {
+  background: var(--color-surface);
+  border-radius: var(--radius-surface);
+  padding: var(--space-xl);
+  max-width: 640px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.sales-order-detail-page__purchase-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-lg);
+}
+
+.sales-order-detail-page__purchase-form-full {
+  grid-column: 1 / -1;
+}
+
+.sales-order-detail-page__purchase-confirm-body {
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+  margin: var(--space-none);
+}
+
+.sales-order-detail-page__purchase-confirm-dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-xs) var(--space-lg);
+  font-size: var(--font-sm);
+  margin: var(--space-none);
+}
+
+.sales-order-detail-page__purchase-confirm-dl dt {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.sales-order-detail-page__purchase-confirm-dl dd {
+  color: var(--color-text-primary);
+  margin: var(--space-none);
+  word-break: break-all;
+}

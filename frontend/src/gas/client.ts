@@ -1030,3 +1030,47 @@ export function getDiscordSetupStatus(): Promise<DiscordSetupStatus> {
       .getDiscordSetupStatus(getStoredSessionId());
   });
 }
+
+// --- Purchase API ---
+
+export type PurchaseStatusOption = { key: string; label: string };
+
+export type UpsertPurchasePayload = {
+  orderId: string;
+  purchaseId?: string;
+  orderedAt?: string;
+  supplier?: string;
+  supplierUrl?: string;
+  quantity?: string;
+  unitPrice?: string;
+  amount?: string;
+  shippingOrAgencyFee?: string;
+  carrier?: string;
+  trackingNumber?: string;
+  status?: string;
+  note?: string;
+};
+
+export function getCorePurchaseStatusOptions(): Promise<readonly PurchaseStatusOption[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as PurchaseStatusOption[]))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getCorePurchaseStatusOptionsForFrontend(getStoredSessionId());
+  });
+}
+
+export type UpsertPurchaseResult = { success: true; purchaseId: string };
+
+export function upsertCorePurchase(payload: UpsertPurchasePayload): Promise<UpsertPurchaseResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as UpsertPurchaseResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .upsertCorePurchaseForFrontend(getStoredSessionId(), payload);
+  });
+}
