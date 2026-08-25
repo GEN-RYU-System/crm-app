@@ -74,7 +74,7 @@ function getCoreCustomerForFrontend(sessionId, customerId) {
   const customers = coreCustomerFrontendReadTable(spreadsheet, 'CUSTOMERS', [
     'CUSTOMER_ID', 'SOURCE_LEAD_ID', 'CUSTOMER_NAME', 'COUNTRY', 'EMAIL', 'PHONE',
     'COUNTRY_CODE', 'FIRST_TRANSACTION_DATE', 'REGISTERED_AT',
-    'SALES_ASSIGNEE_NAME', 'CONTACT_TOOL', 'SHIPPING_NOTE', 'DISCORD_CHANNEL_ID'
+    'SALES_ASSIGNEE_NAME', 'CONTACT_TOOL', 'SHIPPING_NOTE', 'DISCORD_CHANNEL_ID', 'CUSTOMER_SCALE'
   ]);
   const customerRow = customers.rows.find(function(row) {
     return coreCustomerFrontendValue(row[customers.indexes.CUSTOMER_ID]) === normalizedCustomerId;
@@ -113,6 +113,7 @@ function getCoreCustomerForFrontend(sessionId, customerId) {
       contactTool: coreCustomerFrontendValue(customerRow[customers.indexes.CONTACT_TOOL]),
       shippingNote: coreCustomerFrontendValue(customerRow[customers.indexes.SHIPPING_NOTE]),
       discordChannelId: coreCustomerFrontendValue(customerRow[customers.indexes.DISCORD_CHANNEL_ID]),
+      customerScale: coreCustomerFrontendValue(customerRow[customers.indexes.CUSTOMER_SCALE]),
       shippingAddressCount: customerShipping.length,
       paymentProfileCount: customerPayments.length
     },

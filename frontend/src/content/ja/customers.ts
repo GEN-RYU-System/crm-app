@@ -68,8 +68,14 @@ export const customersCopy = {
     registeredAt: '登録日',
     salesAssigneeName: '営業担当者',
     contactTool: '連絡ツール',
-    shippingNote: '発送時メモ'
+    shippingNote: '発送時メモ',
+    customerScale: '顧客規模'
   },
+  customerScaleLabel: '顧客規模',
+  customerScalePlaceholder: '未設定',
+  customerScaleLoading: '顧客規模を読み込んでいます。',
+  customerScaleSaving: '保存中…',
+  customerScaleSaveError: '顧客規模の保存に失敗しました:',
   shippingEmptyTitle: '配送先はありません',
   shippingEmptyDescription: 'この顧客IDに紐づく配送先はありません。',
   paymentEmptyTitle: '支払情報はありません',

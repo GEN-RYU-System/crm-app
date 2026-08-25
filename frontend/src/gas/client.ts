@@ -1053,6 +1053,12 @@ export function createDiscordTicketForCustomer(customerId: string): Promise<Disc
 export type DiscordCustomerInviteResult = { success: boolean; reused?: boolean; url?: string; error?: string; };
 export function createDiscordInviteForCustomer(customerId: string): Promise<DiscordCustomerInviteResult> { const runner = window.google?.script?.run; if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly)); return new Promise((resolve, reject) => { runner.withSuccessHandler((value) => resolve(value as DiscordCustomerInviteResult)).withFailureHandler((error) => reject(toError(error))).createDiscordInviteForCustomer(getStoredSessionId(), customerId); }); }
 
+export type DiscordCustomerScaleOption = { key: string; label: string };
+export function getDiscordCustomerScaleOptions(): Promise<readonly DiscordCustomerScaleOption[]> { const runner = window.google?.script?.run; if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly)); return new Promise((resolve, reject) => { runner.withSuccessHandler((value) => resolve(value as readonly DiscordCustomerScaleOption[])).withFailureHandler((error) => reject(toError(error))).getDiscordCustomerScaleOptionsForFrontend(getStoredSessionId()); }); }
+
+export type DiscordScaleUpdateResult = { success: boolean; error?: string };
+export function updateDiscordCustomerScale(customerId: string, scaleKey: string): Promise<DiscordScaleUpdateResult> { const runner = window.google?.script?.run; if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly)); return new Promise((resolve, reject) => { runner.withSuccessHandler((value) => resolve(value as DiscordScaleUpdateResult)).withFailureHandler((error) => reject(toError(error))).updateDiscordCustomerScale(getStoredSessionId(), customerId, scaleKey); }); }
+
 export function runDiscordAutoSetup(): Promise<DiscordAutoSetupResult> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));

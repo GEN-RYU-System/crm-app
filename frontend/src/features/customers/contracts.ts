@@ -23,9 +23,13 @@ export type CustomerProfileDto = {
   contactTool: string;
   shippingNote: string;
   discordChannelId: string;
+  customerScale: string;
   shippingAddressCount: number;
   paymentProfileCount: number;
 };
+
+export type DiscordCustomerScaleOption = { key: string; label: string };
+export type DiscordCustomerScaleOptionsResult = readonly DiscordCustomerScaleOption[];
 
 export type ShippingAddressDto = {
   addressId: string;
@@ -64,10 +68,14 @@ export type CustomerAggregatesRecord = Readonly<Record<string, {
 export type DiscordTicketResult = { success: boolean; reused?: boolean; channelId?: string; channelName?: string; error?: string; };
 export type DiscordCustomerInviteResult = { success: boolean; reused?: boolean; url?: string; error?: string; };
 
+export type DiscordScaleUpdateResult = { success: boolean; error?: string };
+
 export type CustomerRepository = {
   listCustomers: (forceRefresh?: boolean) => Promise<readonly CustomerSummaryDto[]>;
   getCustomer: (customerId: string) => Promise<CustomerAggregateDto | null>;
   listCustomerAggregates: () => Promise<CustomerAggregatesRecord>;
   createDiscordTicket: (customerId: string) => Promise<DiscordTicketResult>;
   createDiscordInvite: (customerId: string) => Promise<DiscordCustomerInviteResult>;
+  getDiscordCustomerScaleOptions: () => Promise<DiscordCustomerScaleOptionsResult>;
+  updateDiscordCustomerScale: (customerId: string, scaleKey: string) => Promise<DiscordScaleUpdateResult>;
 };
