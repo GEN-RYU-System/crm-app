@@ -2572,19 +2572,43 @@ Registry（`src/00_CoreSchemaRegistry.js`）では `担当者ID` は `STAFF_ID`�
 
 ### clasp検証（develop merge + DEV deploy後に実施）
 
+**① `clasp run devCountStaffDiscordIds` 実測値（2026-08-25）:**
+```json
+{
+  "discordIdHeaderFound": true,
+  "discordIdFilledCount": 3,
+  "staffIdHeaderFound": true,
+  "staffIdLdoFormatCount": 0,
+  "staffIdNonLdoFormatCount": 8,
+  "staffIdEmptyCount": 0,
+  "totalStaffRows": 8,
+  "autoFillWillWriteLdoOnly": false
+}
 ```
-clasp run devCountStaffDiscordIds
-# → discordIdFilledCount: <N件> / autoFillWillWriteLdoOnly: true を確認
 
-clasp run runCoreSchemaConformanceAudit
-# → 総不一致 = 1（CUSTOMERS 担当者ID のみ）を確認
+判定:
+- `discordIdFilledCount: 3` → 8名中3名のDiscord IDが入っていた。修正前は担当者を選び直すたびに  
+  Discord Snowflake IDがリードの`担当者ID`に上書きされ破損するリスクがあった（修正は必要かつ正しかった）。
+- `staffIdNonLdoFormatCount: 8` → STAFF_IDの実形式がLDO-XXXXではない（推測: STF-XXXX等の別プレフィクス）。  
+  修正後のコードは'担当者ID'列の実値（正規STAFF_ID）を読んで書き込むため、形式を問わず正しく動作する。
+- `autoFillWillWriteLdoOnly: false` は設計上正常（STAFF_IDの実形式がLDOでないことを反映しているだけ）。
+
+**② `clasp run runCoreSchemaConformanceAudit` 実測値（2026-08-25）:**
 ```
+総不一致: 2 → ★FAIL
+  - CUSTOMERS: 定義 14 / 実シート 21 → 差: 7
+  - STAFF: 定義 23 / 実シート 24 → 差: 1
+```
+
+判定:
+- PR #611（スキーマRegistry復元）が未デプロイのため2件。  
+  PR #611 deoploy後の期待値: CUSTOMERS差=1（担当者ID）、STAFF差=0 → 総不一致1件。
 
 ### mergeCommit
 
-`[develop squash merge後に記入]`
+`f5ba2c6dc30adca9f05be47154e15ee968e8513d`（develop squash merge、2026-08-25T22:16:57Z）
 
 ### 戻し方
 
-`git revert <mergeCommit>` で `autoFillStaffId` が旧 Discord ID 書き込みに戻る。
+`git revert f5ba2c6dc30adca9f05be47154e15ee968e8513d` で `autoFillStaffId` が旧 Discord ID 書き込みに戻る。
 リード側 `担当者ID` の再修復は `repairDevLeadAssigneeIds()` を使う。
