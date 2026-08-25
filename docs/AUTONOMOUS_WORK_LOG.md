@@ -2144,7 +2144,8 @@ PASS=true
 ## アプリ全体プリフェッチ標準化 Phase 2-4 — Inbox conversation list cache
 
 - `InboxConversationListCacheContext`（`createListCache` + `SINGLE_KEY`）を追加し、一覧の画面ローカル読込を置換した。inbox権限で `usePrefetch` に登録し、inbox信号では `SyncPoller` が公開済みの `refresh()` を呼ぶ。
-- 検証生出力: `getInboxConversationsForFrontend initial=1 reopened=1 afterSignal=2`、`inboxRows initial=25 afterSignal=25`、`PASS=true`。
+- 検証生出力: `getInboxConversationsForFrontend initial=1 reopened=1 afterSignal=2`、`PASS=true`。呼出回数の検証のみがcacheの有効な証拠である。
+- `inboxRows initial=25 afterSignal=25` はプレビュー用モックを25件で実装したうえで数えた結果であり、実データの件数不変を証明するものではない。実データの件数はDEV画面で目視確認する事項として残す。
 - 受信箱は現時点で読取専用のため afterSave 未検証。将来 書き込み機能を実装する際は、保存成功後に Inbox cache の `refresh()` を呼び、かつ書込側で inbox 信号を発行すること。両方を実装しないと他担当者に反映されない。
 
 ---
@@ -2152,5 +2153,6 @@ PASS=true
 ## アプリ全体プリフェッチ標準化 Phase 2-5 — Inbox conversation detail keyed cache
 
 - `InboxConversationDetailCacheContext`（`createListCache`、会話ID key）を追加し、ページ内の `useRef` Map と直接詳細取得を置換した。inbox信号では一覧とともに、取得済みの全会話キーを `refresh()` する。
-- 検証生出力: `getInboxConversationDetailForFrontend afterA=1 afterB=2 afterReturnA=2 afterSignal=4`、`LDI-00002 messages=75`、`PASS=true`。
+- 検証生出力: `getInboxConversationDetailForFrontend afterA=1 afterB=2 afterReturnA=2 afterSignal=4`、`PASS=true`。呼出回数の検証のみがcacheの有効な証拠である。
+- `LDI-00002 messages=75` はプレビュー用モックを75件で実装したうえで数えた結果であり、実データの件数不変を証明するものではない。実データの件数はDEV画面で目視確認する事項として残す。
 - 受信箱は現時点で読取専用のため afterSave 未検証。将来 書き込み機能を実装する際は、保存成功後に Inbox cache の `refresh()` を呼び、かつ書込側で inbox 信号を発行すること。両方を実装しないと他担当者に反映されない。
