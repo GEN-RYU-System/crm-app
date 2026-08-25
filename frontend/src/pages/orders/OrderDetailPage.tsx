@@ -4,10 +4,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, LineItemEditor, PageHeader, Skeleton, StatusMessage, Textarea, TextField } from '../../components/ui';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { ordersCopy, PAYMENT_STATUS_BADGE_VARIANT } from '../../content/ja';
-import { ISSUER_HEADER } from '../../content/ja/issuer';
 import { InvoiceDocument } from '../../features/documents/InvoiceDocument';
+import { buildOrderInvoiceProps } from '../../features/documents/invoiceUtils';
 import type { OrderRepository, OrderUpdatePayload } from '../../features/orders/contracts';
-import type { IssuerRecord } from '../../gas/client';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
 import { useInventoryProductOptionsCache } from '../inventory/InventoryProductOptionsCacheContext';
 import { formatAmountWithJpy } from '../shared/amountFormat';
@@ -28,31 +27,6 @@ function formatNumber(value: unknown): string {
   if (value === null || value === undefined || value === '') return '-';
   const n = Number(value);
   return Number.isNaN(n) ? String(value) : n.toLocaleString();
-}
-
-function toDocAmount(value: string | number | undefined | null): string {
-  if (value === null || value === undefined || value === '') return '';
-  const n = Number(value);
-  return Number.isNaN(n) ? String(value) : n.toLocaleString();
-}
-
-function buildIssuerInfo(rec: IssuerRecord) {
-  const get = (key: string): string => {
-    const val = rec[key];
-    return val === null || val === undefined ? '' : String(val);
-  };
-  return {
-    name: get(ISSUER_HEADER.COMPANY_NAME),
-    lines: [
-      get(ISSUER_HEADER.ADDRESS_LINE1),
-      get(ISSUER_HEADER.ADDRESS_LINE2),
-      get(ISSUER_HEADER.ADDRESS_LINE3),
-      [get(ISSUER_HEADER.CITY), get(ISSUER_HEADER.STATE), get(ISSUER_HEADER.ZIP)].filter(Boolean).join(' '),
-      get(ISSUER_HEADER.COUNTRY),
-      get(ISSUER_HEADER.PHONE),
-      get(ISSUER_HEADER.EMAIL),
-    ].filter(Boolean),
-  };
 }
 
 type EditPanel = 'none' | 'shipping' | 'amount';
@@ -599,43 +573,7 @@ export function OrderDetailPage({ repository }: Props) {
 
       {showPrint && issuer && detail && createPortal(
         <div className="doc-print-root">
-          <InvoiceDocument
-            issuer={buildIssuerInfo(issuer)}
-            invoiceNumber={detail.order.INVOICE_NUMBER}
-            date={formatDate(detail.order.INVOICE_ISSUED_AT || detail.order.ORDER_DATE)}
-            dueDate={detail.order.PAYMENT_DUE_AT ? formatDate(detail.order.PAYMENT_DUE_AT) : ''}
-            registrationNumber={String(issuer[ISSUER_HEADER.REGISTRATION_NO] ?? '') || undefined}
-            billedTo={{ name: detail.order.customerName, lines: [] }}
-            shipTo={{
-              name: detail.order.shippingDestinationName,
-              lines: [
-                detail.order.shippingAddressLine1,
-                detail.order.shippingAddressLine2,
-                detail.order.shippingAddressLine3,
-                [detail.order.shippingCity, detail.order.shippingState, detail.order.shippingZip].filter(Boolean).join(' '),
-                detail.order.shippingCountry,
-              ].filter(Boolean),
-            }}
-            lines={detail.lines.map((l, i) => ({
-              no: i + 1,
-              name: l.PRODUCT_NAME,
-              qty: toDocAmount(l.QUANTITY),
-              unitPrice: toDocAmount(l.UNIT_PRICE),
-              amount: toDocAmount(l.SUBTOTAL),
-            }))}
-            subtotal={toDocAmount(detail.order.LINE_TOTAL)}
-            shippingFee={toDocAmount(detail.order.SHIPPING_FEE)}
-            duty={toDocAmount(detail.order.DUTY)}
-            otherFee={toDocAmount(detail.order.OTHER_FEE)}
-            discount={toDocAmount(detail.order.DISCOUNT)}
-            total={toDocAmount(detail.order.INVOICE_TOTAL)}
-            currency={detail.order.CURRENCY}
-            exchangeRate={detail.order.EXCHANGE_RATE ? String(detail.order.EXCHANGE_RATE) : undefined}
-            notes={detail.order.SHIPPING_NOTE}
-            paymentMethod={detail.order.PAYMENT_METHOD}
-            paymentTermsNote={String(issuer[ISSUER_HEADER.PAYMENT_NOTE] ?? '') || undefined}
-            thanksMessage={String(issuer[ISSUER_HEADER.CLOSING_MESSAGE] ?? '') || undefined}
-          />
+          <InvoiceDocument {...buildOrderInvoiceProps(detail, issuer)} />
         </div>,
         document.body
       )}

@@ -172,21 +172,37 @@ function getCoreOrderDetailForFrontend(sessionId, orderId) {
   orderRow.shippingZip              = shippingDest.zip          || '';
   orderRow.shippingCountry          = shippingDest.country      || '';
 
-  // PAYMENT_DESTINATION → 表示名解決
+  // PAYMENT_DESTINATION → 表示名・請求先住所解決
   var paymentDests = coreCustomerFrontendReadTable(ss, 'PAYMENT_DESTINATIONS', [
-    'PAYMENT_DESTINATION_ID', 'DISPLAY_NAME', 'BILLING_NAME'
+    'PAYMENT_DESTINATION_ID', 'DISPLAY_NAME', 'BILLING_NAME',
+    'ADDRESS_LINE_1', 'ADDRESS_LINE_2', 'ADDRESS_LINE_3',
+    'CITY', 'STATE', 'ZIP', 'COUNTRY'
   ]);
   var paymentDestById = paymentDests.rows.reduce(function(map, row) {
     var id = coreCustomerFrontendValue(row[paymentDests.indexes.PAYMENT_DESTINATION_ID]);
     if (!id) return map;
     map[id] = {
-      name: coreCustomerFrontendValue(row[paymentDests.indexes.DISPLAY_NAME])
-         || coreCustomerFrontendValue(row[paymentDests.indexes.BILLING_NAME])
+      name:         coreCustomerFrontendValue(row[paymentDests.indexes.DISPLAY_NAME])
+                 || coreCustomerFrontendValue(row[paymentDests.indexes.BILLING_NAME]),
+      addressLine1: coreCustomerFrontendValue(row[paymentDests.indexes.ADDRESS_LINE_1]),
+      addressLine2: coreCustomerFrontendValue(row[paymentDests.indexes.ADDRESS_LINE_2]),
+      addressLine3: coreCustomerFrontendValue(row[paymentDests.indexes.ADDRESS_LINE_3]),
+      city:         coreCustomerFrontendValue(row[paymentDests.indexes.CITY]),
+      state:        coreCustomerFrontendValue(row[paymentDests.indexes.STATE]),
+      zip:          coreCustomerFrontendValue(row[paymentDests.indexes.ZIP]),
+      country:      coreCustomerFrontendValue(row[paymentDests.indexes.COUNTRY])
     };
     return map;
   }, {});
   var paymentDest = paymentDestById[orderRow.PAYMENT_DESTINATION_ID] || {};
-  orderRow.paymentDestinationName = paymentDest.name || '';
+  orderRow.paymentDestinationName  = paymentDest.name         || '';
+  orderRow.billingAddressLine1     = paymentDest.addressLine1 || '';
+  orderRow.billingAddressLine2     = paymentDest.addressLine2 || '';
+  orderRow.billingAddressLine3     = paymentDest.addressLine3 || '';
+  orderRow.billingCity             = paymentDest.city         || '';
+  orderRow.billingState            = paymentDest.state        || '';
+  orderRow.billingZip              = paymentDest.zip          || '';
+  orderRow.billingCountry          = paymentDest.country      || '';
 
   // ── ORDER_LINES ─────────────────────────────────────────────────────────────
   var lineFields = [
@@ -196,6 +212,18 @@ function getCoreOrderDetailForFrontend(sessionId, orderId) {
   var allLines = readDetailSheet_(ss, 'ORDER_LINES', lineFields);
   var lines = allLines.filter(function(row) {
     return String(row.ORDER_ID || '').trim() === String(orderId || '').trim();
+  });
+
+  // PRODUCTS → ENGLISH_TITLE 解決（各明細行に英語商品名を付与）
+  var productsData = coreCustomerFrontendReadTable(ss, 'PRODUCTS', ['PRODUCT_ID', 'ENGLISH_TITLE']);
+  var englishTitleById = productsData.rows.reduce(function(map, row) {
+    var id    = coreCustomerFrontendValue(row[productsData.indexes.PRODUCT_ID]);
+    var title = coreCustomerFrontendValue(row[productsData.indexes.ENGLISH_TITLE]);
+    if (id) map[id] = title || '';
+    return map;
+  }, {});
+  lines.forEach(function(line) {
+    line.ENGLISH_TITLE = englishTitleById[line.PRODUCT_ID] || '';
   });
 
   // ── PURCHASES ───────────────────────────────────────────────────────────────

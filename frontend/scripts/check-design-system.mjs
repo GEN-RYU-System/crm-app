@@ -269,10 +269,10 @@ for (const file of pagesTsxFiles) {
 
 // --- Feature component usage check (重複帳票コンポーネント再発防止) ---
 function importsFeatureComponent(source, component, importPath) {
-  return (
-    new RegExp(`from\\s+['"][^'"]*${importPath}['"]`).test(source) &&
-    source.includes(`<${component}`)
-  );
+  const imported = new RegExp(`from\\s+['"][^'"]*${importPath}['"]`).test(source);
+  const usedAsJsx = source.includes(`<${component}`);
+  const usedAsCall = source.includes(`${component}(`);
+  return imported && (usedAsJsx || usedAsCall);
 }
 const featureUsageRules = (checkConfig.featureComponentUsageCheck ?? {}).rules ?? [];
 for (const rule of featureUsageRules) {
