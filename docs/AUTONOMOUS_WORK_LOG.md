@@ -2235,3 +2235,37 @@ PASS=true
 - **V-C1**: `runDiscordAutoSetup` を2回実行し Customer/Partner カテゴリ・ロールが重複しないこと。
 - **V-C2**: SMALL/LARGE 各スケールで招待発行し、参加後に正しいロールが付与されること。
 - **V-C3**: スケール未設定顧客への招待でチャンネル作成が続行し Logger に警告が出ること。
+
+---
+
+## discord_code=40333 原因調査・User-Agent 追加修正（PR #594）
+
+### 原因
+
+- `discord_code=40333` = "Cloudflare is blocking your request. This can often be resolved by setting a proper User Agent"
+- 出典: https://docs.discord.com/developers/topics/opcodes-and-status-codes（Discord公式・2026-08-26実測）
+- `discordRequest_()` の headers に `User-Agent` が欠落していた。
+- `testDiscordConnection` / `fetchDiscordMessages` は `src/33_DiscordIntegrationService.js` で `UrlFetchApp.fetch()` を直接呼び出す**別経路**であり `discordRequest_()` を共有しない。
+- GET は別経路で成功、`discordRequest_()` 経由の POST が 40333 で失敗していた（事実。経路差異が原因かは【推測】のため断定しない）。
+
+### 修正内容
+
+`src/36_DiscordChannelSetupApi.js` の `discordRequest_()` headers に追加:
+
+```js
+'User-Agent': 'DiscordBot (https://github.com/GEN-RYU-System/crm-app, 1)'
+```
+
+形式は Discord公式ドキュメント（https://docs.discord.com/developers/reference）記載の `DiscordBot ($url, $versionNumber)` に準拠。
+
+### PR / マージ
+
+- PR #594 squash SHA: `1896401ae6dda83e8326e8d409160234092a5731`
+- 戻し方: `git revert 1896401ae6dda83e8326e8d409160234092a5731`
+- DEV deploy: deploy-dev.yml 成功（2026-08-26、SHA `1896401a` でデプロイ確認）
+
+### 検証（未完了 — UI実行が必要）
+
+- `clasp run runDiscordAutoSetup` は SESSION_REQUIRED のため実行不可（フロントエンドセッション必須）
+- DEV UI（`runDiscordAutoSetup` ボタン）から実行し、成功・失敗を確認すること
+- 成功確認後に V-C1〜C3 の DEV 実測を続行すること
