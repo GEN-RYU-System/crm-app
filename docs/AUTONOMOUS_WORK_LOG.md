@@ -2000,3 +2000,13 @@ PASS=true
 
 - PR #549 — CI 4件通過・Draft。merge commit SHA は develop マージ後に記録予定。
 - 戻し方: `git revert <merge-commit-SHA>` ※マージ後に更新する
+
+---
+
+## Discordチャンネルセットアップの連携状態同期（PR #553）
+
+- 原因: `frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx` は、連携済み表示を `guildId` で更新していた一方、チャンネルセットアップボタンの有効化判定は `setupStatus.guildId` を参照していた。この2つの状態が連携確認後に同期されず、表示は連携済みでもボタンは無効のままになった。
+- 修正: 初期読込、`状態を確認する` による再取得、複数Guildからの選択保存の3経路で、`setupStatus.guildId` を連携済みGuild IDと同期するよう変更した。これにより `setupStatus.guildId` を条件とするセットアップボタンも有効化される。
+- 検証: `frontend/npm run build:gas`、差分基準の機密検査、PR CIの Frontend Check / GAS Global Namespace Check / Security Content Check はすべて成功。
+- PR #553 を squash merge。マージコミット SHA: `15b16faad625202785755d2fc6ff319896ada698`。
+- 戻し方: `git revert 15b16faad625202785755d2fc6ff319896ada698`。
