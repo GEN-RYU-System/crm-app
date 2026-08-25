@@ -2304,3 +2304,34 @@ PASS=true
 - PR: GEN-RYU-System/crm-app#593 (base: develop)
 - commit SHA: `67e76bf` (release/fix-sticky-offset HEAD)
 - revert用: `git revert 67e76bf`
+
+---
+
+## PR27: 箱スクロール方式への置き換え (2026-08-26)
+
+### 経緯
+
+| PR | 内容 | 結果 |
+|----|------|------|
+| #560 | DataTable stickyHeader prop + SalesOrderListPage sticky band 初実装 | 列見出しがデータ行の下に沈む |
+| #585 | `border-collapse:separate` + `overflow:clip` で z-index 修正 | 一部改善・オフセット問題残存 |
+| #593 | `padding-bottom` 削除（過大計測修正）+ `overflow:hidden→clip` | オフセット改善・根本方式は同じ |
+| #601 | 方式ごと箱スクロールに置き換え（本PR） | JS不要・top:0・外部標準準拠 |
+
+### 採用方式
+箱スクロール（box-scroll）: スクロールラッパーを高さ制限付きコンテナにし、thead を `top: 0` で固定。
+ResizeObserver・`--_sticky-band-h` を削除。CSS 5行・JS 0行。
+
+外部根拠: Stanford UIT「Simple and reliable」/ Filament max-height方式 / OpenProject（JS列幅制御NG事例）
+
+### 変更ファイル
+- `DataTable.css` / `SalesOrderListPage.tsx` / `SalesOrderListPage.css`
+- `palette.css` / `tokens.css`: `--data-table-scroll-max-height: calc(100vh - 22rem)` 追加
+- `docs/DESIGN_TOKENS.md`: sticky 節を箱スクロール方式に更新
+
+### PR / SHA
+- PR: GEN-RYU-System/crm-app#601 (base: develop, draft)
+- commit SHA: `1f8c163` (release/box-scroll-sticky-header HEAD)
+- revert用: `git revert 1f8c163`
+
+★ PO実機確認後に un-draft → squash merge
