@@ -5,12 +5,9 @@ import { Badge } from '../../components/ui/Badge/Badge';
 import { Button, DataTable, EmptyState, StatusMessage } from '../../components/ui';
 import type { DataTableColumn } from '../../components/ui';
 import { salesOrdersCopy } from '../../content/ja';
-import {
-  getCoreOrderDetail,
-  confirmCoreOrderPayment,
-  type OrderDetailRecord,
-} from '../../gas/client';
+import { confirmCoreOrderPayment, type OrderDetailRecord } from '../../gas/client';
 import { useSalesOrderListCache } from './SalesOrderListCacheContext';
+import { useSalesOrderDetailCache } from './SalesOrderDetailCacheContext';
 import { PAYMENT_DUE_WARNING_DAYS } from './salesOrderListConfig';
 import './SalesOrderDetailPage.css';
 
@@ -79,8 +76,6 @@ function AddressBlock({ name, line1, line2, line3, city, state, zip, country }: 
 
 export function SalesOrderDetailPage() {
   const { orderId } = useParams<{ orderId: string }>();
-  const [detail, setDetail] = useState<OrderDetail | null | undefined>(undefined);
-  const [error, setError] = useState<string | undefined>(undefined);
 
   // confirm payment state
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -88,15 +83,15 @@ export function SalesOrderDetailPage() {
   const [confirmError, setConfirmError] = useState<string | undefined>(undefined);
 
   const { refresh } = useSalesOrderListCache();
+  const { recordsByOrderId, errorsByOrderId, ensureLoaded, refresh: refreshDetail } = useSalesOrderDetailCache();
+  const records = orderId ? recordsByOrderId[orderId] : undefined;
+  const detail = records === undefined ? undefined : records[0] ?? null;
+  const error = orderId ? errorsByOrderId[orderId] : undefined;
 
   useEffect(() => {
     if (!orderId) return;
-    setDetail(undefined);
-    setError(undefined);
-    getCoreOrderDetail(orderId)
-      .then((d) => setDetail(d))
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : salesOrdersCopy.detail.loadError));
-  }, [orderId]);
+    void ensureLoaded(orderId);
+  }, [ensureLoaded, orderId]);
 
   const copy = salesOrdersCopy.detail;
 
@@ -111,8 +106,7 @@ export function SalesOrderDetailPage() {
     try {
       const result = await confirmCoreOrderPayment(orderId);
       if (result.success) {
-        const updated = await getCoreOrderDetail(orderId);
-        setDetail(updated);
+        await refreshDetail(orderId);
         setConfirmOpen(false);
         void refresh();
       } else {
