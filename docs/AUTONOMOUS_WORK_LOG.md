@@ -1881,3 +1881,13 @@ PASS=true
 ```
 
 - `frontend/scripts/verify-sales-order-detail-cache.cjs` により標準出力で検証した。`frontend/npm run build:gas` は typecheck / Vite build / emit-gas-html / design-system checks をすべて通過した。
+
+### PR / revert / deploy（3件まとめて記録）
+
+- PR #529 — OrderEditorPage の InventoryProductOptions 直接取得置換。squash merge SHA: `8527a17773bc9f66f80403f6c978e29c202cae96`。戻し方: `git revert 8527a17773bc9f66f80403f6c978e29c202cae96`。DEV の `getDeployedSha` は同SHAと一致。
+- PR #531 — QuoteEditorPage の InventoryProductOptions 直接取得置換。squash merge SHA: `ce4d724c1bed360f75af763132fa218d3eaf33fd`。戻し方: `git revert ce4d724c1bed360f75af763132fa218d3eaf33fd`。DEV の `getDeployedSha` は同SHAと一致。
+- PR #539 — Sales order detail keyed cache。squash merge SHA: `569beb6dc5a1fe1f2c52ab13d6c9703ad47ff875`。戻し方: `git revert 569beb6dc5a1fe1f2c52ab13d6c9703ad47ff875`。Deploy to DEV run `32797609301` は成功。`clasp run getDeployedSha` 生出力: `{ sha: '569beb6dc5a1fe1f2c52ab13d6c9703ad47ff875', deployedAt: '2026-08-25T01:28:13.343Z' }`。
+
+### 保留
+
+- Inbox conversation list / detail cache は保留。理由: inbox 同期シグナルが未定義であり、無効化なしのcache化は新着未反映を起こす。着手には `checkSyncSignals` の契約変更が必要であり、本作業の範囲外である。
