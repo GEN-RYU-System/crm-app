@@ -2263,3 +2263,44 @@ PASS=true
 
 ### 対策
 配布直後に DEV 画面でエラーが出た場合、まず 1〜2 分待って再読み込みする。それでも解消しない場合に調査を開始する。
+
+---
+
+## PR26: 受注一覧 sticky thead オフセット修正 (2026-08-26)
+
+### 症状
+`/sales-orders` のスクロール時、列見出し（thead）がデータ行の下に沈む。
+
+### 根本原因
+
+**Root cause 1 — padding-bottom が `--_sticky-band-h` を 16px 過大計測**
+
+`SalesOrderListPage.css` の `.sales-order-list-page__sticky-band` に
+`padding-bottom: var(--page-toolbar-margin-bottom)` (= 16px) が付いていた。
+`getBoundingClientRect().height` は padding を含むため、ResizeObserver が計測した
+`stickyBandH` が実際の視覚高さより 16px 大きくなり、DataTable `<th>` の
+`top: var(--_sticky-band-h)` が 16px 低すぎる位置に固定されていた。
+
+**Root cause 2 — `overflow: hidden` がスクロールコンテナを生成**
+
+`.sales-order-list-page__data-card { overflow: hidden }` は CSS 仕様上
+スクロールコンテナを作成し、`position: sticky` な `<th>` がカード内で固定される
+問題があった。
+
+### 修正内容
+- `.sales-order-list-page__sticky-band` から `padding-bottom` を削除
+  → PageToolbar 自然の `margin-bottom: 16px` で間隔確保（`margin` は `getBoundingClientRect().height` に含まれない）
+- `.sales-order-list-page__data-card`: `overflow: hidden` → `overflow: clip`
+  → スクロールコンテナを生成せずに border-radius をクリップ
+
+### 変更ファイル
+`frontend/src/pages/sales-orders/SalesOrderListPage.css` のみ
+
+### 検証
+- `npm run build:gas` → SUCCESS
+- `npm run check:design-system` → `design-system checks passed`
+
+### PR / SHA
+- PR: GEN-RYU-System/crm-app#593 (base: develop)
+- commit SHA: `67e76bf` (release/fix-sticky-offset HEAD)
+- revert用: `git revert 67e76bf`
