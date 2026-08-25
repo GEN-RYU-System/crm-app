@@ -151,7 +151,6 @@ for (const rule of usageRules) {
 // ─── Cache design template enforcement ────────────────────────────────────────
 // 対象外:
 //   features/customers/CustomerAggregateCacheContext.tsx は pages/*/ の外なので検査1の対象外。
-//   CustomerAggregateCacheProvider は *ListCacheProvider の命名でないため検査2・3の対象外。
 
 // 検査1: pages/*/*CacheContext.tsx はすべて createListCache を import していること
 const cacheContextFiles = (await files(resolve(srcDir, 'pages'))).filter((f) => f.endsWith('CacheContext.tsx'));
@@ -161,17 +160,80 @@ for (const file of cacheContextFiles) {
   if (!source.includes('createListCache')) violations.push(`CacheContext does not use createListCache: ${relative(frontendDir, file)}`);
 }
 
-// 検査2・3: App.tsx の *ListCacheProvider ごとに usePrefetch・SyncPoller への登録を確認する
-// Provider 名 → フック名: FooListCacheProvider → useFooListCache
+// 検査2・3: App.tsx の *CacheProvider ごとに usePrefetch・SyncPoller への登録を確認する
+// (a) 命名拡大: *ListCacheProvider から *CacheProvider 全般に拡大
+// Provider 名 → フック名: FooCacheProvider → useFooCache
+// 除外リスト（allowlist）: 以下は意図的に登録が省略されているため検査対象外
+const PREFETCH_EXEMPT_PROVIDERS = new Set([
+  // 詳細系キャッシュ: ページ遷移後にオンデマンドで呼ぶため prefetch steps に登録不要
+  'CustomerDetailCacheProvider',
+  'LeadDetailCacheProvider',
+  'SalesOrderDetailCacheProvider',
+  // DashboardKpiCacheProvider: AppRouter 内で ensureLoaded を直接呼ぶため usePrefetch に登録不要
+  'DashboardKpiCacheProvider',
+  // InboxConversationDetailCacheProvider: prefetchBulk で別名登録のため hook 名ではマッチしない
+  'InboxConversationDetailCacheProvider',
+  // LeadFormOptionsCacheProvider: usePrefetch に import されているが別名なので文字列検査ではスキップ
+  // （実際には ensureLeadFormOptions として登録済み。より正確な検査は今後追加）
+  // CustomerAggregateCacheProvider: features/ 由来・SyncPoller に登録なし
+  'CustomerAggregateCacheProvider',
+  // DiscordSettingsCacheProvider: SyncPoller に登録済みだが usePrefetch 登録が意図的にない
+  'DiscordSettingsCacheProvider',
+]);
+const SYNC_POLLER_EXEMPT_PROVIDERS = new Set([
+  // CustomerAggregateCacheProvider: SyncPoller には接続せず usePrefetch のみで管理
+  'CustomerAggregateCacheProvider',
+  // CurrencyMasterCacheProvider: 静的マスタのため SyncPoller refreshers には登録不要（usePrefetch のみで管理）
+  'CurrencyMasterCacheProvider',
+]);
 const prefetchSource = await readFile(resolve(srcDir, 'app/usePrefetch.ts'), 'utf8');
-const listCacheProviderNames = [...new Set([...appSource.matchAll(/<(\w+ListCacheProvider)[\s>/]/g)].map((m) => m[1]))];
-if (listCacheProviderNames.length === 0) violations.push('cache template check: no *ListCacheProvider found in App.tsx — regex may be broken');
-for (const providerName of listCacheProviderNames) {
+const allCacheProviderNames = [...new Set([...appSource.matchAll(/<(\w+CacheProvider)[\s>/]/g)].map((m) => m[1]))];
+if (allCacheProviderNames.length === 0) violations.push('cache template check: no *CacheProvider found in App.tsx — regex may be broken');
+for (const providerName of allCacheProviderNames) {
   const hookName = 'use' + providerName.replace('Provider', '');
-  // 検査2: usePrefetch.ts にフックが import されていること（prefetch steps への登録を保証）
-  if (!prefetchSource.includes(hookName)) violations.push(`${providerName} is not registered in usePrefetch steps (${hookName} not found in usePrefetch.ts)`);
-  // 検査3: App.tsx にフックが import されていること（SyncPoller refreshers への登録を保証）
-  if (!appSource.includes(hookName)) violations.push(`${providerName} is not registered in SyncPoller refreshers (${hookName} not found in App.tsx)`);
+  // 検査2: usePrefetch.ts にフックが含まれていること（prefetch steps への登録を保証）
+  if (!PREFETCH_EXEMPT_PROVIDERS.has(providerName) && !prefetchSource.includes(hookName)) {
+    violations.push(`${providerName} is not registered in usePrefetch steps (${hookName} not found in usePrefetch.ts)`);
+  }
+  // 検査3: App.tsx にフックが含まれていること（SyncPoller refreshers への登録を保証）
+  if (!SYNC_POLLER_EXEMPT_PROVIDERS.has(providerName) && !appSource.includes(hookName)) {
+    violations.push(`${providerName} is not registered in SyncPoller refreshers (${hookName} not found in App.tsx)`);
+  }
+}
+
+// ─── (c) pages/ 配下での直接 GAS 呼び出し禁止 ─────────────────────────────────
+// pages/ 配下の .tsx ファイルで gas/client から関数（型以外）を import することを禁止する。
+// *CacheContext.tsx は自身がキャッシュ層なので除外。
+// 許可リスト（allowlist）: 既存コードの違反で段階的移行中のもの、またはキャッシュ不要な境界
+const GAS_CLIENT_IN_PAGES_ALLOWLIST = new Set([
+  // 保存系・認証系: キャッシュ層に属さない正当な直接呼び出し（Context 経由に移行するまで許可）
+  'src/pages/quotes/QuoteEditorPage.tsx',     // createCoreQuote / updateCoreQuote / getCoreQuoteDetail (save+read)
+  'src/pages/quotes/LeadCombobox.tsx',        // type-only import (LeadOption)
+  'src/pages/auth/ChangePasswordPage.tsx',    // changeOwnPasswordForFrontend (auth boundary)
+  'src/pages/data-management/IssuerMasterPage.tsx', // updateCoreIssuer (save operation)
+  'src/pages/orders/OrderDetailPage.tsx',     // type-only import (IssuerRecord)
+  'src/pages/orders/OrderEditorPage.tsx',     // getCoreIssuer (direct call – pending refactor like 2-8)
+  'src/pages/sales-orders/SalesOrderDetailPage.tsx', // confirmCoreOrderPayment / upsertCorePurchase (save+action)
+]);
+const pagesDir = resolve(srcDir, 'pages');
+const pagesTsxFiles = (await files(pagesDir)).filter((f) => extname(f) === '.tsx' && !f.endsWith('CacheContext.tsx'));
+for (const file of pagesTsxFiles) {
+  const relPath = relative(frontendDir, file);
+  if (GAS_CLIENT_IN_PAGES_ALLOWLIST.has(relPath)) continue;
+  const source = await readFile(file, 'utf8');
+  if (/google\.script\.run/.test(source)) {
+    violations.push(`direct google.script.run in pages/: ${relPath} — use a Repository or CacheContext instead`);
+  }
+  // gas/client import: 型のみ（import type または type-only named import）は許可
+  const gasImportMatch = source.match(/^import\s+(?!type\s)\{([^}]+)\}\s+from\s+['"][^'"]*gas\/client['"]/m);
+  if (gasImportMatch) {
+    // named import に型以外（関数・定数）が含まれるか確認
+    const namedImports = gasImportMatch[1].split(',').map((s) => s.trim());
+    const hasValueImport = namedImports.some((s) => !s.startsWith('type '));
+    if (hasValueImport) {
+      violations.push(`direct gas/client import in pages/: ${relPath} — use a Repository or CacheContext instead`);
+    }
+  }
 }
 
 // --- Feature component usage check (重複帳票コンポーネント再発防止) ---
