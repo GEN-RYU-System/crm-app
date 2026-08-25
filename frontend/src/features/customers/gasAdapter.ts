@@ -1,4 +1,4 @@
-import { createDiscordTicketForCustomer, getCoreAllCustomerAggregates, getCoreCustomer, getCoreCustomers } from '../../gas/client';
+import { createDiscordInviteForCustomer, createDiscordTicketForCustomer, getCoreAllCustomerAggregates, getCoreCustomer, getCoreCustomers } from '../../gas/client';
 import type { CustomerRepository } from './contracts';
 
 export const customerGasRepository: CustomerRepository = {
@@ -6,4 +6,5 @@ export const customerGasRepository: CustomerRepository = {
   getCustomer: getCoreCustomer,
   listCustomerAggregates: getCoreAllCustomerAggregates,
   createDiscordTicket: createDiscordTicketForCustomer,
+  createDiscordInvite: createDiscordInviteForCustomer,
 };

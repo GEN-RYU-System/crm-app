@@ -18,7 +18,7 @@
 // Discord Bot招待OAuthURL生成
 // ============================================================
 
-var DISCORD_OAUTH_PERMISSIONS = '805432400';
+var DISCORD_OAUTH_PERMISSIONS = '805432433';
 
 /**
  * Discord Bot招待用OAuthURLを生成する

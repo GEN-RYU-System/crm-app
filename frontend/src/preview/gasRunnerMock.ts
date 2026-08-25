@@ -511,6 +511,9 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
       if (customerId === 'CUS-0002') { succeed({ success: true, reused: true, channelId: 'preview-existing-channel', channelName: 'ticket-preview-customer-b-0002' }); return; }
       succeed({ success: true, reused: false, channelId: 'preview-new-channel', channelName: 'ticket-preview-customer-a-0001' });
     },
+    createDiscordInviteForCustomer(_s: string | null, customerId: string) {
+      succeed({ success: true, reused: customerId === 'CUS-0002', url: 'https://discord.gg/preview-customer-invite' });
+    },
     upsertCorePurchaseForFrontend(_s: string | null, _payload: unknown) {
       succeed({ success: true, purchaseId: 'PC-00001' });
     },
