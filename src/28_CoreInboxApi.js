@@ -311,7 +311,6 @@ function resolveConversationLogSheet_(spreadsheet) {
 function inboxPlatformFromSource_(leadSource) {
   var src = String(leadSource || '').toLowerCase();
   if (src.indexOf('instagram') !== -1) return 'instagram';
-  if (src.indexOf('discord')   !== -1) return 'discord';
   return 'messenger';
 }
 

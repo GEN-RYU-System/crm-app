@@ -869,20 +869,6 @@ function getProperty(key) {
 }
 
 /**
- * Discord Webhook URL取得
- */
-function getDiscordWebhook() {
-  return getProperty('DISCORD_WEBHOOK_URL');
-}
-
-/**
- * リマインド用Discord Webhook URL取得
- */
-function getRemindWebhook() {
-  return getProperty('NSREMIND_DISCORDWEBHOOK') || getProperty('DISCORD_WEBHOOK_URL');
-}
-
-/**
  * システム設定シートから単一キーの設定値を取得し、VALUE_TYPE に応じて型変換して返す。
  *
  * - VALUE_TYPE = 数値  → Number に変換して返す（変換失敗時は null）

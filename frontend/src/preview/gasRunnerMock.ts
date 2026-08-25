@@ -10,17 +10,9 @@ import { NAVIGATION_BY_ID, type NavigationItemId, type NavigationPermission } fr
 
 const MOCK_SESSION_ID = 'preview-mock-session';
 const mockCallCounts: Record<string, number> = {};
-let mockDiscordConnectionStatus = {
-  isTokenSet: false,
-  tokenMask: 'not-set',
-  botName: '',
-  botId: '',
-  connected: false,
-  clientId: '',
-};
 let mockIssuerCompanyName = 'Preview Company Ltd.';
 let previewOrderPaymentConfirmed = false;
-type MockSyncDomain = 'leads' | 'quotes' | 'orders' | 'inventory' | 'staff' | 'customers' | 'issuer' | 'discord' | 'inbox';
+type MockSyncDomain = 'leads' | 'quotes' | 'orders' | 'inventory' | 'staff' | 'customers' | 'issuer' | 'inbox';
 
 type PreviewWindow = Window & {
   __gasMockCallCounts?: Readonly<Record<string, number>>;
@@ -63,7 +55,7 @@ const MOCK_INBOX_CONVERSATIONS = Array.from({ length: 25 }, (_, index) => {
   return {
     id: `LDI-${String(number).padStart(5, '0')}`,
     customerName: `Preview Inbox Customer ${number}`,
-    platform: number % 3 === 0 ? 'discord' : number % 2 === 0 ? 'instagram' : 'messenger',
+    platform: number % 2 === 0 ? 'instagram' : 'messenger',
     status: number % 5 === 0 ? 'existing' : number % 4 === 0 ? 'followup' : number % 3 === 0 ? 'deal' : 'lead',
     summary: `Preview conversation ${number}`,
     updatedAt: `2026-08-${String(number).padStart(2, '0')}T10:00:00.000Z`,
@@ -119,7 +111,7 @@ const MOCK_CUSTOMERS = [
 
 const MOCK_AGGREGATES: Record<string, unknown> = {
   'CUS-0001': {
-    profile: { customerId: 'CUS-0001', sourceLeadId: '', customerName: 'Preview Customer A', country: 'JP', emailAddress: '', phone: '', countryCode: '', firstTransactionDate: '', registeredAt: '', salesAssigneeName: 'Preview User', contactTool: '', shippingNote: '', discordChannelId: '', customerScale: 'Small', shippingAddressCount: 1, paymentProfileCount: 1 },
+    profile: { customerId: 'CUS-0001', sourceLeadId: '', customerName: 'Preview Customer A', country: 'JP', emailAddress: '', phone: '', countryCode: '', firstTransactionDate: '', registeredAt: '', salesAssigneeName: 'Preview User', contactTool: '', shippingNote: '', shippingAddressCount: 1, paymentProfileCount: 1 },
     shippingAddresses: [
       {
         addressId: 'SHP-0001',
@@ -148,7 +140,7 @@ const MOCK_AGGREGATES: Record<string, unknown> = {
     ],
   },
   'CUS-0002': {
-    profile: { customerId: 'CUS-0002', sourceLeadId: '', customerName: 'Preview Customer B', country: 'US', emailAddress: '', phone: '', countryCode: '', firstTransactionDate: '', registeredAt: '', salesAssigneeName: 'Preview User', contactTool: '', shippingNote: '', discordChannelId: 'preview-discord-channel', customerScale: 'Large', shippingAddressCount: 1, paymentProfileCount: 1 },
+    profile: { customerId: 'CUS-0002', sourceLeadId: '', customerName: 'Preview Customer B', country: 'US', emailAddress: '', phone: '', countryCode: '', firstTransactionDate: '', registeredAt: '', salesAssigneeName: 'Preview User', contactTool: '', shippingNote: '', shippingAddressCount: 1, paymentProfileCount: 1 },
     shippingAddresses: [
       {
         addressId: 'SHP-0002',
@@ -256,7 +248,7 @@ const MOCK_LEAD_DETAILS: Record<string, Record<string, unknown>> = {
 const INITIAL_MOCK_SYNC_SIGNALS = {
   leads: null, quotes: null, orders: null,
   inventory: null, staff: null, customers: null,
-  issuer: null, discord: null, inbox: null,
+  issuer: null, inbox: null,
 };
 let mockSyncSignals: Record<MockSyncDomain, string | null> = { ...INITIAL_MOCK_SYNC_SIGNALS };
 
@@ -509,64 +501,6 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
       succeed({ success: true });
     },
 
-    // Discord integration
-    saveDiscordBotToken(_s: string | null, token: string) {
-      if (token === 'preview-save-fail') {
-        succeed({ success: false });
-        return;
-      }
-      mockDiscordConnectionStatus = token === 'preview-connection-fail'
-        ? { isTokenSet: true, tokenMask: '••••fail', botName: '', botId: '', connected: false, clientId: mockDiscordConnectionStatus.clientId }
-        : { isTokenSet: true, tokenMask: '••••mock', botName: 'Preview Bot', botId: 'preview-bot-id', connected: true, clientId: mockDiscordConnectionStatus.clientId };
-      succeed({ success: true });
-    },
-    saveDiscordClientId(_s: string | null, clientId: string) {
-      if (clientId === 'preview-client-id-save-fail') {
-        succeed({ success: false });
-        return;
-      }
-      mockDiscordConnectionStatus = { ...mockDiscordConnectionStatus, clientId };
-      succeed({ success: true });
-    },
-    getDiscordConnectionStatusForFrontend(_s: string | null) {
-      succeed(mockDiscordConnectionStatus);
-    },
-    saveDiscordChannels(_s: string | null, _channelIds: unknown) {
-      succeed({ success: true });
-    },
-    getDiscordChannelsForFrontend(_s: string | null) {
-      succeed({ channels: ['1234567890123456789'] });
-    },
-
-    // Discord OAuth Bot invite flow
-    generateDiscordOAuthUrl(_s: string | null) {
-      succeed({ success: true, url: 'https://discord.com/api/oauth2/authorize?client_id=mock&permissions=805432400&scope=bot%20applications.commands' });
-    },
-    getDiscordOAuthStatus(_s: string | null) {
-      succeed({ status: 'linked', guildId: 'preview-guild-1', guilds: [{ id: 'preview-guild-1', name: 'Preview Guild One' }, { id: 'preview-guild-2', name: 'Preview Guild Two' }] });
-    },
-    saveDiscordGuildId(_s: string | null, guildId: string) {
-      succeed({ success: guildId === 'preview-guild-1' || guildId === 'preview-guild-2' });
-    },
-    runDiscordAutoSetup(_s: string | null) {
-      succeed({ success: true, categoryId: 'preview-category', ticketChannelId: 'preview-ticket-channel' });
-    },
-    getDiscordSetupStatus(_s: string | null) {
-      succeed({ guildId: null, categoryId: null, ticketChannelId: null });
-    },
-    createDiscordTicketForCustomer(_s: string | null, customerId: string) {
-      if (customerId === 'CUS-0002') { succeed({ success: true, reused: true, channelId: 'preview-existing-channel', channelName: 'ticket-preview-customer-b-0002' }); return; }
-      succeed({ success: true, reused: false, channelId: 'preview-new-channel', channelName: 'ticket-preview-customer-a-0001' });
-    },
-    createDiscordInviteForCustomer(_s: string | null, customerId: string) {
-      succeed({ success: true, reused: customerId === 'CUS-0002', url: 'https://discord.gg/preview-customer-invite' });
-    },
-    getDiscordCustomerScaleOptionsForFrontend(_s: string | null) {
-      succeed([{ key: 'SMALL', label: 'Small' }, { key: 'LARGE', label: 'Large' }]);
-    },
-    updateDiscordCustomerScale(_s: string | null, _customerId: string, _scaleKey: string) {
-      succeed({ success: true });
-    },
     upsertCorePurchaseForFrontend(_s: string | null, _payload: unknown) {
       succeed({ success: true, purchaseId: 'PC-00001' });
     },
@@ -600,7 +534,6 @@ export function installGASMock(): void {
   for (const name of Object.keys(mockCallCounts)) delete mockCallCounts[name];
   configurePreviewProfile();
   mockSyncSignals = { ...INITIAL_MOCK_SYNC_SIGNALS };
-  mockDiscordConnectionStatus = { isTokenSet: false, tokenMask: 'not-set', botName: '', botId: '', connected: false, clientId: '' };
   mockIssuerCompanyName = 'Preview Company Ltd.';
   sessionStorage.setItem('crm_session_id', MOCK_SESSION_ID);
   const runner = buildChain(

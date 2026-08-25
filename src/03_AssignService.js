@@ -34,17 +34,6 @@ function runAssignMigration() {
     return;
   }
   
-  // Webhook取得
-  const webhook = getDiscordWebhook();
-  if (!webhook) {
-    SpreadsheetApp.getActiveSpreadsheet().toast(
-      'DISCORD_WEBHOOK_URL が未設定です。スクリプトプロパティを確認してください。',
-      'エラー',
-      8
-    );
-    return;
-  }
-  
   // データ取得
   const data = activeSheet.getDataRange().getValues();
   const headers = data[0];
@@ -99,13 +88,6 @@ function runAssignMigration() {
     // 元シートから削除
     activeSheet.deleteRow(item.rowIndex);
     
-    // Discord通知
-    const customerName = item.data[colIndex.顧客名] || '不明';
-    const staffId = item.data[colIndex.担当者ID];
-    const leadId = item.data[colIndex.リードID];
-    
-    sendAssignNotification(webhook, customerName, staffId, leadId, item.leadType);
-    
     migratedCount++;
   });
   
@@ -149,29 +131,6 @@ function buildDealsRow(sourceRow, sourceHeaders, dealsHeaders, leadType) {
 }
 
 /**
- * アサイン通知をDiscordに送信
- */
-function sendAssignNotification(webhook, customerName, staffId, leadId, leadType) {
-  const mention = staffId ? `<@${staffId}>\n` : '';
-  const typeLabel = leadType === 'インバウンド' ? '📥' : '📤';
-  
-  const payload = {
-    content: `${mention}${typeLabel} **新規アサイン**\n**${customerName}** 様（${leadId}）が担当になりました。\nリード管理シートをご確認ください。`
-  };
-  
-  try {
-    UrlFetchApp.fetch(webhook, {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
-    });
-  } catch (e) {
-    Logger.log('Discord通知エラー: ' + e.message);
-  }
-}
-
-/**
  * メニューから実行するためのラッパー関数
  */
 function menuRunAssignMigration() {
@@ -197,17 +156,6 @@ function runAssignMigrationIntegrated() {
   if (!sheet) {
     SpreadsheetApp.getActiveSpreadsheet().toast(
       `「${CONFIG.SHEETS.LEADS}」シートが見つかりません。`,
-      'エラー',
-      8
-    );
-    return;
-  }
-
-  // Webhook取得
-  const webhook = getDiscordWebhook();
-  if (!webhook) {
-    SpreadsheetApp.getActiveSpreadsheet().toast(
-      'DISCORD_WEBHOOK_URL が未設定です。スクリプトプロパティを確認してください。',
       'エラー',
       8
     );
@@ -273,14 +221,6 @@ function runAssignMigrationIntegrated() {
 
     // シート更新日を更新
     sheet.getRange(rowNum, colIndex.シート更新日 + 1).setValue(today);
-
-    // Discord通知
-    const customerName = item.data[colIndex.顧客名] || '不明';
-    const staffId = item.data[colIndex.担当者ID];
-    const leadId = item.data[colIndex.リードID];
-    const leadType = item.data[colIndex.リード種別] || 'インバウンド';
-
-    sendAssignNotification(webhook, customerName, staffId, leadId, leadType);
 
     assignedCount++;
   });

@@ -63,16 +63,13 @@ import { inboxGasRepository } from './features/inbox/gasAdapter';
 import { inventoryGasRepository } from './features/inventory/gasAdapter';
 import { orderGasRepository } from './features/orders/gasAdapter';
 import { quoteGasRepository } from './features/quotes/gasAdapter';
-import { DiscordIntegrationPage } from './pages/discord-integration/DiscordIntegrationPage';
-import { DiscordSettingsCacheProvider, useDiscordSettingsCache } from './pages/discord-integration/DiscordSettingsCacheContext';
-import { discordIntegrationGasRepository } from './features/discordIntegration/gasAdapter';
 import { ChangePasswordPage } from './pages/auth/ChangePasswordPage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { SalesOrderListPage } from './pages/sales-orders/SalesOrderListPage';
 import { SalesOrderDetailPage } from './pages/sales-orders/SalesOrderDetailPage';
 import { SalesOrderDetailCacheProvider } from './pages/sales-orders/SalesOrderDetailCacheContext';
 import { SalesOrderListCacheProvider } from './pages/sales-orders/SalesOrderListCacheContext';
-import { customersCopy, discordIntegrationCopy, errorCopy, inboxCopy, issuerCopy, leadsCopy, ordersCopy, quotesCopy, salesOrdersCopy, staffCopy } from './content/ja';
+import { customersCopy, errorCopy, inboxCopy, issuerCopy, leadsCopy, ordersCopy, quotesCopy, salesOrdersCopy, staffCopy } from './content/ja';
 import { authCopy } from './content/ja/auth';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -113,7 +110,6 @@ function SyncPoller() {
   const { refresh: refreshQuotes } = useQuoteListCache();
   const { refresh: refreshDashboardKpis } = useDashboardKpiCache();
   const { refresh: refreshIssuer } = useIssuerMasterCache();
-  const { refresh: refreshDiscordSettings } = useDiscordSettingsCache();
   const { refresh: refreshInboxConversations } = useInboxConversationListCache();
   const { refresh: refreshInboxConversationDetails } = useInboxConversationDetailCache();
 
@@ -125,9 +121,8 @@ function SyncPoller() {
     staff:     () => refreshStaff(),
     quotes:    () => refreshQuotes(),
     issuer:    () => refreshIssuer(),
-    discord:   () => refreshDiscordSettings(),
     inbox:     () => Promise.all([refreshInboxConversations(), refreshInboxConversationDetails()]).then(() => undefined),
-  }), [refreshLeads, refreshLeadDetails, refreshLeadFormOptions, refreshDashboardKpis, refreshCustomers, refreshCustomerDetails, refreshInventory, refreshInventoryProductOptions, refreshOrders, refreshSalesOrders, refreshSalesOrderDetails, refreshStaff, refreshQuotes, refreshIssuer, refreshDiscordSettings, refreshInboxConversations, refreshInboxConversationDetails]);
+  }), [refreshLeads, refreshLeadDetails, refreshLeadFormOptions, refreshDashboardKpis, refreshCustomers, refreshCustomerDetails, refreshInventory, refreshInventoryProductOptions, refreshOrders, refreshSalesOrders, refreshSalesOrderDetails, refreshStaff, refreshQuotes, refreshIssuer, refreshInboxConversations, refreshInboxConversationDetails]);
 
   useSyncPolling(refreshers);
   return null;
@@ -176,7 +171,6 @@ function AppRouter() {
   const dataManagementItems = visibleDataManagementItems(permissions);
   const canAccessLeads = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.leads, permissions);
   const canAccessCustomers = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.customers, permissions);
-  const canAccessDiscordIntegration = permissionState.status === 'ready' && hasNavigationPermission(permissions, 'admin_access');
   const canAccessInbox = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.inbox, permissions);
   const canAccessStaff = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.staff, permissions);
   const canAccessQuotes = permissionState.status === 'ready' && canAccessNavigationItem(NAVIGATION_BY_ID.quotes, permissions);
@@ -206,7 +200,7 @@ function AppRouter() {
   const detailRoute = canAccessLeads ? <LeadEditorPage mode="detail" canEdit={canEditLeads} repository={leadGasRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const customersRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerListPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const staffRoute = permissionState.status === 'checking' ? <StaffPermissionLoading /> : canAccessStaff ? <StaffListPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
-  const customerDetailRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerDetailPage repository={customerGasRepository} canIssueDiscordTicket={canAccessDiscordIntegration} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+  const customerDetailRoute = permissionState.status === 'checking' ? <CustomerPermissionLoading /> : canAccessCustomers ? <CustomerDetailPage repository={customerGasRepository} /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
   const dataManagementRoute = permissionState.status === 'checking'
     ? <LeadPermissionLoading />
     : canAccessLeads
@@ -219,12 +213,6 @@ function AppRouter() {
       ? <IssuerMasterPage canEdit={canAccessIssuerMaster} />
       : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
 
-  const discordIntegrationRoute = permissionState.status === 'checking'
-    ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={discordIntegrationCopy.permissionsChecking} />{discordIntegrationCopy.permissionsChecking}</StatusMessage>
-    : canAccessDiscordIntegration
-      ? <DiscordIntegrationPage repository={discordIntegrationGasRepository} />
-      : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
-
   const hubIndexRoutes: Partial<Record<NavigationItemId, ReactNode>> = {
     leads: leadsRoute,
     customers: customersRoute,
@@ -232,8 +220,7 @@ function AppRouter() {
     orders: ordersRoute,
     inventory: inventoryRoute,
     staff: staffRoute,
-    issuerMaster: issuerMasterRoute,
-    discordIntegration: discordIntegrationRoute
+    issuerMaster: issuerMasterRoute
   };
   const hubExtraRoutes: Partial<Record<NavigationItemId, ReactNode[]>> = {
     leads: [
@@ -253,7 +240,7 @@ function AppRouter() {
     ]
   };
 
-  return <HashRouter><LeadListCacheProvider><LeadDetailCacheProvider repository={leadGasRepository}><LeadFormOptionsCacheProvider repository={leadGasRepository}><CustomerListCacheProvider repository={customerGasRepository}><CustomerDetailCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><InventoryProductOptionsCacheProvider><CurrencyMasterCacheProvider><IssuerMasterCacheProvider><DiscordSettingsCacheProvider repository={discordIntegrationGasRepository}><InboxConversationListCacheProvider repository={inboxGasRepository}><InboxConversationDetailCacheProvider repository={inboxGasRepository}><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><CustomerAggregateCacheProvider repository={customerGasRepository}><SalesOrderListCacheProvider><SalesOrderDetailCacheProvider><><SyncPoller /><AppShellWithPrefetch permissions={permissions} navigationGroups={navigationGroups}><Routes>
+  return <HashRouter><LeadListCacheProvider><LeadDetailCacheProvider repository={leadGasRepository}><LeadFormOptionsCacheProvider repository={leadGasRepository}><CustomerListCacheProvider repository={customerGasRepository}><CustomerDetailCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><InventoryProductOptionsCacheProvider><CurrencyMasterCacheProvider><IssuerMasterCacheProvider><InboxConversationListCacheProvider repository={inboxGasRepository}><InboxConversationDetailCacheProvider repository={inboxGasRepository}><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><CustomerAggregateCacheProvider repository={customerGasRepository}><SalesOrderListCacheProvider><SalesOrderDetailCacheProvider><><SyncPoller /><AppShellWithPrefetch permissions={permissions} navigationGroups={navigationGroups}><Routes>
     <Route path={NAVIGATION_BY_ID.dashboard.hash} element={<DashboardPage kpis={kpis} state={state} error={error} onRefresh={() => void refreshDashboardKpis()} />} />
     {DATA_MANAGEMENT_ITEMS
       .filter((item) => item.state !== 'planned' && hubIndexRoutes[item.id] != null)
@@ -273,5 +260,5 @@ function AppRouter() {
     <Route path={NAVIGATION_BY_ID.components.hash} element={<ComponentCatalogPage />} />
     <Route path="/change-password" element={<ChangePasswordPage />} />
     <Route path="*" element={<Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />} />
-  </Routes></AppShellWithPrefetch></></SalesOrderDetailCacheProvider></SalesOrderListCacheProvider></CustomerAggregateCacheProvider></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></InboxConversationDetailCacheProvider></InboxConversationListCacheProvider></DiscordSettingsCacheProvider></IssuerMasterCacheProvider></CurrencyMasterCacheProvider></InventoryProductOptionsCacheProvider></InventoryListCacheProvider></CustomerDetailCacheProvider></CustomerListCacheProvider></LeadFormOptionsCacheProvider></LeadDetailCacheProvider></LeadListCacheProvider></HashRouter>;
+  </Routes></AppShellWithPrefetch></></SalesOrderDetailCacheProvider></SalesOrderListCacheProvider></CustomerAggregateCacheProvider></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></InboxConversationDetailCacheProvider></InboxConversationListCacheProvider></IssuerMasterCacheProvider></CurrencyMasterCacheProvider></InventoryProductOptionsCacheProvider></InventoryListCacheProvider></CustomerDetailCacheProvider></CustomerListCacheProvider></LeadFormOptionsCacheProvider></LeadDetailCacheProvider></LeadListCacheProvider></HashRouter>;
 }

@@ -1203,50 +1203,7 @@ function assignLeadToSales(leadId) {
     sheet.getRange(targetRow, updateDateIndex + 1).setValue(new Date());
   }
 
-  // Discord通知を送信
-  sendDiscordNotification(leadId, customerName, currentUser);
-
   return { success: true, message: 'アサインが完了しました' };
-}
-
-/**
- * Discord Webhook通知を送信
- * @param {string} leadId - リードID
- * @param {string} customerName - 顧客名
- * @param {string} assignee - 担当者
- */
-function sendDiscordNotification(leadId, customerName, assignee) {
-  try {
-    const webhookUrl = PropertiesService.getScriptProperties().getProperty('ASSIGN_DISCORD_WEBHOOK');
-
-    if (!webhookUrl) {
-      console.log('Discord Webhook URLが設定されていません');
-      return;
-    }
-
-    const payload = {
-      content: `**リードアサイン通知**\n\n` +
-               `リードID: ${leadId}\n` +
-               `顧客名: ${customerName}\n` +
-               `担当者: ${assignee}\n` +
-               `アサイン日時: ${Utilities.formatDate(new Date(), 'JST', 'yyyy-MM-dd HH:mm:ss')}`
-    };
-
-    const options = {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
-    };
-
-    const response = UrlFetchApp.fetch(webhookUrl, options);
-
-    if (response.getResponseCode() !== 204) {
-      console.log('Discord通知の送信に失敗しました: ' + response.getContentText());
-    }
-  } catch (error) {
-    console.log('Discord通知でエラーが発生しました: ' + error.message);
-  }
 }
 
 /**
@@ -1453,7 +1410,6 @@ function getStaffListForAssign() {
   const idCol = headers.indexOf('担当者ID');
   const roleCol = headers.indexOf('役割');
   const statusCol = headers.indexOf('ステータス');
-  const discordIdCol = headers.indexOf('Discord ID');
 
   // 新形式と旧形式の両方に対応
   const familyNameJaCol = headers.indexOf('苗字（日本語）');
@@ -1487,8 +1443,7 @@ function getStaffListForAssign() {
     if (row[idCol] && staffName) {
       staffList.push({
         id: row[idCol],
-        name: staffName,
-        discordId: row[discordIdCol] || ''
+        name: staffName
       });
     }
   }
@@ -1572,7 +1527,7 @@ function assignLead(leadId, staffId, staffName) {
 
 /**
  * 営業担当者リストを取得（role="営業" または "オーナー" のスタッフ）
- * @returns {Array} 営業担当者リスト [{staffId, staffName, role, discordUserId}, ...]
+ * @returns {Array} 営業担当者リスト [{staffId, staffName, role}, ...]
  */
 function getSalesStaffList() {
   try {
@@ -1592,7 +1547,6 @@ function getSalesStaffList() {
     const firstNameJpIdx = headers.indexOf('名前（日本語）');
     const roleIdx = headers.indexOf('役割'); // 実際のシートでは「ロール」
     const statusIdx = headers.indexOf('ステータス');
-    const discordIdIdx = headers.indexOf('Discord ユーザーID'); // 実際のシートでは「Discord ユーザーID」
 
     const salesStaffList = [];
 
@@ -1606,13 +1560,11 @@ function getSalesStaffList() {
         const lastName = data[i][lastNameJpIdx] || '';
         const firstName = data[i][firstNameJpIdx] || '';
         const staffName = lastName + ' ' + firstName;
-        const discordUserId = data[i][discordIdIdx] || '';
 
         salesStaffList.push({
           staffId: staffId,
           staffName: staffName.trim(),
-          role: role,
-          discordUserId: discordUserId
+          role: role
         });
       }
     }
@@ -1691,7 +1643,7 @@ function getUserInfoByEmail(email) {
 }
 
 /**
- * リードを営業担当者にアサイン（Discord通知付き）
+ * リードを営業担当者にアサイン
  * @param {string} leadId - リードID
  * @param {string} staffId - 担当者ID
  * @returns {Object} {success: boolean, message?: string}
@@ -1710,17 +1662,13 @@ function assignLeadToStaff(leadId, staffId) {
     const staffIdIdx = staffHeaders.indexOf('担当者ID');
     const lastNameJpIdx = staffHeaders.indexOf('苗字（日本語）');
     const firstNameJpIdx = staffHeaders.indexOf('名前（日本語）');
-    const discordIdIdx = staffHeaders.indexOf('Discord ユーザーID'); // 実際のシートでは「Discord ユーザーID」
-
     let staffName = '';
-    let discordUserId = '';
 
     for (let i = 1; i < staffData.length; i++) {
       if (staffData[i][staffIdIdx] === staffId) {
         const lastName = staffData[i][lastNameJpIdx] || '';
         const firstName = staffData[i][firstNameJpIdx] || '';
         staffName = (lastName + ' ' + firstName).trim();
-        discordUserId = staffData[i][discordIdIdx] || '';
         break;
       }
     }
@@ -1763,11 +1711,6 @@ function assignLeadToStaff(leadId, staffId) {
     if (assignDateIdx >= 0) leadsSheet.getRange(leadRowNum, assignDateIdx + 1).setValue(now);
     if (updateDateIdx >= 0) leadsSheet.getRange(leadRowNum, updateDateIdx + 1).setValue(now);
 
-    // 3. Discord通知を送信
-    if (discordUserId) {
-      sendDiscordAssignNotification(discordUserId, customerName, leadId);
-    }
-
     return {
       success: true,
       message: staffName + 'にアサインしました'
@@ -1776,51 +1719,6 @@ function assignLeadToStaff(leadId, staffId) {
   } catch (error) {
     console.error('assignLeadToStaff error:', error);
     return { success: false, message: 'アサイン処理中にエラーが発生しました: ' + error.message };
-  }
-}
-
-/**
- * Discord通知を送信（アサイン確定時）
- * @param {string} discordUserId - DiscordユーザーID
- * @param {string} customerName - 顧客名
- * @param {string} leadId - リードID
- */
-function sendDiscordAssignNotification(discordUserId, customerName, leadId) {
-  try {
-    const props = PropertiesService.getScriptProperties();
-    const webhookUrl = props.getProperty('NSASSIGN_DISCORDWEBHOOK');
-
-    if (!webhookUrl) {
-      console.warn('NSASSIGN_DISCORDWEBHOOK が設定されていません');
-      return;
-    }
-
-    // メンション形式: <@ユーザーID>
-    const mention = '<@' + discordUserId + '>';
-    const message = mention + '\n新規アサインが確定しました。\nダッシュボードに追加しましたのでご対応お願いします。\n\n顧客名: ' + customerName + '\nリードID: ' + leadId;
-
-    const payload = {
-      content: message
-    };
-
-    const options = {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
-    };
-
-    const response = UrlFetchApp.fetch(webhookUrl, options);
-
-    if (response.getResponseCode() !== 204 && response.getResponseCode() !== 200) {
-      console.error('Discord通知の送信に失敗しました: ' + response.getContentText());
-    } else {
-      console.log('Discord通知を送信しました: ' + customerName);
-    }
-
-  } catch (error) {
-    console.error('Discord通知送信エラー:', error);
-    // エラーが発生してもアサイン処理自体は成功とする
   }
 }
 
@@ -2149,7 +2047,6 @@ function getAdminSettings() {
   const props = PropertiesService.getScriptProperties();
 
   return {
-    discordWebhook: props.getProperty('PMO_DISCORD_WEBHOOK') || '',
     pmoUrl: props.getProperty('PMO_PROJECT_URL') || '',
     githubUrl: props.getProperty('GITHUB_URL') || '',
     hasPassword: !!props.getProperty('ADMIN_PASSWORD')
@@ -2163,9 +2060,6 @@ function saveNotificationSettings(settings) {
   checkPermission('admin_access');
   const props = PropertiesService.getScriptProperties();
 
-  if (settings.discordWebhook !== undefined) {
-    props.setProperty('PMO_DISCORD_WEBHOOK', settings.discordWebhook);
-  }
   if (settings.pmoUrl !== undefined) {
     props.setProperty('PMO_PROJECT_URL', settings.pmoUrl);
   }
