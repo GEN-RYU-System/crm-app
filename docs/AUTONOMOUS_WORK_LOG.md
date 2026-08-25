@@ -1957,6 +1957,15 @@ PASS=true
 - PR #545 — Discord Bot 招待後のGuild検出とサンプルダミー値の誤検知解消。squash merge SHA: `0c895719c7c847c7281da8eaca38cd30f4eb4e91`。
 - 戻し方: `git revert 0c895719c7c847c7281da8eaca38cd30f4eb4e91`。
 
+---
+
+## Discord Guild 選択状態の再取得時保持（PR #550）
+
+- `frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx` の「状態を確認する」処理を修正した。再取得結果が複数Guildで、現在選択中のIDが結果一覧に含まれる場合はその選択を維持する。一覧から消えた場合のみ未選択へ戻す。
+- `frontend/npm run build:gas` と差分基準の機密検査は成功。PR CIの Frontend Check、GAS Global Namespace Check、Security Content Check はすべて成功。
+- PR #550 を squash merge。マージコミット SHA: `f335858bd250d152c986c37ec85f666201ad15e5`。
+- 戻し方: `git revert f335858bd250d152c986c37ec85f666201ad15e5`。
+
 ## PR22: サブメニュー金型整備 ＋ 期日バッジ表示条件修正 (2026-08-25)
 
 ### 作業内容
