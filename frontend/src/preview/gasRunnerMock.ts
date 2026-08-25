@@ -15,6 +15,7 @@ let mockDiscordConnectionStatus = {
   botName: '',
   botId: '',
   connected: false,
+  clientId: '',
 };
 
 type PreviewWindow = Window & { __gasMockCallCounts?: Readonly<Record<string, number>> };
@@ -448,8 +449,16 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
         return;
       }
       mockDiscordConnectionStatus = token === 'preview-connection-fail'
-        ? { isTokenSet: true, tokenMask: '••••fail', botName: '', botId: '', connected: false }
-        : { isTokenSet: true, tokenMask: '••••mock', botName: 'Preview Bot', botId: 'preview-bot-id', connected: true };
+        ? { isTokenSet: true, tokenMask: '••••fail', botName: '', botId: '', connected: false, clientId: mockDiscordConnectionStatus.clientId }
+        : { isTokenSet: true, tokenMask: '••••mock', botName: 'Preview Bot', botId: 'preview-bot-id', connected: true, clientId: mockDiscordConnectionStatus.clientId };
+      succeed({ success: true });
+    },
+    saveDiscordClientId(_s: string | null, clientId: string) {
+      if (clientId === 'preview-client-id-save-fail') {
+        succeed({ success: false });
+        return;
+      }
+      mockDiscordConnectionStatus = { ...mockDiscordConnectionStatus, clientId };
       succeed({ success: true });
     },
     getDiscordConnectionStatusForFrontend(_s: string | null) {
@@ -500,7 +509,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
 export function installGASMock(): void {
   for (const name of Object.keys(mockCallCounts)) delete mockCallCounts[name];
   configurePreviewProfile();
-  mockDiscordConnectionStatus = { isTokenSet: false, tokenMask: 'not-set', botName: '', botId: '', connected: false };
+  mockDiscordConnectionStatus = { isTokenSet: false, tokenMask: 'not-set', botName: '', botId: '', connected: false, clientId: '' };
   sessionStorage.setItem('crm_session_id', MOCK_SESSION_ID);
   const runner = buildChain(
     () => { /* default no-op success */ },

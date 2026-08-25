@@ -1,7 +1,7 @@
 export const discordIntegrationCopy = {
   title: 'Discord連携',
   subtitle: 'Discord BotのトークンとチャンネルIDを設定します。',
-  tokenSection: 'Botトークン設定',
+  tokenSection: 'Bot認証設定',
   tokenLabel: 'Discord Botトークン',
   tokenPlaceholder: 'Botトークンを入力してください',
   saveAndConnect: '保存して接続',
@@ -9,6 +9,13 @@ export const discordIntegrationCopy = {
   saveAndConnectSuccess: '保存して接続しました。',
   savedButConnectionFailed: 'Botトークンは保存済みですが、Discordに接続できません。トークンを確認してください。',
   tokenSaveError: 'Botトークンの保存に失敗しました',
+  clientIdLabel: 'Discord Application ID',
+  clientIdPlaceholder: 'Application IDを入力してください',
+  clientIdGuide: 'Discord Developer Portal の Application ID を入力してください。',
+  saveClientId: 'Application IDを保存',
+  savingClientId: 'Application IDを保存中...',
+  clientIdSaveSuccess: 'Application IDを保存しました。',
+  clientIdSaveError: 'Application IDの保存に失敗しました',
   connectionSection: '接続状態',
   connectionStatus: {
     connected: '接続済み',
