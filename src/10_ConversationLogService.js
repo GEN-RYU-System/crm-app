@@ -200,27 +200,37 @@ function addConversationLog(data) {
     return { success: false, error: 'シートが見つかりません: ' + sheetName };
   }
 
-  const logId = generateNextLogId(sheetName);
   const now = new Date();
 
-  const row = [
-    logId,
-    data.leadId,
-    data.datetime || now,
-    data.direction,
-    data.speaker || '',
-    data.originalText,
-    data.translatedText || '',
-    data.recorderId,
-    now
-  ];
-
-  sheet.appendRow(row);
+  // withSheetWrite_ 経由で書き込み:
+  //   1. ロック取得 → appendRow → キャッシュ無効化 → SYNC_SIGNAL_inbox 更新
+  // これにより他担当者の SyncPoller が inbox 更新を検知して再取得する
+  const result = withSheetWrite_(
+    { useLock: true, cacheTargets: CORE_INBOX_CACHE_TARGETS },
+    function() {
+      const logId = generateNextLogId(sheetName);
+      const row = [
+        logId,
+        data.leadId,
+        data.datetime || now,
+        data.direction,
+        data.speaker || '',
+        data.originalText,
+        data.translatedText || '',
+        data.recorderId,
+        now
+      ];
+      sheet.appendRow(row);
+      return { success: true, logId: logId };
+    }
+  );
 
   // リード管理シートの会話関連列を更新
-  updateLeadConversationInfo(data.leadId);
+  if (result.success) {
+    updateLeadConversationInfo(data.leadId);
+  }
 
-  return { success: true, logId: logId };
+  return result;
 }
 
 /**

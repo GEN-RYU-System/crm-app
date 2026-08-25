@@ -18,6 +18,11 @@ var CORE_INBOX_CONVERSATIONS_CACHE_PREFIX = 'CORE_INBOX_CONVERSATIONS_CACHE_V1_'
 var CORE_INBOX_CONVERSATIONS_CACHE_CHUNK  = 90000;
 var CORE_INBOX_CONVERSATIONS_CACHE_TTL    = 600;
 
+/** addConversationLog で withSheetWrite_ に渡すキャッシュターゲット */
+var CORE_INBOX_CACHE_TARGETS = [
+  { indexKey: CORE_INBOX_CONVERSATIONS_CACHE_INDEX, prefix: CORE_INBOX_CONVERSATIONS_CACHE_PREFIX }
+];
+
 // ───────────────────────────────────────────────
 // リード進捗 → InboxStatus マッピング
 // ───────────────────────────────────────────────

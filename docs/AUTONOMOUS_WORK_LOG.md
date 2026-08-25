@@ -15,6 +15,49 @@
 
 ---
 
+## 【inbox同期信号復旧】PR #600(Discord削除)で失われた inbox 信号の再実装
+
+### 経緯
+PR #600（Discord連携廃止）で `src/33_DiscordIntegrationService.js` を削除した際、
+同ファイルが担っていた `writeSyncSignalDomains_(['inbox'])` 呼び出しが消滅した。
+その結果、`SYNC_SIGNAL_inbox` は `SYNC_SIGNAL_DOMAINS` に登録されたまま
+発行元ゼロの状態となり、SyncPoller による受信箱の他担当者反映が停止していた。
+
+### 根本原因
+- `src/10_ConversationLogService.js:addConversationLog` が `sheet.appendRow()` を
+  `withSheetWrite_` を通さず直接呼んでいたため、シグナルが発行されなかった
+- `src/00_SheetWrite.js:cacheTargetToDomain_` に `INBOX` の分岐がなく、
+  仮に `withSheetWrite_` を使っても `coreinboxconversations` という誤ドメインに
+  なっていた（`inbox` にならなかった）
+
+### 変更ファイル（3ファイル）
+| ファイル | 変更内容 |
+|---------|--------|
+| `src/00_SheetWrite.js:cacheTargetToDomain_` | `INBOX` → `'inbox'` 分岐を追加 |
+| `src/28_CoreInboxApi.js` | `CORE_INBOX_CACHE_TARGETS` 定数を追加 |
+| `src/10_ConversationLogService.js:addConversationLog` | `sheet.appendRow` を `withSheetWrite_` に包み直し |
+
+### 検証結果（2026-08-26）
+```
+cacheTargetToDomain_('CORE_INBOX_CONVERSATIONS_CACHE_INDEX_V1') -> 'inbox'  ✓
+verify-inbox-conversation-list-cache.cjs:   PASS=true
+  getInboxConversationsForFrontend initial=1 reopened=1 afterSignal=2
+verify-lead-detail-sync-refresh.cjs:        PASS=true（leads ドメイン回帰なし）
+verify-inventory-product-options-sync-refresh.cjs: PASS=true（inventory 回帰なし）
+verify-sales-order-detail-sync-refresh.cjs: PASS=true（orders 回帰なし）
+verify-inbox-conversation-detail-cache.cjs: pre-existing failure（nth(74)=bulk制限、本PR対象外）
+```
+
+### 別課題記録（本PRでは実装しない）
+Meta Webhook 着信が `META.SHEET.MESSAGE_LOG` に書かれ、受信箱が読む "会話ログ" シートに
+反映されない。これはキャッシュ化以前からの構造であり別課題。
+- 着信経路: `metaHandleWebhookPost` → `metaEnqueue` → `processMetaQueue` (1分トリガー) →
+  `metaAppendMessageLog` → `META.SHEET.MESSAGE_LOG`（別シート）
+- "会話ログ" シートへの橋渡し処理は現在の `src/*.js` に存在しない
+- Meta Webhook 着信を受信箱に反映するには、別途 "会話ログ" への書き込み処理が必要
+
+---
+
 ## 【発行元seed】Script Propertiesによる実値分離
 
 ### 変更内容

@@ -92,5 +92,6 @@ function cacheTargetToDomain_(indexKey) {
   if (k.indexOf('ORDERS') !== -1) return 'orders';
   if (k.indexOf('QUOTES') !== -1) return 'quotes';
   if (k.indexOf('INVENTORY') !== -1 || k.indexOf('SHARED') !== -1) return 'inventory';
+  if (k.indexOf('INBOX') !== -1) return 'inbox';
   return k.toLowerCase().replace(/_cache_index.*$/, '').replace(/_/g, '');
 }
