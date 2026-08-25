@@ -19,8 +19,12 @@ let mockDiscordConnectionStatus = {
   clientId: '',
 };
 let previewOrderPaymentConfirmed = false;
+type MockSyncDomain = 'leads' | 'quotes' | 'orders' | 'inventory' | 'staff' | 'customers';
 
-type PreviewWindow = Window & { __gasMockCallCounts?: Readonly<Record<string, number>> };
+type PreviewWindow = Window & {
+  __gasMockCallCounts?: Readonly<Record<string, number>>;
+  __gasMockTriggerSyncSignal?: (domain: MockSyncDomain) => void;
+};
 
 function recordMockCall(functionName: string): void {
   mockCallCounts[functionName] = (mockCallCounts[functionName] ?? 0) + 1;
@@ -236,10 +240,11 @@ const MOCK_LEAD_DETAILS: Record<string, Record<string, unknown>> = {
   },
 };
 
-const MOCK_SYNC_SIGNALS = {
+const INITIAL_MOCK_SYNC_SIGNALS = {
   leads: null, quotes: null, orders: null,
   inventory: null, staff: null, customers: null,
 };
+let mockSyncSignals: Record<MockSyncDomain, string | null> = { ...INITIAL_MOCK_SYNC_SIGNALS };
 
 const MOCK_KPIS = {
   leadsIn: 5, leadsOut: 3, totalLeads: 20, activeDeals: 4,
@@ -419,7 +424,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
       };
       succeed(MOCK_DETAILS[leadId] ?? null);
     },
-    checkSyncSignals(_s: string | null) { succeed(MOCK_SYNC_SIGNALS); },
+    checkSyncSignals(_s: string | null) { succeed(mockSyncSignals); },
     getLeadFormOptions(_s: string | null) {
       succeed({ leadTypes: [], responseSpeeds: [], countries: [], leadSources: [] });
     },
@@ -533,6 +538,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
 export function installGASMock(): void {
   for (const name of Object.keys(mockCallCounts)) delete mockCallCounts[name];
   configurePreviewProfile();
+  mockSyncSignals = { ...INITIAL_MOCK_SYNC_SIGNALS };
   mockDiscordConnectionStatus = { isTokenSet: false, tokenMask: 'not-set', botName: '', botId: '', connected: false, clientId: '' };
   sessionStorage.setItem('crm_session_id', MOCK_SESSION_ID);
   const runner = buildChain(
@@ -541,5 +547,8 @@ export function installGASMock(): void {
   );
   const previewWindow = window as PreviewWindow & { google?: unknown };
   previewWindow.__gasMockCallCounts = mockCallCounts;
+  previewWindow.__gasMockTriggerSyncSignal = (domain) => {
+    mockSyncSignals = { ...mockSyncSignals, [domain]: String(Date.now()) };
+  };
   previewWindow.google = { script: { run: runner } };
 }

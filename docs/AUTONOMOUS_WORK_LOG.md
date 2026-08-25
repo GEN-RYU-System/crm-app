@@ -1959,6 +1959,15 @@ PASS=true
 
 ---
 
+## 【同期登録】LeadFormOptions → leads
+
+- 合格条件: 信号なしで `getLeadFormOptions` が増えず、leads信号後に1回増えること。
+- `SyncPoller` の leads refresher に `refreshLeadFormOptions()` を登録した。
+- preview限定の同期信号トリガーで検証。生出力: `getLeadFormOptions initial=1 noSignal=1 afterSignal=2`、`PASS=true`。
+- `frontend/npm run build:gas` は成功。
+
+---
+
 ## Discord Guild 選択状態の再取得時保持（PR #550）
 
 - `frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx` の「状態を確認する」処理を修正した。再取得結果が複数Guildで、現在選択中のIDが結果一覧に含まれる場合はその選択を維持する。一覧から消えた場合のみ未選択へ戻す。

@@ -4,6 +4,7 @@ import { canAccessNavigationItem, DATA_MANAGEMENT_ITEMS, hasNavigationPermission
 import { usePrefetch } from './app/usePrefetch';
 import { useSyncPolling, type DomainRefreshers } from './app/useSyncPolling';
 import { useLeadListCache } from './pages/leads/LeadListCacheContext';
+import { useLeadFormOptionsCache } from './pages/leads/LeadFormOptionsCacheContext';
 import { useCustomerListCache } from './pages/customers/CustomerListCacheContext';
 import { useInventoryListCache } from './pages/inventory/InventoryListCacheContext';
 import { useOrderListCache } from './pages/orders/OrderListCacheContext';
@@ -92,6 +93,7 @@ function StaffPermissionLoading() {
  */
 function SyncPoller() {
   const { refreshAll: refreshLeads } = useLeadListCache();
+  const { refresh: refreshLeadFormOptions } = useLeadFormOptionsCache();
   const { refresh: refreshCustomers } = useCustomerListCache();
   const { refresh: refreshInventory } = useInventoryListCache();
   const { refresh: refreshOrders } = useOrderListCache();
@@ -101,13 +103,13 @@ function SyncPoller() {
   const { refresh: refreshDashboardKpis } = useDashboardKpiCache();
 
   const refreshers = useMemo<DomainRefreshers>(() => ({
-    leads:     () => Promise.all([refreshLeads(), refreshDashboardKpis()]).then(() => undefined),
+    leads:     () => Promise.all([refreshLeads(), refreshLeadFormOptions(), refreshDashboardKpis()]).then(() => undefined),
     customers: () => refreshCustomers(),
     inventory: () => refreshInventory(),
     orders:    () => Promise.all([refreshOrders(), refreshSalesOrders()]).then(() => undefined),
     staff:     () => refreshStaff(),
     quotes:    () => refreshQuotes(),
-  }), [refreshLeads, refreshDashboardKpis, refreshCustomers, refreshInventory, refreshOrders, refreshSalesOrders, refreshStaff, refreshQuotes]);
+  }), [refreshLeads, refreshLeadFormOptions, refreshDashboardKpis, refreshCustomers, refreshInventory, refreshOrders, refreshSalesOrders, refreshStaff, refreshQuotes]);
 
   useSyncPolling(refreshers);
   return null;
