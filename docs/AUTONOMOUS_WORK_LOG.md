@@ -1967,6 +1967,14 @@ PASS=true
 - `frontend/npm run build:gas` は成功。
 
 ---
+## Discord顧客別招待 Phase 1（PR #562）
+- `src/38_DiscordCustomerInviteApi.js` を追加し、顧客IDごとの未使用招待をScript PropertiesのJSONで冪等に発行する。招待URL・トークンはログに出さない。
+- `src/35_DiscordOAuthApi.js` のBot招待権限値を `805432433` に更新した。再招待は手動作業。
+- 顧客詳細へ招待URLの発行・表示・コピーを追加。`?preview`で発行表示とコピー操作を確認した。`frontend/npm run build:gas`、機密検査、CI全件は成功。
+- 担当者の個別許可は実装しない。顧客マスタが担当者を氏名でしか持たず、同名担当者を誤許可するリスクがあるため。Phase 3は顧客・Bot・オーナーのみを許可対象とする。
+- PR #562 squash SHA: `103c8404395230051c6c3608fb8f9b5948f936b0`。戻し方: `git revert 103c8404395230051c6c3608fb8f9b5948f936b0`。
+
+---
 
 ## 【同期登録】InventoryProductOptions → inventory
 
