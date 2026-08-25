@@ -22,3 +22,4 @@
   .sales-order-list-page__layout { flex-direction: column; }
   .sales-order-list-page__sidebar { position: static; max-height: none; overflow-y: visible; width: 100%; }
 }
+
