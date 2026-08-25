@@ -174,4 +174,24 @@ for (const providerName of listCacheProviderNames) {
   if (!appSource.includes(hookName)) violations.push(`${providerName} is not registered in SyncPoller refreshers (${hookName} not found in App.tsx)`);
 }
 
+// --- Feature component usage check (重複帳票コンポーネント再発防止) ---
+function importsFeatureComponent(source, component, importPath) {
+  return (
+    new RegExp(`from\\s+['"][^'"]*${importPath}['"]`).test(source) &&
+    source.includes(`<${component}`)
+  );
+}
+const featureUsageRules = (checkConfig.featureComponentUsageCheck ?? {}).rules ?? [];
+for (const rule of featureUsageRules) {
+  const { component, importPath, pages } = rule;
+  for (const pageName of pages) {
+    const pageDir = resolve(srcDir, 'pages', pageName);
+    const pageFiles = (await files(pageDir)).filter((f) => ['.ts', '.tsx'].includes(extname(f)));
+    const sources = await Promise.all(pageFiles.map((f) => readFile(f, 'utf8')));
+    if (!sources.some((src) => importsFeatureComponent(src, component, importPath))) {
+      violations.push(`feature component usage: ${component} (${importPath}) is not used in pages/${pageName}/ — update usage or remove from featureComponentUsageCheck config`);
+    }
+  }
+}
+
 if (violations.length) { console.error(violations.join('\n')); process.exit(1); } console.log('design-system checks passed');

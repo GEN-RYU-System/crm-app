@@ -602,8 +602,8 @@ export function OrderDetailPage({ repository }: Props) {
           <InvoiceDocument
             issuer={buildIssuerInfo(issuer)}
             invoiceNumber={detail.order.INVOICE_NUMBER}
-            date={detail.order.INVOICE_ISSUED_AT || detail.order.ORDER_DATE}
-            dueDate={detail.order.PAYMENT_DUE_AT}
+            date={formatDate(detail.order.INVOICE_ISSUED_AT || detail.order.ORDER_DATE)}
+            dueDate={detail.order.PAYMENT_DUE_AT ? formatDate(detail.order.PAYMENT_DUE_AT) : ''}
             registrationNumber={String(issuer[ISSUER_HEADER.REGISTRATION_NO] ?? '') || undefined}
             billedTo={{ name: detail.order.customerName, lines: [] }}
             shipTo={{

@@ -374,7 +374,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
           printNavigatePath.current = ORDER_EDITOR_PATHS.list;
           setPrintData({
             invoiceNumber: values.invoiceNumber,
-            date: new Date().toISOString().slice(0, 10),
+            date: formatDate(new Date().toISOString()),
             dueDate: '',
             customerName: selectedCustomer?.customerName ?? '',
             shipToName: selectedShipping?.displayName ?? selectedCustomer?.customerName ?? '',
