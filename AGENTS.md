@@ -5,6 +5,7 @@
 - Every frontend PR must include a real-screen smoke check covering login, dashboard, and inbox display.
 - A session without browser access must not merge a PR that changes an application startup path, including Provider, Context, or `App.tsx`. It may implement and open the PR; merging requires owner confirmation or a browser-capable session.
 - A newly created worktree must run `npm ci` before frontend checks or builds.
+- Read the current file before editing and adapt the edit to its current context. Do not mechanically apply a patch derived from a historical snapshot to a current file.
 
 ## Public-repository records
 

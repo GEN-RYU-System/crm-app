@@ -1929,3 +1929,54 @@ PASS=true
 - 2026-08-25 — PR #523（A-1、請求書番号の次番号生成）。squash SHA: `86ca5bcb92047707714f4ca11f49effb61ea8a96`。`INV-` 系列の最大連番から5桁ゼロ埋めで採番し、既存系列を変更しない。build・CI・Core Schema V1監査は成功。戻し方: `git revert 86ca5bcb92047707714f4ca11f49effb61ea8a96`。
 - 2026-08-25 — PR #530（A-2、下書き／発行のGAS処理）。squash SHA: `d943ce98196f7ae4e652f0382deeec58d4b906b8`。`isDraft` を作成・更新APIに追加し、Wise自動採番、PayPal番号必須、再発行の既存値維持を実装。build・CI・Core Schema V1監査は成功。戻し方: `git revert d943ce98196f7ae4e652f0382deeec58d4b906b8`。
 - 2026-08-25 — PR #537（A-3、請求書画面の一時保存／発行）。squash SHA: `8b49dbd0c4b3a680de0f87a6cff83122c2b25b76`。PayPal時の請求書番号入力、発行済み時の一時保存非表示、`isDraft`／`invoiceNumber` のAPI伝達を実装。Deploy to DEV・SHA照合・Core Schema V1監査は成功。戻し方: `git revert 8b49dbd0c4b3a680de0f87a6cff83122c2b25b76`。
+
+## 2026-08-25 現行文脈を読む編集ルール
+
+- Phase Sで過去スナップショットを前提にした`App.tsx`のProviderツリー適用が現行構造と一致せず失敗した。以後は編集前に現行ファイルを読み、文脈に合わせて編集する。履歴由来パッチの機械適用は禁止する。
+
+---
+
+## 2026-08-25 Phase S — 受信箱キャッシュ (perf/inbox-cache-v2)
+
+### 実装
+
+- `InboxListCacheContext.tsx` / `InboxDetailCacheContext.tsx`: createListCache 金型で実装（worktree に既存のuntracked fileを確認・採用）
+- `InboxCacheProviders.tsx` 新規作成: List/Detail 両 Provider を合成するコンポーネント。`repository` を1回受け取り両方へ渡す
+- `App.tsx` 編集: アンカー `<SalesOrderDetailCacheProvider><>` → `<SalesOrderDetailCacheProvider><InboxCacheProviders repository={inboxGasRepository}>` の1箇所編集。`</>` → `</InboxCacheProviders>` に対応変更
+- `SyncPoller`: `useInboxListCache` を追加し、`leads` シグナル変化時に inbox 一覧も refresh
+- `usePrefetch.ts`: inbox 権限がある場合に起動時裏読みを追加
+- `InboxPreviewPage.tsx`: repository prop を廃止し、`useInboxListCache` / `useInboxDetailCache` 参照へ置換。一覧ロード後に上位5件を先読み。詳細はキャッシュ命中時に即時表示＋背後でrevalidate
+
+### ローカル4検査
+
+| 検査 | 結果 |
+|---|---|
+| tsc --noEmit | PASS |
+| npm run build | PASS (489 kB) |
+| npm run check:design-system (build:gas 経由) | PASS (check-design-system.mjs の inbox 判定を CacheContext 許容に更新) |
+| Sensitive Content 検査 | 変更ファイルに検出なし（既存 GAS ファイルの既知違反のみ） |
+
+### バンドル包含確認
+
+```
+'inbox list' in bundle:  1 hit
+'inbox detail' in bundle: 1 hit
+```
+
+### 実画面スモーク（Playwright + ?preview）
+
+- ログイン → ダッシュボード: 白画面なし ✅ (smoke-01-dashboard.png)
+- 受信箱初回表示: 「Preview Atlas」表示確認 ✅ (smoke-02-inbox-list.png)
+
+### 挙動証明（`window.__gasMockCallCounts`）
+
+| 操作 | getInboxConversationsForFrontend | getInboxConversationDetailForFrontend |
+|---|---|---|
+| 受信箱初回表示 | 1 | 5（上位5件prefetch ✅） |
+| ダッシュボード→受信箱 | 1（変化なし ✅） | 6（+1 background revalidate） |
+| 同一会話を再クリック | 1（変化なし） | 6（変化なし ✅） |
+
+### コミット / PR
+
+- コミット SHA: `afce86c`（squash前のローカルSHA）
+- PR: 作成後に記録
