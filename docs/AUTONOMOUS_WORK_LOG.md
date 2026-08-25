@@ -48,9 +48,45 @@ verify-sales-order-detail-sync-refresh.cjs: PASS=true（orders 回帰なし）
 verify-inbox-conversation-detail-cache.cjs: pre-existing failure（nth(74)=bulk制限、本PR対象外）
 ```
 
-### 別課題記録（本PRでは実装しない）
-Meta Webhook 着信が `META.SHEET.MESSAGE_LOG` に書かれ、受信箱が読む "会話ログ" シートに
-反映されない。これはキャッシュ化以前からの構造であり別課題。
+### 合格条件(b) 詳細側 検証結果（verify-inbox-conversation-detail-cache.cjs 修正後）
+```
+getInboxConversationDetailForFrontend afterA=0 afterB=0 afterReturnA=0 afterSignal=20
+PASS=true
+```
+- afterA/afterB/afterReturnA=0: bulk hydration(PR #580)で上位20件が事前シード済みのため
+  個別クリックでは追加 GAS 呼び出しなし
+- afterSignal=20: inbox 信号後に全20件のキャッシュが無効化され、20件分のリフレッシュが発火
+
+検証スクリプトの変更内容:
+- `.nth(74).waitFor()` → `.first().waitFor()` に変更（bulk制限で75件目は未表示）
+- 旧アサーション `afterBCount === afterACount + 1` → 削除（bulk pre-seed後は0件で正常）
+- 新アサーション `afterACount === 0 && afterBCount === 0 && afterSignalCount > 0` に変更
+
+### 合格条件(d) runCoreSchemaConformanceAudit() 実行結果（2026-08-26）
+```
+=== 総不一致: 2 → ★FAIL ===
+[CUSTOMERS] 定義14 / 実シート21 → 差7列 (pre-existing)
+[STAFF]     定義23 / 実シート24 → 差1列 (pre-existing)
+```
+いずれも本PR変更（inbox信号復旧）とは無関係の既存不一致。新規不一致: 0件。
+
+### 【別課題1】bulk hydration メッセージ制限仕様（PR #580、実装は今回しない）
+`getInboxBulkInitialLoad`（`src/28_CoreInboxApi.js:344`）の動作:
+
+| パラメータ | Script Property | デフォルト | 意味 |
+|-----------|----------------|----------|------|
+| maxConv | `INBOX_INITIAL_CONVERSATIONS` | 20 | 事前シードする会話件数 |
+| maxMsg  | `INBOX_INITIAL_MESSAGES`      | 30 | 1会話あたりの最大メッセージ数 |
+
+- 上位 maxConv 件の会話を一括シード。maxConv を超えた会話は個別 `getInboxConversationDetailForFrontend` で取得（クリック時オンデマンド）
+- 1会話のメッセージ数が maxMsg を超える場合: 最新 maxMsg 件のみシード、`hasMore=true` を返す
+- `hasMore=true` の場合: UI に「もっと読み込む」ボタンを表示 → クリックで `getInboxMoreMessages` を呼び出し（30件ずつ）
+- **maxMsg を超えたメッセージは自動表示されない。ユーザーが「もっと読み込む」を押すまで非表示**
+
+課題: 本番環境で会話メッセージ数が 30 件を超える顧客の場合、受信箱を開いても最新 30 件しか即時表示されない。
+→ 別課題として起票予定。INBOX_INITIAL_MESSAGES の値を上げるか、自動ロードの実装を検討。
+
+### 【別課題2】Meta Webhook 着信が受信箱 "会話ログ" に反映されない（実装しない）
 - 着信経路: `metaHandleWebhookPost` → `metaEnqueue` → `processMetaQueue` (1分トリガー) →
   `metaAppendMessageLog` → `META.SHEET.MESSAGE_LOG`（別シート）
 - "会話ログ" シートへの橋渡し処理は現在の `src/*.js` に存在しない
