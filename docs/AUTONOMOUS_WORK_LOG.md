@@ -2042,6 +2042,12 @@ PASS=true
 - 戻し方: `git revert <merge-commit-SHA>` ※マージ後に更新する
 
 ---
+## Discord顧客別招待 Phase 2（PR #566）
+- `syncDiscordInviteUsage` は5分トリガー用の招待巡回である。Script Lockにより二重起動をスキップし、招待一覧に無い発行済み招待を検出する。参加メンバーとの差分が招待1件・新規1名の場合だけ自動候補にし、それ以外は要確認キューへ保存する。推測での紐付けは行わない。
+- `setupDiscordInviteUsageTrigger` は既存同名トリガーを置換して5分間隔で登録する。
+- PR #566 squash SHA: `963b1762c41ee2f1fe8b451ea3a3fbfcb66a1e80`。戻し方: `git revert 963b1762c41ee2f1fe8b451ea3a3fbfcb66a1e80`。
+
+---
 
 ## Discordチャンネルセットアップの連携状態同期（PR #553）
 
