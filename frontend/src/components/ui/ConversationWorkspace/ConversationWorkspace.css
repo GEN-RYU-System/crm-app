@@ -1,10 +1,10 @@
-.ui-conversation-workspace { display: grid; grid-template-columns: var(--conversation-list-width) minmax(var(--conversation-center-min-width), 1fr) var(--conversation-details-width); min-height: var(--conversation-workspace-min-height); overflow: hidden; border: var(--border-width) solid var(--color-border); border-radius: var(--radius-data-table); background: var(--color-surface); box-shadow: var(--shadow-raised); }
-.ui-conversation-workspace__panel { display: flex; min-width: var(--space-none); flex-direction: column; background: var(--color-surface); }
+.ui-conversation-workspace { display: grid; grid-template-columns: var(--conversation-list-width) minmax(var(--conversation-center-min-width), 1fr) var(--conversation-details-width); grid-template-rows: 1fr; height: 100%; min-height: var(--conversation-workspace-min-height); overflow: hidden; border: var(--border-width) solid var(--color-border); border-radius: var(--radius-data-table); background: var(--color-surface); box-shadow: var(--shadow-raised); }
+.ui-conversation-workspace__panel { display: flex; min-width: var(--space-none); flex-direction: column; background: var(--color-surface); overflow: hidden; }
 .ui-conversation-workspace__panel + .ui-conversation-workspace__panel { border-left: var(--border-width) solid var(--color-border); }
-.ui-conversation-workspace__panel-header { min-height: var(--conversation-header-min-height); padding: var(--space-lg); border-bottom: var(--border-width) solid var(--color-border); }
-.ui-conversation-workspace__panel-body { min-height: var(--space-none); overflow: auto; padding: var(--space-lg); }
+.ui-conversation-workspace__panel-header { flex-shrink: 0; min-height: var(--conversation-header-min-height); padding: var(--space-lg); border-bottom: var(--border-width) solid var(--color-border); }
+.ui-conversation-workspace__panel-body { flex: 1; min-height: var(--space-none); overflow: auto; padding: var(--space-lg); }
 .ui-conversation-workspace__messages { display: flex; min-height: var(--space-none); flex: 1; flex-direction: column; gap: var(--space-md); overflow: auto; padding: var(--space-lg); background: var(--conversation-message-surface); }
-.ui-conversation-workspace__composer { padding: var(--space-md); border-top: var(--border-width) solid var(--color-border); }
+.ui-conversation-workspace__composer { flex-shrink: 0; padding: var(--space-md); border-top: var(--border-width) solid var(--color-border); }
 
 @media (max-width: 1100px) {
   .ui-conversation-workspace { grid-template-columns: var(--conversation-list-width) minmax(var(--conversation-center-min-width), 1fr); }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CRM_SEARCH_ICON } from '../../app/icons';
 import { Badge, Button, ConversationWorkspace, EmptyState, PageHeader, Select, Skeleton, TabBar, Tabs, TextField, Textarea } from '../../components/ui';
 import { inboxCopy } from '../../content/ja';
@@ -18,6 +18,15 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
   const [extraMessages, setExtraMessages] = useState<Record<string, readonly InboxMessageDto[]>>({});
   const [extraHasMore, setExtraHasMore] = useState<Record<string, boolean>>({});
   const [loadMoreLoading, setLoadMoreLoading] = useState(false);
+
+  // ── Scroll-to-bottom sentinel for messages pane ──
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // ── Activate full-height independent-scroll layout for desktop ──
+  useEffect(() => {
+    document.body.classList.add('inbox-page-active');
+    return () => document.body.classList.remove('inbox-page-active');
+  }, []);
 
   const { conversations, error: listError, ensureLoaded } = useInboxConversationListCache();
   const { detailsByConversationId, ensureLoaded: ensureDetailLoaded, prefetchBulk } = useInboxConversationDetailCache();
@@ -54,6 +63,17 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
   // Stale-while-revalidate: if data exists (detail !== null), no skeleton shown.
   const fetchDone = selectedId === '' || (selectedId in detailsByConversationId);
   const detailLoading = selectedId !== '' && !fetchDone;
+
+  // ── 5. Scroll messages pane to bottom when conversation switches or detail first loads ──
+  useEffect(() => {
+    if (!selectedId || !detail) return;
+    requestAnimationFrame(() => {
+      const sentinel = messagesEndRef.current;
+      if (!sentinel) return;
+      const container = sentinel.closest('.ui-conversation-workspace__messages') as HTMLElement | null;
+      if (container) container.scrollTop = container.scrollHeight;
+    });
+  }, [selectedId, detail]);
 
   const baseMessages = detail?.messages ?? [];
   const extra = extraMessages[selectedId] ?? [];
@@ -131,12 +151,6 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
               ? <Skeleton variant="list" rows={3} label={inboxCopy.loading} />
               : detail
               ? <div className="inbox-preview__messages">
-                  {allMessages.map((message) => (
-                    <article className={`inbox-preview__message inbox-preview__message--${message.sender}`} key={message.id}>
-                      <p>{message.body}</p>
-                      <time>{message.sentAt}</time>
-                    </article>
-                  ))}
                   {showLoadMore && (
                     <div className="inbox-preview__load-more">
                       <Button variant="ghost" size="sm" onClick={() => { void handleLoadMore(); }}>
@@ -149,6 +163,13 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
                       <Skeleton variant="list" rows={2} label={inboxCopy.loadMoreLoading} />
                     </div>
                   )}
+                  {allMessages.map((message) => (
+                    <article className={`inbox-preview__message inbox-preview__message--${message.sender}`} key={message.id}>
+                      <p>{message.body}</p>
+                      <time>{message.sentAt}</time>
+                    </article>
+                  ))}
+                  <div ref={messagesEndRef} aria-hidden="true" />
                 </div>
               : <EmptyState title={inboxCopy.noConversations} description={inboxCopy.noConversationsDescription} />
           }
