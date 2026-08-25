@@ -1929,3 +1929,51 @@ PASS=true
 - 2026-08-25 — PR #523（A-1、請求書番号の次番号生成）。squash SHA: `86ca5bcb92047707714f4ca11f49effb61ea8a96`。`INV-` 系列の最大連番から5桁ゼロ埋めで採番し、既存系列を変更しない。build・CI・Core Schema V1監査は成功。戻し方: `git revert 86ca5bcb92047707714f4ca11f49effb61ea8a96`。
 - 2026-08-25 — PR #530（A-2、下書き／発行のGAS処理）。squash SHA: `d943ce98196f7ae4e652f0382deeec58d4b906b8`。`isDraft` を作成・更新APIに追加し、Wise自動採番、PayPal番号必須、再発行の既存値維持を実装。build・CI・Core Schema V1監査は成功。戻し方: `git revert d943ce98196f7ae4e652f0382deeec58d4b906b8`。
 - 2026-08-25 — PR #537（A-3、請求書画面の一時保存／発行）。squash SHA: `8b49dbd0c4b3a680de0f87a6cff83122c2b25b76`。PayPal時の請求書番号入力、発行済み時の一時保存非表示、`isDraft`／`invoiceNumber` のAPI伝達を実装。Deploy to DEV・SHA照合・Core Schema V1監査は成功。戻し方: `git revert 8b49dbd0c4b3a680de0f87a6cff83122c2b25b76`。
+
+---
+
+## Google Drive フォルダ管理画面 PR-B
+
+### 実施日時
+
+2026-08-25
+
+### 対象ブランチ
+
+`feat/drive-folder-management`
+
+### 変更内容
+
+- `src/26_SystemSettingsSetup.js` — 保存先フォルダ4件をseedに追加（A-1 相当、前コミット済み）
+- `src/28_CoreDriveFolderApi.js` — `getCoreDriveFoldersForFrontend` / `updateCoreDriveFolderForFrontend`（前コミット済み）
+- `frontend/src/gas/client.ts` — 上記2関数の型と呼び出し（`DriveFolderSettings`型追加）
+- `frontend/src/gas/types.d.ts` — `GoogleScriptRun` 型に2関数を追加
+- `frontend/src/features/drive/contracts.ts` — `DriveFolderSettings` / `DriveRepository` 型定義
+- `frontend/src/features/drive/gasAdapter.ts` — `driveGasRepository` 実装
+- `frontend/src/content/ja/drive.ts` — `DRIVE_FOLDER_KEYS` / `driveCopy` 定義
+- `frontend/src/content/ja/index.ts` — `driveCopy` export を追加
+- `frontend/src/pages/drive/DriveFolderPage.tsx` — 4フォルダ設定ページ（登録・変更・削除・バッジ）
+- `frontend/src/app/navigation.ts` — `googleDrive` の state を `planned` → `preview` に変更
+- `frontend/src/App.tsx` — `driveFolderRoute` 追加・`hubIndexRoutes.googleDrive` 登録
+- `frontend/src/preview/gasRunnerMock.ts` — `DRIVE_FOLDER_KEYS` をインポートし日本語リテラルを除去・英数字モック値に変更
+
+### 検証結果
+
+- `npm run typecheck` — 成功
+- `npm run build` — 成功（521 modules）
+- `npm run check:design-system` — `design-system checks passed`
+
+### PR番号・revert用SHA
+
+PR番号とrevert SHA: PR作成後に記載する（下記「PR / revert」欄を参照）
+
+### PR / revert
+
+- PR番号: 作成後に記載
+- 戻し方: `git revert <squash SHA>`（PR作成・マージ後に確定）
+
+---
+
+## dist 追跡解除（#546）
+
+- 2026-08-25 — `frontend/dist/` を `.gitignore` へ追加し `git rm -r --cached` で追跡解除。PR #546 squash SHA: `66fdeb2`（chore: stop tracking frontend build output）。

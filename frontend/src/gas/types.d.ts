@@ -43,6 +43,8 @@ interface GoogleScriptRun {
   getLeadFormOptions(sessionId: string | null): void;
   getCoreIssuerForFrontend(sessionId: string | null): void;
   updateCoreIssuerForFrontend(sessionId: string | null, issuerData: unknown): void;
+  getCoreDriveFoldersForFrontend(sessionId: string | null): void;
+  updateCoreDriveFolderForFrontend(sessionId: string | null, key: string, value: string): void;
   saveDiscordBotToken(sessionId: string | null, token: string): void;
   saveDiscordClientId(sessionId: string | null, clientId: string): void;
   getDiscordConnectionStatusForFrontend(sessionId: string | null): void;

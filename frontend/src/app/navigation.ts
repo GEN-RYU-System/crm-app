@@ -85,7 +85,7 @@ const PRODUCT_MGMT_SUB_ITEMS: readonly NavigationItem[] = [
 ];
 
 const EXTERNAL_LINK_SUB_ITEMS: readonly NavigationItem[] = [
-  { id: 'googleDrive', label: dataManagementCopy.googleDrive, hash: '/google-drive', icon: 'document', order: 1, state: 'planned', requiredPermission: 'admin_access' },
+  { id: 'googleDrive', label: dataManagementCopy.googleDrive, hash: '/google-drive', icon: 'document', order: 1, state: 'preview', requiredPermission: 'admin_access' },
   { id: 'discord', label: dataManagementCopy.discord, hash: '/discord', icon: 'chat', order: 2, state: 'planned', requiredPermission: 'admin_access' },
   { id: 'discordIntegration', label: dataManagementCopy.discordIntegration, hash: '/discord-integration', icon: 'settings', order: 3, state: 'preview', requiredPermission: 'admin_access' }
 ];

@@ -3,6 +3,7 @@
  * Installed by main.tsx when ?preview is in the URL and import.meta.env.DEV is true.
  * Never included in production builds.
  */
+import { DRIVE_FOLDER_KEYS } from '../content/ja/drive';
 import { ISSUER_HEADER } from '../content/ja/issuer';
 import { leadsCopy } from '../content/ja/leads';
 import { SALES_ORDER_STATUS } from '../content/ja/salesOrders';
@@ -448,6 +449,17 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     },
     updateCoreIssuerForFrontend(_s: string | null, _data: unknown) {
       succeed({ success: true });
+    },
+    getCoreDriveFoldersForFrontend(_s: string | null) {
+      succeed({ success: true, folders: {
+        [DRIVE_FOLDER_KEYS.quote]: 'preview-mock-folder-id-quote',
+        [DRIVE_FOLDER_KEYS.invoice]: '',
+        [DRIVE_FOLDER_KEYS.shipping]: '',
+        [DRIVE_FOLDER_KEYS.purchase]: '',
+      } });
+    },
+    updateCoreDriveFolderForFrontend(_s: string | null, _key: string, value: string) {
+      succeed({ success: true, folderId: value });
     },
 
     // Discord integration

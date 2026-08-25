@@ -811,6 +811,26 @@ export function getLeadFormOptions(): Promise<LeadFormOptions> {
 }
 
 export type IssuerRecord = Record<string, string | boolean | number>;
+export type DriveFolderSettings = Record<string, string>;
+
+export function getCoreDriveFolders(): Promise<DriveFolderSettings> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => runner.withSuccessHandler((value) => {
+    const result = value as { success?: boolean; folders?: DriveFolderSettings } | null;
+    if (!result || result.success !== true || !result.folders) { reject(new Error(errorCopy.communication)); return; }
+    resolve(result.folders);
+  }).withFailureHandler((error) => reject(toError(error))).getCoreDriveFoldersForFrontend(getStoredSessionId()));
+}
+
+export function updateCoreDriveFolder(key: string, value: string): Promise<void> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => runner.withSuccessHandler((result) => {
+    if ((result as { success?: boolean } | null)?.success !== true) { reject(new Error(errorCopy.communication)); return; }
+    resolve();
+  }).withFailureHandler((error) => reject(toError(error))).updateCoreDriveFolderForFrontend(getStoredSessionId(), key, value));
+}
 
 export function getCoreIssuer(): Promise<IssuerRecord> {
   const runner = window.google?.script?.run;

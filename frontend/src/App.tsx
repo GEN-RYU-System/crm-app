@@ -64,7 +64,8 @@ import { SalesOrderListPage } from './pages/sales-orders/SalesOrderListPage';
 import { SalesOrderDetailPage } from './pages/sales-orders/SalesOrderDetailPage';
 import { SalesOrderDetailCacheProvider } from './pages/sales-orders/SalesOrderDetailCacheContext';
 import { SalesOrderListCacheProvider } from './pages/sales-orders/SalesOrderListCacheContext';
-import { customersCopy, discordIntegrationCopy, errorCopy, inboxCopy, issuerCopy, leadsCopy, ordersCopy, quotesCopy, salesOrdersCopy, staffCopy } from './content/ja';
+import { DriveFolderPage } from './pages/drive/DriveFolderPage';
+import { customersCopy, discordIntegrationCopy, driveCopy, errorCopy, inboxCopy, issuerCopy, leadsCopy, ordersCopy, quotesCopy, salesOrdersCopy, staffCopy } from './content/ja';
 import { authCopy } from './content/ja/auth';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -205,6 +206,13 @@ function AppRouter() {
       ? <DiscordIntegrationPage repository={discordIntegrationGasRepository} />
       : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
 
+  const canAccessDriveFolder = permissionState.status === 'ready' && hasNavigationPermission(permissions, 'admin_access');
+  const driveFolderRoute = permissionState.status === 'checking'
+    ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={driveCopy.loading} />{driveCopy.loading}</StatusMessage>
+    : canAccessDriveFolder
+      ? <DriveFolderPage />
+      : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+
   const hubIndexRoutes: Partial<Record<NavigationItemId, ReactNode>> = {
     leads: leadsRoute,
     customers: customersRoute,
@@ -213,7 +221,8 @@ function AppRouter() {
     inventory: inventoryRoute,
     staff: staffRoute,
     issuerMaster: issuerMasterRoute,
-    discordIntegration: discordIntegrationRoute
+    discordIntegration: discordIntegrationRoute,
+    googleDrive: driveFolderRoute
   };
   const hubExtraRoutes: Partial<Record<NavigationItemId, ReactNode[]>> = {
     leads: [
