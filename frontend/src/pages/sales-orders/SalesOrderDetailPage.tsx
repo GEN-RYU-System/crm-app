@@ -49,8 +49,10 @@ function formatWithCurrency(v: unknown, currency: string): string {
   return currency ? `${formatted} ${currency}` : formatted;
 }
 
-function paymentDueBadge(paymentDueAt: string): ReactNode {
+function paymentDueBadge(paymentDueAt: string, paymentConfirmedAt: string): ReactNode {
   if (!paymentDueAt) return null;
+  // suppress badge when payment is already confirmed
+  if (paymentConfirmedAt) return null;
   const due = new Date(paymentDueAt);
   if (Number.isNaN(due.getTime())) return null;
   const today = new Date();
@@ -226,7 +228,7 @@ export function SalesOrderDetailPage() {
 
       {detail !== null && detail !== undefined && error === undefined && (() => {
         const o = detail.order;
-        const dueBadge = paymentDueBadge(String(o.PAYMENT_DUE_AT));
+        const dueBadge = paymentDueBadge(String(o.PAYMENT_DUE_AT), String(o.PAYMENT_CONFIRMED_AT));
 
         // line item table columns
         const lineColumns: DataTableColumn<OrderDetail['lines'][number]>[] = [

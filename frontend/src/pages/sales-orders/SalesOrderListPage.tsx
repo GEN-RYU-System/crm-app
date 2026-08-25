@@ -34,6 +34,17 @@ function renderPaymentDueAtCell(row: SalesOrderRow) {
   const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const formatted = due.toLocaleDateString('ja-JP');
 
+  // suppress badge when payment is already confirmed
+  if (row.paymentConfirmedAt) {
+    return (
+      <span className="sales-order-list-page__payment-due-cell">
+        <span aria-hidden="true" />
+        <span>{formatted}</span>
+        <span className="sales-order-list-page__payment-due-badge-slot" aria-hidden="true" />
+      </span>
+    );
+  }
+
   let badge: ReactNode;
   if (dueDate < todayDate) {
     badge = <Badge variant="danger">{salesOrdersCopy.paymentDueBadgeOverdue}</Badge>;
