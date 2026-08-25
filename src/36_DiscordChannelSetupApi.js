@@ -192,6 +192,15 @@ function ensureCustomerScaleColumn_(ss) {
   Logger.log('ensureCustomerScaleColumn_: 顧客規模列を追加しました (col=' + (lastCol + 1) + ')');
 }
 
+/**
+ * 顧客マスタに顧客規模列を追加するスキーママイグレーション（冪等・clasp run 用）
+ * Core Schema V1 CUSTOMERS.CUSTOMER_SCALE が実シートに存在しない場合に手動実行する
+ */
+function runEnsureCustomerScaleColumn() {
+  ensureCustomerScaleColumn_(getSpreadsheet());
+  return 'done';
+}
+
 // ============================================================
 // runDiscordAutoSetup
 // ============================================================

@@ -991,6 +991,50 @@ function inspectCustomerMasterSheet() {
   ].join('\n');
 }
 
+/**
+ * 顧客マスタの担当者ID列の入力状況と参照整合性を監査する（計測専用）
+ * clasp run auditCustomerStaffIdColumn で実行
+ */
+function auditCustomerStaffIdColumn() {
+  const ss = getSpreadsheet();
+
+  const custSheet = ss.getSheetByName(CONFIG.SHEETS.CRM_CUSTOMERS);
+  if (!custSheet) return '顧客マスタシートが見つかりません';
+  const custData = custSheet.getDataRange().getValues();
+  const custHeaders = custData[0];
+  const staffIdColIdx = custHeaders.indexOf(getCoreSchemaV1HeaderName('CUSTOMERS', 'STAFF_ID'));
+  if (staffIdColIdx === -1) return '担当者ID列が顧客マスタに存在しません';
+
+  const dataRows = custData.slice(1);
+  const total = dataRows.length;
+  const filledValues = dataRows.map(function(r) { return String(r[staffIdColIdx]).trim(); }).filter(function(v) { return v !== ''; });
+  const filled = filledValues.length;
+
+  const staffSheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
+  if (!staffSheet) return '担当者マスタシートが見つかりません';
+  const staffData = staffSheet.getDataRange().getValues();
+  const staffHeaders = staffData[0];
+  const staffIdColInStaff = staffHeaders.indexOf(getCoreSchemaV1HeaderName('STAFF', 'STAFF_ID'));
+  const staffIdSet = {};
+  if (staffIdColInStaff !== -1) {
+    staffData.slice(1).forEach(function(r) {
+      const v = String(r[staffIdColInStaff]).trim();
+      if (v) staffIdSet[v] = true;
+    });
+  }
+
+  const orphans = filledValues.filter(function(id) { return !staffIdSet[id]; });
+
+  return [
+    '=== 顧客マスタ 担当者ID列 監査 ===',
+    '対象行数: ' + total + ' 件',
+    '入力済み: ' + filled + ' 件',
+    '空欄: ' + (total - filled) + ' 件',
+    '担当者マスタ登録ID数: ' + Object.keys(staffIdSet).length + ' 件',
+    '孤立参照: ' + orphans.length + ' 件'
+  ].join('\n');
+}
+
 // ============================================================
 // 内部ユーティリティ
 // ============================================================
