@@ -14,7 +14,8 @@
 |------|-----|
 | シート名 | リード管理 |
 | 総列数（実測） | 64 |
-| 総データ行数（推定） | 25〜26（LDI-TEST-001 含む、`dryRunVerifyInboxPhase1` 実測値） |
+| 総データ行数（実測） | **382行**（`auditDevSpreadsheetStructure()` 実測: nonEmptyDataRowCount=382 / scannedDataRowCount=382） |
+| 会話ログあり行数 | 26件（`dryRunVerifyInboxPhase1()` 実測 — Inbox で表示されるサブセット） |
 | 調査ファイル数 | src/ 約150ファイル（.js） + frontend/src/ 約50ファイル（.tsx/.ts） |
 
 ---
@@ -120,11 +121,10 @@
 
 ## 4. 実データ充填率
 
-> **【未確認】** 列単位の充填率を算出する読み取り専用 clasp 関数が存在しない。
-> `auditDevSpreadsheetStructure()` は行単位の非空チェックのみ（列単位未実装）。
-> `dryRunVerifyInboxPhase1` によるデータ行数実測値: **25行**（LDI-TEST-001 除く）。
-
-以下は grep・コード分析からの推定（実測値ではない）:
+> **【行数実測済み / 列充填率は未実測】**  
+> `auditDevSpreadsheetStructure()` 実測: 総データ行数 **382行**（空行ゼロ）。  
+> 列単位の充填率は同関数では取得不可（行単位チェックのみ）。  
+> 以下は grep・コード分析 + 運用実態からの推定（実測値ではない）:
 
 | 充填率推定 | 対象列 |
 |-----------|--------|
