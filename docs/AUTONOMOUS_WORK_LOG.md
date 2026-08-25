@@ -2276,3 +2276,4 @@ PASS=true
 ## 運用上の再発防止
 
 - 作業開始時に必ず feature ブランチを作成してからコミットする。develop への直接コミットをローカルで防ぐ手段（pre-commit hook等）は第3段階の関所強化で検討対象に加える。
+- PreToolUseフックの復旧: `cp ~/.claude/scripts/worktree-only-guard.sh.bak-20260825 ~/.claude/scripts/worktree-only-guard.sh && chmod +x ~/.claude/scripts/worktree-only-guard.sh`。通常cloneは許可し、develop/main commit・保護ブランチforce push・旧clone push/fetchだけを阻止する。
