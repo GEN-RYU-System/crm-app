@@ -66,7 +66,7 @@ function run(overrides) {
   const headers = ['担当者', '担当者ID', 'その他'];
   const staffRows = [
     ['担当者ID', '苗字（日本語）', '名前（日本語）', 'Discord ID'],
-    ['LDO-0001', '山田', '太郎', '123456789012345678']
+    ['LDO-0001', '山田', '太郎', 'FAKE_DISCORD_A']
   ];
   const sheet = makeLeadSheet(headers, [], writes);
   const staffSheet = makeStaffSheet(staffRows);
@@ -86,7 +86,7 @@ function run(overrides) {
   const headers = ['担当者', '担当者ID'];
   const staffRows = [
     ['担当者ID', '氏名（日本語）', 'Discord ID'],
-    ['LDO-0002', '鈴木花子', '987654321098765432']
+    ['LDO-0002', '鈴木花子', 'FAKE_DISCORD_B']
   ];
   const sheet = makeLeadSheet(headers, [], writes);
   const staffSheet = makeStaffSheet(staffRows);
@@ -105,7 +105,7 @@ function run(overrides) {
   const headers = ['担当者', '担当者ID'];
   const staffRows = [
     ['担当者ID', '苗字（日本語）', '名前（日本語）', 'Discord ID'],
-    ['LDO-0003', '田中', '一郎', '111222333444555666']
+    ['LDO-0003', '田中', '一郎', 'FAKE_DISCORD_C']
   ];
   const sheet = makeLeadSheet(headers, [], writes);
   const staffSheet = makeStaffSheet(staffRows);
@@ -115,7 +115,7 @@ function run(overrides) {
 
   assert.equal(writes.length, 1, 'ケース3: 書き込みが1回行われる');
   assert.equal(writes[0].value, 'LDO-0003', 'ケース3: Discord IDではなくSTAFF_IDが書き込まれる');
-  assert.notEqual(writes[0].value, '111222333444555666', 'ケース3: Discord IDは書き込まれない');
+  assert.notEqual(writes[0].value, 'FAKE_DISCORD_C', 'ケース3: Discord IDは書き込まれない');
 }
 
 // --- ケース4: 担当者マスタに担当者ID列がない場合は何も書き込まない ---
