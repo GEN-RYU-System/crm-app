@@ -55,6 +55,8 @@ type PrintData = {
   date: string;
   dueDate: string;
   customerName: string;
+  billedToName: string;
+  billedToLines: string[];
   shipToName: string;
   shipToLines: string[];
   lines: { no: number; name: string; qty: string; unitPrice: string; amount: string }[];
@@ -65,6 +67,7 @@ type PrintData = {
   discount: string;
   total: string;
   currency: string;
+  exchangeRate?: string;
   paymentMethod: string;
 };
 
@@ -357,11 +360,14 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
             unitPrice: toHalfwidthDigits(line.unitPrice),
           })),
         };
-        await repository.createOrder(payload);
+        const createResult = await repository.createOrder(payload);
         if (!isDraft && issuer) {
           const selectedCustomer = customers.find((c) => c.customerId === values.customerId);
           const selectedShipping = customerAggregate?.shippingAddresses.find(
             (a) => a.addressId === values.shippingDestinationId
+          );
+          const selectedPayment = customerAggregate?.paymentProfiles.find(
+            (p) => p.paymentProfileId === values.paymentDestinationId
           );
           const lineTotal = values.lines.reduce((sum, line) => {
             const qty = Number(toHalfwidthDigits(line.quantity)) || 0;
@@ -373,11 +379,16 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
           );
           printNavigatePath.current = ORDER_EDITOR_PATHS.list;
           setPrintData({
-            invoiceNumber: values.invoiceNumber,
+            invoiceNumber: createResult.invoiceNumber || values.invoiceNumber,
             date: formatDate(new Date().toISOString()),
-            dueDate: '',
+            dueDate: createResult.paymentDueAt ? formatDate(createResult.paymentDueAt) : '',
             customerName: selectedCustomer?.customerName ?? '',
-            shipToName: selectedShipping?.displayName ?? selectedCustomer?.customerName ?? '',
+            billedToName: selectedPayment?.billingName || selectedCustomer?.customerName || '',
+            billedToLines: [
+              selectedPayment?.address ?? '',
+              selectedPayment?.country ?? '',
+            ].filter(Boolean),
+            shipToName: selectedShipping?.recipient ?? selectedCustomer?.customerName ?? '',
             shipToLines: [
               selectedShipping?.address ?? '',
               selectedShipping?.country ?? '',
@@ -385,9 +396,10 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
             lines: values.lines.map((line, i) => {
               const qty = Number(toHalfwidthDigits(line.quantity)) || 0;
               const price = Number(toHalfwidthDigits(line.unitPrice)) || 0;
+              const product = inventoryProducts.find((p) => p.productId === line.productId);
               return {
                 no: i + 1,
-                name: line.productName,
+                name: product?.englishTitle || line.productName,
                 qty: toDocAmount(qty),
                 unitPrice: toDocAmount(price),
                 amount: toDocAmount(qty * price),
@@ -400,6 +412,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
             discount: toDocAmount(toHalfwidthDigits(values.discount)),
             total: toDocAmount(totalNum),
             currency: values.currency,
+            exchangeRate: createResult.exchangeRate !== undefined ? `1 ${values.currency} = ${createResult.exchangeRate.toLocaleString()} JPY` : undefined,
             paymentMethod: values.paymentMethod,
           });
           setShowPrint(true);
@@ -829,7 +842,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
             date={printData.date}
             dueDate={printData.dueDate}
             registrationNumber={String(issuer[ISSUER_HEADER.REGISTRATION_NO] ?? '') || undefined}
-            billedTo={{ name: printData.customerName, lines: [] }}
+            billedTo={{ name: printData.billedToName, lines: printData.billedToLines }}
             shipTo={{ name: printData.shipToName, lines: printData.shipToLines }}
             lines={printData.lines}
             subtotal={printData.subtotal}
@@ -839,7 +852,9 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
             discount={printData.discount}
             total={printData.total}
             currency={printData.currency}
+            exchangeRate={printData.exchangeRate}
             paymentMethod={printData.paymentMethod}
+            paymentEmail={String(issuer[ISSUER_HEADER.PAYMENT_EMAIL] ?? '') || undefined}
             paymentTermsNote={String(issuer[ISSUER_HEADER.PAYMENT_NOTE] ?? '') || undefined}
             thanksMessage={String(issuer[ISSUER_HEADER.CLOSING_MESSAGE] ?? '') || undefined}
           />

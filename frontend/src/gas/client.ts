@@ -442,6 +442,7 @@ export type OrderDetailRecord = {
     customerName: string;
     awaitingPaymentStatus: string;
     shippingDestinationName: string;
+    shippingRecipientName: string;
     shippingAddressLine1: string;
     shippingAddressLine2: string;
     shippingAddressLine3: string;
@@ -450,6 +451,14 @@ export type OrderDetailRecord = {
     shippingZip: string;
     shippingCountry: string;
     paymentDestinationName: string;
+    billingName: string;
+    billingAddressLine1: string;
+    billingAddressLine2: string;
+    billingAddressLine3: string;
+    billingCity: string;
+    billingState: string;
+    billingZip: string;
+    billingCountry: string;
     INVOICE_ISSUED_AT: string;
     PAYMENT_DUE_AT: string;
     PAYMENT_METHOD: string;
@@ -479,6 +488,7 @@ export type OrderDetailRecord = {
     LINE_NUMBER: string | number;
     CATEGORY: string;
     PRODUCT_NAME: string;
+    ENGLISH_TITLE: string;
     STATUS: string;
     SKU: string;
     QUANTITY: string | number;
@@ -680,6 +690,7 @@ export function updateCoreQuote(quoteId: string, payload: QuotePayload, isDraft:
 export type InventoryProductOption = {
   productId: string;
   productName: string;
+  englishTitle: string;
   category: string;
 };
 
@@ -697,7 +708,12 @@ export function getInventoryProductOptions(): Promise<readonly InventoryProductO
     runner
       .withSuccessHandler((value) => {
         if (!Array.isArray(value)) { reject(new Error(errorCopy.communication)); return; }
-        resolve(value as InventoryProductOption[]);
+        resolve((value as Array<Record<string, unknown>>).map((item) => ({
+          productId: String(item.productId ?? ''),
+          productName: String(item.productName ?? ''),
+          englishTitle: String(item.englishTitle ?? ''),
+          category: String(item.category ?? ''),
+        })));
       })
       .withFailureHandler((error) => reject(toError(error)))
       .getInventoryProductOptions(getStoredSessionId());
@@ -751,11 +767,17 @@ export function createCoreOrder(payload: OrderCreatePayload): Promise<OrderCreat
   return new Promise((resolve, reject) => {
     runner
       .withSuccessHandler((value) => {
-        const v = value as { success?: boolean; orderId?: string };
+        const v = value as { success?: boolean; orderId?: string; invoiceNumber?: string; paymentDueAt?: string; exchangeRate?: number };
         if (!v || v.success !== true || typeof v.orderId !== 'string') {
           reject(new Error(errorCopy.communication)); return;
         }
-        resolve(v as OrderCreateResult);
+        resolve({
+          success: true,
+          orderId: v.orderId,
+          invoiceNumber: typeof v.invoiceNumber === 'string' ? v.invoiceNumber : '',
+          paymentDueAt: typeof v.paymentDueAt === 'string' ? v.paymentDueAt : '',
+          exchangeRate: typeof v.exchangeRate === 'number' ? v.exchangeRate : undefined,
+        });
       })
       .withFailureHandler((error) => reject(toError(error)))
       .createCoreOrderForFrontend(getStoredSessionId(), payload as unknown);

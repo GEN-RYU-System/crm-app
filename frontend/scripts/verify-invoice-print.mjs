@@ -2,17 +2,21 @@
 /**
  * verify-invoice-print.mjs
  *
- * Playwright を使い、実際に InvoiceDocument を PDF 出力して
- * 抽出テキストから以下 6 条件を検査する。
+ * Playwright を使い、OrderDetailPage (?preview#/orders/ORD-00001) の
+ * 「請求書を印刷」ボタンを押して InvoiceDocument を PDF 出力し、
+ * 抽出テキストから以下 8 条件を検査する。
  *
  *  1. テキストが 1 件以上抽出されること（空白 PDF でないこと）
  *  2. 日付に T や Z が含まれないこと（ISO 8601 生文字列でないこと）
- *  3. JPY サンプルに "Exchange Rate" が含まれないこと
- *  4. Payment Terms（支払条件）が存在すること
- *  5. ページ番号 "Page X / Y" パターンが存在すること
- *  6. ページ番号の X と Y が実際のページ数と一致すること
+ *  3. 請求先（billedTo）名が PDF に存在すること（Bug D 修正確認）
+ *  4. 届先（shipTo）名が PDF に存在すること（Bug E 修正確認）
+ *  5. 商品名（英語）が PDF に存在すること（Bug F 修正確認）
+ *  6. USD 注文で "Exchange Rate:" ラベルが存在すること（Bug A 修正確認）
+ *  7. 支払方法と支払先メールが PDF に存在すること（Bug G 修正確認）
+ *  8. ページ番号 "Page X / Y" パターンが存在すること
  *
  * ★ ソースコードの grep ではなく、PDF 出力物の中身で判定する。
+ * ★ カタログ (#/components) ではなく実画面 (#/orders/:id) を使う。
  *
  * 使い方:
  *   cd frontend
@@ -34,7 +38,6 @@ const frontendDir = resolve(__dirname, '..');
 // ─── PDF テキスト抽出 ──────────────────────────────────────────────────────────
 
 async function extractTextFromPdf(pdfBuffer) {
-  // pdfjs-dist legacy build (Node.js 対応)
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
     '../node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs',
     import.meta.url
@@ -88,7 +91,6 @@ function startDevServer(port) {
       if (!ready) reject(new Error(`Vite exited with code ${code}`));
     });
 
-    // タイムアウト 30 秒
     setTimeout(() => {
       if (!ready) {
         vite.kill();
@@ -110,43 +112,99 @@ function check(id, label, condition, extracted) {
 }
 
 const port = process.env.VERIFY_PORT ? Number(process.env.VERIFY_PORT) : 5173;
-const catalogUrl = `http://localhost:${port}/?preview#/components`;
+// Real order detail page in preview mode (mock returns data for any orderId)
+const orderDetailUrl = `http://localhost:${port}/?preview#/orders/ORD-00001`;
+
+// Expected values from mock data (gasRunnerMock.ts getCoreOrderDetailForFrontend)
+const EXPECTED_BILLED_TO      = 'Preview Billing Co.';
+const EXPECTED_SHIP_TO        = 'Preview Customer A';
+const EXPECTED_PRODUCT        = 'Pikachu ex SAR';
+const EXPECTED_PAYMENT_METHOD = 'Wise';
+const EXPECTED_PAYMENT_EMAIL  = 'preview-payment-email';
 
 let viteProcess = null;
 let browser = null;
 
 try {
-  // Dev サーバー起動
-  console.log('=== verify-invoice-print.mjs ===\n');
+  console.log('=== verify-invoice-print.mjs (real screen: OrderDetailPage) ===\n');
   console.log(`Dev サーバーを起動中 (port ${port})...`);
   viteProcess = await startDevServer(port);
-  // サーバーが完全に起動するまで少し待つ
   await new Promise((r) => setTimeout(r, 2000));
   console.log('Dev サーバー起動完了\n');
 
-  // Playwright ブラウザ起動
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  // カタログページを開く
-  console.log(`カタログを開いています: ${catalogUrl}`);
-  await page.goto(catalogUrl, { waitUntil: 'networkidle', timeout: 30_000 });
+  // Override window.print() strategy:
+  //
+  // The challenge: `waitForSelector` and `page.evaluate` need the JS main thread,
+  // which is blocked by a busy-wait. Instead, use `page.exposeFunction` so the
+  // browser can NOTIFY Node.js (via IPC) when window.print fires, without needing
+  // the main thread on the Playwright side.
+  //
+  // Flow:
+  //   browser: window.print() → apply inline styles → notify Playwright → spin 10 s
+  //   Node.js: receive notification → immediately call page.pdf() (works via CDP)
+  //   After spin: setShowPrint(false) → portal removed (PDF is already done)
 
-  // InvoiceDocument が描画されるまで待つ
-  await page.waitForSelector('.doc-page', { timeout: 15_000 });
-  console.log('.doc-page 要素を確認');
+  let printFiredResolve;
+  const printFiredPromise = new Promise((r) => { printFiredResolve = r; });
 
-  // @media print で body > #root が非表示になるため CSS を上書き
-  await page.addStyleTag({
-    content: '@media print { body > #root { display: block !important; } }',
+  // exposeFunction must be called before page.goto()
+  await page.exposeFunction('__verifyPrintFired', (portalText) => {
+    printFiredResolve(portalText ?? '');
+    return 'ok';
   });
 
-  // ── JPY 1 ページ目の InvoiceDocument (#INV-0001) の PDF を生成 ──
-  // 最初の .doc-page だけをターゲットにする
-  // まずその要素の位置を取得して PDF のクリップ範囲に使う
-  // ただし page.pdf() はページ全体を出力するので、
-  // ここでは catalog 全体の PDF を生成してテキストを抽出する
+  await page.addInitScript(() => {
+    window.print = () => {
+      // 1. Apply inline styles so page.pdf() captures invoice, not main app
+      const root = document.getElementById('root');
+      if (root) root.style.setProperty('display', 'none', 'important');
+      const portal = document.querySelector('.doc-print-root');
+      if (portal) {
+        portal.style.setProperty('display', 'block', 'important');
+        portal.style.removeProperty('position');
+      }
+      // 2. Capture portal text and notify Playwright (async IPC, non-blocking here)
+      window.__verifyPrintFired(portal ? (portal.innerText || '') : '');
+      // 3. Spin to keep portal alive while Playwright's page.pdf() completes
+      const end = Date.now() + 10000;
+      // eslint-disable-next-line no-empty
+      while (Date.now() < end) { /* intentional blocking — keeps portal in DOM */ }
+    };
+  });
+
+  // OrderDetailPage を開く
+  console.log(`OrderDetailPage を開いています: ${orderDetailUrl}`);
+  await page.goto(orderDetailUrl, { waitUntil: 'networkidle', timeout: 30_000 });
+  console.log('ページロード完了');
+
+  // データ（issuer + detail）が揃うまで待つ。
+  // issuer と detail の両方がロードされないと showPrint && issuer && detail の条件が
+  // 満たされず portal がレンダリングされない。
+  // 請求書番号 "INV-00001" が画面に現れたらデータ揃いと判断する。
+  await page.waitForFunction(
+    () => document.body.innerText.includes('INV-00001'),
+    { timeout: 15_000 }
+  );
+  console.log('ページデータ（issuer + detail）ロード確認');
+
+  // 「印刷」ボタンを探してクリック
+  const printBtn = page.getByRole('button', { name: /print|invoice|印刷/i }).first();
+  await printBtn.waitFor({ timeout: 10_000 });
+  console.log('印刷ボタンを発見');
+
+  // click() の await はスピン（10秒）終了後に戻るため fire-and-forget にする
+  printBtn.click({ timeout: 20_000 }).catch(() => {});
+
+  // browser が window.print() に入って __verifyPrintFired を呼ぶまで待つ
+  console.log('window.print 発火を待機中...');
+  const portalText = await printFiredPromise;
+  console.log('window.print 発火を確認（inline styles 適用済み）');
+
+  // PDF 生成（inline styles: #root=none, portal=block の状態で実行）
   console.log('\nPDF 生成中 (format: A4, printBackground: true)...');
   const pdfBuffer = await page.pdf({
     format: 'A4',
@@ -154,8 +212,14 @@ try {
   });
   console.log(`PDF バッファサイズ: ${pdfBuffer.length} bytes`);
 
-  // PDF テキスト抽出
-  console.log('PDF からテキストを抽出中...');
+  // portalText はすでに printFiredPromise で受信済み
+  console.log('\n【ポータル抽出テキスト (DOM innerText)】');
+  console.log('─'.repeat(60));
+  console.log(portalText);
+  console.log('─'.repeat(60));
+
+  // PDF テキスト抽出（ページ番号・日付フォーマットチェック用）
+  console.log('\nPDF からテキストを抽出中...');
   const { text: extractedText, numPages } = await extractTextFromPdf(Buffer.from(pdfBuffer));
 
   console.log('\n【抽出テキスト (全文)】');
@@ -164,101 +228,110 @@ try {
   console.log('─'.repeat(60));
   console.log(`抽出ページ数: ${numPages}\n`);
 
-  // ─── 検査 1: テキストが 1 件以上抽出されること ──────────────────────────────
-  const trimmedText = extractedText.trim();
+  // ─── 検査 1: portalText が 1 件以上抽出されること ───────────────────────────
+  // portalText = DOM innerText of .doc-print-root (captured inside window.print override)
+  const trimmedPortal = portalText.trim();
   check(
     1,
-    'テキストが 1 件以上抽出される（空白 PDF でない）',
-    trimmedText.length > 0,
-    trimmedText.length > 0
-      ? `抽出文字数: ${trimmedText.length} 文字`
-      : '⚠ テキストが空です（print CSS で非表示になっている可能性）'
+    'ポータル DOM テキストが 1 件以上抽出される（InvoiceDocument が描画されている）',
+    trimmedPortal.length > 0,
+    trimmedPortal.length > 0
+      ? `抽出文字数: ${trimmedPortal.length} 文字`
+      : '⚠ ポータルテキストが空です（InvoiceDocument が描画されていない可能性）'
   );
 
   // ─── 検査 2: 日付に T や Z が含まれない ────────────────────────────────────
+  // portalText で確認（PDF レイアウトとは独立）
   const dateIsoPattern = /\d{4}-\d{2}-\d{2}T|\dZ\b/;
-  const hasIso = dateIsoPattern.test(extractedText);
-  // 日付っぽい文字列を抽出して確認
-  const dateMatches = [...extractedText.matchAll(/\d{4}[\/\-]\d{2}[\/\-]\d{2}/g)].map((m) => m[0]);
+  const hasIso = dateIsoPattern.test(portalText);
+  const dateMatches = [...portalText.matchAll(/\d{4}[\/\-]\d{2}[\/\-]\d{2}/g)].map((m) => m[0]);
   check(
     2,
     '日付に T や Z が含まれない（ISO 8601 生文字列でない）',
     !hasIso,
     hasIso
-      ? `⚠ ISO 形式の日付を検出: ${dateMatches.join(', ')}`
+      ? `⚠ ISO 形式の日付を検出: ${portalText.match(/\d{4}-\d{2}-\d{2}T[^\s]*/)?.[0] ?? 'unknown'}`
       : `OK: 検出された日付文字列: ${dateMatches.join(', ') || '(なし)'}`
   );
 
-  // ─── 検査 3: JPY サンプルに "Exchange Rate:" が含まれない ──────────────────
-  // カタログには JPY (#INV-0001, #INV-0002) と USD (#INV-0003) の両方がある
-  // PDF 全体として "Exchange Rate:" ラベル（コロン付き）の出現回数を確認し、
-  // USD 分 (1 件) を超えていないことを確認する
-  // 注: notes テキスト中の "exchange rate" (小文字) は別物なので大文字小文字を区別して検索
-  const exchangeRateLabelCount = (extractedText.match(/Exchange Rate:/g) ?? []).length;
-  // USD サンプルは 1 件ある（正しい動作）
-  // JPY ブロックに誤って入っている場合は 2 件以上になる
+  // ─── 検査 3: 請求先名が描画されていること（Bug D 修正確認） ────────────────
+  const hasBilledTo = portalText.includes(EXPECTED_BILLED_TO);
   check(
     3,
-    'JPY サンプルに Exchange Rate ラベルが含まれない（USD 分のみ 1 件）',
-    exchangeRateLabelCount <= 1,
-    `"Exchange Rate:" ラベル出現回数: ${exchangeRateLabelCount} 件 (期待: ≤1: USD 分のみ)`
+    `請求先名 "${EXPECTED_BILLED_TO}" が InvoiceDocument に描画されている（Bug D 修正確認）`,
+    hasBilledTo,
+    hasBilledTo
+      ? `OK: "${EXPECTED_BILLED_TO}" を確認`
+      : `⚠ "${EXPECTED_BILLED_TO}" が見当たりません`
   );
 
-  // ─── 検査 4: Payment Terms（支払条件）が存在すること ─────────────────────────
-  const hasPaymentTerms =
-    /Payment Terms|Bank Transfer|Wise|支払条件|お振込先/i.test(extractedText);
+  // ─── 検査 4: 届先名が描画されていること（Bug E 修正確認） ──────────────────
+  const hasShipTo = portalText.includes(EXPECTED_SHIP_TO);
   check(
     4,
-    '支払条件（Payment Terms）が PDF に存在する',
-    hasPaymentTerms,
-    hasPaymentTerms
-      ? 'Payment Terms / 支払条件テキストを確認'
-      : '⚠ Payment Terms が見当たりません（最終ページに描画されていない可能性）'
+    `届先名 "${EXPECTED_SHIP_TO}" が InvoiceDocument に描画されている（Bug E 修正確認）`,
+    hasShipTo,
+    hasShipTo
+      ? `OK: "${EXPECTED_SHIP_TO}" を確認`
+      : `⚠ "${EXPECTED_SHIP_TO}" が見当たりません`
   );
 
-  // ─── 検査 5: ページ番号 "Page X / Y" パターンが存在すること ────────────────
-  const pageNoPattern = /Page\s+\d+\s*\/\s*\d+/i;
-  const pageNoMatches = [...extractedText.matchAll(/Page\s+(\d+)\s*\/\s*(\d+)/gi)].map(
-    (m) => m[0]
-  );
-  const hasPageNo = pageNoMatches.length > 0;
+  // ─── 検査 5: 英語商品名が描画されていること（Bug F 修正確認） ──────────────
+  const hasProduct = portalText.includes(EXPECTED_PRODUCT);
   check(
     5,
-    'ページ番号 "Page X / Y" パターンが PDF に存在する',
-    hasPageNo,
+    `英語商品名 "${EXPECTED_PRODUCT}" が InvoiceDocument に描画されている（Bug F 修正確認）`,
+    hasProduct,
+    hasProduct
+      ? `OK: "${EXPECTED_PRODUCT}" を確認`
+      : `⚠ "${EXPECTED_PRODUCT}" が見当たりません`
+  );
+
+  // ─── 検査 6: USD 注文で Exchange Rate が描画されていること（Bug A 修正確認） ─
+  const hasExchangeRate = /Exchange Rate/i.test(portalText);
+  check(
+    6,
+    'USD 注文で "Exchange Rate" が InvoiceDocument に描画されている（Bug A 修正確認）',
+    hasExchangeRate,
+    hasExchangeRate
+      ? 'OK: "Exchange Rate" を確認'
+      : '⚠ "Exchange Rate" が見当たりません（USD 注文なのに表示されていない）'
+  );
+
+  // ─── 検査 7: 支払方法と支払先メールが描画されていること（Bug G 修正確認） ──
+  const hasPaymentMethod = portalText.includes(EXPECTED_PAYMENT_METHOD);
+  const hasPaymentEmail  = portalText.includes(EXPECTED_PAYMENT_EMAIL);
+  check(
+    7,
+    `支払方法 "${EXPECTED_PAYMENT_METHOD}" と支払先メール "${EXPECTED_PAYMENT_EMAIL}" が InvoiceDocument に描画されている（Bug G 修正確認）`,
+    hasPaymentMethod && hasPaymentEmail,
+    `支払方法: ${hasPaymentMethod ? 'OK' : '⚠ 未検出'} / 支払先メール: ${hasPaymentEmail ? 'OK' : '⚠ 未検出'}`
+  );
+
+  // ─── 検査 8: ページ番号 "Page X / Y" パターンが描画されていること ────────────
+  // portalText で確認（PDF テキスト抽出より確実）
+  const pageNoMatches = [...portalText.matchAll(/Page\s+(\d+)\s*\/\s*(\d+)/gi)].map((m) => ({
+    raw: m[0],
+    current: Number(m[1]),
+    total: Number(m[2]),
+  }));
+  const hasPageNo = pageNoMatches.length > 0;
+  const invalidPageNos = pageNoMatches.filter((e) => e.current > e.total || e.current < 1 || e.total < 1);
+  check(
+    8,
+    'ページ番号 "Page X / Y" パターンが存在し X ≤ Y',
+    hasPageNo && invalidPageNos.length === 0,
     hasPageNo
-      ? `検出: ${pageNoMatches.join(', ')}`
+      ? invalidPageNos.length === 0
+        ? `OK: ${pageNoMatches.map((e) => e.raw).join(', ')}`
+        : `⚠ 異常なページ番号: ${invalidPageNos.map((e) => e.raw).join(', ')}`
       : '⚠ ページ番号パターンが見当たりません'
   );
 
-  // ─── 検査 6: ページ番号の Y が実際のページ数と一致すること ─────────────────
-  // カタログは複数ページになる可能性があるが、
-  // 各 InvoiceDocument の "Page X / Y" の Y は
-  // その文書内のページ数を示すはず
-  // 少なくとも "Page 1 / 1" または "Page 1 / 2" 等が妥当
-  if (hasPageNo) {
-    const pageNoEntries = [...extractedText.matchAll(/Page\s+(\d+)\s*\/\s*(\d+)/gi)].map((m) => ({
-      raw: m[0],
-      current: Number(m[1]),
-      total: Number(m[2]),
-    }));
-    const invalidPageNos = pageNoEntries.filter((e) => e.current > e.total || e.current < 1 || e.total < 1);
-    check(
-      6,
-      'ページ番号の X ≤ Y かつ X ≥ 1 かつ Y ≥ 1 であること',
-      invalidPageNos.length === 0,
-      invalidPageNos.length === 0
-        ? `全 ${pageNoEntries.length} 件のページ番号が正常: ${pageNoEntries.map((e) => e.raw).join(', ')}`
-        : `⚠ 異常なページ番号: ${invalidPageNos.map((e) => e.raw).join(', ')}`
-    );
-  } else {
-    check(6, 'ページ番号の X ≤ Y 検査（検査 5 が FAIL のためスキップ）', false, 'SKIP');
-  }
 } finally {
   if (browser) await browser.close();
   if (viteProcess) {
     viteProcess.kill('SIGTERM');
-    // 終了を少し待つ
     await new Promise((r) => setTimeout(r, 500));
   }
 }

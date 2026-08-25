@@ -283,6 +283,7 @@ export function DocFoot({ notes, exchangeRate, totalsNode, notesLabel }: DocFoot
 
 type DocTermsProps = {
   paymentMethod?: string;
+  paymentEmail?: string;
   currency: string;
   dueOrValidDate?: string;
   dueOrValidLabel?: string;
@@ -298,6 +299,7 @@ type DocTermsProps = {
 
 export function DocTerms({
   paymentMethod,
+  paymentEmail,
   currency,
   dueOrValidDate,
   dueOrValidLabel,
@@ -313,7 +315,12 @@ export function DocTerms({
   return (
     <div className="doc-terms">
       <h2>{paymentMethodLabel}</h2>
-      {paymentMethod && <p>{paymentMethod}</p>}
+      {paymentMethod && (
+        <p>
+          Method: {paymentMethod}
+          {paymentEmail ? ` \u00b7 Please send the payment to: ${paymentEmail}` : ''}
+        </p>
+      )}
       <p>{currencyLabel}: {currency}</p>
       {dueOrValidDate && (
         <p>{dueOrValidLabel ?? deadlineLabel}: {dueOrValidDate}</p>

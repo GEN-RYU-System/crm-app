@@ -234,7 +234,13 @@ function createCoreOrderForFrontend(sessionId, payload) {
         lineSheet.appendRow(lineRow);
       });
 
-      return { success: true, orderId: newOrderId };
+      return {
+        success: true,
+        orderId: newOrderId,
+        invoiceNumber: invoiceNumber,
+        paymentDueAt: paymentDueDate.toISOString(),
+        exchangeRate: exchangeRate
+      };
     }
   );
 }

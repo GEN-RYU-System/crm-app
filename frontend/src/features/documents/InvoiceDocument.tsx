@@ -36,6 +36,7 @@ export type InvoiceDocumentProps = {
   exchangeRate?: string;
   notes?: string;
   paymentMethod?: string;
+  paymentEmail?: string;
   paymentTermsNote?: string;
   thanksMessage?: string;
   colors?: DocColors;
@@ -63,6 +64,7 @@ export function InvoiceDocument(props: InvoiceDocumentProps) {
     exchangeRate,
     notes,
     paymentMethod,
+    paymentEmail,
     paymentTermsNote,
     thanksMessage,
     colors,
@@ -154,6 +156,7 @@ export function InvoiceDocument(props: InvoiceDocumentProps) {
                 />
                 <DocTerms
                   paymentMethod={paymentMethod}
+                  paymentEmail={paymentEmail}
                   currency={currency}
                   dueOrValidDate={dueDate}
                   dueOrValidLabel={catalogCopy.docDeadlineLabel}
