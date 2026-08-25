@@ -1,6 +1,12 @@
+/* sticky band: PageHeader + PageToolbar combined; sits above DataTable thead (z-index 20 > 10).
+   padding-bottom absorbs PageToolbar's margin so the background covers the gap. */
+.sales-order-list-page__sticky-band { position: sticky; top: 0; z-index: 20; background: var(--color-page); padding-bottom: var(--page-toolbar-margin-bottom); }
+/* neutralise PageToolbar margin-bottom; spacing is handled by sticky-band padding-bottom */
+.sales-order-list-page__toolbar { margin-bottom: var(--space-none); }
 .sales-order-list-page__layout { display: flex; gap: var(--space-lg); align-items: flex-start; }
-/* sticky sidebar: keeps nav visible while content scrolls; avoids position:fixed */
-.sales-order-list-page__sidebar { flex-shrink: 0; width: 11rem; position: sticky; top: 0; max-height: 100vh; overflow-y: auto; }
+/* sticky sidebar: sticks below the sticky band (top = band height via --_sticky-band-h);
+   avoids position:fixed; max-height matches remaining viewport height */
+.sales-order-list-page__sidebar { flex-shrink: 0; width: 11rem; position: sticky; top: var(--_sticky-band-h, 0px); max-height: calc(100vh - var(--_sticky-band-h, 0px)); overflow-y: auto; }
 .sales-order-list-page__sidebar-nav { display: flex; flex-direction: column; gap: var(--space-xs); }
 .sales-order-list-page__tab { display: flex; justify-content: space-between; align-items: center; padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-button); border: none; background: transparent; cursor: pointer; text-align: left; font-size: var(--font-sm); color: var(--color-text-muted); transition: background 0.1s; width: 100%; }
 .sales-order-list-page__tab:hover { background: var(--color-tab-surface-hover); color: var(--color-tab-text-active); }
