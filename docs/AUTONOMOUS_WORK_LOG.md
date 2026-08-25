@@ -2042,3 +2042,13 @@ PASS=true
 - 検証: `frontend/npm run build:gas`、差分基準の機密検査、PR CIの Frontend Check / GAS Global Namespace Check / Security Content Check はすべて成功。
 - PR #553 を squash merge。マージコミット SHA: `15b16faad625202785755d2fc6ff319896ada698`。
 - 戻し方: `git revert 15b16faad625202785755d2fc6ff319896ada698`。
+
+---
+
+## アプリ全体プリフェッチ標準化 Phase 1 — PR / revert 確定記録
+
+- PR #548 — LeadFormOptions を leads 信号で refresh。squash merge SHA: `9238c16c3677246f4122ad11cbe89ced225f4445`。戻し方: `git revert 9238c16c3677246f4122ad11cbe89ced225f4445`。Deploy to DEV / `getDeployedSha` 一致を確認。
+- PR #552 — InventoryProductOptions を inventory 信号で refresh。squash merge SHA: `89cf525f463a512a18536574b00d022058d39ea1`。戻し方: `git revert 89cf525f463a512a18536574b00d022058d39ea1`。Deploy to DEV / `getDeployedSha` 一致を確認。
+- PR #555 — LeadDetail の既知全キーを leads 信号で refresh。squash merge SHA: `13bf207b1d2409ae254b27a2a697201688588dae`。戻し方: `git revert 13bf207b1d2409ae254b27a2a697201688588dae`。Deploy to DEV / `getDeployedSha` 一致を確認。
+- PR #556 — CustomerDetail の既知全キーを customers 信号で refresh。squash merge SHA: `9a6beebfd21cea13a8fe1d024f795c786107de25`。戻し方: `git revert 9a6beebfd21cea13a8fe1d024f795c786107de25`。Deploy to DEV / `getDeployedSha` 一致を確認。
+- PR #557 — SalesOrderDetail の既知全キーを orders 信号で refresh。squash merge SHA: `26b8cf40e178e97434230cb464c0e6f33f2a73da`。戻し方: `git revert 26b8cf40e178e97434230cb464c0e6f33f2a73da`。Deploy to DEV / `getDeployedSha` 一致を確認。
