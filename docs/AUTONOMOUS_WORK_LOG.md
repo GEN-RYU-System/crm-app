@@ -1976,6 +1976,14 @@ PASS=true
 
 ---
 
+## 【同期登録】LeadDetail → leads
+
+- 合格条件: 詳細を一度開いた後、信号なしでは `getLeadDetail` が増えず、leads信号後に既知の全キーを `refresh()` して1回増えること。
+- `LeadDetailCacheContext` は `createListCache.refresh()`（引数なし）を公開し、`SyncPoller` の leads refresher に登録した。
+- 検証結果は PR 作成前に `__gasMockCallCounts` の生出力で記録する。
+
+---
+
 ## Discord Guild 選択状態の再取得時保持（PR #550）
 
 - `frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx` の「状態を確認する」処理を修正した。再取得結果が複数Guildで、現在選択中のIDが結果一覧に含まれる場合はその選択を維持する。一覧から消えた場合のみ未選択へ戻す。
