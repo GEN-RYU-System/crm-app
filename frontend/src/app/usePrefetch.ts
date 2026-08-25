@@ -12,6 +12,7 @@ import { useStaffListCache } from '../pages/staff/StaffListCacheContext';
 import { useQuoteListCache } from '../pages/quotes/QuoteListCacheContext';
 import { useCurrencyMasterCache } from '../pages/currency/CurrencyMasterCacheContext';
 import { useInboxConversationListCache } from '../pages/inbox/InboxConversationListCacheContext';
+import { useInboxConversationDetailCache } from '../pages/inbox/InboxConversationDetailCacheContext';
 
 export function usePrefetch(permissions: NavigationPermissions | null): void {
   const { ensureLoaded: ensureLeads } = useLeadListCache();
@@ -26,6 +27,7 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
   const { ensureLoaded: ensureQuotes } = useQuoteListCache();
   const { ensureLoaded: ensureCurrencies } = useCurrencyMasterCache();
   const { ensureLoaded: ensureInboxConversations } = useInboxConversationListCache();
+  const { prefetchBulk } = useInboxConversationDetailCache();
   const hasRun = useRef(false);
 
   useEffect(() => {
@@ -45,6 +47,7 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
       { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.staff,       permissions), load: () => ensureStaff() },
       { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.quotes,      permissions), load: () => ensureQuotes() },
       { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.inbox,       permissions), load: () => ensureInboxConversations() },
+      { canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.inbox,       permissions), load: () => prefetchBulk() },
     ];
 
     const timer = setTimeout(() => {
@@ -57,6 +60,6 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [permissions, ensureLeads, ensureLeadFormOptions, ensureCustomers, ensureAggregates, ensureInventory, ensureInventoryProductOptions, ensureOrders, ensureCurrencies, ensureSalesOrders, ensureStaff, ensureQuotes, ensureInboxConversations]);
+  }, [permissions, ensureLeads, ensureLeadFormOptions, ensureCustomers, ensureAggregates, ensureInventory, ensureInventoryProductOptions, ensureOrders, ensureCurrencies, ensureSalesOrders, ensureStaff, ensureQuotes, ensureInboxConversations, prefetchBulk]);
 
 }

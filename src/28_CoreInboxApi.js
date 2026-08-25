@@ -740,6 +740,113 @@ function setInboxWindowProperties() {
 }
 
 /**
+ * DEV専用: 負荷検証用テストデータを投入する。
+ * - LEADS シートに「LDI-TEST-001 / 【テスト】負荷検証_100件」を追記（重複時は上書き）
+ * - 会話ログシートに 100 件のメッセージを追記（既存テストデータは先に削除）
+ * - 受信箱キャッシュをクリアして反映を即時化
+ * - LDI-00002 の表示名を返す（オーナーが画面で確認する用）
+ *
+ * @returns {{ seeded: boolean, testLeadId: string, testLeadName: string,
+ *             messageCount: number, ldi00002CustomerName: string }}
+ */
+function seedInboxTestData100() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('seedInboxTestData100 は DEV 環境でのみ実行できます');
+  }
+
+  var TEST_LEAD_ID   = 'LDI-TEST-001';
+  var TEST_LEAD_NAME = '【テスト】負荷検証_100件';
+  var ss = getSpreadsheet();
+
+  // ── 1. LDI-00002 の表示名を取得 ──
+  var leadsForName = coreCustomerFrontendReadTable(ss, 'LEADS', ['LEAD_ID', 'CUSTOMER_NAME']);
+  var ldi00002Name = '（未確認）';
+  for (var ni = 0; ni < leadsForName.rows.length; ni++) {
+    if (coreCustomerFrontendValue(leadsForName.rows[ni][leadsForName.indexes.LEAD_ID]) === 'LDI-00002') {
+      ldi00002Name = coreCustomerFrontendValue(leadsForName.rows[ni][leadsForName.indexes.CUSTOMER_NAME]);
+      break;
+    }
+  }
+
+  // ── 2. LEADS シートにテストリードを追記（重複時は既存行を上書き） ──
+  var leadsSheet = getCoreSchemaV1Sheet(ss, 'LEADS');
+  var leadsData   = leadsSheet.getDataRange().getValues();
+  var leadsHdrs   = leadsData[0];
+
+  var col = function(name) { return leadsHdrs.indexOf(name); };
+  var existingLeadRow = -1;
+  for (var r = 1; r < leadsData.length; r++) {
+    if (String(leadsData[r][col('リードID')] || '').trim() === TEST_LEAD_ID) {
+      existingLeadRow = r + 1; // 1-indexed sheet row
+      break;
+    }
+  }
+
+  var leadRow = new Array(leadsHdrs.length).fill('');
+  leadRow[col('リードID')]       = TEST_LEAD_ID;
+  leadRow[col('顧客名')]         = TEST_LEAD_NAME;
+  leadRow[col('リード進捗')]     = '新規';
+  leadRow[col('流入経路')]       = 'messenger';
+  leadRow[col('会話要約')]       = '負荷検証用テストデータ（100件）';
+  leadRow[col('最終会話日時')]   = '2026-08-26 12:00:00';
+
+  if (existingLeadRow !== -1) {
+    leadsSheet.getRange(existingLeadRow, 1, 1, leadsHdrs.length).setValues([leadRow]);
+  } else {
+    leadsSheet.appendRow(leadRow);
+  }
+
+  // ── 3. 会話ログシートに 100 件追記（既存テストデータを先に削除） ──
+  var convSheet = resolveConversationLogSheet_(ss);
+  if (!convSheet) throw new Error('会話ログシートが見つかりません');
+
+  var convData  = convSheet.getDataRange().getValues();
+  var convHdrs  = convData[0];
+  var cCol = function(name) { return convHdrs.indexOf(name); };
+
+  // 後ろから削除（行番号がズレないよう逆順）
+  for (var dr = convData.length - 1; dr >= 1; dr--) {
+    if (String(convData[dr][cCol('リードID')] || '').trim() === TEST_LEAD_ID) {
+      convSheet.deleteRow(dr + 1);
+    }
+  }
+
+  // 100 件生成（1時間ずつ増加）
+  var baseMs  = new Date('2026-01-01T00:00:00+09:00').getTime();
+  var newRows = [];
+  for (var n = 1; n <= 100; n++) {
+    var msgDate = new Date(baseMs + (n - 1) * 60 * 60 * 1000);
+    var dateStr = Utilities.formatDate(msgDate, 'Asia/Tokyo', 'yyyy-MM-dd HH:mm:ss');
+    var dir     = (n % 2 === 1) ? '受信' : '送信';
+    var nStr    = n < 10 ? '00' + n : n < 100 ? '0' + n : '' + n;
+    var body    = 'テストメッセージ ' + nStr + ' / 100';
+
+    var row = new Array(convHdrs.length).fill('');
+    if (cCol('ログID')    !== -1) row[cCol('ログID')]    = 'LOG-TEST-' + nStr;
+    if (cCol('リードID')  !== -1) row[cCol('リードID')]  = TEST_LEAD_ID;
+    if (cCol('日時')      !== -1) row[cCol('日時')]      = dateStr;
+    if (cCol('送受信')    !== -1) row[cCol('送受信')]    = dir;
+    if (cCol('発言者')    !== -1) row[cCol('発言者')]    = dir === '受信' ? 'テスト顧客' : 'テスト担当者';
+    if (cCol('原文')      !== -1) row[cCol('原文')]      = body;
+    newRows.push(row);
+  }
+
+  var lastConvRow = convSheet.getLastRow();
+  convSheet.getRange(lastConvRow + 1, 1, newRows.length, convHdrs.length).setValues(newRows);
+
+  // ── 4. 受信箱キャッシュクリア ──
+  clearCacheChunks_(CORE_INBOX_CONVERSATIONS_CACHE_INDEX, CORE_INBOX_CONVERSATIONS_CACHE_PREFIX);
+
+  return {
+    seeded:               true,
+    testLeadId:           TEST_LEAD_ID,
+    testLeadName:         TEST_LEAD_NAME,
+    messageCount:         100,
+    ldi00002CustomerName: ldi00002Name
+  };
+}
+
+/**
  * DEV専用: 認証バイパスで getInboxBulkInitialLoad の結果を検証する。
  * @returns {{ conversationCount: number, detailCount: number, sampleDetail: Object }}
  */

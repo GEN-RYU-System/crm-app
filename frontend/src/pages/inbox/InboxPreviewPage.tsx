@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CRM_SEARCH_ICON } from '../../app/icons';
 import { Badge, Button, ConversationWorkspace, EmptyState, PageHeader, Select, Skeleton, TabBar, Tabs, TextField, Textarea } from '../../components/ui';
 import { inboxCopy } from '../../content/ja';
@@ -20,7 +20,7 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
   const [loadMoreLoading, setLoadMoreLoading] = useState(false);
 
   const { conversations, error: listError, ensureLoaded } = useInboxConversationListCache();
-  const { detailsByConversationId, loadingByConversationId, ensureLoaded: ensureDetailLoaded, seed } = useInboxConversationDetailCache();
+  const { detailsByConversationId, ensureLoaded: ensureDetailLoaded, prefetchBulk } = useInboxConversationDetailCache();
 
   // ── 1. Load list on mount ──
   useEffect(() => { void ensureLoaded(); }, [ensureLoaded]);
@@ -31,22 +31,9 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
     setSelectedId((current) => conversations.some((c) => c.id === current) ? current : conversations[0].id);
   }, [conversations]);
 
-  // ── 3. Bulk hydration: seed detail cache once after list arrives ──
-  const bulkLoadedRef = useRef(false);
-  useEffect(() => {
-    if (!conversations || conversations.length === 0 || bulkLoadedRef.current) return;
-    bulkLoadedRef.current = true;
-    void (async () => {
-      try {
-        const bulk = await repository.getBulkInitialLoad();
-        for (const [id, detail] of Object.entries(bulk.detailsByConversationId)) {
-          seed(id, detail);
-        }
-      } catch {
-        // bulk hydration failure is non-fatal; individual loads remain available
-      }
-    })();
-  }, [conversations, repository, seed]);
+  // ── 3. Bulk hydration: normally fires from usePrefetch at startup;
+  //    this is the fallback for direct inbox navigation before prefetch reaches this step ──
+  useEffect(() => { void prefetchBulk(); }, [prefetchBulk]);
 
   // ── 4. On conversation select: ensure detail loaded; reset extra messages ──
   useEffect(() => {
@@ -63,8 +50,10 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
 
   const effectiveConv = filtered.find((c) => c.id === selectedId) ?? filtered[0] ?? null;
   const detail = effectiveConv?.id === selectedId ? detailsByConversationId[selectedId]?.[0] ?? null : null;
-  // stale-while-revalidate: only show skeleton when no cached data exists
-  const detailLoading = selectedId !== '' && (loadingByConversationId[selectedId] ?? false) && detail === null;
+  // Show skeleton until the fetch attempt for this id is complete (id present in cache).
+  // Stale-while-revalidate: if data exists (detail !== null), no skeleton shown.
+  const fetchDone = selectedId === '' || (selectedId in detailsByConversationId);
+  const detailLoading = selectedId !== '' && !fetchDone;
 
   const baseMessages = detail?.messages ?? [];
   const extra = extraMessages[selectedId] ?? [];
