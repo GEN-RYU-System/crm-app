@@ -2239,7 +2239,6 @@ PASS=true
 ---
 
 ## discord_code=40333 原因調査・User-Agent 追加修正（PR #594）
-
 ### 原因
 
 - `discord_code=40333` = "Cloudflare is blocking your request. This can often be resolved by setting a proper User Agent"
@@ -2269,3 +2268,12 @@ PASS=true
 - `clasp run runDiscordAutoSetup` は SESSION_REQUIRED のため実行不可（フロントエンドセッション必須）
 - DEV UI（`runDiscordAutoSetup` ボタン）から実行し、成功・失敗を確認すること
 - 成功確認後に V-C1〜C3 の DEV 実測を続行すること
+## アプリ全体プリフェッチ標準化 Phase 2-7 — Order detail issuer cache
+
+- OrderDetailPageの直接 `getCoreIssuer` を既存 `IssuerMasterCacheContext` 参照へ置換した。
+- 検証生出力: 注文詳細を開いた後の `getCoreIssuerForFrontend` は `initial=1`、再訪後も`1`。Order detailのcache検証も `PASS=true`。
+
+## 運用上の再発防止
+
+- 作業開始時に必ず feature ブランチを作成してからコミットする。develop への直接コミットをローカルで防ぐ手段（pre-commit hook等）は第3段階の関所強化で検討対象に加える。
+- PreToolUseフックの復旧: `cp ~/.claude/scripts/worktree-only-guard.sh.bak-20260825 ~/.claude/scripts/worktree-only-guard.sh && chmod +x ~/.claude/scripts/worktree-only-guard.sh`。通常cloneは許可し、develop/main commit・保護ブランチforce push・旧clone push/fetchだけを阻止する。

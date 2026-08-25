@@ -7,7 +7,7 @@ import { ordersCopy, PAYMENT_STATUS_BADGE_VARIANT } from '../../content/ja';
 import { ISSUER_HEADER } from '../../content/ja/issuer';
 import { InvoiceDocument } from '../../features/documents/InvoiceDocument';
 import type { OrderRepository, OrderUpdatePayload } from '../../features/orders/contracts';
-import { getCoreIssuer, type IssuerRecord } from '../../gas/client';
+import type { IssuerRecord } from '../../gas/client';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
 import { useInventoryProductOptionsCache } from '../inventory/InventoryProductOptionsCacheContext';
 import { formatAmountWithJpy } from '../shared/amountFormat';
@@ -21,6 +21,7 @@ import {
 } from './orderEditorConfig';
 import { useOrderListCache } from './OrderListCacheContext';
 import { useSalesOrderDetailCache } from '../sales-orders/SalesOrderDetailCacheContext';
+import { useIssuerMasterCache } from '../data-management/IssuerMasterCacheContext';
 import './OrderDetailPage.css';
 
 function formatNumber(value: unknown): string {
@@ -124,7 +125,7 @@ export function OrderDetailPage({ repository }: Props) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [showPrint, setShowPrint] = useState(false);
-  const [issuer, setIssuer] = useState<IssuerRecord | null>(null);
+  const { issuer, ensureLoaded: ensureIssuerLoaded } = useIssuerMasterCache();
   const { recordsByOrderId, errorsByOrderId, ensureLoaded: ensureDetailLoaded, refresh: refreshDetail } = useSalesOrderDetailCache();
   const detailRecords = orderId ? recordsByOrderId[orderId] : undefined;
   const detail = detailRecords === undefined ? undefined : detailRecords[0] ?? null;
@@ -135,9 +136,7 @@ export function OrderDetailPage({ repository }: Props) {
     void ensureDetailLoaded(orderId);
   }, [ensureDetailLoaded, orderId]);
 
-  useEffect(() => {
-    void getCoreIssuer().then((data) => setIssuer(data)).catch(() => {});
-  }, []);
+  useEffect(() => { void ensureIssuerLoaded(); }, [ensureIssuerLoaded]);
 
   useEffect(() => {
     if (!showPrint) return;
