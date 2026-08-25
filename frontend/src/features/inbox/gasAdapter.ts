@@ -2,6 +2,6 @@ import { getInboxConversationDetail, getInboxConversations } from '../../gas/cli
 import type { InboxRepository } from './contracts';
 
 export const inboxGasRepository: InboxRepository = {
-  listConversations: () => getInboxConversations(),
+  listConversations: (forceRefresh) => getInboxConversations(forceRefresh),
   getConversation: (id: string) => getInboxConversationDetail(id),
 };
