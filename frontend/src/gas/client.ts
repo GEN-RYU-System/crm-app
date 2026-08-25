@@ -1021,6 +1021,8 @@ export type DiscordSetupStatus = {
 };
 export type DiscordTicketResult = { success: boolean; reused?: boolean; channelId?: string; channelName?: string; error?: string; };
 export function createDiscordTicketForCustomer(customerId: string): Promise<DiscordTicketResult> { const runner = window.google?.script?.run; if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly)); return new Promise((resolve, reject) => { runner.withSuccessHandler((value) => resolve(value as DiscordTicketResult)).withFailureHandler((error) => reject(toError(error))).createDiscordTicketForCustomer(getStoredSessionId(), customerId); }); }
+export type DiscordCustomerInviteResult = { success: boolean; reused?: boolean; url?: string; error?: string; };
+export function createDiscordInviteForCustomer(customerId: string): Promise<DiscordCustomerInviteResult> { const runner = window.google?.script?.run; if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly)); return new Promise((resolve, reject) => { runner.withSuccessHandler((value) => resolve(value as DiscordCustomerInviteResult)).withFailureHandler((error) => reject(toError(error))).createDiscordInviteForCustomer(getStoredSessionId(), customerId); }); }
 
 export function runDiscordAutoSetup(): Promise<DiscordAutoSetupResult> {
   const runner = window.google?.script?.run;
