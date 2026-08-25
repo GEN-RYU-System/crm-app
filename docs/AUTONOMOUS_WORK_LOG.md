@@ -2181,3 +2181,38 @@ PASS=true
 - PR23（ヘッダー固定・frontend/docs のみ変更）とは無関係。
 - `git log -- src/00_CoreSchemaRegistry.js` 直近 10 件に CUSTOMERS を変更した PR は存在しない。別セッションがシートに先行追加し Registry 反映が未完と判断される。
 - 本セッションでは Registry 修正・シート操作ともに行わず、事実のみ記録する。対応は別途 PO 判断。
+
+---
+
+## Discord 403 エラー詳細化 + Phase B 棚卸し + Phase C カテゴリ/ロール実装
+
+### Phase A-1: Discordエラー詳細を全エラー経路に追加（PR #583）
+
+- `discordErrorDetail_()` ヘルパーを `src/36_DiscordChannelSetupApi.js` に追加し、`discord_code=<N>: <message>` を全ての失敗返却値に付与した。
+- `src/37_DiscordTicketApi.js` の全エラー経路にも同ヘルパーを適用した。
+- 403 発生時にDiscord実エラーコード（50013=Missing Permissions 等）が画面とLoggerに表示されるようになった。
+- PR #583 squash SHA: `319ee4be734205512276cd9c5a17dfcc26a4d316`。戻し方: `git revert 319ee4be734205512276cd9c5a17dfcc26a4d316`。
+
+### Phase B: Discord実装棚卸しドキュメント（PR #584）
+
+- `docs/DISCORD_IMPLEMENTATION_INVENTORY.md` を新規作成。B1〜B4（コールサイト・チャンネル用途・重複/矛盾・削除候補）を記述。
+- 主要発見: `createDiscordTicketForCustomer` はUI上デッドコードだが `buildDiscordTicketChannelName_` は `40_` で引き続き使用中。`crm-tickets` チャンネルは招待URL方式でも必要。
+- PR #584 squash SHA: `b6d7a42081f436f9f020bc6cb79d198f77487a88`。戻し方: `git revert b6d7a42081f436f9f020bc6cb79d198f77487a88`。
+
+### Phase C: Customer/Partner カテゴリ・ロール実装（PR #587）
+
+- `src/00_CoreSchemaRegistry.js`: CUSTOMERS に `CUSTOMER_SCALE`（`SMALL=小口`/`LARGE=大口`）を追加。
+- `src/36_DiscordChannelSetupApi.js`: `ensureCustomerScaleColumn_()`（Registry未定義列の自動追加）、`findExistingRole_()`（冪等ロール検索）、Customer/Partner カテゴリ・ロールのセットアップをAutoSetupに追加。`getDiscordCustomerScaleOptionsForFrontend()`・`updateDiscordCustomerScale()` を追加。
+- `src/40_DiscordInviteChannelProvisioning.js`: `resolveDiscordRoleId_()`・`resolveDiscordCategoryId_()` でスケールラベル→Discordロール/カテゴリを解決。招待チャンネルを適切なカテゴリ配下に作成し、参加後にロールを付与。未設定時は警告ログで続行（V-C3）。
+- `src/28_CoreCustomerReadApi.js`: `customerScale` フィールドをフロントエンド向けに公開。
+- Frontend: `contracts.ts`・`gasAdapter.ts`・`gas/client.ts`・`gas/types.d.ts`・`content/ja/customers.ts`・`CustomerDetailPage.tsx`・`gasRunnerMock.ts` にスケールセレクター（ADR-144準拠の `Select` コンポーネント）と保存状態フィードバックを追加。
+- `npm run build:gas` 全 CI チェック（Gitleaks・Sensitive Content・frontend-check・gas-global-namespace）パス。
+- PR #587 squash SHA: `ce5d0b585cca84ac150e0104ebd42fafef1d5bda`。戻し方: `git revert ce5d0b585cca84ac150e0104ebd42fafef1d5bda`。
+
+### 残件（Phase A-2, A-3, V-C1〜C3）
+
+- **Phase A-2**: PR #583 の DEV デプロイ後、`runDiscordAutoSetup` を実行し、返却された Discord エラーコード（`discord_code=N`）を報告すること。
+- **Phase A-3**: A-2 で取得したエラーコードに基づき修正（Botロール階層不足・Missing Permissions 等の場合は Shingo による Discord サーバー側操作が必要な旨を報告し停止）。
+- **V-C1**: `runDiscordAutoSetup` を2回実行し Customer/Partner カテゴリ・ロールが重複しないこと。
+- **V-C2**: SMALL/LARGE 各スケールで招待発行し、参加後に正しいロールが付与されること。
+- **V-C3**: スケール未設定顧客への招待でチャンネル作成が続行し Logger に警告が出ること。
