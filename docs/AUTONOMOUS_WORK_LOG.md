@@ -2161,3 +2161,13 @@ PASS=true
 - 検証生出力: `getInboxConversationDetailForFrontend afterA=1 afterB=2 afterReturnA=2 afterSignal=4`、`PASS=true`。呼出回数の検証のみがcacheの有効な証拠である。
 - `LDI-00002 messages=75` はプレビュー用モックを75件で実装したうえで数えた結果であり、実データの件数不変を証明するものではない。実データの件数はDEV画面で目視確認する事項として残す。
 - 受信箱は現時点で読取専用のため afterSave 未検証。将来 書き込み機能を実装する際は、保存成功後に Inbox cache の `refresh()` を呼び、かつ書込側で inbox 信号を発行すること。両方を実装しないと他担当者に反映されない。
+
+---
+
+## 顧客マスタ Registry 未定義列 — 観測記録 (2026-08-25)
+
+- `runCoreSchemaConformanceAudit` で総不一致 1 件を検出。内容: 顧客マスタが実シート 20 列 / Registry 定義 19 列。
+- 実シート 11 列目「担当者ID」が `src/00_CoreSchemaRegistry.js` の CUSTOMERS.headers に未定義。
+- PR23（ヘッダー固定・frontend/docs のみ変更）とは無関係。
+- `git log -- src/00_CoreSchemaRegistry.js` 直近 10 件に CUSTOMERS を変更した PR は存在しない。別セッションがシートに先行追加し Registry 反映が未完と判断される。
+- 本セッションでは Registry 修正・シート操作ともに行わず、事実のみ記録する。対応は別途 PO 判断。
