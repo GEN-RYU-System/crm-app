@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CRM_SEARCH_ICON } from '../../app/icons';
 import { Badge, Button, ConversationWorkspace, EmptyState, PageHeader, Select, Skeleton, TabBar, Tabs, TextField, Textarea } from '../../components/ui';
 import { inboxCopy } from '../../content/ja';
-import type { InboxConversationDetailDto, InboxConversationDto, InboxPlatform, InboxRepository, InboxStatus } from '../../features/inbox/contracts';
+import type { InboxPlatform, InboxRepository, InboxStatus } from '../../features/inbox/contracts';
 import { INBOX_KARTE_TABS, INBOX_PLATFORM_OPTIONS, INBOX_STATUS_TABS } from './inboxConfig';
 import { useInboxConversationListCache } from './InboxConversationListCacheContext';
+import { useInboxConversationDetailCache } from './InboxConversationDetailCacheContext';
 import './InboxPreviewPage.css';
 
 export function InboxPreviewPage({ repository }: { repository: InboxRepository }) {
@@ -12,11 +13,9 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
   const [platform, setPlatform] = useState<InboxPlatform>('all');
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState('');
-  const [selectedDetail, setSelectedDetail] = useState<InboxConversationDetailDto | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [karteTab, setKarteTab] = useState('customer');
-  const detailCache = useRef<Map<string, InboxConversationDetailDto>>(new Map());
   const { conversations, error: listError, ensureLoaded } = useInboxConversationListCache();
+  const { detailsByConversationId, loadingByConversationId, ensureLoaded: ensureDetailLoaded } = useInboxConversationDetailCache();
 
   useEffect(() => {
     void ensureLoaded();
@@ -29,24 +28,8 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
 
   useEffect(() => {
     if (!selectedId) return;
-    const cached = detailCache.current.get(selectedId);
-    if (cached) { setSelectedDetail(cached); return; }
-    let active = true;
-    setDetailLoading(true);
-    void (async () => {
-      try {
-        const detail = await repository.getConversation(selectedId);
-        if (!active) return;
-        if (detail) {
-          detailCache.current.set(selectedId, detail);
-          setSelectedDetail(detail);
-        }
-      } finally {
-        if (active) setDetailLoading(false);
-      }
-    })();
-    return () => { active = false; };
-  }, [repository, selectedId]);
+    void ensureDetailLoaded(selectedId);
+  }, [ensureDetailLoaded, selectedId]);
 
   const filtered = useMemo(() => (conversations ?? []).filter((conv) =>
     (status === 'all' || conv.status === status) &&
@@ -55,7 +38,8 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
   ), [conversations, platform, query, status]);
 
   const effectiveConv = filtered.find((c) => c.id === selectedId) ?? filtered[0] ?? null;
-  const detail = effectiveConv?.id === selectedDetail?.conversation.id ? selectedDetail : null;
+  const detail = effectiveConv?.id === selectedId ? detailsByConversationId[selectedId]?.[0] ?? null : null;
+  const detailLoading = selectedId !== '' && (loadingByConversationId[selectedId] ?? false);
 
   const karteFields: [string, string][] = detail == null ? [] : karteTab === 'customer'
     ? [[inboxCopy.fields.customerName, detail.karte.customerName], [inboxCopy.fields.platform, detail.karte.platform]]
