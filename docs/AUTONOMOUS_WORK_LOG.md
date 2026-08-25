@@ -1956,3 +1956,21 @@ PASS=true
 
 - PR #545 — Discord Bot 招待後のGuild検出とサンプルダミー値の誤検知解消。squash merge SHA: `0c895719c7c847c7281da8eaca38cd30f4eb4e91`。
 - 戻し方: `git revert 0c895719c7c847c7281da8eaca38cd30f4eb4e91`。
+
+## PR22: サブメニュー金型整備 ＋ 期日バッジ表示条件修正 (2026-08-25)
+
+### 作業内容
+
+- 変更1: 入金済み受注の期日バッジ非表示（一覧・詳細）
+  - GAS getCoreOrdersForFrontend に PAYMENT_CONFIRMED_AT を追加、cache V2→V3
+  - paymentConfirmedAt が非空の場合、期日バッジ（期限超過/本日期日/期日1日前）を表示しない
+- 変更2: サブメニュー選択状態の明示
+  - active/hover テキスト色を --color-tab-text-active に統一
+- 変更3: スクロール分離
+  - position:sticky でサイドバーを固定、モバイルは position:static
+- 変更4: DESIGN_TOKENS.md にサブメニュー実装ルール節を追加
+
+### PR / revert
+
+- PR #549 — CI 4件通過・Draft。merge commit SHA は develop マージ後に記録予定。
+- 戻し方: `git revert <merge-commit-SHA>` ※マージ後に更新する
