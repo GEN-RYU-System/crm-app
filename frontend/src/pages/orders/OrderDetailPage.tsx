@@ -606,9 +606,18 @@ export function OrderDetailPage({ repository }: Props) {
             date={formatDate(detail.order.INVOICE_ISSUED_AT || detail.order.ORDER_DATE)}
             dueDate={detail.order.PAYMENT_DUE_AT ? formatDate(detail.order.PAYMENT_DUE_AT) : ''}
             registrationNumber={String(issuer[ISSUER_HEADER.REGISTRATION_NO] ?? '') || undefined}
-            billedTo={{ name: detail.order.customerName, lines: [] }}
+            billedTo={{
+              name: detail.order.billingName || detail.order.customerName,
+              lines: [
+                detail.order.billingAddressLine1,
+                detail.order.billingAddressLine2,
+                detail.order.billingAddressLine3,
+                [detail.order.billingCity, detail.order.billingState, detail.order.billingZip].filter(Boolean).join(' '),
+                detail.order.billingCountry,
+              ].filter(Boolean),
+            }}
             shipTo={{
-              name: detail.order.shippingDestinationName,
+              name: detail.order.shippingRecipientName || detail.order.shippingDestinationName,
               lines: [
                 detail.order.shippingAddressLine1,
                 detail.order.shippingAddressLine2,
@@ -619,7 +628,7 @@ export function OrderDetailPage({ repository }: Props) {
             }}
             lines={detail.lines.map((l, i) => ({
               no: i + 1,
-              name: l.PRODUCT_NAME,
+              name: l.ENGLISH_TITLE || l.PRODUCT_NAME,
               qty: toDocAmount(l.QUANTITY),
               unitPrice: toDocAmount(l.UNIT_PRICE),
               amount: toDocAmount(l.SUBTOTAL),
@@ -634,6 +643,7 @@ export function OrderDetailPage({ repository }: Props) {
             exchangeRate={detail.order.EXCHANGE_RATE ? String(detail.order.EXCHANGE_RATE) : undefined}
             notes={detail.order.SHIPPING_NOTE}
             paymentMethod={detail.order.PAYMENT_METHOD}
+            paymentEmail={String(issuer[ISSUER_HEADER.PAYMENT_EMAIL] ?? '') || undefined}
             paymentTermsNote={String(issuer[ISSUER_HEADER.PAYMENT_NOTE] ?? '') || undefined}
             thanksMessage={String(issuer[ISSUER_HEADER.CLOSING_MESSAGE] ?? '') || undefined}
           />

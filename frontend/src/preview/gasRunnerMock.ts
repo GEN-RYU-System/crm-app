@@ -179,8 +179,8 @@ const MOCK_AGGREGATES: Record<string, unknown> = {
 };
 
 const MOCK_PRODUCTS = [
-  { productId: 'PM-0001', productName: 'Preview Product Alpha', category: 'Category A' },
-  { productId: 'PM-0002', productName: 'Preview Product Beta',  category: 'Category B' },
+  { productId: 'PM-0001', productName: 'Preview Product Alpha (JP)', englishTitle: 'Preview Product Alpha', category: 'Category A' },
+  { productId: 'PM-0002', productName: 'Preview Product Beta (JP)',  englishTitle: 'Preview Product Beta',  category: 'Category B' },
 ];
 
 const MOCK_CONDITIONS: Record<string, { condition: string; quantity: number; unitPrice: number; unitWeight: number }[]> = {
@@ -214,7 +214,7 @@ const MOCK_SHARED_INVENTORY = Object.entries(MOCK_CONDITIONS).flatMap(([productI
     ipName: '',
     releaseDate: '',
     japaneseTitle: product.productName,
-    englishTitle: product.productName,
+    englishTitle: product.englishTitle,
     mark: '',
   }));
 });
@@ -361,7 +361,13 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
       succeed(MOCK_CONDITIONS[productId] ?? []);
     },
     createCoreOrderForFrontend(_s: string | null, _payload: unknown) {
-      succeed({ success: true, orderId: 'ORD-PREVIEW-0001' });
+      succeed({
+        success: true,
+        orderId: 'ORD-PREVIEW-0001',
+        invoiceNumber: 'INV-PREVIEW-0001',
+        paymentDueAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+        exchangeRate: 150,
+      });
     },
     updateCoreOrderForFrontend(_s: string | null, _orderId: string, _data: unknown) {
       succeed({ success: true, orderId: _orderId });
@@ -384,12 +390,16 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
           CUSTOMER_ID: 'CUST-00001',
           customerName: 'Preview Customer A',
           shippingDestinationName: 'Preview Destination',
+          shippingRecipientName: 'Preview Customer A',
           shippingAddressLine1: '123 Preview St', shippingAddressLine2: '', shippingAddressLine3: '',
           shippingCity: 'Preview City', shippingState: 'Preview State', shippingZip: '12345', shippingCountry: 'Japan',
           paymentDestinationName: 'Preview Payment',
+          billingName: 'Preview Billing Co.',
+          billingAddressLine1: '456 Billing Ave', billingAddressLine2: '', billingAddressLine3: '',
+          billingCity: 'Tokyo', billingState: 'Tokyo', billingZip: '100-0001', billingCountry: 'Japan',
           INVOICE_ISSUED_AT: '2026-01-15T00:00:00.000Z',
           PAYMENT_DUE_AT: '2026-02-15T00:00:00.000Z',
-          PAYMENT_METHOD: 'WISE',
+          PAYMENT_METHOD: 'Wise (E-mail transfer)',
           CURRENCY: 'USD',
           EXCHANGE_RATE: 150,
           LINE_TOTAL: 19000,
@@ -403,6 +413,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
           STATUS: previewOrderPaymentConfirmed ? SALES_ORDER_STATUS.sourcing : SALES_ORDER_STATUS.awaitingPayment,
           awaitingPaymentStatus: SALES_ORDER_STATUS.awaitingPayment,
           PAYMENT_CONFIRMED_AT: previewOrderPaymentConfirmed ? '2026-08-25T00:00:00.000Z' : '',
+          SHIPPING_NOTE: '',
           NOTE: '',
           TRANSACTION_NOTE: '',
           INTERNAL_NOTE: '',
@@ -412,8 +423,8 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
           UPDATED_AT: '2026-01-15T00:00:00.000Z',
         },
         lines: [
-          { ORDER_LINE_ID: 'OL-001', LINE_NUMBER: 1, CATEGORY: 'Card', PRODUCT_NAME: 'Pikachu ex SAR', STATUS: 'NM', SKU: '', QUANTITY: 2, UNIT_PRICE: 8000, SUBTOTAL: 16000, PRODUCT_ID: 'PM-001' },
-          { ORDER_LINE_ID: 'OL-002', LINE_NUMBER: 2, CATEGORY: 'Card', PRODUCT_NAME: 'Umbreon VMAX Alt', STATUS: 'LP', SKU: '', QUANTITY: 1, UNIT_PRICE: 3000, SUBTOTAL: 3000, PRODUCT_ID: 'PM-002' },
+          { ORDER_LINE_ID: 'OL-001', LINE_NUMBER: 1, CATEGORY: 'Card', PRODUCT_NAME: 'Pikachu ex SAR (JA)', ENGLISH_TITLE: 'Pikachu ex SAR', STATUS: 'NM', SKU: '', QUANTITY: 2, UNIT_PRICE: 8000, SUBTOTAL: 16000, PRODUCT_ID: 'PM-001' },
+          { ORDER_LINE_ID: 'OL-002', LINE_NUMBER: 2, CATEGORY: 'Card', PRODUCT_NAME: 'Eevee VMAX Alt (JA)', ENGLISH_TITLE: 'Eevee VMAX Alt',  STATUS: 'LP', SKU: '', QUANTITY: 1, UNIT_PRICE: 3000, SUBTOTAL: 3000,  PRODUCT_ID: 'PM-002' },
         ],
         purchases: [],
         shipments: [],

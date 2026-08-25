@@ -31,6 +31,9 @@ export type OrderCreatePayload = {
 export type OrderCreateResult = {
   success: boolean;
   orderId: string;
+  invoiceNumber: string;
+  paymentDueAt: string;
+  exchangeRate?: number;
 };
 
 export type OrderUpdatePayload = {
@@ -63,6 +66,7 @@ export type OrderUpdateResult = {
 export type InventoryProductOption = {
   productId: string;
   productName: string;
+  englishTitle: string;
   category: string;
 };
 

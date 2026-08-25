@@ -50,6 +50,7 @@ function getInventoryProductOptions(sessionId) {
   var prodH       = prodData[0].map(String);
   var prodPidIdx  = prodH.indexOf(prodSchema.headers['PRODUCT_ID']);
   var jaIdx       = prodH.indexOf(prodSchema.headers['JAPANESE_TITLE']);
+  var enIdx       = prodH.indexOf(prodSchema.headers['ENGLISH_TITLE']);
   var catIdx      = prodH.indexOf(prodSchema.headers['CATEGORY']);
   if (prodPidIdx < 0 || jaIdx < 0) {
     throw new Error('商品マスタ同期ヘッダー不足: product_id / Japanese Title');
@@ -61,8 +62,9 @@ function getInventoryProductOptions(sessionId) {
     var ppid = String(prodData[pi][prodPidIdx] != null ? prodData[pi][prodPidIdx] : '').trim();
     if (!ppid) continue;
     prodMap[ppid] = {
-      productName: String(prodData[pi][jaIdx]  != null ? prodData[pi][jaIdx]  : '').trim(),
-      category:    catIdx >= 0 ? String(prodData[pi][catIdx] != null ? prodData[pi][catIdx] : '').trim() : ''
+      productName:  String(prodData[pi][jaIdx]  != null ? prodData[pi][jaIdx]  : '').trim(),
+      englishTitle: enIdx >= 0 ? String(prodData[pi][enIdx] != null ? prodData[pi][enIdx] : '').trim() : '',
+      category:     catIdx >= 0 ? String(prodData[pi][catIdx] != null ? prodData[pi][catIdx] : '').trim() : ''
     };
   }
 
@@ -83,9 +85,10 @@ function getInventoryProductOptions(sessionId) {
     if (!pid2 || !hasCond[pid2]) continue;
     var p = prodMap[pid2];
     results.push({
-      productId:   pid2,
-      productName: p.productName,
-      category:    p.category
+      productId:    pid2,
+      productName:  p.productName,
+      englishTitle: p.englishTitle,
+      category:     p.category
     });
   }
 

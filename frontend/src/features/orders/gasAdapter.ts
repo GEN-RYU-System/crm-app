@@ -12,6 +12,7 @@ export const orderGasRepository: OrderRepository = {
     return products.map((p) => ({
       productId: p.productId,
       productName: p.productName,
+      englishTitle: p.englishTitle,
       category: p.category,
     }));
   },
