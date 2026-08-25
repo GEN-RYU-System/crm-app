@@ -2000,3 +2000,32 @@ PASS=true
 
 - PR #549 — CI 4件通過・Draft。merge commit SHA は develop マージ後に記録予定。
 - 戻し方: `git revert <merge-commit-SHA>` ※マージ後に更新する
+
+---
+
+## PR23: ヘッダー固定の金型化 (2026-08-25)
+
+### 作業内容
+
+- DataTable に `stickyHeader?: boolean` prop を追加（opt-in・既存ページへの影響なし）
+  - `overflow: clip`（`hidden` 不可・スクロールコンテナ化を避けるため）
+  - `overflow-x: clip` で横スクロール無効化
+  - `<thead>` を `position: sticky; top: var(--_sticky-band-h, 0px); z-index: 10`
+- SalesOrderListPage のみ適用（OrderListPage は対象外）
+  - PageHeader + PageToolbar を `sticky-band` div で包み `position: sticky; top:0; z-index:20`
+  - ResizeObserver で帯の高さを実測 → `--_sticky-band-h` CSS 変数として子孫に渡す
+  - サイドバーの `top` を `var(--_sticky-band-h, 0px)` に更新して帯の下から sticky
+- DESIGN_TOKENS.md に「一覧ページのスクロール固定」節を追加（3段構造・overflow:clip理由・stickyHeader prop）
+
+### 変更ファイル（5件）
+
+- `frontend/src/components/ui/DataTable/DataTable.tsx`
+- `frontend/src/components/ui/DataTable/DataTable.css`
+- `frontend/src/pages/sales-orders/SalesOrderListPage.tsx`
+- `frontend/src/pages/sales-orders/SalesOrderListPage.css`
+- `docs/DESIGN_TOKENS.md`
+
+### PR / revert
+
+- PR #560 — Draft。CI 結果待ち。
+- 戻し方: `git revert <merge-commit-SHA>` ※マージ後に更新する
