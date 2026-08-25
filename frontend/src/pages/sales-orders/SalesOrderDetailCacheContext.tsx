@@ -18,6 +18,6 @@ export function useSalesOrderDetailCache() {
     recordsByOrderId: itemsByKey,
     errorsByOrderId: errorByKey,
     ensureLoaded: useCallback((orderId: string) => ensureLoaded(orderId), [ensureLoaded]),
-    refresh: useCallback((orderId: string) => refresh(orderId), [refresh]),
+    refresh: useCallback((orderId?: string) => refresh(orderId), [refresh]),
   };
 }

@@ -18,8 +18,9 @@ let mockDiscordConnectionStatus = {
   connected: false,
   clientId: '',
 };
+let mockIssuerCompanyName = 'Preview Company Ltd.';
 let previewOrderPaymentConfirmed = false;
-type MockSyncDomain = 'leads' | 'quotes' | 'orders' | 'inventory' | 'staff' | 'customers';
+type MockSyncDomain = 'leads' | 'quotes' | 'orders' | 'inventory' | 'staff' | 'customers' | 'issuer' | 'discord' | 'inbox';
 
 type PreviewWindow = Window & {
   __gasMockCallCounts?: Readonly<Record<string, number>>;
@@ -243,6 +244,7 @@ const MOCK_LEAD_DETAILS: Record<string, Record<string, unknown>> = {
 const INITIAL_MOCK_SYNC_SIGNALS = {
   leads: null, quotes: null, orders: null,
   inventory: null, staff: null, customers: null,
+  issuer: null, discord: null, inbox: null,
 };
 let mockSyncSignals: Record<MockSyncDomain, string | null> = { ...INITIAL_MOCK_SYNC_SIGNALS };
 
@@ -433,7 +435,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
         success: true,
         issuer: {
           [ISSUER_HEADER.ISSUER_ID]:       'ISS-0001',
-          [ISSUER_HEADER.COMPANY_NAME]:    'Preview Company Ltd.',
+          [ISSUER_HEADER.COMPANY_NAME]:    mockIssuerCompanyName,
           [ISSUER_HEADER.CONTACT_NAME]:    'Preview Tanaka',
           [ISSUER_HEADER.ADDRESS_LINE1]:   '1-2-3 Preview Street',
           [ISSUER_HEADER.ADDRESS_LINE2]:   '',
@@ -453,7 +455,10 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
         },
       });
     },
-    updateCoreIssuerForFrontend(_s: string | null, _data: unknown) {
+    updateCoreIssuerForFrontend(_s: string | null, data: unknown) {
+      if (data && typeof data === 'object' && ISSUER_HEADER.COMPANY_NAME in data) {
+        mockIssuerCompanyName = String((data as Record<string, unknown>)[ISSUER_HEADER.COMPANY_NAME]);
+      }
       succeed({ success: true });
     },
 
@@ -506,6 +511,9 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
       if (customerId === 'CUS-0002') { succeed({ success: true, reused: true, channelId: 'preview-existing-channel', channelName: 'ticket-preview-customer-b-0002' }); return; }
       succeed({ success: true, reused: false, channelId: 'preview-new-channel', channelName: 'ticket-preview-customer-a-0001' });
     },
+    createDiscordInviteForCustomer(_s: string | null, customerId: string) {
+      succeed({ success: true, reused: customerId === 'CUS-0002', url: 'https://discord.gg/preview-customer-invite' });
+    },
     upsertCorePurchaseForFrontend(_s: string | null, _payload: unknown) {
       succeed({ success: true, purchaseId: 'PC-00001' });
     },
@@ -540,6 +548,7 @@ export function installGASMock(): void {
   configurePreviewProfile();
   mockSyncSignals = { ...INITIAL_MOCK_SYNC_SIGNALS };
   mockDiscordConnectionStatus = { isTokenSet: false, tokenMask: 'not-set', botName: '', botId: '', connected: false, clientId: '' };
+  mockIssuerCompanyName = 'Preview Company Ltd.';
   sessionStorage.setItem('crm_session_id', MOCK_SESSION_ID);
   const runner = buildChain(
     () => { /* default no-op success */ },

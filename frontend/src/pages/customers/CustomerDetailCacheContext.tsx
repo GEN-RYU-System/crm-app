@@ -13,12 +13,13 @@ export function CustomerDetailCacheProvider({ repository, children }: PropsWithC
 }
 
 export function useCustomerDetailCache() {
-  const { itemsByKey, errorByKey, loadingByKey, ensureLoaded, retry } = useCache();
+  const { itemsByKey, errorByKey, loadingByKey, ensureLoaded, refresh, retry } = useCache();
   return {
     recordsByCustomerId: itemsByKey,
     errorsByCustomerId: errorByKey,
     loadingByCustomerId: loadingByKey,
     ensureLoaded: useCallback((customerId: string) => ensureLoaded(customerId), [ensureLoaded]),
+    refresh: useCallback(() => refresh(), [refresh]),
     retry: useCallback((customerId: string) => retry(customerId), [retry]),
   };
 }

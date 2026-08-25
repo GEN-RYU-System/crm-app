@@ -4,11 +4,14 @@ import { canAccessNavigationItem, DATA_MANAGEMENT_ITEMS, hasNavigationPermission
 import { usePrefetch } from './app/usePrefetch';
 import { useSyncPolling, type DomainRefreshers } from './app/useSyncPolling';
 import { useLeadListCache } from './pages/leads/LeadListCacheContext';
+import { useLeadDetailCache } from './pages/leads/LeadDetailCacheContext';
 import { useLeadFormOptionsCache } from './pages/leads/LeadFormOptionsCacheContext';
 import { useCustomerListCache } from './pages/customers/CustomerListCacheContext';
+import { useCustomerDetailCache } from './pages/customers/CustomerDetailCacheContext';
 import { useInventoryListCache } from './pages/inventory/InventoryListCacheContext';
 import { useOrderListCache } from './pages/orders/OrderListCacheContext';
 import { useSalesOrderListCache } from './pages/sales-orders/SalesOrderListCacheContext';
+import { useSalesOrderDetailCache } from './pages/sales-orders/SalesOrderDetailCacheContext';
 import { useStaffListCache } from './pages/staff/StaffListCacheContext';
 import { useQuoteListCache } from './pages/quotes/QuoteListCacheContext';
 import { AppShell } from './components/shell';
@@ -29,6 +32,7 @@ import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { DashboardKpiCacheProvider, useDashboardKpiCache } from './pages/dashboard/DashboardKpiCacheContext';
 import { DataManagementPage } from './pages/data-management/DataManagementPage';
 import { IssuerMasterPage } from './pages/data-management/IssuerMasterPage';
+import { IssuerMasterCacheProvider, useIssuerMasterCache } from './pages/data-management/IssuerMasterCacheContext';
 import { CustomerListCacheProvider } from './pages/customers/CustomerListCacheContext';
 import { CustomerDetailCacheProvider } from './pages/customers/CustomerDetailCacheContext';
 import { LeadListCacheProvider } from './pages/leads/LeadListCacheContext';
@@ -93,24 +97,29 @@ function StaffPermissionLoading() {
  */
 function SyncPoller() {
   const { refreshAll: refreshLeads } = useLeadListCache();
+  const { refresh: refreshLeadDetails } = useLeadDetailCache();
   const { refresh: refreshLeadFormOptions } = useLeadFormOptionsCache();
   const { refresh: refreshCustomers } = useCustomerListCache();
+  const { refresh: refreshCustomerDetails } = useCustomerDetailCache();
   const { refresh: refreshInventory } = useInventoryListCache();
   const { refresh: refreshInventoryProductOptions } = useInventoryProductOptionsCache();
   const { refresh: refreshOrders } = useOrderListCache();
   const { refresh: refreshSalesOrders } = useSalesOrderListCache();
+  const { refresh: refreshSalesOrderDetails } = useSalesOrderDetailCache();
   const { refresh: refreshStaff } = useStaffListCache();
   const { refresh: refreshQuotes } = useQuoteListCache();
   const { refresh: refreshDashboardKpis } = useDashboardKpiCache();
+  const { refresh: refreshIssuer } = useIssuerMasterCache();
 
   const refreshers = useMemo<DomainRefreshers>(() => ({
-    leads:     () => Promise.all([refreshLeads(), refreshLeadFormOptions(), refreshDashboardKpis()]).then(() => undefined),
-    customers: () => refreshCustomers(),
+    leads:     () => Promise.all([refreshLeads(), refreshLeadDetails(), refreshLeadFormOptions(), refreshDashboardKpis()]).then(() => undefined),
+    customers: () => Promise.all([refreshCustomers(), refreshCustomerDetails()]).then(() => undefined),
     inventory: () => Promise.all([refreshInventory(), refreshInventoryProductOptions()]).then(() => undefined),
-    orders:    () => Promise.all([refreshOrders(), refreshSalesOrders()]).then(() => undefined),
+    orders:    () => Promise.all([refreshOrders(), refreshSalesOrders(), refreshSalesOrderDetails()]).then(() => undefined),
     staff:     () => refreshStaff(),
     quotes:    () => refreshQuotes(),
-  }), [refreshLeads, refreshLeadFormOptions, refreshDashboardKpis, refreshCustomers, refreshInventory, refreshInventoryProductOptions, refreshOrders, refreshSalesOrders, refreshStaff, refreshQuotes]);
+    issuer:    () => refreshIssuer(),
+  }), [refreshLeads, refreshLeadDetails, refreshLeadFormOptions, refreshDashboardKpis, refreshCustomers, refreshCustomerDetails, refreshInventory, refreshInventoryProductOptions, refreshOrders, refreshSalesOrders, refreshSalesOrderDetails, refreshStaff, refreshQuotes, refreshIssuer]);
 
   useSyncPolling(refreshers);
   return null;
@@ -236,7 +245,7 @@ function AppRouter() {
     ]
   };
 
-  return <HashRouter><LeadListCacheProvider><LeadDetailCacheProvider repository={leadGasRepository}><LeadFormOptionsCacheProvider repository={leadGasRepository}><CustomerListCacheProvider repository={customerGasRepository}><CustomerDetailCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><InventoryProductOptionsCacheProvider><CurrencyMasterCacheProvider><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><CustomerAggregateCacheProvider repository={customerGasRepository}><SalesOrderListCacheProvider><SalesOrderDetailCacheProvider><><SyncPoller /><AppShellWithPrefetch permissions={permissions} navigationGroups={navigationGroups}><Routes>
+  return <HashRouter><LeadListCacheProvider><LeadDetailCacheProvider repository={leadGasRepository}><LeadFormOptionsCacheProvider repository={leadGasRepository}><CustomerListCacheProvider repository={customerGasRepository}><CustomerDetailCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><InventoryProductOptionsCacheProvider><CurrencyMasterCacheProvider><IssuerMasterCacheProvider><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><CustomerAggregateCacheProvider repository={customerGasRepository}><SalesOrderListCacheProvider><SalesOrderDetailCacheProvider><><SyncPoller /><AppShellWithPrefetch permissions={permissions} navigationGroups={navigationGroups}><Routes>
     <Route path={NAVIGATION_BY_ID.dashboard.hash} element={<DashboardPage kpis={kpis} state={state} error={error} onRefresh={() => void refreshDashboardKpis()} />} />
     {DATA_MANAGEMENT_ITEMS
       .filter((item) => item.state !== 'planned' && hubIndexRoutes[item.id] != null)
@@ -256,5 +265,5 @@ function AppRouter() {
     <Route path={NAVIGATION_BY_ID.components.hash} element={<ComponentCatalogPage />} />
     <Route path="/change-password" element={<ChangePasswordPage />} />
     <Route path="*" element={<Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />} />
-  </Routes></AppShellWithPrefetch></></SalesOrderDetailCacheProvider></SalesOrderListCacheProvider></CustomerAggregateCacheProvider></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></CurrencyMasterCacheProvider></InventoryProductOptionsCacheProvider></InventoryListCacheProvider></CustomerDetailCacheProvider></CustomerListCacheProvider></LeadFormOptionsCacheProvider></LeadDetailCacheProvider></LeadListCacheProvider></HashRouter>;
+  </Routes></AppShellWithPrefetch></></SalesOrderDetailCacheProvider></SalesOrderListCacheProvider></CustomerAggregateCacheProvider></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></IssuerMasterCacheProvider></CurrencyMasterCacheProvider></InventoryProductOptionsCacheProvider></InventoryListCacheProvider></CustomerDetailCacheProvider></CustomerListCacheProvider></LeadFormOptionsCacheProvider></LeadDetailCacheProvider></LeadListCacheProvider></HashRouter>;
 }

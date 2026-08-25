@@ -1967,12 +1967,52 @@ PASS=true
 - `frontend/npm run build:gas` は成功。
 
 ---
+## Discord顧客別招待 Phase 1（PR #562）
+- `src/38_DiscordCustomerInviteApi.js` を追加し、顧客IDごとの未使用招待をScript PropertiesのJSONで冪等に発行する。招待URL・トークンはログに出さない。
+- `src/35_DiscordOAuthApi.js` のBot招待権限値を `805432433` に更新した。再招待は手動作業。
+- 顧客詳細へ招待URLの発行・表示・コピーを追加。`?preview`で発行表示とコピー操作を確認した。`frontend/npm run build:gas`、機密検査、CI全件は成功。
+- 担当者の個別許可は実装しない。顧客マスタが担当者を氏名でしか持たず、同名担当者を誤許可するリスクがあるため。Phase 3は顧客・Bot・オーナーのみを許可対象とする。
+- PR #562 squash SHA: `103c8404395230051c6c3608fb8f9b5948f936b0`。戻し方: `git revert 103c8404395230051c6c3608fb8f9b5948f936b0`。
+
+---
 
 ## 【同期登録】InventoryProductOptions → inventory
 
 - 合格条件: 信号なしで `getInventoryProductOptions` が増えず、inventory信号後に1回増えること。
 - `SyncPoller` の inventory refresher に `refreshInventoryProductOptions()` を登録した。
 - 検証結果は PR 作成前に `__gasMockCallCounts` の生出力で記録する。
+
+---
+
+## 【同期登録】LeadDetail → leads
+
+- 合格条件: 詳細を一度開いた後、信号なしでは `getLeadDetail` が増えず、leads信号後に既知の全キーを `refresh()` して1回増えること。
+- `LeadDetailCacheContext` は `createListCache.refresh()`（引数なし）を公開し、`SyncPoller` の leads refresher に登録した。
+- 検証結果は PR 作成前に `__gasMockCallCounts` の生出力で記録する。
+
+---
+
+## 【同期登録】CustomerDetail → customers
+
+- 合格条件: 詳細を一度開いた後、信号なしでは `getCoreCustomerForFrontend` が増えず、customers信号後に既知の全キーを `refresh()` して1回増えること。
+- `CustomerDetailCacheContext` は `createListCache.refresh()`（引数なし）を公開し、`SyncPoller` の customers refresher に登録した。
+- 検証結果は PR 作成前に `__gasMockCallCounts` の生出力で記録する。
+
+---
+
+## 【同期登録】SalesOrderDetail → orders
+
+- 合格条件: 詳細を一度開いた後、信号なしでは `getCoreOrderDetailForFrontend` が増えず、orders信号後に既知の全キーを `refresh()` して1回増えること。
+- `SalesOrderDetailCacheContext` の `refresh` を引数省略可能にし、`SyncPoller` の orders refresher に引数なしの全キーrefreshを登録した。入金確定など個別キーを渡す既存呼出しは維持する。
+- 検証結果は PR 作成前に `__gasMockCallCounts` の生出力で記録する。
+
+---
+
+## アプリ全体プリフェッチ標準化 Phase 1 — 同期登録漏れの是正
+
+- `CurrencyMasterCacheProvider`、`LeadFormOptionsCacheProvider`、`InventoryProductOptionsCacheProvider`、`LeadDetailCacheProvider`、`CustomerDetailCacheProvider`、`SalesOrderDetailCacheProvider` の6件に SyncPoller refreshers 登録漏れが存在した。
+- 原因は既存の design-system 検査が `*ListCacheProvider` 命名だけを文字列検索しており、上記Providerを対象外にしていたことである。
+- CurrencyMaster は対応する既存ドメイン信号がないため、第2段階で currencies 信号を新設してから対応する。残る5件は leads / inventory / customers / orders 信号へ登録した。
 
 ---
 
@@ -2003,6 +2043,60 @@ PASS=true
 
 ---
 
+## Discordチャンネルセットアップの連携状態同期（PR #553）
+
+- 原因: `frontend/src/pages/discord-integration/DiscordIntegrationPage.tsx` は、連携済み表示を `guildId` で更新していた一方、チャンネルセットアップボタンの有効化判定は `setupStatus.guildId` を参照していた。この2つの状態が連携確認後に同期されず、表示は連携済みでもボタンは無効のままになった。
+- 修正: 初期読込、`状態を確認する` による再取得、複数Guildからの選択保存の3経路で、`setupStatus.guildId` を連携済みGuild IDと同期するよう変更した。これにより `setupStatus.guildId` を条件とするセットアップボタンも有効化される。
+- 検証: `frontend/npm run build:gas`、差分基準の機密検査、PR CIの Frontend Check / GAS Global Namespace Check / Security Content Check はすべて成功。
+- PR #553 を squash merge。マージコミット SHA: `15b16faad625202785755d2fc6ff319896ada698`。
+- 戻し方: `git revert 15b16faad625202785755d2fc6ff319896ada698`。
+
+---
+
+## アプリ全体プリフェッチ標準化 Phase 1 — PR / revert 確定記録
+
+- PR #548 — LeadFormOptions を leads 信号で refresh。squash merge SHA: `9238c16c3677246f4122ad11cbe89ced225f4445`。戻し方: `git revert 9238c16c3677246f4122ad11cbe89ced225f4445`。Deploy to DEV / `getDeployedSha` 一致を確認。
+- PR #552 — InventoryProductOptions を inventory 信号で refresh。squash merge SHA: `89cf525f463a512a18536574b00d022058d39ea1`。戻し方: `git revert 89cf525f463a512a18536574b00d022058d39ea1`。Deploy to DEV / `getDeployedSha` 一致を確認。
+- PR #555 — LeadDetail の既知全キーを leads 信号で refresh。squash merge SHA: `13bf207b1d2409ae254b27a2a697201688588dae`。戻し方: `git revert 13bf207b1d2409ae254b27a2a697201688588dae`。Deploy to DEV / `getDeployedSha` 一致を確認。
+- PR #556 — CustomerDetail の既知全キーを customers 信号で refresh。squash merge SHA: `9a6beebfd21cea13a8fe1d024f795c786107de25`。戻し方: `git revert 9a6beebfd21cea13a8fe1d024f795c786107de25`。Deploy to DEV / `getDeployedSha` 一致を確認。
+- PR #557 — SalesOrderDetail の既知全キーを orders 信号で refresh。squash merge SHA: `26b8cf40e178e97434230cb464c0e6f33f2a73da`。戻し方: `git revert 26b8cf40e178e97434230cb464c0e6f33f2a73da`。Deploy to DEV / `getDeployedSha` 一致を確認。
+
+---
+
+## アプリ全体プリフェッチ標準化 Phase 2 — 通貨マスタの同期対象外判断
+
+- 通貨マスタは手動シート編集が唯一の更新経路のため同期信号の対象外とした。通貨を変更した場合は各利用者の画面再読み込みが必要。
+- 将来、通貨編集UIを実装する際は、同時に `currencies` 信号の追加が必要になる。
+
+---
+
+## アプリ全体プリフェッチ標準化 Phase 2-1 — issuer / discord / inbox 同期信号
+
+- `checkSyncSignals` の読出ドメインを既存6件から issuer / discord / inbox を加えた9件へ拡張した。
+- `writeSyncSignalDomains_` を追加し、既存の `withSheetWrite_` もこの共通処理を経由するようにした。既存の cache target 起点の発行契約は保持する。
+- issuer保存、Discordのトークン・Application ID・チャンネル・Guild・自動セットアップ保存、および Discord受信会話ログの一括保存成功後に、それぞれの信号を発行する。
+- 検証生出力: 既存6ドメインは各 `existing-*` 値を保持、新3ドメインは非null、全書込フック検査は `true`、`PASS=true`。
+- `frontend/npm run build:gas` と DEV `runCoreSchemaConformanceAudit()` は成功（総不一致0）。
+- Sensitive Content Check ではコメントの13桁ミリ秒タイムスタンプ例示が電話番号パターンに一致した。コード内で例示する際は非数値プレースホルダを使うこと。検査ルールは変更しない。
+
+---
+
+## アプリ全体プリフェッチ標準化 Phase 2-2 — Issuer settings cache
+
+- `IssuerMasterCacheContext`（`createListCache` + `SINGLE_KEY`）を追加し、Issuer settings ページの直接 `getCoreIssuer` 読込を置換した。
+- issuer信号では `SyncPoller` が cache を refresh し、保存成功後も同じ cache を refresh して最新のフォーム値へ更新する。
+- 検証生出力: `getCoreIssuerForFrontend initial=1 reopened=1 afterSignal=2 afterSave=3`、保存後の会社名は `Preview Company Updated`、`PASS=true`。
+- `frontend/npm run build:gas` は成功。
+
+---
+
+## Discord同期信号 — 状態読込からの発行を除外
+
+- `getDiscordOAuthStatus` は単一Guildを自動保存する読込経路でもある。ここでdiscord信号を発行すると、Discord settings cache の読込が信号を生成し、SyncPoller の再読込連鎖を起こし得る。
+- 信号発行は明示保存 `saveDiscordGuildId` のみとし、読込経路の発行を除外した。
+
+---
+
 ## PR23: ヘッダー固定の金型化 (2026-08-25)
 
 ### 作業内容
@@ -2027,5 +2121,5 @@ PASS=true
 
 ### PR / revert
 
-- PR #560 — Draft。CI 結果待ち。
+- PR #560 — CI 結果待ち。
 - 戻し方: `git revert <merge-commit-SHA>` ※マージ後に更新する

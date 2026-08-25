@@ -18,7 +18,7 @@
 // Discord Bot招待OAuthURL生成
 // ============================================================
 
-var DISCORD_OAUTH_PERMISSIONS = '805432400';
+var DISCORD_OAUTH_PERMISSIONS = '805432433';
 
 /**
  * Discord Bot招待用OAuthURLを生成する
@@ -123,6 +123,7 @@ function saveDiscordGuildId(sessionId, guildId) {
     var exists = guildsResult.guilds.some(function(guild) { return guild.id === String(guildId); });
     if (!exists) return { success: false, error: 'GUILD_NOT_FOUND' };
     PropertiesService.getScriptProperties().setProperty('DISCORD_GUILD_ID', String(guildId));
+    writeSyncSignalDomains_(['discord']);
     return { success: true };
   } catch (error) {
     Logger.log('saveDiscordGuildId error: ' + error.message);

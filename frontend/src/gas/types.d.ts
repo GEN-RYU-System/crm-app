@@ -54,6 +54,7 @@ interface GoogleScriptRun {
   runDiscordAutoSetup(sessionId: string | null): void;
   getDiscordSetupStatus(sessionId: string | null): void;
   createDiscordTicketForCustomer(sessionId: string | null, customerId: string): void;
+  createDiscordInviteForCustomer(sessionId: string | null, customerId: string): void;
   getInboxConversationsForFrontend(sessionId: string | null, forceRefresh: boolean): void;
   getInboxConversationDetailForFrontend(sessionId: string | null, leadId: string): void;
 }

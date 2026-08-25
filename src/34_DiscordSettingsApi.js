@@ -28,6 +28,7 @@ function saveDiscordBotToken(sessionId, token) {
     }
 
     PropertiesService.getScriptProperties().setProperty('DISCORD_BOT_TOKEN', token.trim());
+    writeSyncSignalDomains_(['discord']);
     Logger.log('saveDiscordBotToken: Botトークンを保存しました');
 
     return { success: true };
@@ -53,6 +54,7 @@ function saveDiscordClientId(sessionId, clientId) {
     }
 
     PropertiesService.getScriptProperties().setProperty('DISCORD_CLIENT_ID', clientId.trim());
+    writeSyncSignalDomains_(['discord']);
     Logger.log('saveDiscordClientId: Discord Application IDを保存しました');
     return { success: true };
   } catch (error) {
@@ -152,6 +154,7 @@ function saveDiscordChannels(sessionId, channelIds) {
       'DISCORD_CHANNEL_IDS',
       JSON.stringify(channelIds)
     );
+    writeSyncSignalDomains_(['discord']);
     Logger.log('saveDiscordChannels: ' + channelIds.length + '件のチャンネルIDを保存しました');
 
     return { success: true };

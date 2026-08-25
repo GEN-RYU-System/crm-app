@@ -128,5 +128,6 @@ function updateCoreIssuerForFrontend(sessionId, issuerData) {
   });
 
   SpreadsheetApp.flush();
+  writeSyncSignalDomains_(['issuer']);
   return { success: true };
 }

@@ -453,6 +453,7 @@ function syncDiscordToConversationLog(channelId, leadId = null, maxMessages = 10
     // 会話ログシートに一括保存（ヘッダー駆動の一括保存関数を使用）
     if (logObjects.length > 0) {
       const savedCount = bulkSaveConversationLogs(logObjects, logSheet);
+      if (savedCount > 0) writeSyncSignalDomains_(['inbox']);
       Logger.log('会話ログに保存しました: ' + savedCount + ' 件');
     }
 
