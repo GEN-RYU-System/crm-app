@@ -2146,3 +2146,11 @@ PASS=true
 - `InboxConversationListCacheContext`（`createListCache` + `SINGLE_KEY`）を追加し、一覧の画面ローカル読込を置換した。inbox権限で `usePrefetch` に登録し、inbox信号では `SyncPoller` が公開済みの `refresh()` を呼ぶ。
 - 検証生出力: `getInboxConversationsForFrontend initial=1 reopened=1 afterSignal=2`、`inboxRows initial=25 afterSignal=25`、`PASS=true`。
 - 受信箱は現時点で読取専用のため afterSave 未検証。将来 書き込み機能を実装する際は、保存成功後に Inbox cache の `refresh()` を呼び、かつ書込側で inbox 信号を発行すること。両方を実装しないと他担当者に反映されない。
+
+---
+
+## アプリ全体プリフェッチ標準化 Phase 2-5 — Inbox conversation detail keyed cache
+
+- `InboxConversationDetailCacheContext`（`createListCache`、会話ID key）を追加し、ページ内の `useRef` Map と直接詳細取得を置換した。inbox信号では一覧とともに、取得済みの全会話キーを `refresh()` する。
+- 検証生出力: `getInboxConversationDetailForFrontend afterA=1 afterB=2 afterReturnA=2 afterSignal=4`、`LDI-00002 messages=75`、`PASS=true`。
+- 受信箱は現時点で読取専用のため afterSave 未検証。将来 書き込み機能を実装する際は、保存成功後に Inbox cache の `refresh()` を呼び、かつ書込側で inbox 信号を発行すること。両方を実装しないと他担当者に反映されない。
