@@ -1115,8 +1115,8 @@ git revert <マージコミットSHA>
 
 - 日時: 2026-08-24
 - PR: #（マージ後に記録）
-- マージコミットSHA: （マージ後に記録）
-- 戻し方: git revert <マージコミットSHA>
+- マージコミットSHA: 特定できず（PR番号が未記録のため）
+- 戻し方: 特定できず。PR番号が判明次第、追記すること
 
 ### 根本原因
 
@@ -1163,11 +1163,12 @@ git revert <マージコミットSHA>
 ## 【18】PR13: 受注管理詳細ページ（読み取り専用）
 
 - PR番号: #406
-- マージコミットSHA: （マージ後に記録）
+- マージコミットSHA: be222b9fbfbe5884408cc3abaad96b0b2657e82a
+  （書換え前SHA: d32192c51fa3e9df63c67c2228c54a46ab58e635 ※2026-08-24の履歴書換え2回により無効）
 - 対象: /sales-orders/:orderId
 - 新規ファイル: SalesOrderDetailPage.tsx, SalesOrderDetailPage.css
 - GAS: getCoreOrderDetailForFrontend を 28_CoreOrderReadApi.js に追加
-- 戻し方: git revert <マージコミットSHA>
+- 戻し方: git revert be222b9fbfbe5884408cc3abaad96b0b2657e82a
 - dryRun（2026-08-23）: 175件中変更あり0件。実害なし。
 - PO実機確認: OD-00175（登録なし確認）+ OD-00164（実データ確認）が必要
 
@@ -1207,8 +1208,9 @@ git revert <マージコミットSHA>
 - 日時: 2026-08-24
 - PR: #448
 - ブランチコミット SHA: ba69a4e5ce5fc888a2b666dda544189044eb5c9c
-- マージコミット SHA: （マージ後に記録）
-- 戻し方: git revert <マージコミットSHA>
+- マージコミット SHA: dbbf1b2aa66cd749ec95304b81c45854f300ff25
+  （書換え前SHA: 16727d81766135ab5cc112acc28c11fca3e67e86 ※2026-08-24の履歴書換え2回により無効）
+- 戻し方: git revert dbbf1b2aa66cd749ec95304b81c45854f300ff25
 
 ### 変更内容
 
@@ -1264,8 +1266,9 @@ git revert <マージコミットSHA>
 - 日時: 2026-08-24
 - ブランチ: release/discord-oauth-invite
 - PR: #459
-- マージコミット SHA: （マージ後に記録）
-- 戻し方: git revert <マージコミットSHA>
+- マージコミット SHA: 22cecdde7da027b56f9a70ff58f17540e0e889ca
+  （書換え前SHA: f78b00b7dd588f13823418a973c99219cd39a6c2 ※2026-08-24の履歴書換え2回により無効）
+- 戻し方: git revert 22cecdde7da027b56f9a70ff58f17540e0e889ca
 
 ### 変更ファイル一覧と目的
 
@@ -1799,8 +1802,9 @@ Playwrightを実行できるブラウザ接続を用意し、既存 `?preview` �
 - マージコミット SHA: 953338be7edf8d66df8aa139e72ee255a67105f8
   戻し方: git revert 953338be7edf8d66df8aa139e72ee255a67105f8
   （書換え前SHA: b7fb2bd00f73ef0e02637f24049eeeec68aeb335 ※2026-08-24の履歴書換え2回により無効）
-- マージコミット SHA: ba69a4e5ce5fc888a2b666dda544189044eb5c9c
-  戻し方: git revert ba69a4e5ce5fc888a2b666dda544189044eb5c9c
+- ブランチコミットSHA: ba69a4e5ce5fc888a2b666dda544189044eb5c9c（参考。revertには使用不可）
+  マージコミットSHA: dbbf1b2aa66cd749ec95304b81c45854f300ff25
+  戻し方: git revert dbbf1b2aa66cd749ec95304b81c45854f300ff25
   （書換え前SHA: fd6a22c86d15055bae64dcd873d461e38c353a25 ※2026-08-24の履歴書換え2回により無効）
 - マージコミット SHA: 6358ba06c95faad54e23cba6c970446125968b23
   戻し方: git revert 6358ba06c95faad54e23cba6c970446125968b23
