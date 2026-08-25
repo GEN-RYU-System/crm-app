@@ -2069,3 +2069,4 @@ PASS=true
 - issuer保存、Discordのトークン・Application ID・チャンネル・Guild・自動セットアップ保存、および Discord受信会話ログの一括保存成功後に、それぞれの信号を発行する。
 - 検証生出力: 既存6ドメインは各 `existing-*` 値を保持、新3ドメインは非null、全書込フック検査は `true`、`PASS=true`。
 - `frontend/npm run build:gas` と DEV `runCoreSchemaConformanceAudit()` は成功（総不一致0）。
+- Sensitive Content Check ではコメントの13桁ミリ秒タイムスタンプ例示が電話番号パターンに一致した。コード内で例示する際は非数値プレースホルダを使うこと。検査ルールは変更しない。
