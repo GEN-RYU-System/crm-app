@@ -1744,6 +1744,11 @@ Playwrightを実行できるブラウザ接続を用意し、既存 `?preview` �
 
 - マージ後のPRを `git revert <mergeCommit SHA>` で戻す。
 
+## 【Discord連携設定カード統合・Application ID入力】マージ記録
+
+- PR #534 mergeCommit: `96a911664d4f274a4e6752afa65277aa5d819310`。
+- 統合カード、管理者限定のApplication ID保存、固定文字列機密検査、preview操作検証を完了した。
+
 ### 読み替え済みSHA
 
 - マージコミット SHA: f5740e95a9ee868fe7d8d67251a2ef894643a873
