@@ -1979,4 +1979,4 @@ PASS=true
 ### コミット / PR
 
 - コミット SHA: `afce86c`（squash前のローカルSHA）
-- PR: 作成後に記録
+- PR: #569 (https://github.com/GEN-RYU-System/crm-app/pull/569)
