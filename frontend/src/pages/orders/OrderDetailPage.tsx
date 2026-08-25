@@ -7,7 +7,7 @@ import { ordersCopy, PAYMENT_STATUS_BADGE_VARIANT } from '../../content/ja';
 import { ISSUER_HEADER } from '../../content/ja/issuer';
 import { InvoiceDocument } from '../../features/documents/InvoiceDocument';
 import type { OrderRepository, OrderUpdatePayload } from '../../features/orders/contracts';
-import { getCoreIssuer, getCoreOrderDetail, type IssuerRecord, type OrderDetailRecord } from '../../gas/client';
+import { getCoreIssuer, type IssuerRecord } from '../../gas/client';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
 import { useInventoryProductOptionsCache } from '../inventory/InventoryProductOptionsCacheContext';
 import { formatAmountWithJpy } from '../shared/amountFormat';
@@ -20,6 +20,7 @@ import {
   type OrderLineEditorValues,
 } from './orderEditorConfig';
 import { useOrderListCache } from './OrderListCacheContext';
+import { useSalesOrderDetailCache } from '../sales-orders/SalesOrderDetailCacheContext';
 import './OrderDetailPage.css';
 
 function formatNumber(value: unknown): string {
@@ -122,19 +123,17 @@ export function OrderDetailPage({ repository }: Props) {
   const { products: inventoryProducts, loading: productsLoading, ensureLoaded: ensureInventoryProductOptions } = useInventoryProductOptionsCache();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const [detail, setDetail] = useState<OrderDetailRecord | null | undefined>(undefined);
-  const [detailError, setDetailError] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
   const [issuer, setIssuer] = useState<IssuerRecord | null>(null);
+  const { recordsByOrderId, errorsByOrderId, ensureLoaded: ensureDetailLoaded, refresh: refreshDetail } = useSalesOrderDetailCache();
+  const detailRecords = orderId ? recordsByOrderId[orderId] : undefined;
+  const detail = detailRecords === undefined ? undefined : detailRecords[0] ?? null;
+  const detailError = orderId ? errorsByOrderId[orderId] !== undefined : false;
 
   useEffect(() => {
     if (!orderId) return;
-    setDetail(undefined);
-    setDetailError(false);
-    void getCoreOrderDetail(orderId)
-      .then((d) => setDetail(d))
-      .catch(() => { setDetail(null); setDetailError(true); });
-  }, [orderId]);
+    void ensureDetailLoaded(orderId);
+  }, [ensureDetailLoaded, orderId]);
 
   useEffect(() => {
     void getCoreIssuer().then((data) => setIssuer(data)).catch(() => {});
@@ -176,6 +175,7 @@ export function OrderDetailPage({ repository }: Props) {
     try {
       const payload: OrderUpdatePayload = { ...shippingValues };
       await repository.updateOrder(orderId, payload);
+      await refreshDetail(orderId);
       setEditPanel('none');
     } catch (cause) {
       setSaveError(
@@ -206,6 +206,7 @@ export function OrderDetailPage({ repository }: Props) {
         })),
       };
       await repository.updateOrder(orderId, payload);
+      await refreshDetail(orderId);
       setEditPanel('none');
     } catch (cause) {
       setSaveError(
