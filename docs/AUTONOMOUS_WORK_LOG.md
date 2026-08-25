@@ -1679,3 +1679,8 @@ $ CRM_MAX_WORKTREES=1 .githooks/pre-push </dev/null
 ERROR: 18 worktrees; limit is 1. Run scripts/janitor.sh first.
 exit=1
 ```
+## 2026-08-25 清掃員PR-2 検証
+
+- dry-runは当初、マージ済み2件をREMOVEとして事前検出した。本実行前にdevelop/main常時保護、ディレクトリmtime 7日保護、`JANITOR_ONLY_PATH`限定隔離モードを追加した。
+- 隔離実測: `JANITOR_ONLY_PATH=/private/tmp/crm-app-janitor-probe JANITOR_PROTECT_DAYS=0 scripts/janitor.sh` はprobeだけをREMOVEし、`phase5-inbox-cache`と`pr20b-worklog`はworktree listに残存した。
+- launchd実測: install、list、uninstall、再install、listを完了。ラベル`com.crm-app.janitor`は登録済み。
