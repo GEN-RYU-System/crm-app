@@ -726,14 +726,13 @@ export type SyncSignals = {
   staff: string | null;
   customers: string | null;
   issuer: string | null;
-  discord: string | null;
   inbox: string | null;
 };
 
 export function checkSyncSignals(): Promise<SyncSignals> {
   const runner = window.google?.script?.run;
   if (!runner) {
-    return Promise.resolve({ leads: null, quotes: null, orders: null, inventory: null, staff: null, customers: null, issuer: null, discord: null, inbox: null });
+    return Promise.resolve({ leads: null, quotes: null, orders: null, inventory: null, staff: null, customers: null, issuer: null, inbox: null });
   }
   return new Promise((resolve, reject) => {
     runner
@@ -907,184 +906,6 @@ export function updateCoreIssuer(issuerData: IssuerRecord): Promise<void> {
       })
       .withFailureHandler((error) => reject(toError(error)))
       .updateCoreIssuerForFrontend(getStoredSessionId(), issuerData as unknown);
-  });
-}
-
-// ============================================================
-// Discord integration settings
-// ============================================================
-
-export type DiscordSaveResult = { success: boolean; error?: string };
-export type DiscordConnectionStatus = {
-  isTokenSet: boolean;
-  tokenMask: string;
-  botName: string;
-  botId: string;
-  connected: boolean;
-  clientId: string;
-};
-export type DiscordChannelsResult = { channels: string[] };
-
-export function saveDiscordBotToken(token: string): Promise<DiscordSaveResult> {
-  const runner = window.google?.script?.run;
-  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
-  return new Promise((resolve, reject) => {
-    runner
-      .withSuccessHandler((value) => resolve(value as DiscordSaveResult))
-      .withFailureHandler((error) => reject(toError(error)))
-      .saveDiscordBotToken(getStoredSessionId(), token);
-  });
-}
-
-export function saveDiscordClientId(clientId: string): Promise<DiscordSaveResult> {
-  const runner = window.google?.script?.run;
-  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
-  return new Promise((resolve, reject) => {
-    runner
-      .withSuccessHandler((value) => resolve(value as DiscordSaveResult))
-      .withFailureHandler((error) => reject(toError(error)))
-      .saveDiscordClientId(getStoredSessionId(), clientId);
-  });
-}
-
-export function getDiscordConnectionStatus(): Promise<DiscordConnectionStatus> {
-  const runner = window.google?.script?.run;
-  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
-  return new Promise((resolve, reject) => {
-    runner
-      .withSuccessHandler((value) => resolve(value as DiscordConnectionStatus))
-      .withFailureHandler((error) => reject(toError(error)))
-      .getDiscordConnectionStatusForFrontend(getStoredSessionId());
-  });
-}
-
-export function saveDiscordChannels(channelIds: string[]): Promise<DiscordSaveResult> {
-  const runner = window.google?.script?.run;
-  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
-  return new Promise((resolve, reject) => {
-    runner
-      .withSuccessHandler((value) => resolve(value as DiscordSaveResult))
-      .withFailureHandler((error) => reject(toError(error)))
-      .saveDiscordChannels(getStoredSessionId(), channelIds as unknown);
-  });
-}
-
-export function getDiscordChannels(): Promise<DiscordChannelsResult> {
-  const runner = window.google?.script?.run;
-  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
-  return new Promise((resolve, reject) => {
-    runner
-      .withSuccessHandler((value) => {
-        const v = value as { channels?: unknown } | null;
-        if (!v || !Array.isArray(v.channels)) {
-          resolve({ channels: [] });
-          return;
-        }
-        resolve({ channels: v.channels as string[] });
-      })
-      .withFailureHandler((error) => reject(toError(error)))
-      .getDiscordChannelsForFrontend(getStoredSessionId());
-  });
-}
-
-// ============================================================
-// Discord OAuth Bot invite flow
-// ============================================================
-
-export type DiscordOAuthUrlResult = { success: boolean; url?: string; error?: string };
-export type DiscordOAuthStatusResult = {
-  status: 'linked' | 'unlinked' | 'multiple' | 'error';
-  guildId: string | null;
-  guilds: readonly { id: string; name: string }[];
-  error?: string;
-};
-
-export function generateDiscordOAuthUrl(): Promise<DiscordOAuthUrlResult> {
-  const runner = window.google?.script?.run;
-  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
-  return new Promise((resolve, reject) => {
-    runner
-      .withSuccessHandler((value) => resolve(value as DiscordOAuthUrlResult))
-      .withFailureHandler((error) => reject(toError(error)))
-      .generateDiscordOAuthUrl(getStoredSessionId());
-  });
-}
-
-export function getDiscordOAuthStatus(): Promise<DiscordOAuthStatusResult> {
-  const runner = window.google?.script?.run;
-  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
-  return new Promise((resolve, reject) => {
-    runner
-      .withSuccessHandler((value) => resolve(value as DiscordOAuthStatusResult))
-      .withFailureHandler((error) => reject(toError(error)))
-      .getDiscordOAuthStatus(getStoredSessionId());
-  });
-}
-
-export function saveDiscordGuildId(guildId: string): Promise<DiscordSaveResult> {
-  const runner = window.google?.script?.run;
-  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
-  return new Promise((resolve, reject) => {
-    runner
-      .withSuccessHandler((value) => resolve(value as DiscordSaveResult))
-      .withFailureHandler((error) => reject(toError(error)))
-      .saveDiscordGuildId(getStoredSessionId(), guildId);
-  });
-}
-
-// ============================================================
-// Discord channel setup (auto-setup)
-// ============================================================
-
-export type DiscordAutoSetupResult = {
-  success: boolean;
-  categoryId?: string;
-  ticketChannelId?: string;
-  error?: string;
-};
-
-export type DiscordSetupStatus = {
-  guildId: string | null;
-  categoryId: string | null;
-  ticketChannelId: string | null;
-};
-export type DiscordTicketResult = { success: boolean; reused?: boolean; channelId?: string; channelName?: string; error?: string; };
-export function createDiscordTicketForCustomer(customerId: string): Promise<DiscordTicketResult> { const runner = window.google?.script?.run; if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly)); return new Promise((resolve, reject) => { runner.withSuccessHandler((value) => resolve(value as DiscordTicketResult)).withFailureHandler((error) => reject(toError(error))).createDiscordTicketForCustomer(getStoredSessionId(), customerId); }); }
-export type DiscordCustomerInviteResult = { success: boolean; reused?: boolean; url?: string; error?: string; };
-export function createDiscordInviteForCustomer(customerId: string): Promise<DiscordCustomerInviteResult> { const runner = window.google?.script?.run; if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly)); return new Promise((resolve, reject) => { runner.withSuccessHandler((value) => resolve(value as DiscordCustomerInviteResult)).withFailureHandler((error) => reject(toError(error))).createDiscordInviteForCustomer(getStoredSessionId(), customerId); }); }
-
-export type DiscordCustomerScaleOption = { key: string; label: string };
-export function getDiscordCustomerScaleOptions(): Promise<readonly DiscordCustomerScaleOption[]> { const runner = window.google?.script?.run; if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly)); return new Promise((resolve, reject) => { runner.withSuccessHandler((value) => resolve(value as readonly DiscordCustomerScaleOption[])).withFailureHandler((error) => reject(toError(error))).getDiscordCustomerScaleOptionsForFrontend(getStoredSessionId()); }); }
-
-export type DiscordScaleUpdateResult = { success: boolean; error?: string };
-export function updateDiscordCustomerScale(customerId: string, scaleKey: string): Promise<DiscordScaleUpdateResult> { const runner = window.google?.script?.run; if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly)); return new Promise((resolve, reject) => { runner.withSuccessHandler((value) => resolve(value as DiscordScaleUpdateResult)).withFailureHandler((error) => reject(toError(error))).updateDiscordCustomerScale(getStoredSessionId(), customerId, scaleKey); }); }
-
-export function runDiscordAutoSetup(): Promise<DiscordAutoSetupResult> {
-  const runner = window.google?.script?.run;
-  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
-  return new Promise((resolve, reject) => {
-    runner
-      .withSuccessHandler((value) => resolve(value as DiscordAutoSetupResult))
-      .withFailureHandler((error) => reject(toError(error)))
-      .runDiscordAutoSetup(getStoredSessionId());
-  });
-}
-
-export function getDiscordSetupStatus(): Promise<DiscordSetupStatus> {
-  const runner = window.google?.script?.run;
-  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
-  return new Promise((resolve, reject) => {
-    runner
-      .withSuccessHandler((value) => {
-        const v = value as { guildId?: unknown; categoryId?: unknown; ticketChannelId?: unknown } | null;
-        resolve({
-          guildId: (v?.guildId as string | null) ?? null,
-          categoryId: (v?.categoryId as string | null) ?? null,
-          ticketChannelId: (v?.ticketChannelId as string | null) ?? null,
-        });
-      })
-      .withFailureHandler((error) => reject(toError(error)))
-      .getDiscordSetupStatus(getStoredSessionId());
   });
 }
 

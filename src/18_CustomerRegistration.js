@@ -462,11 +462,6 @@ function registerCustomerFromForm(payload) {
         '',                      // 連絡ツール
         '',                      // FedEx ID
         '',                      // 発送時メモ
-        '',                      // Discord参加
-        '',                      // Discord チャンネルID
-        '',                      // Discord ユーザーID
-        '',                      // Discrod 請求書 webhook
-        '',                      // Discrod 発送通知 webhook
         ''                       // Shippment webhook
       ];
       // 電話番号・国番号列はテキスト書式で格納（数字がSheetsで数値変換されるのを防ぐ）

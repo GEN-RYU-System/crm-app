@@ -21,7 +21,7 @@ function getCoreStaffForFrontend(sessionId, forceRefresh) {
 
   const spreadsheet = getSpreadsheet();
   const staff = coreCustomerFrontendReadTable(spreadsheet, 'STAFF', [
-    'STAFF_ID', 'LAST_NAME_JA', 'FIRST_NAME_JA', 'ROLE', 'STATUS', 'EMAIL', 'DISCORD_ID'
+    'STAFF_ID', 'LAST_NAME_JA', 'FIRST_NAME_JA', 'ROLE', 'STATUS', 'EMAIL'
   ]);
 
   var rows = staff.rows
@@ -37,8 +37,7 @@ function getCoreStaffForFrontend(sessionId, forceRefresh) {
         ].filter(Boolean).join(' '),
         role:       coreCustomerFrontendValue(row[staff.indexes.ROLE]),
         status:     coreCustomerFrontendValue(row[staff.indexes.STATUS]),
-        email:      coreCustomerFrontendValue(row[staff.indexes.EMAIL]),
-        discordId:  coreCustomerFrontendValue(row[staff.indexes.DISCORD_ID])
+        email:      coreCustomerFrontendValue(row[staff.indexes.EMAIL])
       };
     });
 
@@ -57,7 +56,7 @@ function getCoreStaffMemberForFrontend(sessionId, staffId) {
   const staff = coreCustomerFrontendReadTable(spreadsheet, 'STAFF', [
     'STAFF_ID', 'LAST_NAME_JA', 'FIRST_NAME_JA',
     'LAST_NAME_KANA', 'FIRST_NAME_KANA', 'LAST_NAME_EN', 'FIRST_NAME_EN',
-    'EMAIL', 'DISCORD_ID', 'ROLE', 'STATUS'
+    'EMAIL', 'ROLE', 'STATUS'
   ]);
 
   const staffRow = staff.rows.find(function(row) {
@@ -78,7 +77,6 @@ function getCoreStaffMemberForFrontend(sessionId, staffId) {
     lastNameEn:    coreCustomerFrontendValue(staffRow[staff.indexes.LAST_NAME_EN]),
     firstNameEn:   coreCustomerFrontendValue(staffRow[staff.indexes.FIRST_NAME_EN]),
     email:         coreCustomerFrontendValue(staffRow[staff.indexes.EMAIL]),
-    discordId:     coreCustomerFrontendValue(staffRow[staff.indexes.DISCORD_ID]),
     role:          coreCustomerFrontendValue(staffRow[staff.indexes.ROLE]),
     status:        coreCustomerFrontendValue(staffRow[staff.indexes.STATUS])
   };

@@ -7,7 +7,7 @@
  *   LAST_NAME_JA / FIRST_NAME_JA
  *   LAST_NAME_KANA / FIRST_NAME_KANA
  *   LAST_NAME_EN / FIRST_NAME_EN
- *   EMAIL / DISCORD_ID / ROLE / STATUS
+ *   EMAIL / ROLE / STATUS
  *
  * 書き込まない項目:
  *   FULL_NAME_JA  — 姓名分割列を正とするため
@@ -23,7 +23,6 @@ const CORE_STAFF_WRITE_EDITABLE_FIELDS = {
   lastNameEn:    'LAST_NAME_EN',
   firstNameEn:   'FIRST_NAME_EN',
   email:         'EMAIL',
-  discordId:     'DISCORD_ID',
   role:          'ROLE',
   status:        'STATUS'
 };

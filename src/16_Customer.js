@@ -99,19 +99,6 @@ function createCustomer(customerData) {
     customerSheet.appendRow(customerRow);
     Logger.log('顧客マスタシートに追記完了');
 
-    // 4. Discord通知（オプション、設定されている場合のみ）
-    try {
-      sendDiscordNotification({
-        customerId: customerId,
-        billingName: customerData.billingName,
-        billingEmail: customerData.billingEmail,
-        billingCountry: customerData.billingCountry || '',
-        source: customerData.source || '手動'
-      });
-    } catch (e) {
-      Logger.log('Discord通知をスキップ: ' + e.message);
-    }
-
     Logger.log('顧客作成完了: ' + customerId);
 
     // 5. 作成したCustomerIDを返却
@@ -574,53 +561,6 @@ function generateCustomerId(sheet) {
   // 次の番号を生成
   const nextNum = maxNum + 1;
   return 'CT-' + String(nextNum).padStart(5, '0');
-}
-
-/**
- * Discord通知（オプション）
- * @param {Object} customerData - 顧客データ
- */
-function sendDiscordNotification(customerData) {
-  try {
-    // PropertiesServiceからDISCORD_CRM_WEBHOOKを取得
-    const webhookUrl = PropertiesService.getScriptProperties().getProperty('DISCORD_CRM_WEBHOOK');
-
-    // 設定されていない場合は通知をスキップ
-    if (!webhookUrl) {
-      Logger.log('DISCORD_CRM_WEBHOOKが設定されていないため、Discord通知をスキップします');
-      return;
-    }
-
-    // 通知内容を作成
-    const payload = {
-      content: null,
-      embeds: [{
-        title: '✅ 新規顧客登録',
-        description: '顧客ID: ' + customerData.customerId + '\n顧客名: ' + customerData.billingName,
-        color: 5814783, // 青色
-        fields: [
-          { name: 'メール', value: customerData.billingEmail, inline: true },
-          { name: '国', value: customerData.billingCountry || '-', inline: true },
-          { name: '登録経路', value: customerData.source, inline: true }
-        ],
-        timestamp: new Date().toISOString()
-      }]
-    };
-
-    // Discord Webhookに送信
-    const options = {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify(payload)
-    };
-
-    UrlFetchApp.fetch(webhookUrl, options);
-    Logger.log('Discord通知送信完了');
-
-  } catch (error) {
-    // Discord通知はオプションなので、エラーでも処理を続行
-    Logger.log('Discord通知エラー（処理は続行）: ' + error.message);
-  }
 }
 
 // ============================================================

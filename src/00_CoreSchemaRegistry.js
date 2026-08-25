@@ -13,13 +13,7 @@ const CORE_SCHEMA_V1_TABLES = {
   },
   CUSTOMERS: {
     sheetName: '顧客マスタ', canonicalName: '顧客マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
-    headers: createCoreSchemaV1Headers([['CUSTOMER_ID', '顧客ID'], ['SOURCE_LEAD_ID', '源流リードID'], ['CUSTOMER_NAME', '顧客名'], ['COUNTRY', '国'], ['EMAIL', 'メール'], ['PHONE', '電話番号'], ['COUNTRY_CODE', '国番号'], ['FIRST_TRANSACTION_DATE', '初回取引日'], ['REGISTERED_AT', '登録日'], ['SALES_ASSIGNEE_NAME', '営業担当者'], ['CONTACT_TOOL', '連絡ツール'], ['FEDEX_ID', 'FedEx ID'], ['SHIPPING_NOTE', '発送時メモ'], ['DISCORD_JOINED', 'Discord参加'], ['DISCORD_CHANNEL_ID', 'Discord チャンネルID'], ['DISCORD_USER_ID', 'Discord ユーザーID'], ['DISCORD_INVOICE_WEBHOOK', 'Discrod 請求書 webhook'], ['DISCORD_SHIPMENT_WEBHOOK', 'Discrod 発送通知 webhook'], ['SHIPMENT_WEBHOOK', 'Shippment webhook'], ['CUSTOMER_SCALE', '顧客規模']]),
-    values: {
-      CUSTOMER_SCALE: {
-        SMALL: '小口',
-        LARGE: '大口'
-      }
-    },
+    headers: createCoreSchemaV1Headers([['CUSTOMER_ID', '顧客ID'], ['SOURCE_LEAD_ID', '源流リードID'], ['CUSTOMER_NAME', '顧客名'], ['COUNTRY', '国'], ['EMAIL', 'メール'], ['PHONE', '電話番号'], ['COUNTRY_CODE', '国番号'], ['FIRST_TRANSACTION_DATE', '初回取引日'], ['REGISTERED_AT', '登録日'], ['SALES_ASSIGNEE_NAME', '営業担当者'], ['CONTACT_TOOL', '連絡ツール'], ['FEDEX_ID', 'FedEx ID'], ['SHIPPING_NOTE', '発送時メモ'], ['SHIPMENT_WEBHOOK', 'Shippment webhook']]),
     primaryKey: 'CUSTOMER_ID',
     referenceIds: [{ headerKey: 'SOURCE_LEAD_ID', targetTableKey: 'LEADS' }]
   },
@@ -170,7 +164,7 @@ const CORE_SCHEMA_V1_TABLES = {
   },
   STAFF: {
     sheetName: '担当者マスタ', canonicalName: '担当者マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
-    headers: createCoreSchemaV1Headers([['STAFF_ID', '担当者ID'], ['LAST_NAME_JA', '苗字（日本語）'], ['FIRST_NAME_JA', '名前（日本語）'], ['FULL_NAME_JA', '氏名（日本語）'], ['LAST_NAME_KANA', '苗字ふりがな'], ['FIRST_NAME_KANA', '名前ふりがな'], ['LAST_NAME_EN', '苗字（英語）'], ['FIRST_NAME_EN', '名前（英語）'], ['EMAIL', 'メール'], ['DISCORD_ID', 'Discord ID'], ['ROLE', '役割'], ['STATUS', 'ステータス'], ['SOURCE_CANDIDATE_ID', '元候補者ID'], ['DARK_MODE', 'ダークモード'], ['CHAT_MENU_VISIBLE', 'チャットメニュー表示'], ['SALES_MENU_VISIBLE', '営業メニュー表示'], ['SETTINGS_MENU_VISIBLE', '設定メニュー表示'], ['ADMIN_MENU_VISIBLE', '管理者メニュー表示'], ['BUDDY_MAINTENANCE_MENU_VISIBLE', 'Buddyメンテナンスメニュー表示'], ['SIDEBAR_VISIBLE', 'サイドバー表示'], ['PASSWORD_HASH', 'パスワードハッシュ'], ['PASSWORD_SALT', 'パスワードソルト'], ['LOGIN_FAIL_COUNT', '連続失敗回数'], ['LOCKED_UNTIL', 'ロック解除時刻']]), primaryKey: 'STAFF_ID', referenceIds: [],
+    headers: createCoreSchemaV1Headers([['STAFF_ID', '担当者ID'], ['LAST_NAME_JA', '苗字（日本語）'], ['FIRST_NAME_JA', '名前（日本語）'], ['FULL_NAME_JA', '氏名（日本語）'], ['LAST_NAME_KANA', '苗字ふりがな'], ['FIRST_NAME_KANA', '名前ふりがな'], ['LAST_NAME_EN', '苗字（英語）'], ['FIRST_NAME_EN', '名前（英語）'], ['EMAIL', 'メール'], ['ROLE', '役割'], ['STATUS', 'ステータス'], ['SOURCE_CANDIDATE_ID', '元候補者ID'], ['DARK_MODE', 'ダークモード'], ['CHAT_MENU_VISIBLE', 'チャットメニュー表示'], ['SALES_MENU_VISIBLE', '営業メニュー表示'], ['SETTINGS_MENU_VISIBLE', '設定メニュー表示'], ['ADMIN_MENU_VISIBLE', '管理者メニュー表示'], ['BUDDY_MAINTENANCE_MENU_VISIBLE', 'Buddyメンテナンスメニュー表示'], ['SIDEBAR_VISIBLE', 'サイドバー表示'], ['PASSWORD_HASH', 'パスワードハッシュ'], ['PASSWORD_SALT', 'パスワードソルト'], ['LOGIN_FAIL_COUNT', '連続失敗回数'], ['LOCKED_UNTIL', 'ロック解除時刻']]), primaryKey: 'STAFF_ID', referenceIds: [],
     unmanagedReferenceIds: [{ headerKey: 'SOURCE_CANDIDATE_ID', reason: 'PARENT_TABLE_OUTSIDE_CORE_SCHEMA_V1' }],
     values: {
       ROLE: {
