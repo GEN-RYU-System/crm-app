@@ -217,6 +217,9 @@ const PREFETCH_EXEMPT_PROVIDERS = new Set([
   // OrderListCacheProvider: SalesOrderListCacheWithOrderSeed の onOrdersLoaded コールバック経由で
   // getCoreOrdersBatchForFrontend の結果を seed() するため usePrefetch への直接登録は不要
   'OrderListCacheProvider',
+  // InventoryListCacheProvider: InventoryProductOptionsWithInventorySeed の onInventoryLoaded コールバック経由で
+  // getInventoryBatchForFrontend の結果を seed() するため usePrefetch への直接登録は不要
+  'InventoryListCacheProvider',
 ]);
 const SYNC_POLLER_EXEMPT_PROVIDERS = new Set([
   // CustomerAggregateCacheProvider: SyncPoller には接続せず usePrefetch のみで管理
@@ -233,6 +236,11 @@ const SYNC_POLLER_EXEMPT_PROVIDERS = new Set([
   // isRegisteredInRefreshers の regex が SalesOrderListCacheWithOrderSeed の { seed } を
   // マッチしてしまい誤検知が発生する。実際の登録は SyncPoller の orders ラムダ内を参照。
   'OrderListCacheProvider',
+  // InventoryListCacheProvider: SyncPoller の refreshers に refreshInventory として実登録済み。
+  // ただし InventoryProductOptionsWithInventorySeed も useInventoryListCache を呼ぶため、
+  // isRegisteredInRefreshers の regex が先に { seed } をマッチしてしまい誤検知が発生する。
+  // 実際の登録は SyncPoller の inventory ラムダ内を参照。
+  'InventoryListCacheProvider',
 ]);
 const prefetchSource = await readFile(resolve(srcDir, 'app/usePrefetch.ts'), 'utf8');
 const allCacheProviderNames = [...new Set([...appSource.matchAll(/<(\w+CacheProvider)[\s>/]/g)].map((m) => m[1]))];

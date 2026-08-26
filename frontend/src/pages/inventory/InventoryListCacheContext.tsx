@@ -10,10 +10,11 @@ export function InventoryListCacheProvider({ repository, children }: PropsWithCh
 }
 
 export function useInventoryListCache() {
-  const { itemsByKey, errorByKey, loadingByKey, refreshing, ensureLoaded, refresh, retry } = useCache();
+  const { itemsByKey, errorByKey, loadingByKey, refreshing, ensureLoaded, refresh, retry, seed } = useCache();
   const wrappedEnsureLoaded = useCallback(() => ensureLoaded(), [ensureLoaded]);
   const wrappedRefresh = useCallback(() => refresh(), [refresh]);
   const wrappedRetry = useCallback(() => retry(), [retry]);
+  const wrappedSeed = useCallback((items: readonly SharedInventoryDto[]) => seed(SINGLE_KEY, items), [seed]);
   return {
     items: itemsByKey[SINGLE_KEY],
     error: errorByKey[SINGLE_KEY],
@@ -22,6 +23,7 @@ export function useInventoryListCache() {
     ensureLoaded: wrappedEnsureLoaded,
     refresh: wrappedRefresh,
     retry: wrappedRetry,
+    seed: wrappedSeed,
   };
 }
 

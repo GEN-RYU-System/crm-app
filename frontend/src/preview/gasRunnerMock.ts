@@ -303,6 +303,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     logout(_sessionId: string) { succeed(null); },
     changeOwnPasswordForFrontend(_s: string | null, _c: string, _n: string) { succeed({ success: true }); },
 
+    getInventoryBatchForFrontend(_s: string | null, _force: boolean) { succeed({ inventory: MOCK_SHARED_INVENTORY, productOptions: MOCK_PRODUCTS }); },
     getSharedInventoryForFrontend(_s: string | null, _force: boolean) { succeed(MOCK_SHARED_INVENTORY); },
     getCoreQuotesForFrontend(_s: string | null, _force: boolean) { succeed(MOCK_QUOTES); },
     getCoreQuoteForFrontend(_s: string | null, _quoteId: string) { succeed(null); },

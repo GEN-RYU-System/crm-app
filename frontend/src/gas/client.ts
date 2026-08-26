@@ -706,6 +706,11 @@ export function updateCoreQuote(quoteId: string, payload: QuotePayload, isDraft:
   });
 }
 
+export type InventoryBatchRecord = {
+  inventory: readonly SharedInventoryItem[];
+  productOptions: readonly InventoryProductOption[];
+};
+
 export type InventoryProductOption = {
   productId: string;
   productName: string;
@@ -718,6 +723,24 @@ export type InventoryConditionOption = {
   unitPrice: number;
   unitWeight: number;
 };
+
+export function getInventoryBatch(forceRefresh?: boolean): Promise<InventoryBatchRecord> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        const v = value as { inventory: unknown; productOptions: unknown };
+        if (!v || !Array.isArray(v.inventory) || !Array.isArray(v.productOptions)) {
+          reject(new Error(errorCopy.communication));
+          return;
+        }
+        resolve({ inventory: v.inventory as SharedInventoryItem[], productOptions: v.productOptions as InventoryProductOption[] });
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getInventoryBatchForFrontend(getStoredSessionId(), forceRefresh === true);
+  });
+}
 
 export function getInventoryProductOptions(): Promise<readonly InventoryProductOption[]> {
   const runner = window.google?.script?.run;
