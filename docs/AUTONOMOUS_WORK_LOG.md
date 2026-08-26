@@ -3082,3 +3082,75 @@ clasp run applyOrderStatusRecalculation --params '[999]'
 ### 戻し方
 
 `git revert bed4f899bd4018a41a1b5a4fc542af1104541a64`
+
+---
+
+## 【demoSeed】DEV スプレッドシート デモデータ投入 — PR #655
+
+**実施日時**: 2026-08-26T07:02:02Z（merge）/ 07:02:54Z（DEV deploy完了）  
+**mergeCommit**: d85f1cb6afd2809067c486adbe16435caac87fb6
+
+### 背景
+
+デモ直前に DEV スプレッドシート（DEV_CRM_APP_MIGRATED_20260824）の
+実顧客データを架空デモデータに差し替える必要が生じた。
+
+### 変更内容
+
+**`src/99_DevDemoSeed20260826.js`** を新規追加:
+
+- `prepareCustomerMasterBackup_20260826()`:
+  `顧客マスタ` を同一SS内で複製し `顧客マスタ_pre_demo_20260826`（gid: 320934189）を作成。
+  複製後に nonEmptyDataRowCount / columnCount / headers の一致を確認。
+  `Copy of 顧客マスタ` との 顧客ID 差分も返す。
+
+- `seedDevDemoData_20260826()`:
+  8タブに架空デモデータを投入（clearContent() 使用、deleteRows() 禁止）。
+  STATUS / PAYMENT_STATUS は `calculateOrderStatus()` / `calculatePaymentStatus()` で算出。
+
+### 変更前 nonEmptyDataRowCount
+
+| タブ | before |
+|------|-------:|
+| リード管理 | 382 |
+| オーダー管理 | 187 |
+| オーダー明細 | 589 |
+| 発送 | 149 |
+| 仕入れ | 497 |
+| 顧客マスタ | 52 |
+| 配送先マスタ | 53 |
+| 支払先マスタ | 51 |
+
+### clasp 実行結果
+
+```
+clasp run prepareCustomerMasterBackup_20260826
+→ checks.passed: true, backupCreated: { name: '顧客マスタ_pre_demo_20260826', gid: 320934189 }
+
+clasp run seedDevDemoData_20260826
+→ success: true, resultType: DEMO_SEED_COMPLETED_20260826
+  counts: leads=10, customers=6, paymentDests=6, shippingDests=6,
+          orders=12, orderLines=25, purchases=12, shipments=8
+```
+
+### 検証結果（auditDevSpreadsheetStructure による post-seed 確認）
+
+| タブ | after | spec | 合否 |
+|------|------:|-----:|------|
+| リード管理 | 10 | 10 | ✓ |
+| 顧客マスタ | 6 | 6 | ✓ |
+| 支払先マスタ | 6 | 6 | ✓ |
+| 配送先マスタ | 6 | 6 | ✓ |
+| オーダー管理 | 12 | 12 | ✓ |
+| オーダー明細 | 25 | 25 | ✓ |
+| 仕入れ | 12 | 12 | ✓ |
+| 発送 | 8 | 8 | ✓ |
+
+### 戻し方
+
+**データ復元（デモ終了後）:**
+- 顧客マスタ: `顧客マスタ_pre_demo_20260826`（gid: 320934189）から復元
+- 他 7 タブ: 各 `Copy of <タブ名>` から復元
+
+**コード削除:**
+`git revert d85f1cb6afd2809067c486adbe16435caac87fb6`
