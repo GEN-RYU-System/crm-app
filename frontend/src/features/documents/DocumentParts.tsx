@@ -238,18 +238,26 @@ type DocTotalsProps = {
   isQuote?: boolean;
 };
 
+function isBlankOrZero(v: string | undefined): boolean {
+  return !v || v === '0';
+}
+
 export function DocTotals({ subtotal, shippingFee, duty, otherFee, discount, total, isQuote }: DocTotalsProps) {
   return (
     <div className="doc-totals">
       <dl><dt>SUBTOTAL</dt><dd className="doc-num">{subtotal}</dd></dl>
-      <dl><dt>SHIPPING</dt><dd className="doc-num">{shippingFee}</dd></dl>
-      {!isQuote && duty !== undefined && (
+      {!isBlankOrZero(shippingFee) && (
+        <dl><dt>SHIPPING</dt><dd className="doc-num">{shippingFee}</dd></dl>
+      )}
+      {!isQuote && !isBlankOrZero(duty) && (
         <dl><dt>CUSTOMS DUTY</dt><dd className="doc-num">{duty}</dd></dl>
       )}
-      {!isQuote && otherFee !== undefined && (
+      {!isQuote && !isBlankOrZero(otherFee) && (
         <dl><dt>OTHER FEES</dt><dd className="doc-num">{otherFee}</dd></dl>
       )}
-      <dl><dt>DISCOUNT</dt><dd className="doc-num">{discount}</dd></dl>
+      {!isBlankOrZero(discount) && (
+        <dl><dt>DISCOUNT</dt><dd className="doc-num">{discount}</dd></dl>
+      )}
       <dl className="doc-totals-grand"><dt>TOTAL</dt><dd className="doc-num">{total}</dd></dl>
     </div>
   );

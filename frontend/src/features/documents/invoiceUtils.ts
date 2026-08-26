@@ -70,7 +70,7 @@ export function buildOrderInvoiceProps(
       ].filter(Boolean) as string[],
     },
     shipTo: {
-      name: detail.order.shippingDestinationName,
+      name: detail.order.shippingRecipientName || detail.order.customerName,
       lines: [
         detail.order.shippingAddressLine1,
         detail.order.shippingAddressLine2,
