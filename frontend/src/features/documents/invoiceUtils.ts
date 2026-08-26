@@ -29,10 +29,29 @@ export function buildIssuerInfo(rec: IssuerRecord): IssuerInfo {
   };
 }
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  WISE: 'Wise',
+  PAYPAL: 'PayPal',
+};
+
+const PAYMENT_METHOD_DESCRIPTIONS: Record<string, string> = {
+  WISE: 'E-mail transfer',
+  PAYPAL: 'E-mail transfer',
+};
+
+function buildPaymentMethodLine(method: string, email: string): string | undefined {
+  if (!method) return undefined;
+  const label = PAYMENT_METHOD_LABELS[method] ?? method;
+  const desc = PAYMENT_METHOD_DESCRIPTIONS[method];
+  const prefix = desc ? `Method: ${label} (${desc})` : `Method: ${label}`;
+  return email ? `${prefix} · Please send the payment to: ${email}` : prefix;
+}
+
 export function buildOrderInvoiceProps(
   detail: OrderDetailRecord,
   issuer: IssuerRecord,
 ): InvoiceDocumentProps {
+  const paymentEmail = String(issuer[ISSUER_HEADER.PAYMENT_EMAIL] ?? '');
   return {
     issuer: buildIssuerInfo(issuer),
     invoiceNumber: detail.order.INVOICE_NUMBER,
@@ -47,7 +66,8 @@ export function buildOrderInvoiceProps(
         detail.order.billingAddressLine3,
         [detail.order.billingCity, detail.order.billingState, detail.order.billingZip].filter(Boolean).join(' '),
         detail.order.billingCountry,
-      ].filter(Boolean),
+        detail.order.billingTaxId ? `TAX ID: ${detail.order.billingTaxId}` : null,
+      ].filter(Boolean) as string[],
     },
     shipTo: {
       name: detail.order.shippingDestinationName,
@@ -74,8 +94,8 @@ export function buildOrderInvoiceProps(
     total: toDocAmount(detail.order.INVOICE_TOTAL),
     currency: detail.order.CURRENCY,
     exchangeRate: detail.order.EXCHANGE_RATE ? String(detail.order.EXCHANGE_RATE) : undefined,
-    notes: detail.order.SHIPPING_NOTE,
-    paymentMethod: detail.order.PAYMENT_METHOD,
+    notes: detail.order.SHIPPING_NOTE || undefined,
+    paymentMethod: buildPaymentMethodLine(detail.order.PAYMENT_METHOD, paymentEmail),
     paymentTermsNote: String(issuer[ISSUER_HEADER.PAYMENT_NOTE] ?? '') || undefined,
     thanksMessage: String(issuer[ISSUER_HEADER.CLOSING_MESSAGE] ?? '') || undefined,
   };

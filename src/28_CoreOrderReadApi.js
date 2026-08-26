@@ -176,7 +176,7 @@ function getCoreOrderDetailForFrontend(sessionId, orderId) {
   var paymentDests = coreCustomerFrontendReadTable(ss, 'PAYMENT_DESTINATIONS', [
     'PAYMENT_DESTINATION_ID', 'DISPLAY_NAME', 'BILLING_NAME',
     'ADDRESS_LINE_1', 'ADDRESS_LINE_2', 'ADDRESS_LINE_3',
-    'CITY', 'STATE', 'ZIP', 'COUNTRY'
+    'CITY', 'STATE', 'ZIP', 'COUNTRY', 'TAX_ID'
   ]);
   var paymentDestById = paymentDests.rows.reduce(function(map, row) {
     var id = coreCustomerFrontendValue(row[paymentDests.indexes.PAYMENT_DESTINATION_ID]);
@@ -190,7 +190,8 @@ function getCoreOrderDetailForFrontend(sessionId, orderId) {
       city:         coreCustomerFrontendValue(row[paymentDests.indexes.CITY]),
       state:        coreCustomerFrontendValue(row[paymentDests.indexes.STATE]),
       zip:          coreCustomerFrontendValue(row[paymentDests.indexes.ZIP]),
-      country:      coreCustomerFrontendValue(row[paymentDests.indexes.COUNTRY])
+      country:      coreCustomerFrontendValue(row[paymentDests.indexes.COUNTRY]),
+      taxId:        coreCustomerFrontendValue(row[paymentDests.indexes.TAX_ID])
     };
     return map;
   }, {});
@@ -203,6 +204,7 @@ function getCoreOrderDetailForFrontend(sessionId, orderId) {
   orderRow.billingState            = paymentDest.state        || '';
   orderRow.billingZip              = paymentDest.zip          || '';
   orderRow.billingCountry          = paymentDest.country      || '';
+  orderRow.billingTaxId            = paymentDest.taxId        || '';
 
   // ── ORDER_LINES ─────────────────────────────────────────────────────────────
   var lineFields = [

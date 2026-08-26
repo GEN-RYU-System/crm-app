@@ -457,6 +457,7 @@ export type OrderDetailRecord = {
     billingState: string;
     billingZip: string;
     billingCountry: string;
+    billingTaxId: string;
     INVOICE_ISSUED_AT: string;
     PAYMENT_DUE_AT: string;
     PAYMENT_METHOD: string;
