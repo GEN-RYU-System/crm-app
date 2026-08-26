@@ -102,3 +102,113 @@ git push origin develop
 
 ### 確認用 DEV URL
 （DEV 配布後に確認）
+
+---
+
+## PR 4: SA トークン対応・CSS 修正・スタイル対応表
+
+- **PR 番号**: #646
+- **URL**: https://github.com/GEN-RYU-System/crm-app/pull/646
+- **マージコミット SHA**: cd8318bffbbaade7ae8b2dab9d2d38a61d47c982
+
+### 変更ファイル一覧
+
+| ファイル | 行数 | 内容 |
+|---------|-----:|------|
+| `docs/DASHBOARD_PREVIEW_STYLE_MAP.md` | 160 | SA↔CRM トークン対応表（新規） |
+| `docs/DASHBOARD_PREVIEW_LOG.md` | 104 | PR2 節に「8セクション中6のみ実装」注記追加 |
+| `frontend/docs/design-system/foundation.md` | 70 | ダッシュボードプレビュー専用トークン節追記（58–70行） |
+| `frontend/src/styles/palette.css` | 46 | SA 対応トークン 5 件追加 |
+| `frontend/src/styles/tokens.css` | 50 | SA 対応トークン 5 件追加（palette alias） |
+| `frontend/src/pages/dashboardPreview/DashboardPreviewPage.css` | 90 | 下記 CSS 修正 |
+
+### 追加トークン（palette.css → tokens.css）
+
+| tokens.css トークン | 値 | 対応 SA トークン |
+|--------------------|----|----------------|
+| `--radius-card` | `8px` | `--radius-lg` |
+| `--shadow-sm` | `0 1px 3px rgba(0,0,0,0.08)` | `--shadow-sm` |
+| `--font-2xl` | `24px` | `--font-2xl` |
+| `--color-warning-bg-subtle` | `rgba(183,121,31,0.06)` | `--warning-bg-subtle` |
+| `--color-success-bg-subtle` | `rgba(72,187,120,0.05)` | `--success-bg-subtle` |
+
+### CSS 修正（DashboardPreviewPage.css）
+
+| 箇所 | 修正前 | 修正後 |
+|------|-------|-------|
+| `:83` `.dp-funnel-card--bottleneck` の border-color | `var(--color-danger)` | `var(--color-warning)` |
+| `:83` `.dp-funnel-card--bottleneck` の background | `var(--color-danger-subtle)` | `var(--color-warning-subtle)` |
+| `:55` `.dp-kpi-tile` の border-radius | `var(--radius-surface)`（18px） | `var(--radius-card)`（8px） |
+| `:55` `.dp-kpi-tile` の box-shadow | なし | `var(--shadow-sm)` |
+| `:57` `.dp-kpi-tile__value` の font-size | `var(--font-stat)`（34px） | `var(--font-2xl)`（24px） |
+| `:17` `.dp-achievement-bar` の height | `6px` | `4px` |
+
+ボトルネック色バグの根拠: SA `FunnelSection.css` が bottleneck に `--warning` / `--warning-bg-subtle` を使用している。PR2 実装時に `--color-danger` を誤設定した。
+
+### Deploy to DEV
+- **結果**: success（PR #646 マージ直後の deploy-dev.yml run）
+
+### 戻し方
+```bash
+git revert -m 1 cd8318bffbbaade7ae8b2dab9d2d38a61d47c982
+git push origin develop
+```
+
+---
+
+## PR 5: 残り2セクション（AI推薦・週次アドバイザー）
+
+- **PR 番号**: #647
+- **URL**: https://github.com/GEN-RYU-System/crm-app/pull/647
+- **マージコミット SHA**: 455aefc735d93e486b2d5c2ba0303c85f500e985
+
+### 変更ファイル一覧
+
+| ファイル | 行数 | 内容 |
+|---------|-----:|------|
+| `frontend/src/content/ja/dashboardPreview.ts` | 146 | `fakeAiRecommendations`・`fakeWeeklyAdvisor` 追加 |
+| `frontend/src/features/dashboardPreview/contracts.ts` | 125 | AI推薦・週次アドバイザー型追加 |
+| `frontend/src/features/dashboardPreview/previewAdapter.ts` | 197 | `getAiRecommendations`・`getWeeklyAdvisor` 追加 |
+| `frontend/src/pages/dashboardPreview/DashboardPreviewPage.css` | 112 | `dp-prospect-*`・`dp-advisor-*` スタイル追加 |
+| `frontend/src/pages/dashboardPreview/DashboardPreviewPage.tsx` | 425 | 2セクション追加 |
+
+### 追加セクションと移植元
+
+| セクション | 移植元 Sales Anchor |
+|-----------|-------------------|
+| AI推薦（優先見込み客） | `PriorityProspectsSection.tsx:114–484`（表示部のみ。Composer・GAS 接続は含まない） |
+| 週次アドバイザー | `WeeklyAdvisorSection.tsx:114–456`（同上） |
+
+### 仮データの分離方針
+
+- 日本語文言（顧客名・ステージ名・理由・アドバイス文章）→ `content/ja/dashboardPreview.ts`
+- 数値（スコア: 94/87/81/76/71）→ `previewAdapter.ts:163`（`scores` 配列）
+- カテゴリ文字列（`'action'`・`'alert'`・`'insight'`）→ `content/ja/dashboardPreview.ts` の `fakeWeeklyAdvisor.cards[n].category`
+
+### ReactPoc.html サイズ
+- **変更前**: 503,440 B（PR2後）
+- **変更後**: 509,150 B（gzip 130.94 KB）
+- **増加量**: +5,710 B
+
+### Deploy to DEV
+- **結果**: success（PR #647 マージ直後の deploy-dev.yml run）
+
+### 戻し方
+```bash
+git revert -m 1 455aefc735d93e486b2d5c2ba0303c85f500e985
+git push origin develop
+```
+
+---
+
+## 複数 PR を戻す順番
+
+新しい順（PR5 → PR4 → PR2 → PR1）に revert する。
+
+```bash
+git revert -m 1 455aefc735d93e486b2d5c2ba0303c85f500e985  # PR5
+git revert -m 1 cd8318bffbbaade7ae8b2dab9d2d38a61d47c982  # PR4
+git revert -m 1 bb3991f0a7f28d007e844178d0b06032f1a3844b  # PR2
+git revert -m 1 354ae6c3ac82851128ce29594dee76d07a51308b  # PR1
+git push origin develop
+```
