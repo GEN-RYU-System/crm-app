@@ -2824,3 +2824,40 @@ clasp run runCoreSchemaConformanceAudit
 
 `git revert <mergeCommit>` で `autoFillStaffId` が旧 Discord ID 書き込みに戻る。
 リード側 `担当者ID` の再修復は `repairDevLeadAssigneeIds()` を使う。
+
+---
+
+## PR30: 受注管理詳細ページのタブ化とUI改善（2026-08-26）
+
+**PR**: GEN-RYU-System/crm-app#624（base=develop, Draft）
+**ブランチ**: `release/detail-tabs`
+**コミット**: `db32e49`
+
+### 変更内容
+
+| 変更 | 詳細 |
+|------|------|
+| タブ分割 | 詳細ページを「請求情報 / 仕入れ / 発送」3タブに分割 |
+| 入金確認ボタン | disabled 表示 → `canConfirmPayment` 時のみ DOM に出力 |
+| セクションボタン | variant ghost → secondary（仕入れ追加・発送追加） |
+| 仕入れステータス列 | テキスト → Badge（key で色判定） |
+| salesOrderDetailConfig.ts | バッジ色設定を新規集約 |
+
+### 着手前確認事項（実施済み）
+
+- `getCorePurchaseStatusOptionsForFrontend` が `{ key, label }` を返すことを `src/28_CorePurchaseApi.js:154-163` で確認
+- `Tabs` コンポーネント: variant="underline" size="md"（CustomerDetailPage と同パターン）
+- `Badge` コンポーネント: variant prop で 5 色対応
+
+### 合格条件の状態
+
+- [x] `npm run build:gas` 通過（typecheck + vite + check:design-system）
+- [x] GAS global namespace check PASS
+- [ ] CI 4件通過（CI実行中）
+- [ ] `clasp run runCoreSchemaConformanceAudit` → PO実機確認後
+- [ ] `clasp run dryRunOrderStatusRecalculation` → PO実機確認後
+- [ ] PO実機確認
+
+### 戻し方
+
+`git revert <mergeCommit>`（mergeCommit は develop マージ後に記入）
