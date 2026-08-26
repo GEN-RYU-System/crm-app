@@ -18,8 +18,9 @@ export function LeadListCacheProvider({ children }: PropsWithChildren) {
 }
 
 export function useLeadListCache() {
-  const { itemsByKey, errorByKey, loadingByKey, refreshing, ensureLoaded, refresh, retry } = useCache();
+  const { itemsByKey, errorByKey, loadingByKey, refreshing, ensureLoaded, refresh, retry, seed } = useCache();
   const refreshAll = useCallback(() => refresh(), [refresh]);
+  const seedAll = useCallback((leads: readonly LeadRecord[]) => seed('all', leads), [seed]);
   return {
     recordsByType: itemsByKey as unknown as RecordsByType,
     errorsByType: errorByKey as ErrorsByType,
@@ -28,5 +29,6 @@ export function useLeadListCache() {
     ensureLoaded,
     refreshAll,
     retryType: retry,
+    seed: seedAll,
   };
 }

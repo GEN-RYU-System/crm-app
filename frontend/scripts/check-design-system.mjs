@@ -220,6 +220,9 @@ const PREFETCH_EXEMPT_PROVIDERS = new Set([
   // InventoryListCacheProvider: InventoryProductOptionsWithInventorySeed の onInventoryLoaded コールバック経由で
   // getInventoryBatchForFrontend の結果を seed() するため usePrefetch への直接登録は不要
   'InventoryListCacheProvider',
+  // LeadListCacheProvider: LeadFormOptionsWithLeadsSeed の onLeadsLoaded コールバック経由で
+  // getLeadsBatchForFrontend の結果を seed() するため usePrefetch への直接登録は不要
+  'LeadListCacheProvider',
 ]);
 const SYNC_POLLER_EXEMPT_PROVIDERS = new Set([
   // CustomerAggregateCacheProvider: SyncPoller には接続せず usePrefetch のみで管理
@@ -241,6 +244,11 @@ const SYNC_POLLER_EXEMPT_PROVIDERS = new Set([
   // isRegisteredInRefreshers の regex が先に { seed } をマッチしてしまい誤検知が発生する。
   // 実際の登録は SyncPoller の inventory ラムダ内を参照。
   'InventoryListCacheProvider',
+  // LeadListCacheProvider: SyncPoller の refreshers に refreshLeads として実登録済み。
+  // ただし LeadFormOptionsWithLeadsSeed も useLeadListCache を呼ぶため、
+  // isRegisteredInRefreshers の regex が先に { seed } をマッチしてしまい誤検知が発生する。
+  // 実際の登録は SyncPoller の leads ラムダ内を参照。
+  'LeadListCacheProvider',
 ]);
 const prefetchSource = await readFile(resolve(srcDir, 'app/usePrefetch.ts'), 'utf8');
 const allCacheProviderNames = [...new Set([...appSource.matchAll(/<(\w+CacheProvider)[\s>/]/g)].map((m) => m[1]))];

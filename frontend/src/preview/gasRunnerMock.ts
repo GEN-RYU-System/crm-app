@@ -519,6 +519,9 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     },
     pingForLatencyCheck() { succeed({ ok: true, serverTs: Date.now() }); },
     checkSyncSignals(_s: string | null) { succeed(mockSyncSignals); },
+    getLeadsBatchForFrontend(_s: string | null, _force: boolean) {
+      succeed({ leads: [], formOptions: { leadTypes: [], responseSpeeds: [], countries: [], leadSources: [] } });
+    },
     getLeadFormOptions(_s: string | null) {
       succeed({ leadTypes: [], responseSpeeds: [], countries: [], leadSources: [] });
     },

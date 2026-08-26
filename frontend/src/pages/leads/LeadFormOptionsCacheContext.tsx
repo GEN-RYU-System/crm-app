@@ -1,11 +1,19 @@
 import { useCallback, type PropsWithChildren } from 'react';
 import { createListCache, SINGLE_KEY, type SingleKey } from '../../app/createListCache';
-import type { LeadFormOptions, LeadRepository } from '../../features/leads/contracts';
+import { getLeadsBatch, type LeadFormOptions, type LeadRecord } from '../../gas/client';
 
 const { Provider, useCache } = createListCache<LeadFormOptions>({ name: 'lead form options' });
 
-export function LeadFormOptionsCacheProvider({ repository, children }: PropsWithChildren<{ repository: LeadRepository }>) {
-  const fetcher = useCallback((_: SingleKey, __: boolean) => repository.getFormOptions().then((options) => [options]), [repository]);
+type LeadFormOptionsCacheProviderProps = PropsWithChildren<{
+  onLeadsLoaded?: (leads: readonly LeadRecord[]) => void;
+}>;
+
+export function LeadFormOptionsCacheProvider({ children, onLeadsLoaded }: LeadFormOptionsCacheProviderProps) {
+  const fetcher = useCallback(async (_: SingleKey, forceRefresh: boolean) => {
+    const result = await getLeadsBatch(forceRefresh);
+    onLeadsLoaded?.(result.leads);
+    return [result.formOptions];
+  }, [onLeadsLoaded]);
   return <Provider fetcher={fetcher}>{children}</Provider>;
 }
 

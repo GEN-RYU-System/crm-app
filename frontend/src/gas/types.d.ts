@@ -10,6 +10,7 @@ interface GoogleScriptRun {
   getDashboardKPIs(sessionId: string | null): void;
   getCurrentUser(sessionId: string | null): void;
   getLeadsByType(sessionId: string | null, leadType?: string, forceRefresh?: boolean): void;
+  getLeadsBatchForFrontend(sessionId: string | null, forceRefresh: boolean): void;
   getLeadDetail(sessionId: string | null, leadId: string): void;
   createLead(sessionId: string | null, leadData: Record<string, string>): void;
   updateLead(sessionId: string | null, sheetName: string, leadId: string, updateData: Record<string, string>): void;
