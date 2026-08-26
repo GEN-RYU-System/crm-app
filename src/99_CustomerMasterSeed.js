@@ -56,11 +56,6 @@ function migrateCustomers52DryRun() {
     freq:     ch.indexOf('月間頻度'),
     monthly:  ch.indexOf('月間売上見込額'),
     trust:    ch.indexOf('信頼度'),
-    discJoin: ch.indexOf('Discord参加'),
-    discCh:   ch.indexOf('Discord チャンネルID'),
-    discUser: ch.indexOf('Discord ユーザーID'),
-    wh1:      ch.indexOf('Discrod 請求書 webhook'),
-    wh2:      ch.indexOf('Discrod 発送通知 webhook'),
     shipWh:   ch.indexOf('Shippment webhook'),
     fedex:    ch.indexOf('FedEx ID'),
     memo:     ch.indexOf('発送時メモ')
@@ -128,17 +123,12 @@ function migrateCustomers52DryRun() {
   lines.push('  D Email            → 【要確認】配送先連絡先として配送先マスタに追加?');
   lines.push('  D Tax ID           → 【要確認】同上');
   lines.push('  営業担当者         → 【重要】35_SalesDataSyncService.js が参照中。CRMリードの担当者IDで代替可?');
-  lines.push('  Discord チャンネルID → 【重要】33_DiscordIntegrationService.js が参照中（廃止・移管・カラム追加 何れか）');
-  lines.push('  Discord ユーザーID   → 【重要】同上');
-  lines.push('  Discrod 請求書 webhook   → 【要確認】移管先?');
-  lines.push('  Discrod 発送通知 webhook → 【要確認】移管先?');
   lines.push('  Shippment webhook        → 【要確認】移管先?');
   lines.push('  FedEx ID              → 【要確認】配送先マスタに追加?');
   lines.push('  発送時メモ            → 【要確認】配送先マスタに追加?');
   lines.push('  連絡ツール            → CRMリードの「連絡手段」で代替可（要確認）');
   lines.push('  販売先 / 重視ポイント / 1回発注額 / 月間頻度 / 月間売上見込額 / 信頼度 → CRMリードに対応列あり（移行不要候補）');
   lines.push('  ログID               → 意味不明・要確認');
-  lines.push('  Discord参加          → 【要確認】');
   lines.push('');
   lines.push('=== 先頭3件プレビュー（CT-00002〜CT-00004） ===');
 
@@ -345,11 +335,6 @@ function migrateCustomers52Write() {
     channel: oh.indexOf('連絡ツール'),
     fedex:   oh.indexOf('FedEx ID'),
     memo:    oh.indexOf('発送時メモ'),
-    discJoin:oh.indexOf('Discord参加'),
-    discCh:  oh.indexOf('Discord チャンネルID'),
-    discUser:oh.indexOf('Discord ユーザーID'),
-    wh1:     oh.indexOf('Discrod 請求書 webhook'),
-    wh2:     oh.indexOf('Discrod 発送通知 webhook'),
     shipWh:  oh.indexOf('Shippment webhook')
   };
 
@@ -405,11 +390,6 @@ function migrateCustomers52Write() {
       g(r, o.channel),             // 連絡ツール
       g(r, o.fedex),               // FedEx ID
       g(r, o.memo),                // 発送時メモ
-      g(r, o.discJoin),            // Discord参加
-      g(r, o.discCh),              // Discord チャンネルID
-      g(r, o.discUser),            // Discord ユーザーID
-      g(r, o.wh1),                 // Discrod 請求書 webhook
-      g(r, o.wh2),                 // Discrod 発送通知 webhook
       g(r, o.shipWh)               // Shippment webhook
     ]);
 
@@ -475,8 +455,6 @@ function verifyMigration() {
 
   const cidIdx = cH.indexOf('顧客ID');
   const srcIdx = cH.indexOf('源流リードID');
-  const discChIdx  = cH.indexOf('Discord チャンネルID');
-  const discUsrIdx = cH.indexOf('Discord ユーザーID');
   const salesRepIdx= cH.indexOf('営業担当者');
 
   const cidSeen = {}, srcSeen = {}, cidDups = [], srcDups = [];
@@ -498,9 +476,7 @@ function verifyMigration() {
   lines.push('  顧客ID重複: ' + (cidDups.length === 0 ? '0 ✓' : cidDups.join(',')));
   lines.push('  源流リードID重複: ' + (srcDups.length === 0 ? '0 ✓' : srcDups.join(',')));
   lines.push('  参照整合性: ' + (missingRefs.length === 0 ? 'OK ✓' : 'NG ' + missingRefs.join(',')));
-  lines.push('  Discord チャンネルID列: ' + (discChIdx >= 0 ? '存在 (col' + (discChIdx+1) + ') ✓' : '存在しない ✗'));
-  lines.push('  Discord ユーザーID列: '   + (discUsrIdx >= 0 ? '存在 (col' + (discUsrIdx+1) + ') ✓' : '存在しない ✗'));
-  lines.push('  営業担当者列: '           + (salesRepIdx >= 0 ? '存在 (col' + (salesRepIdx+1) + ') ✓' : '存在しない ✗'));
+  lines.push('  営業担当者列: ' + (salesRepIdx >= 0 ? '存在 (col' + (salesRepIdx+1) + ') ✓' : '存在しない ✗'));
   lines.push('');
 
   // ---- 配送先マスタ ----
@@ -541,13 +517,12 @@ function verifyMigration() {
   lines.push('');
 
   // ---- 先頭3行実値 ----
-  lines.push('[先頭3行実値（CT列・源流・顧客名・Discord チャンネルID）]');
+  lines.push('[先頭3行実値（CT列・源流・顧客名）]');
   rows.slice(0, 3).forEach(r => {
     lines.push('  ' + [
       String(r[cidIdx]||''),
       String(r[srcIdx]||''),
-      String(r[cH.indexOf('顧客名')]||''),
-      String(r[discChIdx]||'（空）')
+      String(r[cH.indexOf('顧客名')]||'')
     ].join(' | '));
   });
   lines.push('[最終行（CT-00051相当）]');
@@ -555,8 +530,7 @@ function verifyMigration() {
   lines.push('  ' + [
     String(last[cidIdx]||''),
     String(last[srcIdx]||''),
-    String(last[cH.indexOf('顧客名')]||''),
-    String(last[discChIdx]||'（空）')
+    String(last[cH.indexOf('顧客名')]||'')
   ].join(' | '));
 
   return lines.join('\n');
@@ -1066,8 +1040,7 @@ function dryRunSchemaV2() {
     'D Name','D Telephone','D Email','D Tax ID',
     'D Address 1','D Address 2','D Address 3','D City','D State','D Zip','D Country',
     '支払い名義','営業担当者','連絡ツール','FedEx ID','発送時メモ',
-    'Discord参加','Discord チャンネルID','Discord ユーザーID',
-    'Discrod 請求書 webhook','Discrod 発送通知 webhook','Shippment webhook','登録日時'
+    'Shippment webhook','登録日時'
   ];
   const missing = need.filter(n => oh.indexOf(n) < 0);
   lines.push('[旧タブ列チェック]');
@@ -1092,7 +1065,7 @@ function dryRunSchemaV2() {
   // ---- 新スキーマ確認 ----
   lines.push('');
   lines.push('[新スキーマ（v2）]');
-  lines.push('  顧客マスタ 18列: 顧客ID|源流リードID|顧客名|国|メール|電話番号|初回取引日|登録日|営業担当者|連絡ツール|FedEx ID|発送時メモ|Discord参加|Discord チャンネルID|Discord ユーザーID|Discrod 請求書 webhook|Discrod 発送通知 webhook|Shippment webhook');
+  lines.push('  顧客マスタ 13列: 顧客ID|源流リードID|顧客名|国|メール|電話番号|初回取引日|登録日|営業担当者|連絡ツール|FedEx ID|発送時メモ|Shippment webhook');
   lines.push('  配送先マスタ 15列: 配送先ID|顧客ID|宛名|Address 1|Address 2|Address 3|City|State|Zip|国|電話|D Email|D Tax ID|既定|有効');
   lines.push('  支払先マスタ 15列: 支払先ID|顧客ID|請求名義|Address 1|Address 2|Address 3|City|State|Zip|国|支払方法|通貨|B Tax ID|既定|有効');
 
@@ -1225,11 +1198,6 @@ function migrateCustomersWriteV2() {
     channel: oh.indexOf('連絡ツール'),
     fedex:   oh.indexOf('FedEx ID'),
     memo:    oh.indexOf('発送時メモ'),
-    discJoin:oh.indexOf('Discord参加'),
-    discCh:  oh.indexOf('Discord チャンネルID'),
-    discUser:oh.indexOf('Discord ユーザーID'),
-    wh1:     oh.indexOf('Discrod 請求書 webhook'),
-    wh2:     oh.indexOf('Discrod 発送通知 webhook'),
     shipWh:  oh.indexOf('Shippment webhook')
   };
 
@@ -1275,11 +1243,6 @@ function migrateCustomersWriteV2() {
       g(r, o.channel),      // 連絡ツール
       g(r, o.fedex),        // FedEx ID
       g(r, o.memo),         // 発送時メモ
-      g(r, o.discJoin),     // Discord参加
-      g(r, o.discCh),       // Discord チャンネルID
-      g(r, o.discUser),     // Discord ユーザーID
-      g(r, o.wh1),          // Discrod 請求書 webhook
-      g(r, o.wh2),          // Discrod 発送通知 webhook
       g(r, o.shipWh)        // Shippment webhook
     ]);
 

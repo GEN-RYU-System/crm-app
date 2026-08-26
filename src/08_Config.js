@@ -553,7 +553,7 @@ const HEADERS = {
     '登録経路'            // 28: フォーム/手動/インポート
   ],
 
-  // CRM顧客マスタ（19列: 電話番号をナショナル番号+国番号に分離）
+  // CRM顧客マスタ（14列: Discord連携廃止により Discord 関連5列を除去）
   CRM_CUSTOMERS: [
     '顧客ID',            // 1: CT-00001
     '源流リードID',      // 2: LDI-00001 / LDO-00001
@@ -564,16 +564,11 @@ const HEADERS = {
     '国番号',            // 7: 国番号のみ（例: 81）← PR36で追加
     '初回取引日',        // 8
     '登録日',            // 9
-    '営業担当者',                // 10: 35_SalesDataSyncService.js 参照中
-    '連絡ツール',                // 11
-    'FedEx ID',                  // 12
-    '発送時メモ',                // 13
-    'Discord参加',               // 14
-    'Discord チャンネルID',      // 15: 33_DiscordIntegrationService.js 参照中
-    'Discord ユーザーID',        // 16: 33_DiscordIntegrationService.js 参照中
-    'Discrod 請求書 webhook',    // 17: ※旧スペルミスを厳密維持
-    'Discrod 発送通知 webhook',  // 18: ※旧スペルミスを厳密維持
-    'Shippment webhook'          // 19: ※旧スペルミスを厳密維持
+    '営業担当者',        // 10: 35_SalesDataSyncService.js 参照中
+    '連絡ツール',        // 11
+    'FedEx ID',          // 12
+    '発送時メモ',        // 13
+    'Shippment webhook'  // 14: ※旧スペルミスを厳密維持
   ],
 
   // 配送先マスタ（16列: 電話をナショナル番号+国番号に分離）
