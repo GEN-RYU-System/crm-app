@@ -111,7 +111,7 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
   ] },
   { id: 'leads', label: navigationCopy.groups.leads, order: 2, items: [
     { id: 'inbox', label: navigationCopy.inbox, hash: '/inbox', icon: 'chat', order: 1, state: 'available', requiredPermission: 'lead_view' },
-    { id: 'inventory', label: navigationCopy.inventory, hash: '/inventory', icon: 'inventory', order: 2, state: 'preview', anyPermissions: ['deal_view_all', 'deal_view_own'] },
+    { id: 'inventory', label: navigationCopy.inventory, hash: '/inventory', icon: 'inventory', order: 2, state: 'available', anyPermissions: ['deal_view_all', 'deal_view_own'] },
     { id: 'salesOrders', label: navigationCopy.salesOrders, hash: '/sales-orders', icon: 'invoice', order: 3, state: 'preview', requiredPermission: 'lead_view' }
   ] },
   { id: 'management', label: navigationCopy.groups.management, order: 3, items: [
