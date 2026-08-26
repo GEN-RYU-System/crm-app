@@ -371,10 +371,10 @@ function applyOrderStatusRecalculation() {
     }
   });
 
-  if (diffs.length !== 7) {
+  if (diffs.length !== 8) {
     throw new Error(
       'applyOrderStatusRecalculation: 差分件数が想定と異なるため中断します。' +
-      '想定=7件、実際=' + diffs.length + '件'
+      '想定=8件、実際=' + diffs.length + '件'
     );
   }
 
