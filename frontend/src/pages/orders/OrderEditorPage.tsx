@@ -3,12 +3,12 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, Combobox, LineItemEditor, PageHeader, Select, Skeleton, StatusMessage, Textarea, TextField, TwoColumnLayout } from '../../components/ui';
 import { ordersCopy } from '../../content/ja/orders';
-import { ISSUER_HEADER } from '../../content/ja/issuer';
 import type { ShippingAddressDto, PaymentProfileDto, CustomerRepository } from '../../features/customers/contracts';
 import { useCustomerAggregateCache } from '../../features/customers/CustomerAggregateCacheContext';
 import type { OrderCreatePayload, OrderRepository, OrderUpdatePayload } from '../../features/orders/contracts';
 import { InvoiceDocument } from '../../features/documents/InvoiceDocument';
-import { type IssuerRecord } from '../../gas/client';
+import { buildOrderInvoiceProps } from '../../features/documents/invoiceUtils';
+import { getCoreOrderDetail, type OrderDetailRecord } from '../../gas/client';
 import { useIssuerMasterCache } from '../data-management/IssuerMasterCacheContext';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
 import { useInventoryProductOptionsCache } from '../inventory/InventoryProductOptionsCacheContext';
@@ -26,48 +26,6 @@ import { useOrderListCache } from './OrderListCacheContext';
 import { useCurrencyMasterCache } from '../currency/CurrencyMasterCacheContext';
 import './OrderEditorPage.css';
 
-function buildIssuerInfo(rec: IssuerRecord) {
-  const get = (key: string): string => {
-    const val = rec[key];
-    return val === null || val === undefined ? '' : String(val);
-  };
-  return {
-    name: get(ISSUER_HEADER.COMPANY_NAME),
-    lines: [
-      get(ISSUER_HEADER.ADDRESS_LINE1),
-      get(ISSUER_HEADER.ADDRESS_LINE2),
-      get(ISSUER_HEADER.ADDRESS_LINE3),
-      [get(ISSUER_HEADER.CITY), get(ISSUER_HEADER.STATE), get(ISSUER_HEADER.ZIP)].filter(Boolean).join(' '),
-      get(ISSUER_HEADER.COUNTRY),
-      get(ISSUER_HEADER.PHONE),
-      get(ISSUER_HEADER.EMAIL),
-    ].filter(Boolean),
-  };
-}
-
-function toDocAmount(value: string | number | undefined | null): string {
-  if (value === null || value === undefined || value === '') return '';
-  const n = Number(value);
-  return Number.isNaN(n) ? String(value) : n.toLocaleString();
-}
-
-type PrintData = {
-  invoiceNumber: string;
-  date: string;
-  dueDate: string;
-  customerName: string;
-  shipToName: string;
-  shipToLines: string[];
-  lines: { no: number; name: string; qty: string; unitPrice: string; amount: string }[];
-  subtotal: string;
-  shippingFee: string;
-  duty: string;
-  otherFee: string;
-  discount: string;
-  total: string;
-  currency: string;
-  paymentMethod: string;
-};
 
 type Props = {
   mode: 'create' | 'edit';
@@ -88,7 +46,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
   const [saving, setSaving] = useState(false);
   const [isAmountLocked, setIsAmountLocked] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
-  const [printData, setPrintData] = useState<PrintData | null>(null);
+  const [detailForPrint, setDetailForPrint] = useState<OrderDetailRecord | null>(null);
   const printNavigatePath = useRef(ORDER_EDITOR_PATHS.list);
   const [invoiceInfo, setInvoiceInfo] = useState<{
     invoiceNumber: string;
@@ -355,53 +313,15 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
             unitPrice: toHalfwidthDigits(line.unitPrice),
           })),
         };
-        await repository.createOrder(payload);
+        const result = await repository.createOrder(payload);
         if (!isDraft && issuer) {
-          const selectedCustomer = customers.find((c) => c.customerId === values.customerId);
-          const selectedShipping = customerAggregate?.shippingAddresses.find(
-            (a) => a.addressId === values.shippingDestinationId
-          );
-          const lineTotal = values.lines.reduce((sum, line) => {
-            const qty = Number(toHalfwidthDigits(line.quantity)) || 0;
-            const price = Number(toHalfwidthDigits(line.unitPrice)) || 0;
-            return sum + qty * price;
-          }, 0);
-          const totalNum = calcInvoiceTotal(
-            values.lines, values.shippingFee, values.duty, values.otherFee, values.discount
-          );
-          printNavigatePath.current = ORDER_EDITOR_PATHS.list;
-          setPrintData({
-            invoiceNumber: values.invoiceNumber,
-            date: formatDate(new Date().toISOString()),
-            dueDate: '',
-            customerName: selectedCustomer?.customerName ?? '',
-            shipToName: selectedShipping?.displayName ?? selectedCustomer?.customerName ?? '',
-            shipToLines: [
-              selectedShipping?.address ?? '',
-              selectedShipping?.country ?? '',
-            ].filter(Boolean),
-            lines: values.lines.map((line, i) => {
-              const qty = Number(toHalfwidthDigits(line.quantity)) || 0;
-              const price = Number(toHalfwidthDigits(line.unitPrice)) || 0;
-              return {
-                no: i + 1,
-                name: line.productName,
-                qty: toDocAmount(qty),
-                unitPrice: toDocAmount(price),
-                amount: toDocAmount(qty * price),
-              };
-            }),
-            subtotal: toDocAmount(lineTotal),
-            shippingFee: toDocAmount(toHalfwidthDigits(values.shippingFee)),
-            duty: toDocAmount(toHalfwidthDigits(values.duty)),
-            otherFee: toDocAmount(toHalfwidthDigits(values.otherFee)),
-            discount: toDocAmount(toHalfwidthDigits(values.discount)),
-            total: toDocAmount(totalNum),
-            currency: values.currency,
-            paymentMethod: values.paymentMethod,
-          });
-          setShowPrint(true);
-          return;
+          const detail = await getCoreOrderDetail(result.orderId);
+          if (detail) {
+            printNavigatePath.current = ORDER_EDITOR_PATHS.list;
+            setDetailForPrint(detail);
+            setShowPrint(true);
+            return;
+          }
         }
         navigate(ORDER_EDITOR_PATHS.list);
       } catch (cause) {
@@ -819,28 +739,9 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
         <TwoColumnLayout left={leftColumn} right={rightColumn} />
       )}
 
-      {showPrint && issuer && printData && createPortal(
+      {showPrint && issuer && detailForPrint && createPortal(
         <div className="doc-print-root">
-          <InvoiceDocument
-            issuer={buildIssuerInfo(issuer)}
-            invoiceNumber={printData.invoiceNumber}
-            date={printData.date}
-            dueDate={printData.dueDate}
-            registrationNumber={String(issuer[ISSUER_HEADER.REGISTRATION_NO] ?? '') || undefined}
-            billedTo={{ name: printData.customerName, lines: [] }}
-            shipTo={{ name: printData.shipToName, lines: printData.shipToLines }}
-            lines={printData.lines}
-            subtotal={printData.subtotal}
-            shippingFee={printData.shippingFee}
-            duty={printData.duty}
-            otherFee={printData.otherFee}
-            discount={printData.discount}
-            total={printData.total}
-            currency={printData.currency}
-            paymentMethod={printData.paymentMethod}
-            paymentTermsNote={String(issuer[ISSUER_HEADER.PAYMENT_NOTE] ?? '') || undefined}
-            thanksMessage={String(issuer[ISSUER_HEADER.CLOSING_MESSAGE] ?? '') || undefined}
-          />
+          <InvoiceDocument {...buildOrderInvoiceProps(detailForPrint, issuer)} />
         </div>,
         document.body
       )}

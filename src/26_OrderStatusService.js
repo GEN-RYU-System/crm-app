@@ -319,11 +319,20 @@ function isOrderStatusEmptyValue_(value) {
 
 /**
  * 全オーダーのステータスを新体系で再計算し、差分を書き込む。
- * DEV 環境専用。差分が 7 件でなければ中断する。
+ * DEV 環境専用。実行前に dryRunOrderStatusRecalculation で件数を確認し、
+ * その件数を expectedCount に渡すこと（誤爆防止）。
  *
+ * @param {number} expectedCount - dryRun で確認した差分件数。未指定・数値以外は throw する
  * @returns {{ applied: number, verifyPassed: boolean }}
  */
-function applyOrderStatusRecalculation() {
+function applyOrderStatusRecalculation(expectedCount) {
+  if (typeof expectedCount !== 'number' || isNaN(expectedCount)) {
+    throw new Error(
+      'applyOrderStatusRecalculation: expectedCount は数値必須です。' +
+      '先に dryRunOrderStatusRecalculation で件数を確認してから渡してください。'
+    );
+  }
+
   if (getEnvironment() !== 'development') {
     throw new Error('applyOrderStatusRecalculation は DEV 環境のみ実行できます');
   }
@@ -371,10 +380,10 @@ function applyOrderStatusRecalculation() {
     }
   });
 
-  if (diffs.length !== 8) {
+  if (diffs.length !== expectedCount) {
     throw new Error(
       'applyOrderStatusRecalculation: 差分件数が想定と異なるため中断します。' +
-      '想定=8件、実際=' + diffs.length + '件'
+      '期待=' + expectedCount + '件、実際=' + diffs.length + '件'
     );
   }
 

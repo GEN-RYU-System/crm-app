@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { canAccessNavigationItem, NAVIGATION_BY_ID, type NavigationPermissions } from './navigation';
+import { pingForLatencyCheck } from '../gas/client';
 import { useLeadListCache } from '../pages/leads/LeadListCacheContext';
 import { useLeadFormOptionsCache } from '../pages/leads/LeadFormOptionsCacheContext';
 import { useCustomerListCache } from '../pages/customers/CustomerListCacheContext';
@@ -56,9 +57,14 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
     const timer = setTimeout(() => {
       void (async () => {
         // [TEMP] GAS response time measurement — remove after analysis
-        const CONCURRENCY = 3; // pool size; tune based on DEV measurement
+        const CONCURRENCY = 6; // pool size; tune based on DEV measurement
         type TimingRow = { name: string; elapsedMs: number | '(skip)'; startMs: number | '-'; endMs: number | '-' };
         const totalStart = Date.now();
+
+        // Measure per-call fixed cost (network + script init) before prefetch pool
+        let pingMs: number | null = null;
+        const pingT0 = Date.now();
+        try { await pingForLatencyCheck(); pingMs = Date.now() - pingT0; } catch { /* swallow */ }
 
         const skipped: TimingRow[] = steps
           .filter(s => !s.canAccess)
@@ -84,7 +90,8 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
         const totalElapsedMs = Date.now() - totalStart;
         const timings: TimingRow[] = [...skipped, ...results];
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (window as any).__prefetchTimings = { steps: timings, totalElapsedMs, concurrency: CONCURRENCY };
+        (window as any).__prefetchTimings = { steps: timings, totalElapsedMs, concurrency: CONCURRENCY, pingMs };
+        console.log(`[prefetch] ping=${pingMs ?? 'err'}ms`);
         console.table(timings);
         console.log(`[prefetch] total=${totalElapsedMs}ms (concurrency=${CONCURRENCY})`);
         // [/TEMP]

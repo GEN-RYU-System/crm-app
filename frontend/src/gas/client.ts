@@ -450,6 +450,14 @@ export type OrderDetailRecord = {
     shippingZip: string;
     shippingCountry: string;
     paymentDestinationName: string;
+    billingAddressLine1: string;
+    billingAddressLine2: string;
+    billingAddressLine3: string;
+    billingCity: string;
+    billingState: string;
+    billingZip: string;
+    billingCountry: string;
+    billingTaxId: string;
     INVOICE_ISSUED_AT: string;
     PAYMENT_DUE_AT: string;
     PAYMENT_METHOD: string;
@@ -479,6 +487,7 @@ export type OrderDetailRecord = {
     LINE_NUMBER: string | number;
     CATEGORY: string;
     PRODUCT_NAME: string;
+    ENGLISH_TITLE: string;
     STATUS: string;
     SKU: string;
     QUANTITY: string | number;
@@ -859,6 +868,17 @@ export function getInboxConversationDetail(leadId: string): Promise<InboxConvers
       })
       .withFailureHandler((error) => reject(toError(error)))
       .getInboxConversationDetailForFrontend(getStoredSessionId(), leadId);
+  });
+}
+
+export function pingForLatencyCheck(): Promise<{ ok: boolean; serverTs: number }> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => resolve(value as { ok: boolean; serverTs: number }))
+      .withFailureHandler((error) => reject(toError(error)))
+      .pingForLatencyCheck();
   });
 }
 

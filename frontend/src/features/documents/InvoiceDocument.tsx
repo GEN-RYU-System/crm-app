@@ -70,6 +70,17 @@ export function InvoiceDocument(props: InvoiceDocumentProps) {
 
   const cssVars = buildCssVars(colors);
 
+  // DEBUG: key props snapshot (remove after diagnosis)
+  const _debugPayload = {
+    invoiceNo: invoiceNumber,
+    dueDate,
+    billedTo: { name: billedTo.name, count: billedTo.lines.length, lines: billedTo.lines },
+    shipTo:   { name: shipTo.name,   count: shipTo.lines.length,   lines: shipTo.lines },
+    paymentMethod: paymentMethod ?? null,
+    paymentTermsNote: paymentTermsNote ?? null,
+    orderLinesCount: lines.length,
+  };
+
   // Split lines into pages of ROWS_PER_PAGE
   const pages: DocLine[][] = [];
   if (lines.length === 0) {
@@ -169,6 +180,13 @@ export function InvoiceDocument(props: InvoiceDocumentProps) {
               </>
             ) : (
               <div className="doc-spacer" />
+            )}
+
+            {/* DEBUG JSON — remove after diagnosis */}
+            {isLast && (
+              <pre style={{ fontSize: '5pt', color: '#888', wordBreak: 'break-all', whiteSpace: 'pre-wrap', marginTop: '4pt', lineHeight: 1.3 }}>
+                {JSON.stringify(_debugPayload, null, 1)}
+              </pre>
             )}
 
             {/* Pager */}

@@ -11,6 +11,14 @@
   box-sizing: border-box;
 }
 
+/* ── Scoped margin/padding reset within doc-page (mirrors template *{margin:0;padding:0}) ── */
+.doc-page *,
+.doc-page *::before,
+.doc-page *::after {
+  margin: 0;
+  padding: 0;
+}
+
 /* ── Page container ── */
 .doc-page {
   width: var(--doc-w);
@@ -73,7 +81,7 @@
 .doc-meta-row {
   display: flex;
   justify-content: flex-end;
-  gap: var(--doc-gap-sm);
+  gap: var(--doc-meta-gap);
   font-size: 7.5pt;
 }
 

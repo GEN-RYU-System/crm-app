@@ -378,7 +378,15 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
           shippingDestinationName: 'Preview Destination',
           shippingAddressLine1: '123 Preview St', shippingAddressLine2: '', shippingAddressLine3: '',
           shippingCity: 'Preview City', shippingState: 'Preview State', shippingZip: '12345', shippingCountry: 'Japan',
-          paymentDestinationName: 'Preview Payment',
+          paymentDestinationName: 'Preview Payment Destination',
+          billingAddressLine1: '100 Sample Street, Building A',
+          billingAddressLine2: 'Floor 1, Suite 2',
+          billingAddressLine3: '',
+          billingCity: 'Sample City',
+          billingState: 'Sample State',
+          billingZip: '00000',
+          billingCountry: 'United States',
+          billingTaxId: 'TAX-000000',
           INVOICE_ISSUED_AT: '2026-01-15T00:00:00.000Z',
           PAYMENT_DUE_AT: '2026-02-15T00:00:00.000Z',
           PAYMENT_METHOD: 'WISE',
@@ -395,6 +403,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
           STATUS: previewOrderPaymentConfirmed ? SALES_ORDER_STATUS.sourcing : SALES_ORDER_STATUS.awaitingPayment,
           awaitingPaymentStatus: SALES_ORDER_STATUS.awaitingPayment,
           PAYMENT_CONFIRMED_AT: previewOrderPaymentConfirmed ? '2026-08-25T00:00:00.000Z' : '',
+          SHIPPING_NOTE: 'Please handle with care.\nFragile items inside.',
           NOTE: '',
           TRANSACTION_NOTE: '',
           INTERNAL_NOTE: '',
@@ -404,8 +413,8 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
           UPDATED_AT: '2026-01-15T00:00:00.000Z',
         },
         lines: [
-          { ORDER_LINE_ID: 'OL-001', LINE_NUMBER: 1, CATEGORY: 'Card', PRODUCT_NAME: 'Pikachu ex SAR', STATUS: 'NM', SKU: '', QUANTITY: 2, UNIT_PRICE: 8000, SUBTOTAL: 16000, PRODUCT_ID: 'PM-001' },
-          { ORDER_LINE_ID: 'OL-002', LINE_NUMBER: 2, CATEGORY: 'Card', PRODUCT_NAME: 'Umbreon VMAX Alt', STATUS: 'LP', SKU: '', QUANTITY: 1, UNIT_PRICE: 3000, SUBTOTAL: 3000, PRODUCT_ID: 'PM-002' },
+          { ORDER_LINE_ID: 'OL-001', LINE_NUMBER: 1, CATEGORY: 'Card', PRODUCT_NAME: 'Pikachu ex SAR', ENGLISH_TITLE: 'Pikachu ex Special Art Rare', STATUS: 'NM', SKU: '', QUANTITY: 2, UNIT_PRICE: 8000, SUBTOTAL: 16000, PRODUCT_ID: 'PM-001' },
+          { ORDER_LINE_ID: 'OL-002', LINE_NUMBER: 2, CATEGORY: 'Card', PRODUCT_NAME: 'Umbreon VMAX Alt', ENGLISH_TITLE: 'Umbreon VMAX Alternate Art', STATUS: 'LP', SKU: '', QUANTITY: 1, UNIT_PRICE: 3000, SUBTOTAL: 3000, PRODUCT_ID: 'PM-002' },
         ],
         purchases: [],
         shipments: [],
@@ -465,6 +474,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
       }));
       succeed({ conversationId, messages, hasMore: (offsetIndex + count) < total });
     },
+    pingForLatencyCheck() { succeed({ ok: true, serverTs: Date.now() }); },
     checkSyncSignals(_s: string | null) { succeed(mockSyncSignals); },
     getLeadFormOptions(_s: string | null) {
       succeed({ leadTypes: [], responseSpeeds: [], countries: [], leadSources: [] });
