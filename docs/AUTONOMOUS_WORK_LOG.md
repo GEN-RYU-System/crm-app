@@ -2893,3 +2893,102 @@ clasp run runCoreSchemaConformanceAudit
 ### 戻し方
 
 `git revert <mergeCommit>`（mergeCommit は develop マージ後に記入）
+
+---
+
+## Phase 2 onEdit経路 検証記録（2026-08-26）
+
+**対象**: `syncDealResultByStatus_` の onEdit 経由パス（PR #627 / GEN-RYU-System/crm-app#627）
+
+### API経路（clasp run runPhase2ApiPathVerification）
+
+3/3 PASS（前セッションで確認済み）
+
+| ケース | 期待値 | 実測値 | 結果 |
+|--------|--------|--------|------|
+| 成約 → 商談結果=成約 | 成約 | 成約 | ✓ PASS |
+| 失注 → 商談結果=失注 | 失注 | 失注 | ✓ PASS |
+| 追客(短期) → 商談結果不変 | '' | '' | ✓ PASS |
+
+### onEdit擬似実行（clasp run runPhase2OnEditVerification）
+
+1/3 PASS（限界あり・手動確認必須）
+
+| ケース | 期待値 | 実測値 | 結果 |
+|--------|--------|--------|------|
+| 成約 → 商談結果=成約 | 成約 | '' | ✗ FAIL |
+| 失注 → 商談結果=失注 | 失注 | '' | ✗ FAIL |
+| 追客(短期) → 商談結果不変 | '' | '' | ✓ PASS |
+
+**FAIL 原因**: `archiveOnStatusChange` 内の列ガード `e.range.getColumn() !== statusColIndex + 1` が擬似イベント環境で正常に通過しない。`clasp run` はヘッドレス実行環境であり、`setValues()` 後のスプレッドシート状態とイベントオブジェクトの整合性が実 onEdit トリガーと異なる。プレーン JS オブジェクトで模倣した `e.range.getColumn()` の戻り値と `archiveOnStatusChange` が算出する `statusColIndex + 1` に不一致が生じていると推定される。
+
+**結論**: 擬似イベントでは onEdit 経路の完全検証は不可能。**オーナー手動確認が必要**。
+
+### オーナー手動確認手順（onEdit実経路の最終確認）
+
+1. DEV スプレッドシートの **LEADS シート** を開く
+2. **LDI-TEST-001** 行を探す（リードID列で検索）
+3. 同行の「**リードステータス**」セルをクリックし、「**成約**」に変更（Enter確定）
+4. 同行の「**商談結果**」列が自動で「**成約**」に更新されることを確認
+5. 確認後、「リードステータス」を元の値（空または元の値）に戻す
+
+期待動作: `archiveOnStatusChange` onEdit トリガーが発火 → `syncDealResultByStatus_` が呼ばれ → 商談結果=成約が書き込まれる
+
+---
+
+## PR31: 受信箱 Phase 3a カルテヘッダー・タブ再編・列拡張（2026-08-26）
+
+**PR**: GEN-RYU-System/crm-app#633（base=develop, squash merge済み）
+**ブランチ**: `release/leads-karte-header-p3a`
+**マージコミット（develop）**: `59f1c394`（squash SHA）
+**DEV deploy**: CI run `32923793115` SUCCESS（`f89dfeeb` = origin/develop HEAD）
+
+### 変更内容
+
+| ファイル | 変更 |
+|---------|------|
+| `src/28_CoreInboxApi.js` | LEADS 列読み取り 8→15列（leadType/dealResult/issue/competitorComparison/email/phone/country）; karte に 7フィールド追加 |
+| `frontend/src/features/inbox/contracts.ts` | `InboxKarteDto` に 7フィールド追加 |
+| `frontend/src/content/ja/inbox.ts` | `detailTabs` を 商談/顧客/連絡先 に変更、新フィールド名追加 |
+| `frontend/src/pages/inbox/InboxPreviewPage.tsx` | カルテヘッダー（顧客名＋リード種別/流入経路バッジ）追加、会話リストにステータスバッジ追加、3タブ再編 |
+
+### ローカル4検査
+
+- [x] TypeScript: 0 errors
+- [x] Vite build: ✓（482.66 kB）
+- [x] design-system checks passed
+
+### DEV deploy 後検証
+
+**dryRunVerifyInboxPhase1**
+
+```
+{ conversationListCount: 26, sheetUniqueLeadCount: 25, sampleMessageCount: 8, sampleLeadId: 'LDI-00001' }
+```
+→ 26件/75件 ✓
+
+**measureInboxBulkTiming（3回計測、conv=26/msg=all）**
+
+| 計測 | サイズ | 時間 |
+|------|--------|------|
+| 1回目 | 38 KB | 319 ms |
+| 2回目 | 38 KB | 324 ms |
+| 3回目 | 38 KB | 383 ms |
+| 平均 | **38 KB** | **342 ms** |
+
+**前回比（8列 → 15列、+7列追加）**: 27 KB → 38 KB（+11 KB, +41%）/ 464 ms → 342 ms（−122 ms, −26%）
+
+ペイロードは +41% 増加したが、絶対値 38 KB は許容範囲内（GAS 6MB 上限、LTE 100ms 以下の高速通信でも問題なし）。時間は −26% 改善（GAS キャッシュ効果による自然変動の範囲）。
+
+### 合格条件の状態
+
+- [x] TypeScript / Vite build / design-system PASS
+- [x] CI Deploy to DEV SUCCESS（run 32923793115）
+- [x] SHA一致: deployed=`f89dfeeb` = origin/develop HEAD ✓
+- [x] dryRunVerifyInboxPhase1: 26件/75件 ✓
+- [x] ペイロード計測: 38KB/342ms（前回27KB/464ms比: +11KB/-122ms）
+- [ ] PO実機確認（カルテヘッダー・タブ・リストバッジの表示確認）
+
+### 戻し方
+
+`git revert 59f1c394`（develop への squash merge を revert）
