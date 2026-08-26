@@ -13,7 +13,7 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
   const [platform, setPlatform] = useState<InboxPlatform>('all');
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState('');
-  const [karteTab, setKarteTab] = useState('customer');
+  const [karteTab, setKarteTab] = useState('deal');
   // extra messages loaded via "load more" (keyed by conversationId)
   const [extraMessages, setExtraMessages] = useState<Record<string, readonly InboxMessageDto[]>>({});
   const [extraHasMore, setExtraHasMore] = useState<Record<string, boolean>>({});
@@ -101,11 +101,11 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
     }
   }, [baseMessages.length, extraMessages, loadMoreLoading, repository, selectedId]);
 
-  const karteFields: [string, string][] = detail == null ? [] : karteTab === 'customer'
-    ? [[inboxCopy.fields.customerName, detail.karte.customerName], [inboxCopy.fields.platform, detail.karte.platform]]
-    : karteTab === 'company'
-    ? [[inboxCopy.fields.company, detail.karte.company], [inboxCopy.fields.status, detail.karte.status]]
-    : [[inboxCopy.fields.nextAction, detail.karte.nextAction], [inboxCopy.fields.note, detail.karte.note]];
+  const karteFields: [string, string][] = detail == null ? [] : karteTab === 'deal'
+    ? [[inboxCopy.fields.dealResult, detail.karte.dealResult], [inboxCopy.fields.issue, detail.karte.issue], [inboxCopy.fields.competitorComparison, detail.karte.competitorComparison], [inboxCopy.fields.nextAction, detail.karte.nextAction], [inboxCopy.fields.note, detail.karte.note]]
+    : karteTab === 'customer'
+    ? [[inboxCopy.fields.customerName, detail.karte.customerName], [inboxCopy.fields.leadType, detail.karte.leadType], [inboxCopy.fields.leadSource, detail.karte.platform], [inboxCopy.fields.status, detail.karte.status]]
+    : [[inboxCopy.fields.email, detail.karte.email], [inboxCopy.fields.phone, detail.karte.phone], [inboxCopy.fields.country, detail.karte.country]];
 
   return (
     <>
@@ -134,7 +134,10 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
                     >
                       <strong>{conv.customerName}</strong>
                       <span>{conv.summary}</span>
-                      <small>{conv.platform} · {conv.updatedAt}</small>
+                      <div className="inbox-preview__row-meta">
+                        <Badge variant="neutral" size="sm">{inboxCopy.statusTabs[conv.status]}</Badge>
+                        <small>{conv.platform} · {conv.updatedAt}</small>
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -175,11 +178,24 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
           }
           composer={<div className="inbox-preview__composer"><TextField aria-label={inboxCopy.composerPlaceholder} placeholder={inboxCopy.composerPlaceholder} readOnly fullWidth value="" /><Button disabled>{inboxCopy.send}</Button></div>}
           detailsLabel={inboxCopy.detailsLabel}
-          detailsHeader={<Tabs items={INBOX_KARTE_TABS} activeKey={karteTab} onChange={setKarteTab} size="sm" aria-label={inboxCopy.detailTabsLabel} />}
+          detailsHeader={
+            <>
+              {detail && (
+                <div className="inbox-preview__karte-header">
+                  <strong className="inbox-preview__karte-name">{detail.karte.customerName}</strong>
+                  <div className="inbox-preview__karte-badges">
+                    {detail.karte.leadType && <Badge variant="neutral" size="sm">{detail.karte.leadType}</Badge>}
+                    {detail.karte.platform && <Badge variant="info" size="sm">{detail.karte.platform}</Badge>}
+                  </div>
+                </div>
+              )}
+              <Tabs items={INBOX_KARTE_TABS} activeKey={karteTab} onChange={setKarteTab} size="sm" aria-label={inboxCopy.detailTabsLabel} />
+            </>
+          }
           details={
             <div className="inbox-preview__karte">
               {karteFields.map(([label, value]) =>
-                label === inboxCopy.fields.note
+                label === inboxCopy.fields.note || label === inboxCopy.fields.issue
                   ? <Textarea key={label} label={label} readOnly value={value} />
                   : <TextField key={label} label={label} readOnly value={value} />
               )}

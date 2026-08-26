@@ -98,8 +98,10 @@ function getInboxConversationDetailForFrontend(sessionId, leadId) {
 
   // ── リード管理からカルテ情報を取得 ──
   var leads = coreCustomerFrontendReadTable(spreadsheet, 'LEADS', [
-    'LEAD_ID', 'CUSTOMER_NAME', 'LEAD_SOURCE', 'LEAD_STATUS',
-    'NEXT_ACTION', 'CS_NOTE', 'CONVERSATION_SUMMARY', 'LAST_CONVERSATION_AT'
+    'LEAD_ID', 'CUSTOMER_NAME', 'LEAD_SOURCE', 'LEAD_STATUS', 'LEAD_TYPE',
+    'NEXT_ACTION', 'CS_NOTE', 'CONVERSATION_SUMMARY', 'LAST_CONVERSATION_AT',
+    'DEAL_RESULT', 'CUSTOMER_ISSUE', 'COMPETITOR_COMPARISON',
+    'EMAIL', 'PHONE', 'COUNTRY'
   ]);
 
   var leadRow = null;
@@ -117,10 +119,17 @@ function getInboxConversationDetailForFrontend(sessionId, leadId) {
   var inboxStatus   = LEAD_STATUS_TO_INBOX_STATUS[leadStatus] || 'lead';
   var customerName  = coreCustomerFrontendValue(leadRow[leads.indexes.CUSTOMER_NAME]);
   var leadSource    = coreCustomerFrontendValue(leadRow[leads.indexes.LEAD_SOURCE]);
+  var leadType      = coreCustomerFrontendValue(leadRow[leads.indexes.LEAD_TYPE]);
   var nextAction    = coreCustomerFrontendValue(leadRow[leads.indexes.NEXT_ACTION]);
   var csNote        = coreCustomerFrontendValue(leadRow[leads.indexes.CS_NOTE]);
   var convSummary   = coreCustomerFrontendValue(leadRow[leads.indexes.CONVERSATION_SUMMARY]);
   var lastConvAt    = coreCustomerFrontendValue(leadRow[leads.indexes.LAST_CONVERSATION_AT]);
+  var dealResult    = coreCustomerFrontendValue(leadRow[leads.indexes.DEAL_RESULT]);
+  var customerIssue = coreCustomerFrontendValue(leadRow[leads.indexes.CUSTOMER_ISSUE]);
+  var competitor    = coreCustomerFrontendValue(leadRow[leads.indexes.COMPETITOR_COMPARISON]);
+  var email         = coreCustomerFrontendValue(leadRow[leads.indexes.EMAIL]);
+  var phone         = coreCustomerFrontendValue(leadRow[leads.indexes.PHONE]);
+  var country       = coreCustomerFrontendValue(leadRow[leads.indexes.COUNTRY]);
 
   // ── 会話ログからメッセージを取得 ──
   var messages = readInboxMessages_(spreadsheet, leadId);
@@ -136,12 +145,19 @@ function getInboxConversationDetailForFrontend(sessionId, leadId) {
   };
 
   var karte = {
-    customerName: customerName,
-    company:      customerName,   // リード管理に会社名列なし → 顧客名で代用
-    platform:     leadSource,
-    status:       leadStatus,
-    nextAction:   nextAction,
-    note:         csNote
+    customerName:        customerName,
+    company:             customerName,   // リード管理に会社名列なし → 顧客名で代用
+    platform:            leadSource,
+    status:              leadStatus,
+    nextAction:          nextAction,
+    note:                csNote,
+    leadType:            leadType,
+    dealResult:          dealResult,
+    issue:               customerIssue,
+    competitorComparison: competitor,
+    email:               email,
+    phone:               phone,
+    country:             country
   };
 
   return {
@@ -405,8 +421,10 @@ function getInboxBulkInitialLoad(sessionId, maxConversations, maxMessagesPerConv
 
   // リード管理（カルテ用）を1回だけ読む
   var leads = coreCustomerFrontendReadTable(ss, 'LEADS', [
-    'LEAD_ID', 'CUSTOMER_NAME', 'LEAD_SOURCE', 'LEAD_STATUS',
-    'NEXT_ACTION', 'CS_NOTE', 'CONVERSATION_SUMMARY', 'LAST_CONVERSATION_AT'
+    'LEAD_ID', 'CUSTOMER_NAME', 'LEAD_SOURCE', 'LEAD_STATUS', 'LEAD_TYPE',
+    'NEXT_ACTION', 'CS_NOTE', 'CONVERSATION_SUMMARY', 'LAST_CONVERSATION_AT',
+    'DEAL_RESULT', 'CUSTOMER_ISSUE', 'COMPETITOR_COMPARISON',
+    'EMAIL', 'PHONE', 'COUNTRY'
   ]);
   var leadRowById = {};
   for (var li = 0; li < leads.rows.length; li++) {
@@ -425,10 +443,17 @@ function getInboxBulkInitialLoad(sessionId, maxConversations, maxMessagesPerConv
     var inboxStatus  = LEAD_STATUS_TO_INBOX_STATUS[leadStatus] || 'lead';
     var customerName = coreCustomerFrontendValue(lData[leads.indexes.CUSTOMER_NAME]);
     var leadSource   = coreCustomerFrontendValue(lData[leads.indexes.LEAD_SOURCE]);
+    var leadType     = coreCustomerFrontendValue(lData[leads.indexes.LEAD_TYPE]);
     var nextAction   = coreCustomerFrontendValue(lData[leads.indexes.NEXT_ACTION]);
     var csNote       = coreCustomerFrontendValue(lData[leads.indexes.CS_NOTE]);
     var convSummary  = coreCustomerFrontendValue(lData[leads.indexes.CONVERSATION_SUMMARY]);
     var lastConvAt   = coreCustomerFrontendValue(lData[leads.indexes.LAST_CONVERSATION_AT]);
+    var dealResult   = coreCustomerFrontendValue(lData[leads.indexes.DEAL_RESULT]);
+    var custIssue    = coreCustomerFrontendValue(lData[leads.indexes.CUSTOMER_ISSUE]);
+    var competitor   = coreCustomerFrontendValue(lData[leads.indexes.COMPETITOR_COMPARISON]);
+    var email        = coreCustomerFrontendValue(lData[leads.indexes.EMAIL]);
+    var phone        = coreCustomerFrontendValue(lData[leads.indexes.PHONE]);
+    var country      = coreCustomerFrontendValue(lData[leads.indexes.COUNTRY]);
 
     var msgs = allMessagesByLead[leadId] || [];
     // 最新 maxMsg 件のみ（末尾スライス）
@@ -447,12 +472,19 @@ function getInboxBulkInitialLoad(sessionId, maxConversations, maxMessagesPerConv
     };
 
     var karte = {
-      customerName: customerName,
-      company:      customerName,
-      platform:     leadSource,
-      status:       leadStatus,
-      nextAction:   nextAction,
-      note:         csNote
+      customerName:         customerName,
+      company:              customerName,
+      platform:             leadSource,
+      status:               leadStatus,
+      nextAction:           nextAction,
+      note:                 csNote,
+      leadType:             leadType,
+      dealResult:           dealResult,
+      issue:                custIssue,
+      competitorComparison: competitor,
+      email:                email,
+      phone:                phone,
+      country:              country
     };
 
     detailsByConversationId[leadId] = {
