@@ -78,7 +78,6 @@ const DATA_MGMT_SUB_ITEMS: readonly NavigationItem[] = [
 ];
 
 const PRODUCT_MGMT_SUB_ITEMS: readonly NavigationItem[] = [
-  { id: 'inventory', label: dataManagementCopy.inventory, hash: '/inventory', icon: 'inventory', order: 1, state: 'preview', anyPermissions: ['deal_view_all', 'deal_view_own'] },
   { id: 'productMaster', label: dataManagementCopy.productMaster, hash: '/product-master', icon: 'inventory', order: 2, state: 'planned', requiredPermission: 'staff_manage' }
 ];
 
@@ -112,7 +111,8 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
   ] },
   { id: 'leads', label: navigationCopy.groups.leads, order: 2, items: [
     { id: 'inbox', label: navigationCopy.inbox, hash: '/inbox', icon: 'chat', order: 1, state: 'available', requiredPermission: 'lead_view' },
-    { id: 'salesOrders', label: navigationCopy.salesOrders, hash: '/sales-orders', icon: 'invoice', order: 2, state: 'preview', requiredPermission: 'lead_view' }
+    { id: 'inventory', label: navigationCopy.inventory, hash: '/inventory', icon: 'inventory', order: 2, state: 'preview', anyPermissions: ['deal_view_all', 'deal_view_own'] },
+    { id: 'salesOrders', label: navigationCopy.salesOrders, hash: '/sales-orders', icon: 'invoice', order: 3, state: 'preview', requiredPermission: 'lead_view' }
   ] },
   { id: 'management', label: navigationCopy.groups.management, order: 3, items: [
     { id: 'dataManagement', label: navigationCopy.managementCenter, hash: DATA_MANAGEMENT_ROOT, icon: 'database', order: 1, state: 'available', requiredPermission: 'lead_view', children: DATA_MANAGEMENT_ITEMS }
