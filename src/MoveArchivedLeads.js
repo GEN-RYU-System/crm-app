@@ -1,5 +1,5 @@
 /**
- * リード進捗が「アーカイブ」のリードをリード_アーカイブシートに移動
+ * アーカイブ日が設定されているリードをリード_アーカイブシートに移動
  */
 function moveArchivedLeadsToArchiveSheet() {
   try {
@@ -27,18 +27,18 @@ function moveArchivedLeadsToArchiveSheet() {
     const data = leadsSheet.getDataRange().getValues();
     const headers = data[0];
 
-    // リード進捗列のインデックスを取得
-    const progressIdx = headers.indexOf('リード進捗');
+    // アーカイブ日列のインデックスを取得
+    const archiveDateIdx = headers.indexOf('アーカイブ日');
 
-    if (progressIdx === -1) {
-      throw new Error('リード進捗列が見つかりません');
+    if (archiveDateIdx === -1) {
+      throw new Error('アーカイブ日列が見つかりません');
     }
 
-    // アーカイブ対象の行を特定（逆順でループして削除を安全に）
+    // アーカイブ対象の行を特定（アーカイブ日が設定されている行、逆順でループして削除を安全に）
     const rowsToMove = [];
     for (let i = data.length - 1; i >= 1; i--) {
-      const progress = data[i][progressIdx];
-      if (progress && progress.toString().trim() === 'アーカイブ') {
+      const archiveDate = data[i][archiveDateIdx];
+      if (archiveDate) {
         rowsToMove.push({
           rowIndex: i + 1, // 1-indexed
           data: data[i]
@@ -118,22 +118,22 @@ function checkArchivedLeadsCount() {
 
     const data = leadsSheet.getDataRange().getValues();
     const headers = data[0];
-    const progressIdx = headers.indexOf('リード進捗');
+    const archiveDateIdx = headers.indexOf('アーカイブ日');
     const idIdx = headers.indexOf('リードID');
     const nameIdx = headers.indexOf('顧客名');
 
-    if (progressIdx === -1) {
-      throw new Error('リード進捗列が見つかりません');
+    if (archiveDateIdx === -1) {
+      throw new Error('アーカイブ日列が見つかりません');
     }
 
     const archivedLeads = [];
     for (let i = 1; i < data.length; i++) {
-      const progress = data[i][progressIdx];
-      if (progress && progress.toString().trim() === 'アーカイブ') {
+      const archiveDate = data[i][archiveDateIdx];
+      if (archiveDate) {
         archivedLeads.push({
           leadId: data[i][idIdx] || '',
           customerName: data[i][nameIdx] || '',
-          progress: progress
+          archiveDate: archiveDate instanceof Date ? archiveDate.toISOString() : String(archiveDate)
         });
       }
     }

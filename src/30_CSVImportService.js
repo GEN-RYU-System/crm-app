@@ -433,7 +433,7 @@ function importLeadsCSV(csvContent, options) {
           if (header === 'リードID') return leadId;
           if (header === '登録日') return registrationDate;
           if (header === 'シート更新日') return new Date();
-          if (header === 'リード進捗' && !row[header]) return '新規';
+          if (header === 'リードステータス' && !row[header]) return '新規リード';
           if (header === '問い合わせ回数' && !row[header]) return 0;
           if (header === '重複フラグ' && !row[header]) return 'FALSE';
 

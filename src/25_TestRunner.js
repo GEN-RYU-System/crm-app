@@ -421,7 +421,7 @@ function insertBadgeTestData() {
   testLeads.forEach(lead => {
     if (!existingTestIds.includes(lead['リードID'])) {
       leadSheet.appendRow(convertObjectToRowArray(lead, leadHeaders));
-      Logger.log('✅ テストリード追加: ' + lead['リードID'] + ' (' + lead['顧客名'] + ') ' + lead['リード進捗'] + ' ￥' + lead['初回取引金額']);
+      Logger.log('✅ テストリード追加: ' + lead['リードID'] + ' (' + lead['顧客名'] + ') ' + lead['リードステータス'] + ' ￥' + lead['初回取引金額']);
     } else {
       Logger.log('ℹ️ テストリードは既に存在: ' + lead['リードID']);
     }
@@ -493,7 +493,7 @@ function createTestLead(leadId, status, amount, daysAgo, staffId, customerName) 
     'リードID': leadId,
     '登録日': dateStr,
     '顧客名': customerName,
-    'リード進捗': status,
+    'リードステータス': status,
     '商談結果': status === '成約' ? '成約' : '',
     '呼び方（英語）': 'Test Customer',
     '国': 'USA',
@@ -522,10 +522,7 @@ function createTestLead(leadId, status, amount, daysAgo, staffId, customerName) 
     '取り扱いタイトル': 'Pokemon',
     '販売形態': 'EC',
     '月間見込み金額': amount,
-    '1回の発注金額': amount,
-    '購入頻度(月次)': '月1回',
     '競合比較中': 'いいえ',
-    '商談の手応え': '◎ 非常に良い',
     'アラート確認日': '',
     '対象外理由': '',
     '失注理由': '',

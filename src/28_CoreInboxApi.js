@@ -24,19 +24,19 @@ var CORE_INBOX_CACHE_TARGETS = [
 ];
 
 // ───────────────────────────────────────────────
-// リード進捗 → InboxStatus マッピング
+// リードステータス → InboxStatus マッピング
 // ───────────────────────────────────────────────
-var LEAD_PROGRESS_TO_INBOX_STATUS = {
-  '新規': 'lead',
-  '対応中': 'lead',
+var LEAD_STATUS_TO_INBOX_STATUS = {
+  '新規リード':   'lead',
+  'リード対応中': 'lead',
+  'リード対象外': 'archive',
   'アサイン確定': 'deal',
-  '商談中': 'deal',
-  '見積もり提示': 'deal',
-  '成約': 'existing',
-  '追客': 'followup',
-  'アーカイブ': 'archive',
-  '失注': 'archive',
-  '対象外': 'archive'
+  '商談中':       'deal',
+  '商談対象外':   'archive',
+  '追客(短期)':   'followup',
+  '追客(長期)':   'followup',
+  '成約':         'existing',
+  '失注':         'archive'
 };
 
 // ───────────────────────────────────────────────
@@ -98,7 +98,7 @@ function getInboxConversationDetailForFrontend(sessionId, leadId) {
 
   // ── リード管理からカルテ情報を取得 ──
   var leads = coreCustomerFrontendReadTable(spreadsheet, 'LEADS', [
-    'LEAD_ID', 'CUSTOMER_NAME', 'LEAD_SOURCE', 'LEAD_PROGRESS',
+    'LEAD_ID', 'CUSTOMER_NAME', 'LEAD_SOURCE', 'LEAD_STATUS',
     'NEXT_ACTION', 'CS_NOTE', 'CONVERSATION_SUMMARY', 'LAST_CONVERSATION_AT'
   ]);
 
@@ -113,8 +113,8 @@ function getInboxConversationDetailForFrontend(sessionId, leadId) {
 
   if (!leadRow) return null;
 
-  var leadProgress  = coreCustomerFrontendValue(leadRow[leads.indexes.LEAD_PROGRESS]);
-  var inboxStatus   = LEAD_PROGRESS_TO_INBOX_STATUS[leadProgress] || 'lead';
+  var leadStatus    = coreCustomerFrontendValue(leadRow[leads.indexes.LEAD_STATUS]);
+  var inboxStatus   = LEAD_STATUS_TO_INBOX_STATUS[leadStatus] || 'lead';
   var customerName  = coreCustomerFrontendValue(leadRow[leads.indexes.CUSTOMER_NAME]);
   var leadSource    = coreCustomerFrontendValue(leadRow[leads.indexes.LEAD_SOURCE]);
   var nextAction    = coreCustomerFrontendValue(leadRow[leads.indexes.NEXT_ACTION]);
@@ -139,7 +139,7 @@ function getInboxConversationDetailForFrontend(sessionId, leadId) {
     customerName: customerName,
     company:      customerName,   // リード管理に会社名列なし → 顧客名で代用
     platform:     leadSource,
-    status:       leadProgress,
+    status:       leadStatus,
     nextAction:   nextAction,
     note:         csNote
   };
@@ -210,7 +210,7 @@ function buildInboxConversations_(spreadsheet) {
 
   // ── 2. リード管理から会話要約・ステータスを取得 ──
   var leads = coreCustomerFrontendReadTable(spreadsheet, 'LEADS', [
-    'LEAD_ID', 'CUSTOMER_NAME', 'LEAD_SOURCE', 'LEAD_PROGRESS',
+    'LEAD_ID', 'CUSTOMER_NAME', 'LEAD_SOURCE', 'LEAD_STATUS',
     'CONVERSATION_SUMMARY', 'LAST_CONVERSATION_AT'
   ]);
 
@@ -227,8 +227,8 @@ function buildInboxConversations_(spreadsheet) {
     var lastAt   = coreCustomerFrontendValue(leadRow[leads.indexes.LAST_CONVERSATION_AT]);
     if (!agg && !summary) continue;
 
-    var leadProgress = coreCustomerFrontendValue(leadRow[leads.indexes.LEAD_PROGRESS]);
-    var inboxStatus  = LEAD_PROGRESS_TO_INBOX_STATUS[leadProgress] || 'lead';
+    var leadStatus   = coreCustomerFrontendValue(leadRow[leads.indexes.LEAD_STATUS]);
+    var inboxStatus  = LEAD_STATUS_TO_INBOX_STATUS[leadStatus] || 'lead';
     var leadSource   = coreCustomerFrontendValue(leadRow[leads.indexes.LEAD_SOURCE]);
     var customerName = coreCustomerFrontendValue(leadRow[leads.indexes.CUSTOMER_NAME]);
 
@@ -405,7 +405,7 @@ function getInboxBulkInitialLoad(sessionId, maxConversations, maxMessagesPerConv
 
   // リード管理（カルテ用）を1回だけ読む
   var leads = coreCustomerFrontendReadTable(ss, 'LEADS', [
-    'LEAD_ID', 'CUSTOMER_NAME', 'LEAD_SOURCE', 'LEAD_PROGRESS',
+    'LEAD_ID', 'CUSTOMER_NAME', 'LEAD_SOURCE', 'LEAD_STATUS',
     'NEXT_ACTION', 'CS_NOTE', 'CONVERSATION_SUMMARY', 'LAST_CONVERSATION_AT'
   ]);
   var leadRowById = {};
@@ -421,8 +421,8 @@ function getInboxBulkInitialLoad(sessionId, maxConversations, maxMessagesPerConv
     var lData  = leadRowById[leadId];
     if (!lData) continue;
 
-    var leadProgress = coreCustomerFrontendValue(lData[leads.indexes.LEAD_PROGRESS]);
-    var inboxStatus  = LEAD_PROGRESS_TO_INBOX_STATUS[leadProgress] || 'lead';
+    var leadStatus   = coreCustomerFrontendValue(lData[leads.indexes.LEAD_STATUS]);
+    var inboxStatus  = LEAD_STATUS_TO_INBOX_STATUS[leadStatus] || 'lead';
     var customerName = coreCustomerFrontendValue(lData[leads.indexes.CUSTOMER_NAME]);
     var leadSource   = coreCustomerFrontendValue(lData[leads.indexes.LEAD_SOURCE]);
     var nextAction   = coreCustomerFrontendValue(lData[leads.indexes.NEXT_ACTION]);
@@ -450,7 +450,7 @@ function getInboxBulkInitialLoad(sessionId, maxConversations, maxMessagesPerConv
       customerName: customerName,
       company:      customerName,
       platform:     leadSource,
-      status:       leadProgress,
+      status:       leadStatus,
       nextAction:   nextAction,
       note:         csNote
     };
@@ -787,10 +787,10 @@ function seedInboxTestData100() {
   }
 
   var leadRow = new Array(leadsHdrs.length).fill('');
-  leadRow[col('リードID')]       = TEST_LEAD_ID;
-  leadRow[col('顧客名')]         = TEST_LEAD_NAME;
-  leadRow[col('リード進捗')]     = '新規';
-  leadRow[col('流入経路')]       = 'messenger';
+  leadRow[col('リードID')]         = TEST_LEAD_ID;
+  leadRow[col('顧客名')]           = TEST_LEAD_NAME;
+  leadRow[col('リードステータス')] = '新規リード';
+  leadRow[col('流入経路')]         = 'messenger';
   leadRow[col('会話要約')]       = '負荷検証用テストデータ（100件）';
   leadRow[col('最終会話日時')]   = '2026-08-26 12:00:00';
 
