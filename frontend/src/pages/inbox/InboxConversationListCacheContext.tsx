@@ -10,7 +10,7 @@ export function InboxConversationListCacheProvider({ repository, children }: Pro
 }
 
 export function useInboxConversationListCache() {
-  const { itemsByKey, errorByKey, loadingByKey, refreshing, ensureLoaded, refresh, retry } = useCache();
+  const { itemsByKey, errorByKey, loadingByKey, refreshing, ensureLoaded, refresh, retry, seed } = useCache();
   return {
     conversations: itemsByKey[SINGLE_KEY],
     error: errorByKey[SINGLE_KEY],
@@ -19,5 +19,6 @@ export function useInboxConversationListCache() {
     ensureLoaded: useCallback(() => ensureLoaded(), [ensureLoaded]),
     refresh: useCallback(() => refresh(), [refresh]),
     retry: useCallback(() => retry(), [retry]),
+    seed: useCallback((conversations: readonly InboxConversationDto[]) => seed(SINGLE_KEY, conversations), [seed]),
   };
 }

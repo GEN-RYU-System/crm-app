@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useRef, type PropsWithChildren } from 'react';
 import { createListCache } from '../../app/createListCache';
-import type { InboxConversationDetailDto, InboxRepository } from '../../features/inbox/contracts';
+import type { InboxConversationDetailDto, InboxConversationDto, InboxRepository } from '../../features/inbox/contracts';
 
 const { Provider: BaseProvider, useCache } = createListCache<InboxConversationDetailDto, string>({ name: 'inbox conversation details' });
 
@@ -9,7 +9,7 @@ type BulkCtx = { prefetchBulk: () => Promise<void> };
 const BulkHydrationContext = createContext<BulkCtx | null>(null);
 
 // Lives inside BaseProvider so it can access seed; owns the idempotency ref
-function BulkHydrationBridge({ repository, children }: PropsWithChildren<{ repository: InboxRepository }>) {
+function BulkHydrationBridge({ repository, onConversationsLoaded, children }: PropsWithChildren<{ repository: InboxRepository; onConversationsLoaded?: (convs: readonly InboxConversationDto[]) => void }>) {
   const { seed } = useCache();
   const loadedRef = useRef(false);
 
@@ -21,22 +21,23 @@ function BulkHydrationBridge({ repository, children }: PropsWithChildren<{ repos
       for (const [id, detail] of Object.entries(bulk.detailsByConversationId) as [string, InboxConversationDetailDto][]) {
         seed(id, [detail]);
       }
+      onConversationsLoaded?.(bulk.conversations);
     } catch {
       // bulk hydration failure is non-fatal; individual loads remain available
     }
-  }, [repository, seed]);
+  }, [repository, seed, onConversationsLoaded]);
 
   return <BulkHydrationContext.Provider value={{ prefetchBulk }}>{children}</BulkHydrationContext.Provider>;
 }
 
-export function InboxConversationDetailCacheProvider({ repository, children }: PropsWithChildren<{ repository: InboxRepository }>) {
+export function InboxConversationDetailCacheProvider({ repository, onConversationsLoaded, children }: PropsWithChildren<{ repository: InboxRepository; onConversationsLoaded?: (convs: readonly InboxConversationDto[]) => void }>) {
   const fetcher = useCallback(async (conversationId: string) => {
     const detail = await repository.getConversation(conversationId);
     return detail === null ? [] : [detail];
   }, [repository]);
   return (
     <BaseProvider fetcher={fetcher}>
-      <BulkHydrationBridge repository={repository}>
+      <BulkHydrationBridge repository={repository} onConversationsLoaded={onConversationsLoaded}>
         {children}
       </BulkHydrationBridge>
     </BaseProvider>

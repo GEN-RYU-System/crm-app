@@ -13,7 +13,6 @@ import { useStaffListCache } from '../pages/staff/StaffListCacheContext';
 import { useQuoteListCache } from '../pages/quotes/QuoteListCacheContext';
 import { useCurrencyMasterCache } from '../pages/currency/CurrencyMasterCacheContext';
 import { useIssuerMasterCache } from '../pages/data-management/IssuerMasterCacheContext';
-import { useInboxConversationListCache } from '../pages/inbox/InboxConversationListCacheContext';
 import { useInboxConversationDetailCache } from '../pages/inbox/InboxConversationDetailCacheContext';
 
 export function usePrefetch(permissions: NavigationPermissions | null): void {
@@ -29,7 +28,6 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
   const { ensureLoaded: ensureQuotes } = useQuoteListCache();
   const { ensureLoaded: ensureCurrencies } = useCurrencyMasterCache();
   const { ensureLoaded: ensureIssuer } = useIssuerMasterCache();
-  const { ensureLoaded: ensureInboxConversations } = useInboxConversationListCache();
   const { prefetchBulk } = useInboxConversationDetailCache();
   const hasRun = useRef(false);
 
@@ -50,7 +48,6 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
       { name: 'staff',                  canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.staff,       permissions), load: () => ensureStaff() },
       { name: 'quotes',                 canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.quotes,      permissions), load: () => ensureQuotes() },
       { name: 'issuer',                 canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.quotes, permissions) || canAccessNavigationItem(NAVIGATION_BY_ID.orders, permissions), load: () => ensureIssuer() },
-      { name: 'inboxConversations',     canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.inbox,       permissions), load: () => ensureInboxConversations() },
       { name: 'inboxDetailBulk',        canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.inbox,       permissions), load: () => prefetchBulk() },
     ];
 
@@ -99,6 +96,6 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [permissions, ensureLeads, ensureLeadFormOptions, ensureCustomers, ensureAggregates, ensureInventory, ensureInventoryProductOptions, ensureOrders, ensureCurrencies, ensureIssuer, ensureSalesOrders, ensureStaff, ensureQuotes, ensureInboxConversations, prefetchBulk]);
+  }, [permissions, ensureLeads, ensureLeadFormOptions, ensureCustomers, ensureAggregates, ensureInventory, ensureInventoryProductOptions, ensureOrders, ensureCurrencies, ensureIssuer, ensureSalesOrders, ensureStaff, ensureQuotes, prefetchBulk]);
 
 }
