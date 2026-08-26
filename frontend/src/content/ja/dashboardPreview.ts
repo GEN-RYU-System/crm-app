@@ -109,9 +109,16 @@ export const dashboardPreviewCopy = {
 
   /** Fake customer / assignee names used only in previewAdapter (no real data) */
   fakeCustomers: [
-    '田中商事', '中村物産', '斉藤工業', '松本技研',
-    '渡辺商会', '小林製作所', '加藤通商', '木村貿易',
-    '石井商事', '林産業',
+    'Pacific Card Traders LLC',
+    'Northwind Hobby Distribution Ltd',
+    'Aurora Collectibles GmbH',
+    'Silverline Trading Pty Ltd',
+    'Meridian Imports S.A.',
+    'Coastline Games & More LLC',
+    'Redwood Specialty Goods Ltd',
+    'Glacier Wholesale GmbH',
+    'Ironwood Distributors Pty Ltd',
+    'Crestview Commerce S.A.',
   ] as readonly string[],
   fakeAssignees: ['山田', '鈴木', '佐藤', '高橋', '伊藤'] as readonly string[],
 
