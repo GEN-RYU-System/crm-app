@@ -37,6 +37,14 @@ function archiveOnStatusChange(e) {
       sheet.getRange(editedRow, archiveReasonColIndex + 1).setValue(newStatus);
     }
 
+    // 成約/失注の場合は商談結果を自動連携
+    if (newStatus === '成約' || newStatus === '失注') {
+      const dealResultColIndex = headers.indexOf('商談結果');
+      if (dealResultColIndex !== -1) {
+        sheet.getRange(editedRow, dealResultColIndex + 1).setValue(newStatus);
+      }
+    }
+
     // 顧客名を取得して通知
     const customerNameIndex = headers.indexOf('顧客名');
     const rowData = sheet.getRange(editedRow, 1, 1, sheet.getLastColumn()).getValues()[0];
