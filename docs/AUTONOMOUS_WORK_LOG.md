@@ -218,12 +218,36 @@ df8649b           — fix(schema): Core Schema Registry に Discord列・顧客�
 ```
 
 `df8649b`（`release/schema-registry-restore`、develop 未マージ）は PO 本人（shingo-ops）が
-「Registry に追加」を選択した証拠。このコミットが取り込まれれば 8 列すべての不一致が解消する。
+「Registry に追加」を選択した証拠。しかし以下の判定によりマージ不可。
+
+### df8649b マージ不可判定（2026-08-26）
+
+`git show df8649b` の diff と実シート確認済みヘッダーを突き合わせた結果、
+CUSTOMERS 6列中4列で列名が実シートと一致しない。マージしても監査 FAIL は解消せず、誤った定義が入る。
+
+**不一致4件（Registry定義 ↔ 実シートヘッダー）**
+| Registry 定義（df8649b） | 実シートヘッダー |
+|------------------------|----------------|
+| `Discord Guild ID` | `Discord参加` |
+| `Discord 招待URL` | `Discord ユーザーID` |
+| `Discord 招待発行日時` | `Discrod 請求書 webhook` |
+| `Discord 連携状態` | `Discrod 発送通知 webhook` |
+
+**一致3件**: `Discord チャンネルID` / `顧客規模` / STAFF の `Discord ID`
+
+【推測】PR #600 削除時点の Registry 定義が実シートより古い版であった可能性。
+Phase C（PR #587）でシートに追加された最終的な列構成と、`df8649b` 作成時に参照した定義が乖離していたと考えられる。
+
+**正しい対応方針**（実装は別作業・今回はしない）
+- 実シートのヘッダーを正本として Registry を書き起こす
+- typo（`Discrod`）もシートに合わせる必要あり（Registry を typo に揃える or シートを修正して Registry を正名にする）
+- 実シート側の列名修正はデータ移行を伴うため別作業とする
 
 ### 次のアクション（今回は実装しない）
 
-1. `release/schema-registry-restore`（`df8649b`）を develop へマージ → 6列(Discord)+顧客規模が解消
-2. 担当者ID（CUSTOMERS col 11）は PR #590 で対応 → 全 8 件解消で `runCoreSchemaConformanceAudit()` PASS
+1. ~~`release/schema-registry-restore`（`df8649b`）を develop へマージ~~ → **マージ不可。上記参照**
+2. 実シートヘッダーを正本として Registry を書き起こす新 PR を起票
+3. 担当者ID（CUSTOMERS col 11）は PR #590 で対応 → 全件解消で `runCoreSchemaConformanceAudit()` PASS
 
 ---
 
