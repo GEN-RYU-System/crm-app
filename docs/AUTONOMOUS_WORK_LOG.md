@@ -3082,3 +3082,67 @@ clasp run applyOrderStatusRecalculation --params '[999]'
 ### 戻し方
 
 `git revert bed4f899bd4018a41a1b5a4fc542af1104541a64`
+
+---
+
+## 2026-08-26 デモシード Session 4: 支払先マスタ
+
+### 担当ファイル
+
+| ファイル | 関数 |
+|---------|------|
+| `src/99_DemoSeed_Payments.js` | `seedDemoPayments()` / `seedDemoPaymentsDryRun()` |
+
+### 実測列定義 (auditDevCoreSchemaV1HeaderDetailV3 2026-08-26 実測)
+
+sheetName=支払先マスタ | columnCount=16
+
+| 列番号 | ヘッダー名 | 対応フィールド |
+|--------|------------|---------------|
+| 1 | 支払先ID | PAYMENT_DESTINATION_ID |
+| 2 | 顧客ID | CUSTOMER_ID |
+| 3 | 表示名 | DISPLAY_NAME |
+| 4 | 請求名義 | BILLING_NAME |
+| 5 | Address 1 | ADDRESS_LINE_1 |
+| 6 | Address 2 | ADDRESS_LINE_2 |
+| 7 | Address 3 | ADDRESS_LINE_3 |
+| 8 | City | CITY |
+| 9 | State | STATE |
+| 10 | Zip | ZIP |
+| 11 | 国 | COUNTRY |
+| 12 | 支払方法 | PAYMENT_METHOD |
+| 13 | 通貨 | CURRENCY |
+| 14 | B Tax ID | TAX_ID |
+| 15 | 既定 | IS_DEFAULT |
+| 16 | 有効 | IS_ACTIVE |
+
+★ Registry 定義 (英語名) と実シート (日本語名) が乖離していることを確認。
+  実装では `headers.indexOf('支払先ID')` 等、実シートの日本語名で解決している。
+
+### ID 採番
+
+- 支払先ID: `PY-90001`〜`PY-90100` (`'PY-' + ('00000' + (90000 + n)).slice(-5)`)
+- 顧客ID:   `CS-90001`〜`CS-90100`
+
+### データ仕様
+
+- 支払方法: n%2===0 → Wise / n%2===1 → PayPal
+- 通貨: n%2===0 → JPY / n%2===1 → USD
+- 国: n%3===0 → Japan / n%3===1 → USA / n%3===2 → Australia
+- 既定・有効: 全件 true
+
+### PR
+
+- ブランチ: `release/demo-seed-session4-payments`
+- PR: GEN-RYU-System/crm-app#640 (base: develop)
+
+### 戻し方
+
+```bash
+# git revert でコードを戻す（データは戻らない）
+git revert <マージコミットSHA>
+
+# データ復元は BACKUP_20260826_デモ前 から手動
+# （git revert ではスプレッドシートのデータは戻らない）
+```
+
