@@ -52,8 +52,7 @@ GAS に接続せず、全て仮データ（ハードコード）で動作する�
 - **増加量**: −4,930 B（ビルドハッシュ差分による変動）
 
 ### Deploy to DEV
-- **結果**: success（run #32933552894）
-- **Workflow URL**: https://github.com/GEN-RYU-System/crm-app/actions/runs/32933552894
+- **結果**: success（PR #643 マージ直後の deploy-dev.yml run）
 
 ### 戻し方
 ```bash
@@ -89,8 +88,7 @@ git push origin develop
 - **増加量**: +13,030 B
 
 ### Deploy to DEV
-- **結果**: success（run #32934364653）
-- **Workflow URL**: https://github.com/GEN-RYU-System/crm-app/actions/runs/32934364653
+- **結果**: success（PR #644 マージ直後の deploy-dev.yml run）
 
 ### 戻し方
 ```bash
