@@ -70,7 +70,7 @@ PASS=true
 ```
 いずれも本PR変更（inbox信号復旧）とは無関係の既存不一致。新規不一致: 0件。
 
-### 【別課題1】bulk hydration メッセージ制限仕様（PR #580、実装は今回しない）
+### 【別課題1】bulk hydration メッセージ初期表示30件制限（仕様として許容）
 `getInboxBulkInitialLoad`（`src/28_CoreInboxApi.js:344`）の動作:
 
 | パラメータ | Script Property | デフォルト | 意味 |
@@ -83,14 +83,141 @@ PASS=true
 - `hasMore=true` の場合: UI に「もっと読み込む」ボタンを表示 → クリックで `getInboxMoreMessages` を呼び出し（30件ずつ）
 - **maxMsg を超えたメッセージは自動表示されない。ユーザーが「もっと読み込む」を押すまで非表示**
 
-課題: 本番環境で会話メッセージ数が 30 件を超える顧客の場合、受信箱を開いても最新 30 件しか即時表示されない。
-→ 別課題として起票予定。INBOX_INITIAL_MESSAGES の値を上げるか、自動ロードの実装を検討。
+**PO判断（2026-08-26）**: `INBOX_INITIAL_MESSAGES=30` の初期表示30件制限と「もっと読み込む」方式は
+仕様として許容する。対応不要。
 
-### 【別課題2】Meta Webhook 着信が受信箱 "会話ログ" に反映されない（実装しない）
+### 【別課題2】Meta Webhook 着信が受信箱 "会話ログ" に反映されない
 - 着信経路: `metaHandleWebhookPost` → `metaEnqueue` → `processMetaQueue` (1分トリガー) →
   `metaAppendMessageLog` → `META.SHEET.MESSAGE_LOG`（別シート）
 - "会話ログ" シートへの橋渡し処理は現在の `src/*.js` に存在しない
 - Meta Webhook 着信を受信箱に反映するには、別途 "会話ログ" への書き込み処理が必要
+
+**PO判断（2026-08-26）**: Meta連携は実装中止のため対象外。課題として扱わない。
+
+---
+
+## 【アプリ全体プリフェッチ標準化】完了サマリ（2026-08-26）
+
+### 対応した全ページ/対象
+
+| 対象 | PR | 内容 |
+|------|----|------|
+| Lead detail | #507 | `LeadDetailCacheContext` — createListCache を leadId key で導入 |
+| Customer detail | #516 | `CustomerDetailCacheContext` — customerId key |
+| Inventory product options (order detail) | #524 | `InventoryProductOptionsCacheContext` — OrderDetailPage 置換 |
+| Inventory product options (order editor) | #529 | OrderEditorPage 置換 |
+| Inventory product options (quote editor) | #531 | QuoteEditorPage 置換 |
+| Sales order detail | #539 | `SalesOrderDetailCacheContext` — orderId key / 入金確定後 refresh |
+| Dashboard KPI | #543 | `DashboardKpiCacheContext` — SINGLE_KEY |
+| Issuer master (quote editor) | #598 | QuoteEditorPage → `useIssuerMasterCache` |
+| Issuer master (order editor) | #605 | OrderEditorPage → `useIssuerMasterCache`（タスク2-8b） |
+| Issuer master (order detail) | PR `d295a40` | OrderDetailPage 置換 |
+| Issuer master (issuer settings) | Phase 2-2 | `IssuerMasterCacheContext` 新設・保存後 refresh |
+| Discord settings cache | Phase 2-3 | `DiscordSettingsCacheContext` — 4値スナップショット |
+| Inbox conversation list | Phase 2-4 | `InboxConversationListCacheContext` — usePrefetch 登録 |
+| Inbox conversation detail | Phase 2-5 | `InboxConversationDetailCacheContext` — 会話ID key |
+| Currency master | #503 | `CurrencyMasterCacheContext` — 共通化（同期対象外・後述） |
+
+### 同期信号の対応ドメイン
+
+**対応済み 8 ドメイン**: `leads` / `customers` / `orders` / `quotes` / `inventory` / `issuer` / `discord` / `inbox`
+
+- `checkSyncSignals` は Phase 2-1 で既存6件（leads/customers/orders/quotes/inventory/issuer）に
+  discord / inbox を加えた9件に拡張（discord は PR #600 廃止後コードから参照されないが定義は残存）
+- `writeSyncSignalDomains_` 共通処理を新設し、`withSheetWrite_` 経由・直接呼び出しの両方で契約統一
+- **inbox 信号の経緯**: PR #600（Discord廃止）で `src/33_DiscordIntegrationService.js` 削除により発行元消滅 → PR #615 で `addConversationLog` が `withSheetWrite_` + `CORE_INBOX_CACHE_TARGETS` を経由することで復旧
+
+**同期対象外: 通貨マスタ（`currencies` 信号は新設しない）**
+- 理由: 通貨マスタの更新経路はアプリ経由の書き込みが存在せず、手動シートの直接編集のみ
+- 対応: アプリ経由で通貨を変更したときは、各利用者が手動で画面を再読み込みする運用
+
+### 発見して修正したバグ
+
+| バグ | 発見契機 | 修正 |
+|------|---------|------|
+| 同期登録漏れ 6 件（CurrencyMaster / LeadFormOptions / InventoryProductOptions / LeadDetail / CustomerDetail / SalesOrderDetail が SyncPoller refreshers 未登録） | Phase 1 調査 | PR #548/#552/#555/#556/#557 |
+| inbox 同期信号消失（PR #600 Discord 廃止で発行元ゼロに） | `runCoreSchemaConformanceAudit` 実行 + inbox 信号調査 | PR #615: `addConversationLog` を `withSheetWrite_` に包み直し、`cacheTargetToDomain_` に INBOX 分岐追加 |
+
+### 設置した関所（検査強化3点・コミット阻止2重）
+
+| 関所 | PR / SHA | 内容 |
+|------|---------|------|
+| `check-design-system.mjs` 強化 (a)(b): CacheProvider 命名拡大 + usePrefetch/SyncPoller 実登録解析 | #599 (`38c89b0`) | 追加漏れ CacheProvider をビルド時に検出 |
+| `check-design-system.mjs` 強化 (c): `pages/` 内の直接 gas/client import 禁止 | #599 (`38c89b0`) | Repository/CacheContext 迂回を強制 |
+| `check-design-system.mjs` 強化 3-1(b): steps/refreshers への実登録解析に強化 | #608 (`13b46d5`) | ラムダ参照解析で偽陽性を排除 |
+| Git pre-commit フック（`.githooks/pre-commit`） | #602 (`92e595e`) | develop/main への直接コミットをローカルでブロック |
+| `executor-preflight.sh` の origin/main 存在確認 | 別PR | develop/main 欠落時の作業停止 |
+
+### 全 PR の revert SHA 一覧（プリフェッチ標準化 関連）
+
+| PR | タイトル（要約） | squash merge SHA / revert SHA |
+|----|----------------|-------------------------------|
+| #503 | 通貨マスタ共通キャッシュ | `ed38300b6b61910a31468e57af9f46e138a307fe` |
+| #507 | Lead detail keyed cache | `e459264a0a47d897191198b7ce508aac41c05fb7` |
+| #516 | Customer detail keyed cache | `2ed32ed1f9860bfed0257dc4d1c8f5f2adc57695` |
+| #524 | InventoryProductOptions — OrderDetailPage | `499dd9a27859d6c8e6a2e71d0b63dabca95a4ee9` |
+| #529 | InventoryProductOptions — OrderEditorPage | `8527a17773bc9f66f80403f6c978e29c202cae96` |
+| #531 | InventoryProductOptions — QuoteEditorPage | `ce4d724c1bed360f75af763132fa218d3eaf33fd` |
+| #539 | Sales order detail keyed cache | `569beb6dc5a1fe1f2c52ab13d6c9703ad47ff875` |
+| #543 | Dashboard KPI cache | `9457b42fd13c38657ecec8a9a67c760a8e27be72` |
+| #548 | LeadFormOptions → leads 信号 refresh | `9238c16c3677246f4122ad11cbe89ced225f4445` |
+| #552 | InventoryProductOptions → inventory 信号 refresh | `89cf525f463a512a18536574b00d022058d39ea1` |
+| #555 | LeadDetail → leads 信号 refresh | `13bf207b1d2409ae254b27a2a697201688588dae` |
+| #556 | CustomerDetail → customers 信号 refresh | `9a6beebfd21cea13a8fe1d024f795c786107de25` |
+| #557 | SalesOrderDetail → orders 信号 refresh | `26b8cf40e178e97434230cb464c0e6f33f2a73da` |
+| #598 | QuoteEditorPage issuer 置換 (タスク2-8) | `0870c9a5...`（短縮）`git revert 0870c9a` |
+| #599 | check-design-system 強化 3-1 + 許可リスト | `38c89b07...`（短縮）`git revert 38c89b0` |
+| #602 | Git pre-commit フック設置 3-3 | `92e595ef...`（短縮）`git revert 92e595e` |
+| #605 | OrderEditorPage issuer 置換 (タスク2-8b) | `c49599e0c8ec936025d9a6b0786d02fe1df56207` |
+| #608 | check-design-system 3-1(b) 再実装 | `13b46d5ca1f22c17c907ed2bf17659c10e8e3cac` |
+| #615 | inbox 同期信号復旧（PR #600 損失分） | `02eb38f8efecafd083ee07b4ed0aa5d8244e9b5c` |
+
+※ `git revert <SHA>` で単独ロールバック可能。依存関係がある場合は降順に revert すること。
+
+---
+
+## 【スキーマ不一致調査】runCoreSchemaConformanceAudit() 不一致2件（読み取りのみ・2026-08-26）
+
+### 概要
+`runCoreSchemaConformanceAudit()` で報告される既存不一致 2 件を調査した。
+実装変更はなし。目的はいつ・何のために追加された列か、Registry 追加 vs 実シート削除のどちらが正解かの判断材料を揃えること。
+
+### 調査結果: 顧客マスタ（CUSTOMERS）— 定義14列 / 実シート21列 / 差7列
+
+| # | 実シート列位置 | ヘッダー名 | いつ追加されたか | 判断 |
+|---|--------------|-----------|---------------|------|
+| 1 | col 11 | 担当者ID | `512028d`「feat: CUSTOMERS に STAFF_ID（担当者ID）を Core Schema V1 に登録」で Registry 登録 → 経緯不明で現 HEAD から消えた | **Registry に追加**（元々登録意図あり。PR #590 管轄と `df8649b` が明記） |
+| 2 | col 15 | Discord参加 | `ce5d0b5` / PR #587 Discord Phase C で物理列追加 | **Registry に追加**（`df8649b` で PO が明示的に復元しようとした。列は実シートに残存） |
+| 3 | col 16 | Discord チャンネルID | 同上 | **Registry に追加**（同理由） |
+| 4 | col 17 | Discord ユーザーID | 同上 | **Registry に追加**（同理由） |
+| 5 | col 18 | Discrod 請求書 webhook | 同上（ヘッダー名に誤字: "Discrod"） | **Registry に追加**（同理由。typo は別 issue） |
+| 6 | col 19 | Discrod 発送通知 webhook | 同上（ヘッダー名に誤字: "Discrod"） | **Registry に追加**（同理由。typo は別 issue） |
+| 7 | col 21 | 顧客規模 | Discord Phase C（顧客カテゴリ分類用）で追加 | **Registry に追加**（`df8649b` で PO が明示復元を選択。実シートに存在） |
+
+### 調査結果: 担当者マスタ（STAFF）— 定義23列 / 実シート24列 / 差1列
+
+| # | 実シート列位置 | ヘッダー名 | いつ追加されたか | 判断 |
+|---|--------------|-----------|---------------|------|
+| 1 | col 10 | Discord ID | `ce5d0b5` / PR #587 Discord Phase C で物理列追加 | **Registry に追加**（`df8649b` で PO が明示的に復元しようとした） |
+
+### 根拠となる git 履歴
+
+```
+ce5d0b5 / PR #587 — Discord Phase C: 顧客マスタ・担当者マスタに Discord 列を物理追加
+3b458d7 / PR #600 — Discord 連携廃止: src/*.js から Discord コードを全削除（物理列はそのまま残留）
+512028d           — feat: CUSTOMERS に STAFF_ID（担当者ID）を Core Schema V1 に登録
+df8649b           — fix(schema): Core Schema Registry に Discord列・顧客規模を復元
+                     Author: shingo-ops。branch: release/schema-registry-restore（未マージ）
+                     コメント: "残不一致は担当者ID(CUSTOMERS)の1件のみ。これは別セッション管轄(PR #590)のため本PRでは対象外"
+```
+
+`df8649b`（`release/schema-registry-restore`、develop 未マージ）は PO 本人（shingo-ops）が
+「Registry に追加」を選択した証拠。このコミットが取り込まれれば 8 列すべての不一致が解消する。
+
+### 次のアクション（今回は実装しない）
+
+1. `release/schema-registry-restore`（`df8649b`）を develop へマージ → 6列(Discord)+顧客規模が解消
+2. 担当者ID（CUSTOMERS col 11）は PR #590 で対応 → 全 8 件解消で `runCoreSchemaConformanceAudit()` PASS
 
 ---
 
