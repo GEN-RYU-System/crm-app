@@ -1,0 +1,15 @@
+.dp-page { display: flex; flex-direction: column; gap: var(--space-2xl); }
+.dp-sections { display: flex; flex-direction: column; gap: var(--space-lg); }
+
+/* ── Section ─────────────────────────────────────────────────── */
+.dp-section { display: flex; flex-direction: column; gap: var(--space-md); }
+.dp-section__title { font-size: var(--font-md); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); margin: 0; }
+
+/* ── KPI tiles ──────────────────────────────────────────────── */
+.dp-kpi-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-md); }
+.dp-kpi-tile { display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-md); border: 1px solid var(--color-border); border-radius: var(--radius-surface); background: var(--color-surface); }
+.dp-kpi-tile__label { font-size: var(--font-xs); color: var(--color-text-muted); }
+.dp-kpi-tile__value { font-size: var(--font-stat); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
+.dp-kpi-tile__sub { font-size: var(--font-xs); color: var(--color-text-muted); }
+.dp-kpi-tile--up   .dp-kpi-tile__value { color: var(--color-success-text); }
+.dp-kpi-tile--down .dp-kpi-tile__value { color: var(--color-danger); }

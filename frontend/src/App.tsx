@@ -21,6 +21,8 @@ import { getCurrentUser } from './gas/client';
 import type { DashboardKpis } from './features/dashboard/contracts';
 import { dashboardGasRepository } from './features/dashboard/gasAdapter';
 import { ComponentCatalogPage } from './pages/catalog/ComponentCatalogPage';
+import { DashboardPreviewPage } from './pages/dashboardPreview/DashboardPreviewPage';
+import { dashboardPreviewRepository } from './features/dashboardPreview/previewAdapter';
 import { customerGasRepository } from './features/customers/gasAdapter';
 import { leadGasRepository } from './features/leads/gasAdapter';
 import { staffGasRepository } from './features/staff/gasAdapter';
@@ -258,6 +260,7 @@ function AppRouter() {
     <Route path="/route-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
     <Route path="/archive-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
     <Route path={NAVIGATION_BY_ID.components.hash} element={<ComponentCatalogPage />} />
+    <Route path={NAVIGATION_BY_ID.dashboardPreview.hash} element={<DashboardPreviewPage repository={dashboardPreviewRepository} />} />
     <Route path="/change-password" element={<ChangePasswordPage />} />
     <Route path="*" element={<Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />} />
   </Routes></AppShellWithPrefetch></></SalesOrderDetailCacheProvider></SalesOrderListCacheProvider></CustomerAggregateCacheProvider></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></InboxConversationDetailCacheProvider></InboxConversationListCacheProvider></IssuerMasterCacheProvider></CurrencyMasterCacheProvider></InventoryProductOptionsCacheProvider></InventoryListCacheProvider></CustomerDetailCacheProvider></CustomerListCacheProvider></LeadFormOptionsCacheProvider></LeadDetailCacheProvider></LeadListCacheProvider></HashRouter>;
