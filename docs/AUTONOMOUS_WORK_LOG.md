@@ -15,6 +15,38 @@
 
 ---
 
+## 【顧客マスタ Discord 列コード参照除去】PR #623
+
+### 概要
+PR #600 で Discord サービスを削除済みだったが、`src/08_Config.js`・`src/99_CustomerMasterSeed.js` に Discord 列参照が残存していたため完全除去。
+
+### 変更ファイル
+- `src/00_CoreSchemaRegistry.js`: CUSTOMERS から `['DISCORD_CHANNEL_ID', 'Discord チャンネルID']` を削除（16→15列）
+- `src/08_Config.js`: `HEADERS.CRM_CUSTOMERS` から Discord 関連5列を削除（19→14列）
+- `src/99_CustomerMasterSeed.js`: 移行関数内の Discord 列 indexOf/push 参照を外科的除去（ファイル自体は `inspectCustomerMasterSheet` 等の有用関数を含むため保持）
+
+### マージ・デプロイ記録
+- mergeCommit SHA: `1389c44e53c1015bbd0d8e0e7eed6143907e4121`
+- develop へ squash merge → Deploy to DEV 成功（run ID: 32919097675）
+- 2026-08-26
+
+### ロールバック手順
+```
+git revert 1389c44e53c1015bbd0d8e0e7eed6143907e4121
+git push origin develop
+# → Deploy to DEV が自動起動
+```
+
+### 教訓（作業ブランチ取り違え・2026-08-26）
+**経緯:** AUTONOMOUS_WORK_LOG.md を更新する際、canonical worktree (`/Users/tanizawashingo/crm-app-canonical-20260824`) を使用したが、そのworktreeは古いブランチ `release/worklog-discord-removal` に留まっていた。`git add docs/AUTONOMOUS_WORK_LOG.md` のみでコミットしたにもかかわらず、ブランチの親コミットが古かったため Discord サービスファイルを含む30ファイルが差分として現れ、誤ったブランチとしてpushされた。
+
+**再発防止:**
+1. docs更新の際も必ず `bash scripts/new-worktree.sh` でorigin/developから新しいworktreeを作成する（canonical worktreeをそのまま流用しない）
+2. `git status --short` でファイル1件のみであることを**コミット前に必ず確認**する
+3. `new-worktree.sh` はCWDに依存するため、必ず `git -C <crm-app-path> worktree add` 形式で呼ぶか、crm-appディレクトリ内から実行する
+
+---
+
 ## 【inbox同期信号復旧】PR #600(Discord削除)で失われた inbox 信号の再実装
 
 ### 経緯
