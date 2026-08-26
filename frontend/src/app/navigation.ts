@@ -34,7 +34,8 @@ export type NavigationItemId =
   | 'productMaster'
   | 'googleDrive'
   | 'issuerMaster'
-  | 'components';
+  | 'components'
+  | 'dashboardPreview';
 export type NavigationItemState = 'available' | 'preview' | 'planned';
 export type NavigationItem = {
   id: NavigationItemId;
@@ -122,7 +123,8 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
     { id: 'dataManagement', label: navigationCopy.managementCenter, hash: DATA_MANAGEMENT_ROOT, icon: 'database', order: 1, state: 'available', requiredPermission: 'lead_view', children: DATA_MANAGEMENT_ITEMS }
   ] },
   { id: 'development', label: navigationCopy.groups.development, order: 4, items: [
-    { id: 'components', label: navigationCopy.components, hash: '/components', icon: 'components', order: 1, state: 'available' }
+    { id: 'components',        label: navigationCopy.components,        hash: '/components',        icon: 'components', order: 1, state: 'available' },
+    { id: 'dashboardPreview',  label: navigationCopy.dashboardPreview,  hash: '/dashboard-preview', icon: 'dashboard',  order: 2, state: 'preview'   }
   ] }
 ];
 
