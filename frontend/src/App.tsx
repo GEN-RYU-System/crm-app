@@ -17,7 +17,7 @@ import { useQuoteListCache } from './pages/quotes/QuoteListCacheContext';
 import { AppShell } from './components/shell';
 import { Spinner, StatusMessage } from './components/ui';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { getCurrentUser } from './gas/client';
+import { getCurrentUser, type OrderRecord } from './gas/client';
 import type { DashboardKpis } from './features/dashboard/contracts';
 import { dashboardGasRepository } from './features/dashboard/gasAdapter';
 import { ComponentCatalogPage } from './pages/catalog/ComponentCatalogPage';
@@ -94,6 +94,19 @@ function InboxDetailCacheWithBulkSeed({ children }: { children: React.ReactNode 
     >
       {children}
     </InboxConversationDetailCacheProvider>
+  );
+}
+
+function SalesOrderListCacheWithOrderSeed({ children }: { children: React.ReactNode }) {
+  const { seed } = useOrderListCache();
+  const onOrdersLoaded = useCallback(
+    (orders: readonly OrderRecord[]) => seed(orders),
+    [seed]
+  );
+  return (
+    <SalesOrderListCacheProvider onOrdersLoaded={onOrdersLoaded}>
+      {children}
+    </SalesOrderListCacheProvider>
   );
 }
 
@@ -258,7 +271,7 @@ function AppRouter() {
     ]
   };
 
-  return <HashRouter><LeadListCacheProvider><LeadDetailCacheProvider repository={leadGasRepository}><LeadFormOptionsCacheProvider repository={leadGasRepository}><CustomerListCacheProvider repository={customerGasRepository}><CustomerDetailCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><InventoryProductOptionsCacheProvider><CurrencyMasterCacheProvider><IssuerMasterCacheProvider><InboxConversationListCacheProvider repository={inboxGasRepository}><InboxDetailCacheWithBulkSeed><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><CustomerAggregateCacheProvider repository={customerGasRepository}><SalesOrderListCacheProvider><SalesOrderDetailCacheProvider><><SyncPoller /><AppShellWithPrefetch permissions={permissions} navigationGroups={navigationGroups}><Routes>
+  return <HashRouter><LeadListCacheProvider><LeadDetailCacheProvider repository={leadGasRepository}><LeadFormOptionsCacheProvider repository={leadGasRepository}><CustomerListCacheProvider repository={customerGasRepository}><CustomerDetailCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><InventoryProductOptionsCacheProvider><CurrencyMasterCacheProvider><IssuerMasterCacheProvider><InboxConversationListCacheProvider repository={inboxGasRepository}><InboxDetailCacheWithBulkSeed><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><CustomerAggregateCacheProvider repository={customerGasRepository}><SalesOrderListCacheWithOrderSeed><SalesOrderDetailCacheProvider><><SyncPoller /><AppShellWithPrefetch permissions={permissions} navigationGroups={navigationGroups}><Routes>
     <Route path={NAVIGATION_BY_ID.dashboard.hash} element={<DashboardPage kpis={kpis} state={state} error={error} onRefresh={() => void refreshDashboardKpis()} />} />
     {DATA_MANAGEMENT_ITEMS
       .filter((item) => item.state !== 'planned' && hubIndexRoutes[item.id] != null)
@@ -280,5 +293,5 @@ function AppRouter() {
     <Route path={NAVIGATION_BY_ID.dashboardPreview.hash} element={<DashboardPreviewPage repository={dashboardPreviewRepository} />} />
     <Route path="/change-password" element={<ChangePasswordPage />} />
     <Route path="*" element={<Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />} />
-  </Routes></AppShellWithPrefetch></></SalesOrderDetailCacheProvider></SalesOrderListCacheProvider></CustomerAggregateCacheProvider></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></InboxDetailCacheWithBulkSeed></InboxConversationListCacheProvider></IssuerMasterCacheProvider></CurrencyMasterCacheProvider></InventoryProductOptionsCacheProvider></InventoryListCacheProvider></CustomerDetailCacheProvider></CustomerListCacheProvider></LeadFormOptionsCacheProvider></LeadDetailCacheProvider></LeadListCacheProvider></HashRouter>;
+  </Routes></AppShellWithPrefetch></></SalesOrderDetailCacheProvider></SalesOrderListCacheWithOrderSeed></CustomerAggregateCacheProvider></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></InboxDetailCacheWithBulkSeed></InboxConversationListCacheProvider></IssuerMasterCacheProvider></CurrencyMasterCacheProvider></InventoryProductOptionsCacheProvider></InventoryListCacheProvider></CustomerDetailCacheProvider></CustomerListCacheProvider></LeadFormOptionsCacheProvider></LeadDetailCacheProvider></LeadListCacheProvider></HashRouter>;
 }

@@ -3085,6 +3085,53 @@ clasp run applyOrderStatusRecalculation --params '[999]'
 
 ---
 
+## GAS呼び出しバッチ化 — 案3: 受注バッチ（2026-08-26）
+
+**PR**: GEN-RYU-System/crm-app#656（squash merge → develop）
+
+### 設計判断: 権限出し分けの扱い
+
+注文（orders）と受注管理（salesOrders）を `getCoreOrdersBatchForFrontend` に統合したことで、
+片方の権限しかない利用者にも両方のデータが送信される。
+
+- orders の canAccess: `NAVIGATION_BY_ID.orders`
+- salesOrders の canAccess: `NAVIGATION_BY_ID.salesOrders`
+- GAS 側の権限チェック: 両方とも `checkPermission('lead_view')` で同一
+
+許容する理由: GAS 側の権限レベルが同一であり、フロントエンドのナビゲーション権限は
+表示制御（どのページに遷移できるか）の責務であってデータアクセス制御ではない。
+orders/salesOrders データは同一のスプレッドシートシートから取得しており、
+片方に権限がある利用者には事実上もう片方のデータも閲覧可能な状態にある。
+
+### 変更内容
+
+- `src/28_CoreOrderReadApi.js`: `getCoreOrdersBatchForFrontend` 追加
+- `frontend/src/gas/client.ts`: `getCoreOrdersBatch` 追加・`OrdersBatchRecord` 型追加
+- `frontend/src/pages/orders/OrderListCacheContext.tsx`: `seed` 公開
+- `frontend/src/pages/sales-orders/SalesOrderListCacheContext.tsx`: バッチ関数に変更
+- `frontend/src/App.tsx`: `SalesOrderListCacheWithOrderSeed` ブリッジ追加
+- `frontend/src/app/usePrefetch.ts`: step 7 (orders) 削除
+- `frontend/src/preview/gasRunnerMock.ts`: `getCoreOrdersBatchForFrontend` モック追加
+- `frontend/scripts/verify-orders-batch-prefetch.cjs`: 検証スクリプト追加
+
+### 削減効果
+
+- 変更前: GAS呼び出し3回（getCoreOrdersForFrontend×2, getCoreOrderStatusOptionsForFrontend×1）
+- 変更後: GAS呼び出し1回（getCoreOrdersBatchForFrontend×1）
+- 固定コスト削減: 2回 × 3,298ms = 6,596ms
+
+### スコープ外（記録のみ）
+
+LEADSシートが5関数から読まれている重複（getLeadsByType, getCoreCustomersForFrontend,
+getCoreQuotesForFrontend, getInboxConversationsForFrontend, getInboxBulkInitialLoad）は
+各関数がCacheServiceを持つため今回の対象外とする。
+
+### 戻し方
+
+`git revert <mergeCommit>`
+
+---
+
 ## 【demoSeed】DEV スプレッドシート デモデータ投入 — PR #655
 
 **実施日時**: 2026-08-26T07:02:02Z（merge）/ 07:02:54Z（DEV deploy完了）  

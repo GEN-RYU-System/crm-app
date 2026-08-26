@@ -64,6 +64,71 @@ function getCoreOrdersForFrontend(sessionId, forceRefresh) {
 }
 
 /**
+ * 受注一覧 + ステータス選択肢を1回の呼び出しで返す（プリフェッチ用バッチAPI）。
+ * orders キャッシュは getCoreOrdersForFrontend と共有する（CORE_ORDERS_CACHE_INDEX）。
+ * @param {string} sessionId
+ * @param {boolean} [forceRefresh]
+ * @returns {{ orders: Object[], statusOptions: { key: string, label: string }[] }}
+ */
+function getCoreOrdersBatchForFrontend(sessionId, forceRefresh) {
+  setEmailFromSession(sessionId);
+  checkPermission('lead_view');
+
+  var statusOptions = CORE_ORDER_STATUS_TAB_KEYS.map(function(key) {
+    return { key: key, label: getCoreSchemaV1Value('ORDERS', 'STATUS', key) };
+  });
+
+  if (forceRefresh !== true) {
+    var cached = readCacheChunks_(CORE_ORDERS_CACHE_INDEX, CORE_ORDERS_CACHE_PREFIX);
+    if (cached !== null) return { orders: cached, statusOptions: statusOptions };
+  }
+
+  var spreadsheet = getSpreadsheet();
+
+  var customers = coreCustomerFrontendReadTable(spreadsheet, 'CUSTOMERS', [
+    'CUSTOMER_ID', 'CUSTOMER_NAME'
+  ]);
+  var customerNameById = customers.rows.reduce(function(map, row) {
+    var id   = coreCustomerFrontendValue(row[customers.indexes.CUSTOMER_ID]);
+    var name = coreCustomerFrontendValue(row[customers.indexes.CUSTOMER_NAME]);
+    if (id) map[id] = name;
+    return map;
+  }, {});
+
+  var orders = coreCustomerFrontendReadTable(spreadsheet, 'ORDERS', [
+    'ORDER_ID', 'CUSTOMER_ID', 'INVOICE_NUMBER', 'INVOICE_ISSUED_AT',
+    'PAYMENT_METHOD', 'INVOICE_TOTAL', 'CURRENCY',
+    'PAYMENT_DUE_AT', 'PAYMENT_STATUS', 'INVOICE_TOTAL_JPY',
+    'STATUS', 'PAYMENT_CONFIRMED_AT'
+  ]);
+
+  var rows = orders.rows
+    .filter(function(row) {
+      return coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]);
+    })
+    .map(function(row) {
+      var customerId = coreCustomerFrontendValue(row[orders.indexes.CUSTOMER_ID]);
+      return {
+        orderId:            coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]),
+        customerName:       customerNameById[customerId] || '',
+        invoiceNumber:      coreCustomerFrontendValue(row[orders.indexes.INVOICE_NUMBER]),
+        invoiceIssuedAt:    coreCustomerFrontendValue(row[orders.indexes.INVOICE_ISSUED_AT]),
+        paymentMethod:      coreCustomerFrontendValue(row[orders.indexes.PAYMENT_METHOD]),
+        invoiceTotal:       coreCustomerFrontendValue(row[orders.indexes.INVOICE_TOTAL]),
+        currency:           coreCustomerFrontendValue(row[orders.indexes.CURRENCY]),
+        paymentDueAt:       coreCustomerFrontendValue(row[orders.indexes.PAYMENT_DUE_AT]),
+        paymentStatus:      coreCustomerFrontendValue(row[orders.indexes.PAYMENT_STATUS]),
+        invoiceTotalJpy:    coreCustomerFrontendValue(row[orders.indexes.INVOICE_TOTAL_JPY]),
+        status:             coreCustomerFrontendValue(row[orders.indexes.STATUS]),
+        paymentConfirmedAt: coreCustomerFrontendValue(row[orders.indexes.PAYMENT_CONFIRMED_AT])
+      };
+    });
+
+  writeCacheChunks_(CORE_ORDERS_CACHE_INDEX, CORE_ORDERS_CACHE_PREFIX, rows, CORE_ORDERS_CACHE_TTL, CORE_ORDERS_CACHE_CHUNK_SIZE);
+  return { orders: rows, statusOptions: statusOptions };
+}
+
+/**
  * サイドメニューのタブとして表示するステータスを、表示順で返す。
  * UNKNOWN は業務上出さない前提のためタブに含めない。
  * （UNKNOWN の行が万一存在しても「すべて」タブには表示されるため取りこぼさない）
