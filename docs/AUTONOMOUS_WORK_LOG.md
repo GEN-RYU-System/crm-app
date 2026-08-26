@@ -2893,3 +2893,93 @@ clasp run runCoreSchemaConformanceAudit
 ### 戻し方
 
 `git revert <mergeCommit>`（mergeCommit は develop マージ後に記入）
+
+---
+
+## PR #628: 受注作成時のステータスが常に「不明」になるバグを修正（2026-08-26）
+
+**PR**: GEN-RYU-System/crm-app#628（squash merge → develop）
+**mergeCommit**: `9857901`（`98579017cc900df5919235c0d865717039a1735e`）
+
+### 原因
+
+`src/28_CoreOrderWriteApi.js:151` の `invoiceNumber: ''` ハードコードにより、
+直前で生成した `invoiceNumber` 変数が `calculateOrderStatus` に渡されていなかった。
+非下書き受注でも STATUS が常に「不明」で書き込まれ、修正なしに残存し続けていた。
+
+**同じ1行が2つの不具合を起こしていた:**
+- 受注ステータスが常に「不明」（受注管理セッションが検知）
+- PDF出力の Invoice # が常に空欄（請求書セッションが検知）
+
+採番ロジック（PR #530）は正しく実装されていたが、書き込み箇所で変数が使われていなかった。
+**変数を生成したら、実際に使われているかを確認すること。**
+
+### 変更内容
+
+- `src/28_CoreOrderWriteApi.js:151`: `invoiceNumber: ''` → `invoiceNumber: invoiceNumber`（変数に差し替え）
+- `src/28_CoreOrderWriteApi.js:235`: 全書き込み後に `recalculateOrderStatusById(newOrderId)` を追加
+- `src/26_OrderStatusService.js:374`: ガード値 `7 → 8`（実測値。後続 PR #631 で引数化）
+
+### デプロイ・検証
+
+- Deploy to DEV: success（run ID: 32921063402）
+- `runCoreSchemaConformanceAudit`: 不一致 2件（CUSTOMERS 既存許容・LEADS は #628 と無関係の既存差異）
+- `dryRunOrderStatusRecalculation` before: 変更あり 8件（全て「不明→支払い待ち」）
+- `applyOrderStatusRecalculation`: `{ applied: 8, verifyPassed: true }`
+- `dryRunOrderStatusRecalculation` after: **変更あり 0件**
+
+### 戻し方
+
+`git revert 9857901`
+
+---
+
+## PR #631: applyOrderStatusRecalculation の差分件数ガードを引数化（2026-08-26）
+
+**PR**: GEN-RYU-System/crm-app#631（squash merge → develop）
+**mergeCommit**: `bed4f899bd4018a41a1b5a4fc542af1104541a64`
+
+### 背景
+
+ガードを固定値で持つと、新規受注が増えるたびにコード変更とPRが必要になる。
+`expectedCount` 引数で実行時の dryRun 実測値を受け取る形に変更した。
+
+### 変更内容
+
+- `src/26_OrderStatusService.js:326`: `applyOrderStatusRecalculation()` → `applyOrderStatusRecalculation(expectedCount)`
+- 引数なし・数値以外は即 throw（誤爆防止ガードを維持）
+- `diffs.length !== 8` → `diffs.length !== expectedCount`
+
+### 実行手順（更新版）
+
+```sh
+# 1. 件数確認
+clasp run dryRunOrderStatusRecalculation
+
+# 2. 確認した件数を引数で渡して実行
+clasp run applyOrderStatusRecalculation --params '[<件数>]'
+
+# 3. 0件になることを確認
+clasp run dryRunOrderStatusRecalculation
+```
+
+★ 引数なしでは実行できない（誤爆防止）
+★ ガードは誤爆防止のため外してはならない
+
+### 合格条件（CC実施済み）
+
+```
+clasp run applyOrderStatusRecalculation
+→ Exception: expectedCount は数値必須です。... ✓
+
+clasp run applyOrderStatusRecalculation --params '[999]'
+→ Exception: 差分件数が想定と異なるため中断します。期待=999件、実際=0件 ✓
+```
+
+### デプロイ・検証
+
+- Deploy to DEV: success（run ID: 32922707920）
+
+### 戻し方
+
+`git revert bed4f899bd4018a41a1b5a4fc542af1104541a64`
