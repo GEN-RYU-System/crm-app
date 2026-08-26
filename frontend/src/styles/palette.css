@@ -37,4 +37,10 @@
   --palette-doc-gap-lg: 20pt;
   --palette-doc-meta-gap: 10pt;
   --palette-doc-radius: 2pt;
+  /* Dashboard preview — SA 対応トークン (DASHBOARD_PREVIEW_STYLE_MAP.md 参照) */
+  --palette-radius-card: 8px;
+  --palette-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --palette-font-2xl: 24px;
+  --palette-warning-bg-subtle: rgba(183, 121, 31, 0.06);
+  --palette-success-bg-subtle: rgba(72, 187, 120, 0.05);
 }

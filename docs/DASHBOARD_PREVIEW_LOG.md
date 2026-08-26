@@ -73,6 +73,8 @@ git push origin develop
 
 ### セクション一覧と移植元
 
+8セクション中6のみ実装。2件は PR 5 で追加。
+
 | セクション | 移植元 Sales Anchor |
 |-----------|-------------------|
 | フォローアップ | `DashboardPage.tsx:472–536` |
@@ -81,6 +83,8 @@ git push origin develop
 | 売上・受注 KPI | `DashboardPage.tsx:628–728` |
 | 売上推移グラフ（CSS棒グラフ） | `DashboardPage.tsx:666–723`（recharts 版の構成を CSS で再現） |
 | ファネル（4段階） | `FunnelSection.tsx:446–543` |
+| AI推薦（優先見込み客） | → PR 5 |
+| 週次アドバイザー | → PR 5 |
 
 ### ReactPoc.html サイズ
 - **変更前**: 490,410 B（PR1後）

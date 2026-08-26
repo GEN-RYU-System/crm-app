@@ -54,3 +54,17 @@ ConversationWorkspaceは、旧GASのチャット系画面に共通する一覧�
 Inbox Previewは`ConversationWorkspace`を再利用し、Sales Anchorの受信箱と同じく上部のステータスタブ、プラットフォーム絞り込み、検索、会話一覧、メッセージスレッド、顧客カルテを分離します。`InboxRepository`を通じてPreview adapterだけを参照し、GAS、storage、ポーリング、送信・保存へ接続しません。
 
 MultiSelectは複数値の選択を受け持つ純粋UI金型です。`items`・`getKey`・`getLabel`・`values`・`onChange`を呼出側から受け取り、業務データ・Copy・保存処理を持ちません。選択済みの値は入力欄内タグ（×ボタン付き）として表示し、タグをクリックまたはBackspaceで削除できます。`items`に存在しないIDが`values`に含まれる場合は`fallbackLabels`（`Record<string, string>`）のラベルでタグ表示し、ドロップダウンには出しません。入力欄はフィルタ文字列として機能し、候補はComboboxと同じポータルドロップダウンで表示します。幅は`width`prop（`sm`/`md`/`lg`）で指定し、`FormField.css`のトークンを使用します。キーボードフォーカスは`--focus-ring-shadow`を使用します。
+
+## ダッシュボードプレビュー専用トークン
+
+Sales Anchor（`~/salesanchor-readonly/frontend/src/pages/dashboard/`）の CSS とデザイントークンを対応付けた際、CRM の既存 palette には存在しないトークンが5つ必要になった。PR 4（`release/dashboard-preview-p4`）で `palette.css` → `tokens.css` へ追加済み。詳細な対応表は `docs/DASHBOARD_PREVIEW_STYLE_MAP.md` を参照。
+
+| tokens.css トークン | palette.css 経由値 | SA 対応トークン | 用途 |
+|--------------------|--------------------|----------------|------|
+| `--radius-card` | `8px` | `--radius-lg` | KPI タイル・ファネルカードの角丸 |
+| `--shadow-sm` | `0 1px 3px rgba(0,0,0,0.08)` | `--shadow-sm` | KPI タイル・ファネルカードの影 |
+| `--font-2xl` | `24px` | `--font-2xl` | KPI 数値・ファネル件数の文字サイズ |
+| `--color-warning-bg-subtle` | `rgba(183,121,31,0.06)` | `--warning-bg-subtle` | 週次アドバイザーの背景（PR5） |
+| `--color-success-bg-subtle` | `rgba(72,187,120,0.05)` | `--success-bg-subtle` | AI推薦カードの背景（PR5） |
+
+ダッシュボードプレビュー CSS（`DashboardPreviewPage.css`）内で動的に設定するバーの高さ・幅は `--_dp-bar-h` / `--_dp-bar-w`（`--_` 接頭辞）を使用する。`--_` 接頭辞のカスタムプロパティは design-system checker の未定義トークン検査から除外される（`check-design-system.mjs:27`）。値は JSX の `style={{ '--_dp-bar-w': \`${pct}%\` } as CSSProperties}` で注入し、CSS 内で `var(--_dp-bar-w, 0%)` として参照する。

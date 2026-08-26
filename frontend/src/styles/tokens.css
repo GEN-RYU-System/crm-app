@@ -41,4 +41,10 @@
   --doc-gap-lg: var(--palette-doc-gap-lg);
   --doc-meta-gap: var(--palette-doc-meta-gap);
   --doc-radius: var(--palette-doc-radius);
+  /* Dashboard preview — SA 対応トークン (DASHBOARD_PREVIEW_STYLE_MAP.md 参照) */
+  --radius-card: var(--palette-radius-card);
+  --shadow-sm: var(--palette-shadow-sm);
+  --font-2xl: var(--palette-font-2xl);
+  --color-warning-bg-subtle: var(--palette-warning-bg-subtle);
+  --color-success-bg-subtle: var(--palette-success-bg-subtle);
 }
