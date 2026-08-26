@@ -174,6 +174,12 @@ PASS=true
 
 ※ `git revert <SHA>` で単独ロールバック可能。依存関係がある場合は降順に revert すること。
 
+### 本節の記録 PR
+
+- PR #619（本セクション追加） mergeCommit: `f4762bd7e3d11b67731d8a9ddcfee174a88b057d`
+- 戻し方: `git revert f4762bd7e3d11b67731d8a9ddcfee174a88b057d`
+- docs-only PR のため GAS デプロイなし。祖先関係: `ffa7e30 IS_ANCESTOR f4762bd` ✓
+
 ---
 
 ## 【スキーマ不一致調査】runCoreSchemaConformanceAudit() 不一致2件（読み取りのみ・2026-08-26）
