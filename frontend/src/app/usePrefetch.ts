@@ -56,24 +56,37 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
     const timer = setTimeout(() => {
       void (async () => {
         // [TEMP] GAS response time measurement — remove after analysis
+        const CONCURRENCY = 3; // pool size; tune based on DEV measurement
         type TimingRow = { name: string; elapsedMs: number | '(skip)'; startMs: number | '-'; endMs: number | '-' };
-        const timings: TimingRow[] = [];
         const totalStart = Date.now();
-        for (const step of steps) {
-          if (!step.canAccess) {
-            timings.push({ name: step.name, elapsedMs: '(skip)', startMs: '-', endMs: '-' });
-            continue;
-          }
-          const t0 = Date.now();
-          try { await step.load(); } catch { /* prefetch failure is intentionally swallowed */ }
-          const t1 = Date.now();
-          timings.push({ name: step.name, elapsedMs: t1 - t0, startMs: t0, endMs: t1 });
-        }
+
+        const skipped: TimingRow[] = steps
+          .filter(s => !s.canAccess)
+          .map(s => ({ name: s.name, elapsedMs: '(skip)' as const, startMs: '-' as const, endMs: '-' as const }));
+        const accessible = steps.filter(s => s.canAccess);
+        const results: TimingRow[] = [];
+
+        // Pool: always keep CONCURRENCY workers running, each pulling from queue
+        const queue = [...accessible];
+        await Promise.all(
+          Array.from({ length: Math.min(CONCURRENCY, queue.length) }, async () => {
+            for (;;) {
+              const step = queue.shift();
+              if (!step) break;
+              const t0 = Date.now();
+              try { await step.load(); } catch { /* prefetch failure is intentionally swallowed */ }
+              const t1 = Date.now();
+              results.push({ name: step.name, elapsedMs: t1 - t0, startMs: t0, endMs: t1 });
+            }
+          })
+        );
+
         const totalElapsedMs = Date.now() - totalStart;
+        const timings: TimingRow[] = [...skipped, ...results];
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (window as any).__prefetchTimings = { steps: timings, totalElapsedMs };
+        (window as any).__prefetchTimings = { steps: timings, totalElapsedMs, concurrency: CONCURRENCY };
         console.table(timings);
-        console.log(`[prefetch] total=${totalElapsedMs}ms`);
+        console.log(`[prefetch] total=${totalElapsedMs}ms (concurrency=${CONCURRENCY})`);
         // [/TEMP]
       })();
     }, 0);
