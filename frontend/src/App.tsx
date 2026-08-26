@@ -46,6 +46,7 @@ import { LeadListPage } from './pages/leads/LeadListPage';
 import { InboxPreviewPage } from './pages/inbox/InboxPreviewPage';
 import { InboxConversationListCacheProvider, useInboxConversationListCache } from './pages/inbox/InboxConversationListCacheContext';
 import { InboxConversationDetailCacheProvider, useInboxConversationDetailCache } from './pages/inbox/InboxConversationDetailCacheContext';
+import type { InboxConversationDto } from './features/inbox/contracts';
 import { InventoryListPage } from './pages/inventory/InventoryListPage';
 import { InventoryListCacheProvider } from './pages/inventory/InventoryListCacheContext';
 import { InventoryProductOptionsCacheProvider, useInventoryProductOptionsCache } from './pages/inventory/InventoryProductOptionsCacheContext';
@@ -79,6 +80,22 @@ type PermissionState =
   | { status: 'checking' }
   | { status: 'ready'; permissions: NavigationPermissions }
   | { status: 'failed' };
+
+function InboxDetailCacheWithBulkSeed({ children }: { children: React.ReactNode }) {
+  const { seed } = useInboxConversationListCache();
+  const onConversationsLoaded = useCallback(
+    (convs: readonly InboxConversationDto[]) => seed(convs),
+    [seed]
+  );
+  return (
+    <InboxConversationDetailCacheProvider
+      repository={inboxGasRepository}
+      onConversationsLoaded={onConversationsLoaded}
+    >
+      {children}
+    </InboxConversationDetailCacheProvider>
+  );
+}
 
 function LeadPermissionLoading() {
   return <StatusMessage variant="loading"><Spinner size="sm" aria-label={leadsCopy.permissionsChecking} />{leadsCopy.permissionsChecking}</StatusMessage>;
@@ -241,7 +258,7 @@ function AppRouter() {
     ]
   };
 
-  return <HashRouter><LeadListCacheProvider><LeadDetailCacheProvider repository={leadGasRepository}><LeadFormOptionsCacheProvider repository={leadGasRepository}><CustomerListCacheProvider repository={customerGasRepository}><CustomerDetailCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><InventoryProductOptionsCacheProvider><CurrencyMasterCacheProvider><IssuerMasterCacheProvider><InboxConversationListCacheProvider repository={inboxGasRepository}><InboxConversationDetailCacheProvider repository={inboxGasRepository}><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><CustomerAggregateCacheProvider repository={customerGasRepository}><SalesOrderListCacheProvider><SalesOrderDetailCacheProvider><><SyncPoller /><AppShellWithPrefetch permissions={permissions} navigationGroups={navigationGroups}><Routes>
+  return <HashRouter><LeadListCacheProvider><LeadDetailCacheProvider repository={leadGasRepository}><LeadFormOptionsCacheProvider repository={leadGasRepository}><CustomerListCacheProvider repository={customerGasRepository}><CustomerDetailCacheProvider repository={customerGasRepository}><InventoryListCacheProvider repository={inventoryGasRepository}><InventoryProductOptionsCacheProvider><CurrencyMasterCacheProvider><IssuerMasterCacheProvider><InboxConversationListCacheProvider repository={inboxGasRepository}><InboxDetailCacheWithBulkSeed><OrderListCacheProvider repository={orderGasRepository}><StaffListCacheProvider repository={staffGasRepository}><QuoteListCacheProvider repository={quoteGasRepository}><CustomerAggregateCacheProvider repository={customerGasRepository}><SalesOrderListCacheProvider><SalesOrderDetailCacheProvider><><SyncPoller /><AppShellWithPrefetch permissions={permissions} navigationGroups={navigationGroups}><Routes>
     <Route path={NAVIGATION_BY_ID.dashboard.hash} element={<DashboardPage kpis={kpis} state={state} error={error} onRefresh={() => void refreshDashboardKpis()} />} />
     {DATA_MANAGEMENT_ITEMS
       .filter((item) => item.state !== 'planned' && hubIndexRoutes[item.id] != null)
@@ -263,5 +280,5 @@ function AppRouter() {
     <Route path={NAVIGATION_BY_ID.dashboardPreview.hash} element={<DashboardPreviewPage repository={dashboardPreviewRepository} />} />
     <Route path="/change-password" element={<ChangePasswordPage />} />
     <Route path="*" element={<Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />} />
-  </Routes></AppShellWithPrefetch></></SalesOrderDetailCacheProvider></SalesOrderListCacheProvider></CustomerAggregateCacheProvider></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></InboxConversationDetailCacheProvider></InboxConversationListCacheProvider></IssuerMasterCacheProvider></CurrencyMasterCacheProvider></InventoryProductOptionsCacheProvider></InventoryListCacheProvider></CustomerDetailCacheProvider></CustomerListCacheProvider></LeadFormOptionsCacheProvider></LeadDetailCacheProvider></LeadListCacheProvider></HashRouter>;
+  </Routes></AppShellWithPrefetch></></SalesOrderDetailCacheProvider></SalesOrderListCacheProvider></CustomerAggregateCacheProvider></QuoteListCacheProvider></StaffListCacheProvider></OrderListCacheProvider></InboxDetailCacheWithBulkSeed></InboxConversationListCacheProvider></IssuerMasterCacheProvider></CurrencyMasterCacheProvider></InventoryProductOptionsCacheProvider></InventoryListCacheProvider></CustomerDetailCacheProvider></CustomerListCacheProvider></LeadFormOptionsCacheProvider></LeadDetailCacheProvider></LeadListCacheProvider></HashRouter>;
 }

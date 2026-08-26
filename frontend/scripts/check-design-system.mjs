@@ -211,12 +211,20 @@ const PREFETCH_EXEMPT_PROVIDERS = new Set([
   'SalesOrderDetailCacheProvider',
   // DashboardKpiCacheProvider: AppRouter 内で ensureLoaded を直接呼ぶため usePrefetch 登録不要
   'DashboardKpiCacheProvider',
+  // InboxConversationListCacheProvider: getInboxBulkInitialLoad の結果から seed() で注入するため
+  // usePrefetch の steps への ensureLoaded 登録は不要（InboxDetailCacheWithBulkSeed が代替）
+  'InboxConversationListCacheProvider',
 ]);
 const SYNC_POLLER_EXEMPT_PROVIDERS = new Set([
   // CustomerAggregateCacheProvider: SyncPoller には接続せず usePrefetch のみで管理
   'CustomerAggregateCacheProvider',
   // CurrencyMasterCacheProvider: 静的マスタのため refreshers 登録不要（usePrefetch のみで管理）
   'CurrencyMasterCacheProvider',
+  // InboxConversationListCacheProvider: SyncPoller の refreshers に refreshInboxConversations として
+  // 実登録済み。ただし InboxDetailCacheWithBulkSeed も useInboxConversationListCache を呼ぶため、
+  // isRegisteredInRefreshers の regex が先に InboxDetailCacheWithBulkSeed の { seed } を
+  // マッチしてしまい誤検知が発生する。実際の登録は SyncPoller の inbox ラムダ内を参照。
+  'InboxConversationListCacheProvider',
 ]);
 const prefetchSource = await readFile(resolve(srcDir, 'app/usePrefetch.ts'), 'utf8');
 const allCacheProviderNames = [...new Set([...appSource.matchAll(/<(\w+CacheProvider)[\s>/]/g)].map((m) => m[1]))];
