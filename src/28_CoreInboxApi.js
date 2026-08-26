@@ -101,7 +101,10 @@ function getInboxConversationDetailForFrontend(sessionId, leadId) {
     'LEAD_ID', 'CUSTOMER_NAME', 'LEAD_SOURCE', 'LEAD_STATUS', 'LEAD_TYPE',
     'NEXT_ACTION', 'CS_NOTE', 'CONVERSATION_SUMMARY', 'LAST_CONVERSATION_AT',
     'DEAL_RESULT', 'CUSTOMER_ISSUE', 'COMPETITOR_COMPARISON',
-    'EMAIL', 'PHONE', 'COUNTRY'
+    'EMAIL', 'PHONE', 'COUNTRY',
+    'ENGLISH_CALL_NAME', 'RESPONSE_SPEED', 'NEXT_ACTION_DATE',
+    'HANDLED_TITLE', 'SALES_CHANNEL', 'CUSTOMER_TYPE', 'DEAL_NOTE',
+    'MONTHLY_EXPECTED_AMOUNT', 'MESSAGE_URL'
   ]);
 
   var leadRow = null;
@@ -124,12 +127,21 @@ function getInboxConversationDetailForFrontend(sessionId, leadId) {
   var csNote        = coreCustomerFrontendValue(leadRow[leads.indexes.CS_NOTE]);
   var convSummary   = coreCustomerFrontendValue(leadRow[leads.indexes.CONVERSATION_SUMMARY]);
   var lastConvAt    = coreCustomerFrontendValue(leadRow[leads.indexes.LAST_CONVERSATION_AT]);
-  var dealResult    = coreCustomerFrontendValue(leadRow[leads.indexes.DEAL_RESULT]);
-  var customerIssue = coreCustomerFrontendValue(leadRow[leads.indexes.CUSTOMER_ISSUE]);
-  var competitor    = coreCustomerFrontendValue(leadRow[leads.indexes.COMPETITOR_COMPARISON]);
-  var email         = coreCustomerFrontendValue(leadRow[leads.indexes.EMAIL]);
-  var phone         = coreCustomerFrontendValue(leadRow[leads.indexes.PHONE]);
-  var country       = coreCustomerFrontendValue(leadRow[leads.indexes.COUNTRY]);
+  var dealResult      = coreCustomerFrontendValue(leadRow[leads.indexes.DEAL_RESULT]);
+  var customerIssue   = coreCustomerFrontendValue(leadRow[leads.indexes.CUSTOMER_ISSUE]);
+  var competitor      = coreCustomerFrontendValue(leadRow[leads.indexes.COMPETITOR_COMPARISON]);
+  var email           = coreCustomerFrontendValue(leadRow[leads.indexes.EMAIL]);
+  var phone           = coreCustomerFrontendValue(leadRow[leads.indexes.PHONE]);
+  var country         = coreCustomerFrontendValue(leadRow[leads.indexes.COUNTRY]);
+  var englishCallName = coreCustomerFrontendValue(leadRow[leads.indexes.ENGLISH_CALL_NAME]);
+  var responseSpeed   = coreCustomerFrontendValue(leadRow[leads.indexes.RESPONSE_SPEED]);
+  var nextActionDate  = coreCustomerFrontendValue(leadRow[leads.indexes.NEXT_ACTION_DATE]);
+  var handledTitle    = coreCustomerFrontendValue(leadRow[leads.indexes.HANDLED_TITLE]);
+  var salesChannel    = coreCustomerFrontendValue(leadRow[leads.indexes.SALES_CHANNEL]);
+  var customerType    = coreCustomerFrontendValue(leadRow[leads.indexes.CUSTOMER_TYPE]);
+  var dealNote        = coreCustomerFrontendValue(leadRow[leads.indexes.DEAL_NOTE]);
+  var monthlyExpectedAmount = coreCustomerFrontendValue(leadRow[leads.indexes.MONTHLY_EXPECTED_AMOUNT]);
+  var messageUrl      = coreCustomerFrontendValue(leadRow[leads.indexes.MESSAGE_URL]);
 
   // ── 会話ログからメッセージを取得 ──
   var messages = readInboxMessages_(spreadsheet, leadId);
@@ -145,19 +157,28 @@ function getInboxConversationDetailForFrontend(sessionId, leadId) {
   };
 
   var karte = {
-    customerName:        customerName,
-    company:             customerName,   // リード管理に会社名列なし → 顧客名で代用
-    platform:            leadSource,
-    status:              leadStatus,
-    nextAction:          nextAction,
-    note:                csNote,
-    leadType:            leadType,
-    dealResult:          dealResult,
-    issue:               customerIssue,
+    customerName:         customerName,
+    company:              customerName,   // リード管理に会社名列なし → 顧客名で代用
+    platform:             leadSource,
+    status:               leadStatus,
+    nextAction:           nextAction,
+    note:                 csNote,
+    leadType:             leadType,
+    dealResult:           dealResult,
+    issue:                customerIssue,
     competitorComparison: competitor,
-    email:               email,
-    phone:               phone,
-    country:             country
+    email:                email,
+    phone:                phone,
+    country:              country,
+    englishCallName:      englishCallName,
+    responseSpeed:        responseSpeed,
+    nextActionDate:       nextActionDate,
+    handledTitle:         handledTitle,
+    salesChannel:         salesChannel,
+    customerType:         customerType,
+    dealNote:             dealNote,
+    monthlyExpectedAmount: monthlyExpectedAmount,
+    messageUrl:           messageUrl
   };
 
   return {
@@ -424,7 +445,10 @@ function getInboxBulkInitialLoad(sessionId, maxConversations, maxMessagesPerConv
     'LEAD_ID', 'CUSTOMER_NAME', 'LEAD_SOURCE', 'LEAD_STATUS', 'LEAD_TYPE',
     'NEXT_ACTION', 'CS_NOTE', 'CONVERSATION_SUMMARY', 'LAST_CONVERSATION_AT',
     'DEAL_RESULT', 'CUSTOMER_ISSUE', 'COMPETITOR_COMPARISON',
-    'EMAIL', 'PHONE', 'COUNTRY'
+    'EMAIL', 'PHONE', 'COUNTRY',
+    'ENGLISH_CALL_NAME', 'RESPONSE_SPEED', 'NEXT_ACTION_DATE',
+    'HANDLED_TITLE', 'SALES_CHANNEL', 'CUSTOMER_TYPE', 'DEAL_NOTE',
+    'MONTHLY_EXPECTED_AMOUNT', 'MESSAGE_URL'
   ]);
   var leadRowById = {};
   for (var li = 0; li < leads.rows.length; li++) {
@@ -454,6 +478,15 @@ function getInboxBulkInitialLoad(sessionId, maxConversations, maxMessagesPerConv
     var email        = coreCustomerFrontendValue(lData[leads.indexes.EMAIL]);
     var phone        = coreCustomerFrontendValue(lData[leads.indexes.PHONE]);
     var country      = coreCustomerFrontendValue(lData[leads.indexes.COUNTRY]);
+    var engCallName  = coreCustomerFrontendValue(lData[leads.indexes.ENGLISH_CALL_NAME]);
+    var respSpeed    = coreCustomerFrontendValue(lData[leads.indexes.RESPONSE_SPEED]);
+    var nextActDate  = coreCustomerFrontendValue(lData[leads.indexes.NEXT_ACTION_DATE]);
+    var handledTtl   = coreCustomerFrontendValue(lData[leads.indexes.HANDLED_TITLE]);
+    var salesCh      = coreCustomerFrontendValue(lData[leads.indexes.SALES_CHANNEL]);
+    var custType     = coreCustomerFrontendValue(lData[leads.indexes.CUSTOMER_TYPE]);
+    var dealNt       = coreCustomerFrontendValue(lData[leads.indexes.DEAL_NOTE]);
+    var monthlyAmt   = coreCustomerFrontendValue(lData[leads.indexes.MONTHLY_EXPECTED_AMOUNT]);
+    var msgUrl       = coreCustomerFrontendValue(lData[leads.indexes.MESSAGE_URL]);
 
     var msgs = allMessagesByLead[leadId] || [];
     // 最新 maxMsg 件のみ（末尾スライス）
@@ -484,7 +517,16 @@ function getInboxBulkInitialLoad(sessionId, maxConversations, maxMessagesPerConv
       competitorComparison: competitor,
       email:                email,
       phone:                phone,
-      country:              country
+      country:              country,
+      englishCallName:      engCallName,
+      responseSpeed:        respSpeed,
+      nextActionDate:       nextActDate,
+      handledTitle:         handledTtl,
+      salesChannel:         salesCh,
+      customerType:         custType,
+      dealNote:             dealNt,
+      monthlyExpectedAmount: monthlyAmt,
+      messageUrl:           msgUrl
     };
 
     detailsByConversationId[leadId] = {

@@ -101,11 +101,32 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
     }
   }, [baseMessages.length, extraMessages, loadMoreLoading, repository, selectedId]);
 
-  const karteFields: [string, string][] = detail == null ? [] : karteTab === 'deal'
-    ? [[inboxCopy.fields.dealResult, detail.karte.dealResult], [inboxCopy.fields.issue, detail.karte.issue], [inboxCopy.fields.competitorComparison, detail.karte.competitorComparison], [inboxCopy.fields.nextAction, detail.karte.nextAction], [inboxCopy.fields.note, detail.karte.note]]
+  // [label, value, type] — type: 'text' | 'textarea' | 'link' (default 'text')
+  const karteFields: [string, string, ('text' | 'textarea' | 'link')?][] = detail == null ? [] : karteTab === 'deal'
+    ? [
+        [inboxCopy.fields.englishCallName,    detail.karte.englishCallName],
+        [inboxCopy.fields.responseSpeed,      detail.karte.responseSpeed],
+        [inboxCopy.fields.nextAction,         detail.karte.nextAction],
+        [inboxCopy.fields.nextActionDate,     detail.karte.nextActionDate],
+        [inboxCopy.fields.issue,              detail.karte.issue,              'textarea'],
+        [inboxCopy.fields.country,            detail.karte.country],
+        [inboxCopy.fields.handledTitle,       detail.karte.handledTitle],
+        [inboxCopy.fields.salesChannel,       detail.karte.salesChannel],
+        [inboxCopy.fields.customerType,       detail.karte.customerType],
+        [inboxCopy.fields.competitorComparison, detail.karte.competitorComparison],
+        [inboxCopy.fields.dealNote,           detail.karte.dealNote,           'textarea'],
+        [inboxCopy.fields.note,               detail.karte.note,               'textarea'],
+        [inboxCopy.fields.dealResult,         detail.karte.dealResult],
+      ]
     : karteTab === 'customer'
-    ? [[inboxCopy.fields.customerName, detail.karte.customerName], [inboxCopy.fields.leadType, detail.karte.leadType], [inboxCopy.fields.leadSource, detail.karte.platform], [inboxCopy.fields.status, detail.karte.status]]
-    : [[inboxCopy.fields.email, detail.karte.email], [inboxCopy.fields.phone, detail.karte.phone], [inboxCopy.fields.country, detail.karte.country]];
+    ? [
+        // TODO: per-order amount / monthly purchase frequency — pending auto-calculation; add in a future sprint
+        [inboxCopy.fields.englishCallName,       detail.karte.englishCallName],
+        [inboxCopy.fields.monthlyExpectedAmount, detail.karte.monthlyExpectedAmount],
+      ]
+    : [
+        [inboxCopy.fields.messageUrl, detail.karte.messageUrl, 'link'],
+      ];
 
   return (
     <>
@@ -189,13 +210,22 @@ export function InboxPreviewPage({ repository }: { repository: InboxRepository }
                   </div>
                 </div>
               )}
+              {/* karte-header layout: name left / 2-row badges right (lead-type top, source bottom) — see InboxPreviewPage.css */}
               <Tabs items={INBOX_KARTE_TABS} activeKey={karteTab} onChange={setKarteTab} size="sm" aria-label={inboxCopy.detailTabsLabel} />
             </>
           }
           details={
             <div className="inbox-preview__karte">
-              {karteFields.map(([label, value]) =>
-                label === inboxCopy.fields.note || label === inboxCopy.fields.issue
+              {karteFields.map(([label, value, type = 'text']) =>
+                type === 'link'
+                  ? (
+                    /* ui-allow: message URL as clickable link — TextField has no href support (#633) */
+                    <div key={label} className="inbox-preview__karte-field-link">
+                      <span className="inbox-preview__karte-field-label">{label}</span>
+                      {value ? <a href={value} target="_blank" rel="noopener noreferrer">{value}</a> : <span>—</span>}
+                    </div>
+                  )
+                  : type === 'textarea'
                   ? <Textarea key={label} label={label} readOnly value={value} />
                   : <TextField key={label} label={label} readOnly value={value} />
               )}
