@@ -353,12 +353,17 @@ function getInboxBulkInitialLoad(sessionId, maxConversations, maxMessagesPerConv
 
   var ss = getSpreadsheet();
 
-  // ── 1. 会話ログを1回のシート読み込みで取得 ──
+  // ── 1. 会話ログを 1 回だけ読んで allMessagesByLead を構築する ──
+  // 旧実装: (a) ここで getDataRange().getValues() → allMessagesByLead を構築
+  //         (b) buildInboxConversations_(ss) 内で再び getDataRange().getValues() → 会話一覧を構築
+  // 新実装: getDataRange().getValues() を 1 回に統合し、
+  //         会話一覧（ステップ 3）も同じデータからインライン組み立てする。
+  //         buildInboxConversations_ には手を加えない。
   var convSheet = resolveConversationLogSheet_(ss);
   var allMessagesByLead = {};
 
   if (convSheet) {
-    var convData    = convSheet.getDataRange().getValues();
+    var convData    = convSheet.getDataRange().getValues(); // ← 1 回のみ（旧来の 2 回目を排除）
     var convHeaders = convData[0];
     var leadIdIdx   = convHeaders.indexOf('リードID');
     var logIdIdx    = convHeaders.indexOf('ログID');
@@ -396,29 +401,64 @@ function getInboxBulkInitialLoad(sessionId, maxConversations, maxMessagesPerConv
     });
   }
 
-  // ── 2. 会話一覧（キャッシュ活用） ──
-  var conversations = buildInboxConversations_(ss);
-
-  // ── 3. 上位 maxConv 件の詳細を組み立て ──
-  var windowConversations = conversations.slice(0, maxConv);
-  var detailsByConversationId = {};
-
-  // リード管理（カルテ用）を1回だけ読む
+  // ── 2. LEADS を 1 回読んで会話一覧とカルテの両用途に使う ──
+  // 旧実装: buildInboxConversations_() 内で LEADS(6列) + 本関数内で LEADS(8列) の 2 回読み
+  // 新実装: LEADS(8列) を 1 回だけ読んで両用途に使う
   var leads = coreCustomerFrontendReadTable(ss, 'LEADS', [
     'LEAD_ID', 'CUSTOMER_NAME', 'LEAD_SOURCE', 'LEAD_STATUS',
     'NEXT_ACTION', 'CS_NOTE', 'CONVERSATION_SUMMARY', 'LAST_CONVERSATION_AT'
   ]);
-  var leadRowById = {};
-  for (var li = 0; li < leads.rows.length; li++) {
-    var lRow   = leads.rows[li];
-    var lId    = coreCustomerFrontendValue(lRow[leads.indexes.LEAD_ID]);
-    if (lId) leadRowById[lId] = lRow;
+
+  // ── 3. 会話一覧を組み立てる（buildInboxConversations_ と同ロジック） ──
+  // buildInboxConversations_ には変更を加えないため、その処理をここでインライン化する。
+  // ソート済みの allMessagesByLead から最新メッセージ情報を導出することで
+  // 2 回目の getDataRange().getValues() を不要にする。
+  var conversations = [];
+  var leadRowById   = {};
+  for (var i = 0; i < leads.rows.length; i++) {
+    var bLeadRow  = leads.rows[i];
+    var bLeadId   = coreCustomerFrontendValue(bLeadRow[leads.indexes.LEAD_ID]);
+    if (!bLeadId) continue;
+
+    leadRowById[bLeadId] = bLeadRow; // ステップ 4 の詳細組み立てで再利用
+
+    var bMsgs    = allMessagesByLead[bLeadId]; // undefined または昇順ソート済み配列
+    var bSummary = coreCustomerFrontendValue(bLeadRow[leads.indexes.CONVERSATION_SUMMARY]);
+    var bLastAt  = coreCustomerFrontendValue(bLeadRow[leads.indexes.LAST_CONVERSATION_AT]);
+    if (!bMsgs && !bSummary) continue; // 会話ログなし＆要約なし → 受信箱に出さない
+
+    var bLeadStatus   = coreCustomerFrontendValue(bLeadRow[leads.indexes.LEAD_STATUS]);
+    var bLeadSource   = coreCustomerFrontendValue(bLeadRow[leads.indexes.LEAD_SOURCE]);
+    var bCustomerName = coreCustomerFrontendValue(bLeadRow[leads.indexes.CUSTOMER_NAME]);
+    // ソート済み msgs 末尾が最新メッセージ（buildInboxConversations_ の agg.latestBody/latestDate 相当）
+    var bLatestBody   = bMsgs && bMsgs.length > 0 ? bMsgs[bMsgs.length - 1].body   : '';
+    var bLatestDate   = bMsgs && bMsgs.length > 0 ? bMsgs[bMsgs.length - 1].sentAt : '';
+
+    conversations.push({
+      id:           bLeadId,
+      customerName: bCustomerName,
+      platform:     inboxPlatformFromSource_(bLeadSource),
+      status:       LEAD_STATUS_TO_INBOX_STATUS[bLeadStatus] || 'lead',
+      summary:      bSummary || bLatestBody,
+      updatedAt:    bLastAt  || bLatestDate,
+      unread:       false
+    });
   }
+  // updatedAt 降順（buildInboxConversations_ と同じソート）
+  conversations.sort(function(a, b) {
+    if (a.updatedAt > b.updatedAt) return -1;
+    if (a.updatedAt < b.updatedAt) return 1;
+    return 0;
+  });
+
+  // ── 4. 上位 maxConv 件の詳細を組み立てる ──
+  var windowConversations     = conversations.slice(0, maxConv);
+  var detailsByConversationId = {};
 
   for (var ci = 0; ci < windowConversations.length; ci++) {
-    var conv   = windowConversations[ci];
-    var leadId = conv.id;
-    var lData  = leadRowById[leadId];
+    var conv  = windowConversations[ci];
+    var cid   = conv.id;
+    var lData = leadRowById[cid];
     if (!lData) continue;
 
     var leadStatus   = coreCustomerFrontendValue(lData[leads.indexes.LEAD_STATUS]);
@@ -430,19 +470,18 @@ function getInboxBulkInitialLoad(sessionId, maxConversations, maxMessagesPerConv
     var convSummary  = coreCustomerFrontendValue(lData[leads.indexes.CONVERSATION_SUMMARY]);
     var lastConvAt   = coreCustomerFrontendValue(lData[leads.indexes.LAST_CONVERSATION_AT]);
 
-    var msgs = allMessagesByLead[leadId] || [];
-    // 最新 maxMsg 件のみ（末尾スライス）
-    var slicedMsgs = maxMsg > 0 && msgs.length > maxMsg
-      ? msgs.slice(msgs.length - maxMsg)
-      : msgs;
+    var cMsgs      = allMessagesByLead[cid] || [];
+    var slicedMsgs = maxMsg > 0 && cMsgs.length > maxMsg
+      ? cMsgs.slice(cMsgs.length - maxMsg)
+      : cMsgs;
 
     var convObj = {
-      id:           leadId,
+      id:           cid,
       customerName: customerName,
       platform:     inboxPlatformFromSource_(leadSource),
       status:       inboxStatus,
-      summary:      convSummary || (msgs.length > 0 ? msgs[0].body : ''),
-      updatedAt:    lastConvAt  || (msgs.length > 0 ? msgs[msgs.length - 1].sentAt : ''),
+      summary:      convSummary || (cMsgs.length > 0 ? cMsgs[0].body : ''),
+      updatedAt:    lastConvAt  || (cMsgs.length > 0 ? cMsgs[cMsgs.length - 1].sentAt : ''),
       unread:       false
     };
 
@@ -455,17 +494,17 @@ function getInboxBulkInitialLoad(sessionId, maxConversations, maxMessagesPerConv
       note:         csNote
     };
 
-    detailsByConversationId[leadId] = {
+    detailsByConversationId[cid] = {
       conversation: convObj,
       messages:     slicedMsgs,
       karte:        karte,
-      hasMore:      maxMsg > 0 && msgs.length > maxMsg
+      hasMore:      maxMsg > 0 && cMsgs.length > maxMsg
     };
   }
 
   return {
-    conversations:            conversations,
-    detailsByConversationId:  detailsByConversationId
+    conversations:           conversations,
+    detailsByConversationId: detailsByConversationId
   };
 }
 
