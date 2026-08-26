@@ -3087,7 +3087,7 @@ clasp run applyOrderStatusRecalculation --params '[999]'
 
 ## GAS呼び出しバッチ化 — 案3: 受注バッチ（2026-08-26）
 
-**PR**: GEN-RYU-System/crm-app#<PR番号>（squash merge → develop）
+**PR**: GEN-RYU-System/crm-app#656（squash merge → develop）
 
 ### 設計判断: 権限出し分けの扱い
 
