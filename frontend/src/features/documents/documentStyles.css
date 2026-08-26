@@ -81,7 +81,7 @@
 .doc-meta-row {
   display: flex;
   justify-content: flex-end;
-  gap: 10pt;
+  gap: var(--doc-meta-gap);
   font-size: 7.5pt;
 }
 

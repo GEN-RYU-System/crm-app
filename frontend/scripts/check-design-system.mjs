@@ -244,6 +244,7 @@ const GAS_CLIENT_IN_PAGES_ALLOWLIST = new Set([
   'src/pages/auth/ChangePasswordPage.tsx',    // changeOwnPasswordForFrontend (auth boundary)
   'src/pages/data-management/IssuerMasterPage.tsx', // updateCoreIssuer (save operation)
   'src/pages/orders/OrderDetailPage.tsx',     // type-only import (IssuerRecord)
+  'src/pages/orders/OrderEditorPage.tsx',     // getCoreOrderDetail for invoice print preview (same pattern as OrderDetailPage)
   'src/pages/sales-orders/SalesOrderDetailPage.tsx', // confirmCoreOrderPayment / upsertCorePurchase (save+action)
 ]);
 const pagesDir = resolve(srcDir, 'pages');
