@@ -461,8 +461,7 @@ function registerCustomerFromForm(payload) {
         '',                      // 営業担当者
         '',                      // 連絡ツール
         '',                      // FedEx ID
-        '',                      // 発送時メモ
-        ''                       // Shippment webhook
+        ''                       // 発送時メモ
       ];
       // 電話番号・国番号列はテキスト書式で格納（数字がSheetsで数値変換されるのを防ぐ）
       var custPhoneIdx   = coreSchemaTables.CUSTOMERS.headerIndexes[coreSchemaTables.CUSTOMERS.headerNames.phone] - 1;
