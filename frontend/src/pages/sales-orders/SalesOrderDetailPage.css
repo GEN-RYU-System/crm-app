@@ -214,6 +214,12 @@
   color: var(--color-text-primary);
 }
 
+.sales-order-detail-page__tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
 .sales-order-detail-page__confirm-overlay {
   position: fixed;
   inset: 0;

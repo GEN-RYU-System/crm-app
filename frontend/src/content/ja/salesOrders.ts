@@ -144,6 +144,11 @@ export const salesOrdersCopy = {
     purchaseFormSaving: '保存中...',
     purchaseFormSaveError: '仕入れの保存に失敗しました。',
     purchaseFormStatusLoading: 'ステータスを読み込んでいます。',
+    // 詳細タブ
+    tabsLabel: '受注詳細タブ',
+    tabBilling: '請求情報',
+    tabPurchases: '仕入れ',
+    tabShipments: '発送',
     // 仕入れフォームフィールドラベル
     labelPurchaseOrderedAt: '注文日',
     labelPurchaseSupplier: '仕入元',
