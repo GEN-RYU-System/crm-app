@@ -1,22 +1,23 @@
 import { createContext, useCallback, useContext, useState, type PropsWithChildren } from 'react';
 import { createListCache, SINGLE_KEY, type SingleKey } from '../../app/createListCache';
-import { getCoreOrders, getCoreOrderStatusOptions, type OrderRecord, type OrderStatusOption } from '../../gas/client';
+import { getCoreOrdersBatch, type OrderRecord, type OrderStatusOption } from '../../gas/client';
 
 const { Provider: BaseProvider, useCache } = createListCache<OrderRecord>({ name: 'salesOrders' });
 const StatusOptionsContext = createContext<readonly OrderStatusOption[]>([]);
 
-export function SalesOrderListCacheProvider({ children }: PropsWithChildren) {
+type SalesOrderListCacheProviderProps = PropsWithChildren<{
+  onOrdersLoaded?: (orders: readonly OrderRecord[]) => void;
+}>;
+
+export function SalesOrderListCacheProvider({ children, onOrdersLoaded }: SalesOrderListCacheProviderProps) {
   const [statusOptions, setStatusOptions] = useState<readonly OrderStatusOption[]>([]);
 
   const fetcher = useCallback(async (_: SingleKey, forceRefresh: boolean) => {
-    const [ordersResult, statusResult] = await Promise.allSettled([
-      getCoreOrders(forceRefresh),
-      getCoreOrderStatusOptions(),
-    ]);
-    if (ordersResult.status === 'rejected') throw ordersResult.reason;
-    if (statusResult.status === 'fulfilled') setStatusOptions(statusResult.value);
-    return ordersResult.value;
-  }, []);
+    const result = await getCoreOrdersBatch(forceRefresh);
+    setStatusOptions(result.statusOptions);
+    onOrdersLoaded?.(result.orders);
+    return result.orders;
+  }, [onOrdersLoaded]);
 
   return (
     <StatusOptionsContext.Provider value={statusOptions}>

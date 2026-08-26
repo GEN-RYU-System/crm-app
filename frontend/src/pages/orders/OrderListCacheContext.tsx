@@ -13,11 +13,12 @@ export function OrderListCacheProvider({ repository, children }: PropsWithChildr
 }
 
 export function useOrderListCache() {
-  const { itemsByKey, errorByKey, loadingByKey, refreshing, ensureLoaded, refresh, retry } = useCache();
+  const { itemsByKey, errorByKey, loadingByKey, refreshing, ensureLoaded, refresh, retry, seed: seedCache } = useCache();
   const symbolMap = useCurrencySymbolMap();
   const wrappedEnsureLoaded = useCallback(() => ensureLoaded(), [ensureLoaded]);
   const wrappedRefresh = useCallback(() => refresh(), [refresh]);
   const wrappedRetry = useCallback(() => retry(), [retry]);
+  const seed = useCallback((orders: readonly OrderRecord[]) => seedCache(SINGLE_KEY, orders), [seedCache]);
   return {
     items: itemsByKey[SINGLE_KEY],
     symbolMap,
@@ -27,5 +28,6 @@ export function useOrderListCache() {
     ensureLoaded: wrappedEnsureLoaded,
     refresh: wrappedRefresh,
     retry: wrappedRetry,
+    seed,
   };
 }

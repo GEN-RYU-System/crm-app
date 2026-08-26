@@ -572,6 +572,25 @@ export function getCoreOrders(forceRefresh?: boolean): Promise<readonly OrderRec
   });
 }
 
+export type OrdersBatchRecord = {
+  orders: readonly OrderRecord[];
+  statusOptions: readonly OrderStatusOption[];
+};
+
+export function getCoreOrdersBatch(forceRefresh?: boolean): Promise<OrdersBatchRecord> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) { reject(new Error(errorCopy.communication)); return; }
+        resolve(value as OrdersBatchRecord);
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getCoreOrdersBatchForFrontend(getStoredSessionId(), forceRefresh === true);
+  });
+}
+
 export type OrderStatusOption = {
   key: string;
   label: string;

@@ -338,6 +338,48 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
         },
       ]);
     },
+    getCoreOrdersBatchForFrontend(_s: string | null, _force: boolean) {
+      succeed({
+        orders: [
+          {
+            orderId: 'ORD-00001',
+            customerName: 'Preview Customer A',
+            invoiceNumber: 'INV-00001',
+            invoiceIssuedAt: '',
+            paymentMethod: 'WISE',
+            invoiceTotal: '20000',
+            currency: 'USD',
+            paymentDueAt: '2026-01-01',
+            paymentStatus: 'UNPAID',
+            invoiceTotalJpy: '3000000',
+            status: 'AWAITING_PAYMENT',
+            paymentConfirmedAt: '',
+          },
+          {
+            orderId: 'ORD-00002',
+            customerName: 'Preview Customer B',
+            invoiceNumber: 'INV-00002',
+            invoiceIssuedAt: '2026-01-15',
+            paymentMethod: 'PAYPAL',
+            invoiceTotal: '5000',
+            currency: 'USD',
+            paymentDueAt: '2026-02-15',
+            paymentStatus: 'PAID',
+            invoiceTotalJpy: '750000',
+            status: 'COMPLETED',
+            paymentConfirmedAt: '2026-02-10',
+          },
+        ],
+        statusOptions: [
+          { key: 'AWAITING_PAYMENT',  label: SALES_ORDER_STATUS.awaitingPayment },
+          { key: 'SOURCING',          label: SALES_ORDER_STATUS.sourcing },
+          { key: 'AWAITING_SHIPPING', label: 'preview-awaiting-shipping' },
+          { key: 'COMPLETED',         label: 'preview-completed' },
+          { key: 'TROUBLE',           label: 'preview-trouble' },
+          { key: 'CANCELLED',         label: 'preview-cancelled' },
+        ],
+      });
+    },
     getCoreCurrenciesForFrontend(_s: string | null) { succeed(MOCK_CURRENCIES); },
     getLeadOptionsForFrontend(_s: string | null) { succeed(MOCK_LEAD_OPTIONS); },
 
