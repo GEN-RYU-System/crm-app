@@ -21,3 +21,27 @@
 ```bash
 git revert acc9c9d5d7232a3309bdf2363f61de1809668c23
 ```
+
+---
+
+## 2026-08-26 (v2)
+
+| 項目 | 値 |
+|------|-----|
+| 日時 | 2026-08-26T15:45:34+09:00 |
+| merge SHA | 507154c8228c3afec7a5f05e9bce81b3627f11d1 |
+| SHA256 | 296f806266f177f92f657278ccd85d4349e22fc820f2af742b10a98e5c5f4f31 |
+| 変更概要 | 営業用CRM説明スライドをv2に更新。9枚目「09できること一覧」を追加(8枚→9枚)。アプリ本体・GAS・CIへの変更なし |
+| PR | https://github.com/GEN-RYU-System/crm-app/pull/650 |
+
+### 検証結果
+
+- **検証A** (SHA256照合): `git show origin/main:docs/sales/slides_crm.html | shasum -a 256`
+  → `296f806266f177f92f657278ccd85d4349e22fc820f2af742b10a98e5c5f4f31` ✅ ゲート値と一致
+- **検証B** (差分確認): `git log -1 --stat` → `docs/sales/slides_crm.html | 79 +++...` 1 file changed, 71 insertions(+), 8 deletions(-) ✅ 対象ファイルのみ変更
+
+### ロールバック手順
+
+```bash
+git revert 507154c8228c3afec7a5f05e9bce81b3627f11d1
+```
