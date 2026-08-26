@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>統合CRM｜ご説明資料</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Barlow+Condensed:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0e2a47; --deep:#08192e; --blue:#1f5d99;
+    --paper:#fbfbf9; --tint:#eef2f6; --accent:#c43a18; --rule:#d7dfe8;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{font-family:'Zen Kaku Gothic New',sans-serif;color:var(--navy);background:var(--deep);}
+  .deck{height:100vh;height:100dvh;overflow-y:auto;scroll-snap-type:y mandatory;}
+  .slide{
+    height:100vh;height:100dvh;scroll-snap-align:start;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:var(--paper);padding:48px 40px;position:relative;
+  }
+  .slide:nth-child(even){background:var(--tint);}
+  .num{
+    font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;
+    letter-spacing:.2em;color:var(--blue);border:1px solid var(--rule);
+    padding:6px 16px;border-radius:2px;margin-bottom:22px;
+  }
+  h1{font-size:clamp(24px,4.6vw,44px);font-weight:900;line-height:1.5;text-align:center;margin-bottom:10px;}
+  h1 em{font-style:normal;color:var(--blue);}
+  .cap{font-size:clamp(13px,2vw,17px);color:#4a5c70;text-align:center;margin-bottom:34px;line-height:1.8;}
+  .art{width:min(720px,92vw);height:auto;display:block;}
+  .foot{position:absolute;bottom:22px;left:0;right:0;text-align:center;font-size:12px;letter-spacing:.16em;color:#8b98a8;}
+  .hint{position:fixed;bottom:14px;right:18px;z-index:9;font-size:12px;color:#9db1c7;letter-spacing:.1em;}
+  @media (prefers-reduced-motion: no-preference){
+    .art .stream{stroke-dasharray:7 9;animation:dash 1.1s linear infinite;}
+    @keyframes dash{to{stroke-dashoffset:-16;}}
+    .art .pulse1{animation:pulse 2.2s ease-out infinite;}
+    .art .pulse2{animation:pulse 2.2s ease-out 1.1s infinite;}
+    @keyframes pulse{0%{opacity:.5}70%{opacity:0}100%{opacity:0}}
+    .art .core{animation:breathe 2.2s ease-in-out infinite;transform-origin:center;transform-box:fill-box;}
+    @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- 01 連動 -->
+  <section class="slide">
+    <div class="num">01 / 08</div>
+    <h1>在庫集計ツールと、<em>連動</em></h1>
+    <div class="cap">自動集計された在庫リストが、そのままCRMの起点になります</div>
+    <svg class="art" viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg">
+      <g>
+        <rect x="90" y="80" rx="8" width="112" height="136" fill="#fff" stroke="#0e2a47" stroke-width="2.5"/>
+        <path d="M174 80 v26 h28" fill="#eef2f6" stroke="#0e2a47" stroke-width="2.5"/>
+        <g fill="#1f5d99">
+          <rect x="106" y="126" width="76" height="9" rx="3"/>
+          <rect x="106" y="146" width="76" height="9" rx="3"/>
+          <rect x="106" y="166" width="56" height="9" rx="3"/>
+        </g>
+        <circle cx="198" cy="204" r="17" fill="#c43a18"/>
+        <path d="M190 204 l6 6 10 -12" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <text x="146" y="246" text-anchor="middle" fill="#0e2a47" font-size="14" font-weight="900" font-family="Zen Kaku Gothic New,sans-serif">在庫リスト</text>
+      </g>
+      <g class="stream" stroke="#c43a18" stroke-width="2.5" fill="none"><path d="M232 148 H320"/></g>
+      <!-- CRM: ダッシュボード型ハブ(4業務タイルを内包) -->
+      <g font-family="Zen Kaku Gothic New,sans-serif">
+        <rect x="336" y="46" rx="14" width="330" height="208" fill="#0e2a47"/>
+        <rect x="336" y="46" width="330" height="42" rx="14" fill="#08192e"/>
+        <rect x="336" y="72" width="330" height="16" fill="#08192e"/>
+        <text x="501" y="74" text-anchor="middle" fill="#fff" font-size="17" font-weight="900" letter-spacing="4">CRM</text>
+        <g font-size="14" font-weight="900" fill="#0e2a47">
+          <rect x="356" y="104" rx="8" width="140" height="60" fill="#fff"/>
+          <text x="426" y="140" text-anchor="middle">顧客管理</text>
+          <rect x="506" y="104" rx="8" width="140" height="60" fill="#fff"/>
+          <text x="576" y="140" text-anchor="middle">商談分析</text>
+          <rect x="356" y="176" rx="8" width="140" height="60" fill="#fff"/>
+          <text x="426" y="212" text-anchor="middle">受注管理</text>
+          <rect x="506" y="176" rx="8" width="140" height="60" fill="#fff"/>
+          <text x="576" y="212" text-anchor="middle">売上管理</text>
+        </g>
+        <g fill="#c43a18">
+          <rect x="356" y="104" width="6" height="60" rx="3"/>
+          <rect x="506" y="104" width="6" height="60" rx="3"/>
+          <rect x="356" y="176" width="6" height="60" rx="3"/>
+          <rect x="506" y="176" width="6" height="60" rx="3"/>
+        </g>
+      </g>
+    </svg>
+    <div class="foot">統合CRM</div>
+  </section>
+
+  <!-- 02 見積・請求 -->
+  <section class="slide">
+    <div class="num">02 / 08</div>
+    <h1>見積もり・請求書と連動、<em>PDF発行</em></h1>
+    <div class="cap">商談から見積書・請求書を作成し、そのままPDFで発行できます</div>
+    <svg class="art" viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg">
+      <!-- 左: 在庫リスト(共通デザイン) -->
+      <g>
+        <rect x="70" y="80" rx="8" width="112" height="136" fill="#fff" stroke="#0e2a47" stroke-width="2.5"/>
+        <path d="M154 80 v26 h28" fill="#eef2f6" stroke="#0e2a47" stroke-width="2.5"/>
+        <g fill="#1f5d99">
+          <rect x="86" y="126" width="76" height="9" rx="3"/>
+          <rect x="86" y="146" width="76" height="9" rx="3"/>
+          <rect x="86" y="166" width="56" height="9" rx="3"/>
+        </g>
+        <circle cx="178" cy="204" r="17" fill="#c43a18"/>
+        <path d="M170 204 l6 6 10 -12" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <text x="126" y="246" text-anchor="middle" fill="#0e2a47" font-size="14" font-weight="900" font-family="Zen Kaku Gothic New,sans-serif">在庫リスト</text>
+      </g>
+      <!-- 破線: 在庫データが書類に流れ込む -->
+      <g class="stream" stroke="#c43a18" stroke-width="2.5" fill="none">
+        <path d="M206 148 H388"/>
+      </g>
+      <text x="297" y="132" text-anchor="middle" fill="#c43a18" font-size="13" font-weight="900" font-family="Zen Kaku Gothic New,sans-serif">在庫データを反映</text>
+      <!-- 右: 見積書+請求書の束(集約)+PDF -->
+      <g font-family="Zen Kaku Gothic New,sans-serif">
+        <rect x="430" y="72" rx="8" width="160" height="180" fill="#eef2f6" stroke="#0e2a47" stroke-width="2" transform="rotate(4 510 162)"/>
+        <text x="574" y="102" fill="#0e2a47" font-size="13" font-weight="900" transform="rotate(4 574 102)">請求書</text>
+        <rect x="408" y="58" rx="8" width="160" height="180" fill="#fff" stroke="#0e2a47" stroke-width="2.5"/>
+        <text x="488" y="92" text-anchor="middle" fill="#0e2a47" font-size="16" font-weight="900">見積書</text>
+        <g fill="#eef2f6">
+          <rect x="428" y="112" width="120" height="12" rx="3"/>
+          <rect x="428" y="134" width="120" height="12" rx="3"/>
+          <rect x="428" y="156" width="120" height="12" rx="3"/>
+        </g>
+        <text x="488" y="204" text-anchor="middle" fill="#1f5d99" font-size="19" font-weight="900">¥ 000,000</text>
+        <rect x="452" y="252" rx="6" width="74" height="30" fill="#c43a18"/>
+        <text x="489" y="272" text-anchor="middle" fill="#fff" font-size="14" font-weight="900">PDF</text>
+      </g>
+    </svg>
+    <div class="foot">統合CRM</div>
+  </section>
+
+  <!-- 03 登録フォーム -->
+  <section class="slide">
+    <div class="num">03 / 08</div>
+    <h1>成約したら、<em>フォームで顧客登録</em></h1>
+    <div class="cap">登録フォームを発行し、顧客情報がそのままCRMに登録されます</div>
+    <svg class="art" viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg">
+      <g>
+        <rect x="90" y="46" rx="12" width="230" height="208" fill="#fff" stroke="#d7dfe8"/>
+        <text x="205" y="80" text-anchor="middle" fill="#0e2a47" font-size="15" font-weight="900" font-family="Zen Kaku Gothic New,sans-serif">登録フォーム</text>
+        <g fill="#eef2f6" stroke="#d7dfe8">
+          <rect x="110" y="98" width="190" height="26" rx="6"/>
+          <rect x="110" y="134" width="190" height="26" rx="6"/>
+          <rect x="110" y="170" width="190" height="26" rx="6"/>
+        </g>
+        <g fill="#9db1c7" font-size="11" font-family="Zen Kaku Gothic New,sans-serif">
+          <text x="120" y="115">お名前</text><text x="120" y="151">ご連絡先</text><text x="120" y="187">お届け先</text>
+        </g>
+        <rect x="110" y="210" rx="6" width="190" height="30" fill="#0e2a47"/>
+        <text x="205" y="230" text-anchor="middle" fill="#fff" font-size="13" font-weight="900" font-family="Zen Kaku Gothic New,sans-serif">送信</text>
+      </g>
+      <g class="stream" stroke="#c43a18" stroke-width="2.5" fill="none"><path d="M346 150 H428"/></g>
+      <g>
+        <rect x="444" y="70" rx="12" width="200" height="160" fill="#fff" stroke="#d7dfe8"/>
+        <circle cx="500" cy="126" r="26" fill="#0e2a47"/>
+        <circle cx="500" cy="117" r="9" fill="#fff"/>
+        <path d="M482 139 c0-9 8-14 18-14 s18 5 18 14z" fill="#fff"/>
+        <g fill="#1f5d99">
+          <rect x="540" y="106" width="86" height="11" rx="3"/>
+          <rect x="540" y="128" width="66" height="9" rx="3"/>
+        </g>
+        <rect x="464" y="172" rx="5" width="160" height="16" fill="#eef2f6"/>
+        <circle cx="612" cy="206" r="14" fill="#c43a18"/>
+        <path d="M606 206 l4 4 8 -9" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <text x="530" y="212" text-anchor="middle" fill="#0e2a47" font-size="12" font-weight="900" font-family="Zen Kaku Gothic New,sans-serif">顧客情報 登録完了</text>
+      </g>
+    </svg>
+    <div class="foot">統合CRM</div>
+  </section>
+
+  <!-- 04 販売管理 -->
+  <section class="slide">
+    <div class="num">04 / 08</div>
+    <h1>誰に・いつ・どれだけ売ったかを、<em>管理</em></h1>
+    <div class="cap">顧客ごとの販売履歴が日付・数量つきで一覧できます</div>
+    <svg class="art" viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg">
+      <rect x="80" y="44" rx="12" width="560" height="212" fill="#fff" stroke="#d7dfe8"/>
+      <rect x="80" y="44" width="560" height="38" rx="12" fill="#0e2a47"/>
+      <rect x="80" y="66" width="560" height="16" fill="#0e2a47"/>
+      <g fill="#fff" font-size="13" font-weight="700" font-family="Zen Kaku Gothic New,sans-serif">
+        <text x="140" y="68">顧客</text><text x="320" y="68">日付</text><text x="460" y="68">商品</text><text x="590" y="68">数量</text>
+      </g>
+      <g stroke="#d7dfe8"><path d="M80 132 H640"/><path d="M80 182 H640"/><path d="M80 232 H640"/></g>
+      <g font-family="Zen Kaku Gothic New,sans-serif" font-size="13" font-weight="700">
+        <g transform="translate(0,0)">
+          <circle cx="122" cy="108" r="12" fill="#1f5d99"/><circle cx="122" cy="104" r="4.5" fill="#fff"/><path d="M113 114 c0-5 4-7 9-7 s9 2 9 7z" fill="#fff"/>
+          <rect x="146" y="101" width="90" height="12" rx="3" fill="#1f5d99"/>
+          <rect x="300" y="101" width="76" height="12" rx="3" fill="#eef2f6" stroke="#d7dfe8"/>
+          <rect x="430" y="101" width="110" height="12" rx="3" fill="#eef2f6" stroke="#d7dfe8"/>
+          <text x="596" y="113" fill="#0e2a47">12</text>
+        </g>
+        <g transform="translate(0,50)">
+          <circle cx="122" cy="108" r="12" fill="#1f5d99"/><circle cx="122" cy="104" r="4.5" fill="#fff"/><path d="M113 114 c0-5 4-7 9-7 s9 2 9 7z" fill="#fff"/>
+          <rect x="146" y="101" width="90" height="12" rx="3" fill="#1f5d99"/>
+          <rect x="300" y="101" width="76" height="12" rx="3" fill="#eef2f6" stroke="#d7dfe8"/>
+          <rect x="430" y="101" width="110" height="12" rx="3" fill="#eef2f6" stroke="#d7dfe8"/>
+          <text x="596" y="113" fill="#0e2a47">30</text>
+        </g>
+        <g transform="translate(0,100)">
+          <circle cx="122" cy="108" r="12" fill="#1f5d99"/><circle cx="122" cy="104" r="4.5" fill="#fff"/><path d="M113 114 c0-5 4-7 9-7 s9 2 9 7z" fill="#fff"/>
+          <rect x="146" y="101" width="90" height="12" rx="3" fill="#1f5d99"/>
+          <rect x="300" y="101" width="76" height="12" rx="3" fill="#eef2f6" stroke="#d7dfe8"/>
+          <rect x="430" y="101" width="110" height="12" rx="3" fill="#eef2f6" stroke="#d7dfe8"/>
+          <text x="596" y="113" fill="#0e2a47">8</text>
+        </g>
+      </g>
+    </svg>
+    <div class="foot">統合CRM</div>
+  </section>
+
+  <!-- 05 受注管理 -->
+  <section class="slide">
+    <div class="num">05 / 08</div>
+    <h1>取引完了まで、<em>ステータスで受注管理</em></h1>
+    <div class="cap">いま何件がどの段階にあるか。対応漏れを防ぎます</div>
+    <svg class="art" viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg">
+      <g font-family="Zen Kaku Gothic New,sans-serif" font-size="14" font-weight="900">
+        <g>
+          <rect x="52" y="60" rx="10" width="140" height="44" fill="#eef2f6" stroke="#d7dfe8"/>
+          <text x="122" y="88" text-anchor="middle" fill="#0e2a47">受注</text>
+          <rect x="62" y="116" rx="6" width="120" height="30" fill="#fff" stroke="#d7dfe8"/>
+          <rect x="62" y="154" rx="6" width="120" height="30" fill="#fff" stroke="#d7dfe8"/>
+          <rect x="62" y="192" rx="6" width="120" height="30" fill="#fff" stroke="#d7dfe8"/>
+        </g>
+        <g>
+          <rect x="212" y="60" rx="10" width="140" height="44" fill="#eef2f6" stroke="#d7dfe8"/>
+          <text x="282" y="88" text-anchor="middle" fill="#0e2a47">入金確認</text>
+          <rect x="222" y="116" rx="6" width="120" height="30" fill="#fff" stroke="#d7dfe8"/>
+          <rect x="222" y="154" rx="6" width="120" height="30" fill="#fff" stroke="#d7dfe8"/>
+        </g>
+        <g>
+          <rect x="372" y="60" rx="10" width="140" height="44" fill="#eef2f6" stroke="#d7dfe8"/>
+          <text x="442" y="88" text-anchor="middle" fill="#0e2a47">発送</text>
+          <rect x="382" y="116" rx="6" width="120" height="30" fill="#fff" stroke="#d7dfe8"/>
+        </g>
+        <g>
+          <rect x="532" y="60" rx="10" width="140" height="44" fill="#0e2a47"/>
+          <text x="602" y="88" text-anchor="middle" fill="#fff">完了</text>
+          <rect x="542" y="116" rx="6" width="120" height="30" fill="#fff" stroke="#d7dfe8"/>
+          <rect x="542" y="154" rx="6" width="120" height="30" fill="#fff" stroke="#d7dfe8"/>
+          <circle cx="648" cy="131" r="9" fill="#c43a18"/>
+          <path d="M644 131 l3 3 6 -7" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <circle cx="648" cy="169" r="9" fill="#c43a18"/>
+          <path d="M644 169 l3 3 6 -7" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        </g>
+      </g>
+      <g class="stream" stroke="#1f5d99" stroke-width="2" fill="none">
+        <path d="M196 82 H208"/><path d="M356 82 H368"/><path d="M516 82 H528"/>
+      </g>
+    </svg>
+    <div class="foot">統合CRM</div>
+  </section>
+
+  <!-- 06 売上分析 -->
+  <section class="slide">
+    <div class="num">06 / 08</div>
+    <h1>受注履歴から、<em>売上を分析・管理</em></h1>
+    <div class="cap">月ごとの売上推移と累計が自動で集計されます</div>
+    <svg class="art" viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg">
+      <rect x="80" y="44" rx="12" width="560" height="212" fill="#fff" stroke="#d7dfe8"/>
+      <text x="120" y="84" fill="#0e2a47" font-size="15" font-weight="900" font-family="Zen Kaku Gothic New,sans-serif">売上推移</text>
+      <g>
+        <path d="M120 230 H600" stroke="#0e2a47" stroke-width="2"/>
+        <rect x="150" y="196" width="40" height="34" fill="#9db1c7"/>
+        <rect x="220" y="178" width="40" height="52" fill="#1f5d99"/>
+        <rect x="290" y="186" width="40" height="44" fill="#1f5d99"/>
+        <rect x="360" y="150" width="40" height="80" fill="#1f5d99"/>
+        <rect x="430" y="128" width="40" height="102" fill="#1f5d99"/>
+        <rect x="500" y="104" width="40" height="126" fill="#c43a18"/>
+      </g>
+      <path d="M170 186 L240 166 L310 174 L380 138 L450 116 L520 92" stroke="#0e2a47" stroke-width="3" fill="none"/>
+      <circle cx="520" cy="92" r="6" fill="#c43a18"/>
+      <text x="560" y="88" fill="#c43a18" font-size="16" font-weight="900" font-family="Barlow Condensed,sans-serif">¥</text>
+    </svg>
+    <div class="foot">統合CRM</div>
+  </section>
+
+  <!-- 07 商品・顧客の傾向分析 -->
+  <section class="slide">
+    <div class="num">07 / 08</div>
+    <h1>売れ筋も、<em>顧客ごとの特性も分析</em></h1>
+    <div class="cap">受注の多い商品に加えて、顧客ごとの発注量・金額・傾向まで測れます</div>
+    <svg class="art" viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg">
+      <g>
+        <rect x="70" y="50" rx="12" width="280" height="200" fill="#fff" stroke="#d7dfe8"/>
+        <text x="210" y="82" text-anchor="middle" fill="#0e2a47" font-size="14" font-weight="900" font-family="Zen Kaku Gothic New,sans-serif">受注の多い商品</text>
+        <g font-family="Zen Kaku Gothic New,sans-serif" font-size="12" font-weight="700" fill="#4a5c70">
+          <text x="92" y="118">1位</text><text x="92" y="156">2位</text><text x="92" y="194">3位</text>
+        </g>
+        <rect x="126" y="106" height="16" width="196" rx="4" fill="#c43a18"/>
+        <rect x="126" y="144" height="16" width="140" rx="4" fill="#1f5d99"/>
+        <rect x="126" y="182" height="16" width="96" rx="4" fill="#9db1c7"/>
+      </g>
+      <g>
+        <rect x="382" y="50" rx="12" width="280" height="200" fill="#fff" stroke="#d7dfe8"/>
+        <text x="522" y="82" text-anchor="middle" fill="#0e2a47" font-size="14" font-weight="900" font-family="Zen Kaku Gothic New,sans-serif">顧客ごとの発注量・金額</text>
+        <g>
+          <circle cx="452" cy="160" r="46" fill="none" stroke="#eef2f6" stroke-width="20"/>
+          <path d="M452 114 a46 46 0 0 1 44 60" fill="none" stroke="#c43a18" stroke-width="20"/>
+          <path d="M496 174 a46 46 0 0 1 -70 24" fill="none" stroke="#1f5d99" stroke-width="20"/>
+        </g>
+        <g font-family="Zen Kaku Gothic New,sans-serif" font-size="12" font-weight="700" fill="#0e2a47">
+          <rect x="540" y="122" width="12" height="12" rx="3" fill="#c43a18"/><text x="560" y="133">A社 45%</text>
+          <rect x="540" y="152" width="12" height="12" rx="3" fill="#1f5d99"/><text x="560" y="163">B社 30%</text>
+          <rect x="540" y="182" width="12" height="12" rx="3" fill="#9db1c7"/><text x="560" y="193">その他</text>
+        </g>
+      </g>
+    </svg>
+    <div class="foot">統合CRM</div>
+  </section>
+
+  <!-- 08 リード分析 -->
+  <section class="slide">
+    <div class="num">08 / 08</div>
+    <h1>成約率の高い、<em>リード元・国・顧客特性を分析</em></h1>
+    <div class="cap">「どこから来た、どんな顧客が成約しやすいか」が数字でわかります</div>
+    <svg class="art" viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg">
+      <g font-family="Zen Kaku Gothic New,sans-serif" font-weight="900">
+        <g>
+          <rect x="66" y="70" rx="12" width="180" height="160" fill="#fff" stroke="#d7dfe8"/>
+          <text x="156" y="102" text-anchor="middle" fill="#0e2a47" font-size="14">リード元</text>
+          <rect x="86" y="120" height="14" width="140" rx="4" fill="#c43a18"/>
+          <rect x="86" y="146" height="14" width="104" rx="4" fill="#1f5d99"/>
+          <rect x="86" y="172" height="14" width="72" rx="4" fill="#9db1c7"/>
+          <text x="156" y="214" text-anchor="middle" fill="#c43a18" font-size="13">成約率が高い順</text>
+        </g>
+        <g>
+          <rect x="270" y="70" rx="12" width="180" height="160" fill="#fff" stroke="#d7dfe8"/>
+          <text x="360" y="102" text-anchor="middle" fill="#0e2a47" font-size="14">国・地域</text>
+          <circle cx="360" cy="164" r="42" fill="none" stroke="#1f5d99" stroke-width="2.5"/>
+          <path d="M318 164 H402 M360 122 V206 M330 136 c20 12 40 12 60 0 M330 192 c20 -12 40 -12 60 0" stroke="#1f5d99" stroke-width="2" fill="none"/>
+          <circle cx="384" cy="146" r="7" fill="#c43a18"/>
+        </g>
+        <g>
+          <rect x="474" y="70" rx="12" width="180" height="160" fill="#fff" stroke="#d7dfe8"/>
+          <text x="564" y="102" text-anchor="middle" fill="#0e2a47" font-size="14">顧客特性</text>
+          <g font-size="12">
+            <rect x="492" y="118" rx="12" width="76" height="26" fill="#eef2f6"/><text x="530" y="135" text-anchor="middle" fill="#0e2a47">大口</text>
+            <rect x="576" y="118" rx="12" width="66" height="26" fill="#c43a18"/><text x="609" y="135" text-anchor="middle" fill="#fff">リピート</text>
+            <rect x="492" y="152" rx="12" width="92" height="26" fill="#1f5d99"/><text x="538" y="169" text-anchor="middle" fill="#fff">法人</text>
+            <rect x="592" y="152" rx="12" width="50" height="26" fill="#eef2f6"/><text x="617" y="169" text-anchor="middle" fill="#0e2a47">新規</text>
+          </g>
+          <text x="564" y="214" text-anchor="middle" fill="#4a5c70" font-size="12">傾向をタグで把握</text>
+        </g>
+      </g>
+    </svg>
+    <div class="foot">統合CRM</div>
+  </section>
+
+</div>
+<div class="hint">スクロールでページ送り ▼</div>
+<script>
+(function(){
+  var deck=document.querySelector('.deck');
+  var slides=[].slice.call(document.querySelectorAll('.slide'));
+  function idx(){return Math.round(deck.scrollTop/deck.clientHeight);}
+  window.addEventListener('keydown',function(e){
+    var i=idx();
+    if(e.key==='ArrowDown'||e.key==='PageDown'||e.key===' '){e.preventDefault();
+      slides[Math.min(i+1,slides.length-1)].scrollIntoView({behavior:'smooth'});}
+    if(e.key==='ArrowUp'||e.key==='PageUp'){e.preventDefault();
+      slides[Math.max(i-1,0)].scrollIntoView({behavior:'smooth'});}
+  });
+})();
+</script>
+</body>
+</html>
