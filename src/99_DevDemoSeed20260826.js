@@ -276,61 +276,61 @@ function seedDevDemoData_20260826() {
       {
         'リードID': 'LDI-0001', '登録日': D.jan15, '顧客名': 'Alex Thompson',
         'リード進捗': '成約', '商談進捗': '完了', '商談結果': '成約',
-        '呼び方（英語）': 'Alex', '国': 'US', 'メール': 'alex.t@demo.example',
+        '呼び方（英語）': 'Alex', '国': 'US', 'メール': 'alex.t@example.com',
         '連絡手段': 'Email', '温度感': '高', 'リードステータス': '成約済み'
       },
       {
         'リードID': 'LDI-0002', '登録日': D.feb01, '顧客名': 'Maria Garcia',
         'リード進捗': '成約', '商談進捗': '完了', '商談結果': '成約',
-        '呼び方（英語）': 'Maria', '国': 'ES', 'メール': 'maria.g@demo.example',
+        '呼び方（英語）': 'Maria', '国': 'ES', 'メール': 'maria.g@example.com',
         '連絡手段': 'Email', '温度感': '高', 'リードステータス': '成約済み'
       },
       {
         'リードID': 'LDI-0003', '登録日': D.feb10, '顧客名': 'James Wilson',
         'リード進捗': '成約', '商談進捗': '完了', '商談結果': '成約',
-        '呼び方（英語）': 'James', '国': 'GB', 'メール': 'james.w@demo.example',
+        '呼び方（英語）': 'James', '国': 'GB', 'メール': 'james.w@example.com',
         '連絡手段': 'Discord', '温度感': '高', 'リードステータス': '成約済み'
       },
       {
         'リードID': 'LDI-0004', '登録日': D.mar01, '顧客名': 'Sophie Martin',
         'リード進捗': '成約', '商談進捗': '完了', '商談結果': '成約',
-        '呼び方（英語）': 'Sophie', '国': 'FR', 'メール': 'sophie.m@demo.example',
+        '呼び方（英語）': 'Sophie', '国': 'FR', 'メール': 'sophie.m@example.com',
         '連絡手段': 'Email', '温度感': '高', 'リードステータス': '成約済み'
       },
       {
         'リードID': 'LDI-0005', '登録日': D.mar15, '顧客名': 'Hiroshi Tanaka',
         'リード進捗': '成約', '商談進捗': '完了', '商談結果': '成約',
-        '呼び方（英語）': 'Hiroshi', '国': 'JP', 'メール': 'hiroshi.t@demo.example',
+        '呼び方（英語）': 'Hiroshi', '国': 'JP', 'メール': 'hiroshi.t@example.com',
         '連絡手段': 'LINE', '温度感': '高', 'リードステータス': '成約済み'
       },
       {
         'リードID': 'LDI-0006', '登録日': D.apr01, '顧客名': 'Emma Davis',
         'リード進捗': '成約', '商談進捗': '完了', '商談結果': '成約',
-        '呼び方（英語）': 'Emma', '国': 'AU', 'メール': 'emma.d@demo.example',
+        '呼び方（英語）': 'Emma', '国': 'AU', 'メール': 'emma.d@example.com',
         '連絡手段': 'Email', '温度感': '高', 'リードステータス': '成約済み'
       },
       {
         'リードID': 'LDI-0007', '登録日': D.may01, '顧客名': 'Lucas Fernandez',
         'リード進捗': '商談中', '商談進捗': '提案済み', '商談結果': '',
-        '呼び方（英語）': 'Lucas', '国': 'MX', 'メール': 'lucas.f@demo.example',
+        '呼び方（英語）': 'Lucas', '国': 'MX', 'メール': 'lucas.f@example.com',
         '連絡手段': 'Email', '温度感': '中', 'リードステータス': '商談中'
       },
       {
         'リードID': 'LDI-0008', '登録日': D.jun01, '顧客名': 'Olivia Brown',
         'リード進捗': '初回接触', '商談進捗': '未着手', '商談結果': '',
-        '呼び方（英語）': 'Olivia', '国': 'CA', 'メール': 'olivia.b@demo.example',
+        '呼び方（英語）': 'Olivia', '国': 'CA', 'メール': 'olivia.b@example.com',
         '連絡手段': 'Email', '温度感': '低', 'リードステータス': '新規'
       },
       {
         'リードID': 'LDI-0009', '登録日': D.jul01, '顧客名': 'Noah Schmidt',
         'リード進捗': '商談中', '商談進捗': '見積もり提出', '商談結果': '',
-        '呼び方（英語）': 'Noah', '国': 'DE', 'メール': 'noah.s@demo.example',
+        '呼び方（英語）': 'Noah', '国': 'DE', 'メール': 'noah.s@example.com',
         '連絡手段': 'Email', '温度感': '中', 'リードステータス': '商談中'
       },
       {
         'リードID': 'LDI-0010', '登録日': D.aug01, '顧客名': 'Chloe Anderson',
         'リード進捗': '失注', '商談進捗': '完了', '商談結果': '失注',
-        '呼び方（英語）': 'Chloe', '国': 'NZ', 'メール': 'chloe.a@demo.example',
+        '呼び方（英語）': 'Chloe', '国': 'NZ', 'メール': 'chloe.a@example.com',
         '連絡手段': 'Email', '温度感': '低', '失注理由': '価格', 'リードステータス': '失注'
       }
     ];
@@ -341,37 +341,37 @@ function seedDevDemoData_20260826() {
     var customersData = [
       {
         '顧客ID': 'CT-0001', '源流リードID': 'LDI-0001', '顧客名': 'Alex Thompson',
-        '国': 'US', 'メール': 'alex.t@demo.example', '電話番号': '+1-555-0101',
+        '国': 'US', 'メール': 'alex.t@example.com', '電話番号': '+1-555-0101',
         '国番号': '+1', '初回取引日': D.feb01, '登録日': D.feb01,
         '営業担当者': 'Demo Staff', '連絡ツール': 'Email'
       },
       {
         '顧客ID': 'CT-0002', '源流リードID': 'LDI-0002', '顧客名': 'Maria Garcia',
-        '国': 'ES', 'メール': 'maria.g@demo.example', '電話番号': '+34-555-0202',
+        '国': 'ES', 'メール': 'maria.g@example.com', '電話番号': '+34-555-0202',
         '国番号': '+34', '初回取引日': D.mar01, '登録日': D.mar01,
         '営業担当者': 'Demo Staff', '連絡ツール': 'Email'
       },
       {
         '顧客ID': 'CT-0003', '源流リードID': 'LDI-0003', '顧客名': 'James Wilson',
-        '国': 'GB', 'メール': 'james.w@demo.example', '電話番号': '+44-555-0303',
+        '国': 'GB', 'メール': 'james.w@example.com', '電話番号': '+44-555-0303',
         '国番号': '+44', '初回取引日': D.apr01, '登録日': D.apr01,
         '営業担当者': 'Demo Staff', '連絡ツール': 'Discord'
       },
       {
         '顧客ID': 'CT-0004', '源流リードID': 'LDI-0004', '顧客名': 'Sophie Martin',
-        '国': 'FR', 'メール': 'sophie.m@demo.example', '電話番号': '+33-555-0404',
+        '国': 'FR', 'メール': 'sophie.m@example.com', '電話番号': '+33-555-0404',
         '国番号': '+33', '初回取引日': D.may01, '登録日': D.may01,
         '営業担当者': 'Demo Staff', '連絡ツール': 'Email'
       },
       {
         '顧客ID': 'CT-0005', '源流リードID': 'LDI-0005', '顧客名': 'Hiroshi Tanaka',
-        '国': 'JP', 'メール': 'hiroshi.t@demo.example', '電話番号': '+81-555-0505',
+        '国': 'JP', 'メール': 'hiroshi.t@example.com', '電話番号': '+81-555-0505',
         '国番号': '+81', '初回取引日': D.jun01, '登録日': D.jun01,
         '営業担当者': 'Demo Staff', '連絡ツール': 'LINE'
       },
       {
         '顧客ID': 'CT-0006', '源流リードID': 'LDI-0006', '顧客名': 'Emma Davis',
-        '国': 'AU', 'メール': 'emma.d@demo.example', '電話番号': '+61-555-0606',
+        '国': 'AU', 'メール': 'emma.d@example.com', '電話番号': '+61-555-0606',
         '国番号': '+61', '初回取引日': D.jul01, '登録日': D.jul01,
         '営業担当者': 'Demo Staff', '連絡ツール': 'Email'
       }
