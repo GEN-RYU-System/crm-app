@@ -142,13 +142,13 @@ function createCoreOrderForFrontend(sessionId, payload) {
       paymentDueDate.setDate(paymentDueDate.getDate() + dueDays);
       var paymentTermsLabel = String(dueDays) + '\u65e5\u5f8c'; // "N日後"
 
-      // 新規作成時のステータス判定（invoiceNumber も paymentConfirmedAt もない → 不明）
+      // 新規作成時の初期ステータス（appendRow 後に recalculateOrderStatusById で正確な値に上書きする）
       var orderStatus = calculateOrderStatus(
         {
           cancellationReason: '',
           status: '',
           paymentConfirmedAt: '',
-          invoiceNumber: ''
+          invoiceNumber: invoiceNumber
         },
         [],
         []
@@ -233,6 +233,9 @@ function createCoreOrderForFrontend(sessionId, payload) {
 
         lineSheet.appendRow(lineRow);
       });
+
+      // 明細・仕入れ・発送を含めて正確なステータスに再計算して書き込む
+      recalculateOrderStatusById(newOrderId);
 
       return { success: true, orderId: newOrderId };
     }
