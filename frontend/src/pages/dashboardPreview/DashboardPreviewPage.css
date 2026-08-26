@@ -3,13 +3,87 @@
 
 /* ── Section ─────────────────────────────────────────────────── */
 .dp-section { display: flex; flex-direction: column; gap: var(--space-md); }
-.dp-section__title { font-size: var(--font-md); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); margin: 0; }
+.dp-section__title { font-size: var(--font-md); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); margin: 0; display: flex; align-items: center; gap: var(--space-sm); }
+
+/* ── Top row: follow-up + goals (2-up) ─────────────────────────── */
+.dp-top-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); }
+.dp-top-row__card { min-width: 0; }
+
+/* ── KPI row: lead KPI + sales KPI (2-up) ────────────────────── */
+.dp-kpi-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); }
+.dp-kpi-row__card { min-width: 0; }
+
+/* ── Achievement bar ─────────────────────────────────────────── */
+.dp-achievement-bar { height: 6px; border-radius: var(--radius-pill); background: var(--color-border); overflow: hidden; }
+.dp-achievement-bar__fill { height: 100%; width: var(--_dp-bar-w, 0%); border-radius: var(--radius-pill); transition: width 0.3s ease; }
+.dp-bar--success .dp-achievement-bar__fill { background: var(--color-success); }
+.dp-bar--accent  .dp-achievement-bar__fill { background: var(--color-accent); }
+.dp-bar--warning .dp-achievement-bar__fill { background: var(--color-warning); }
+.dp-bar--danger  .dp-achievement-bar__fill { background: var(--color-danger); }
+
+/* ── Urgent badge ────────────────────────────────────────────── */
+.dp-badge-urgent { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 var(--space-xs); font-size: var(--font-xs); font-weight: var(--font-weight-bold); color: var(--color-on-solid); background: var(--color-danger); border-radius: var(--radius-pill); }
+
+/* ── Follow-up list ──────────────────────────────────────────── */
+.dp-fu-list { display: flex; flex-direction: column; gap: var(--space-xs); }
+.dp-fu-item { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-control); border-left: 3px solid transparent; }
+.dp-fu-item--overdue  { border-left-color: var(--color-danger);  background: var(--color-danger-subtle); }
+.dp-fu-item--today    { border-left-color: var(--color-warning); background: var(--color-warning-subtle); }
+.dp-fu-item--upcoming { border-left-color: var(--color-border);  background: var(--color-surface); }
+.dp-fu-badge    { font-size: var(--font-xs); font-weight: var(--font-weight-bold); white-space: nowrap; }
+.dp-fu-item--overdue  .dp-fu-badge { color: var(--color-danger-text); }
+.dp-fu-item--today    .dp-fu-badge { color: var(--color-warning-text); }
+.dp-fu-item--upcoming .dp-fu-badge { color: var(--color-text-muted); }
+.dp-fu-name     { font-size: var(--font-sm); color: var(--color-text-primary); font-weight: var(--font-weight-semibold); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-fu-assignee { font-size: var(--font-xs); color: var(--color-text-muted); white-space: nowrap; }
+.dp-fu-date     { font-size: var(--font-xs); color: var(--color-text-muted); white-space: nowrap; }
+
+/* ── Goal blocks ─────────────────────────────────────────────── */
+.dp-goal-blocks { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); }
+.dp-goal-block { display: flex; flex-direction: column; gap: var(--space-sm); }
+.dp-goal-block__period { font-size: var(--font-xs); font-weight: var(--font-weight-bold); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.dp-goal-row { display: flex; flex-direction: column; gap: var(--space-xs); }
+.dp-goal-row__header { display: flex; align-items: center; gap: var(--space-sm); }
+.dp-goal-row__label  { font-size: var(--font-sm); color: var(--color-text-primary); flex: 1; }
+.dp-goal-row__values { font-size: var(--font-xs); color: var(--color-text-muted); }
+.dp-goal-row__sep    { color: var(--color-border); }
+.dp-goal-row__rate   { font-size: var(--font-xs); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); min-width: 3.5em; text-align: right; }
 
 /* ── KPI tiles ──────────────────────────────────────────────── */
 .dp-kpi-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-md); }
+.dp-kpi-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .dp-kpi-tile { display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-md); border: 1px solid var(--color-border); border-radius: var(--radius-surface); background: var(--color-surface); }
 .dp-kpi-tile__label { font-size: var(--font-xs); color: var(--color-text-muted); }
 .dp-kpi-tile__value { font-size: var(--font-stat); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
-.dp-kpi-tile__sub { font-size: var(--font-xs); color: var(--color-text-muted); }
+.dp-kpi-tile__sub   { font-size: var(--font-xs); color: var(--color-text-muted); }
 .dp-kpi-tile--up   .dp-kpi-tile__value { color: var(--color-success-text); }
 .dp-kpi-tile--down .dp-kpi-tile__value { color: var(--color-danger); }
+
+/* ── Revenue chart ───────────────────────────────────────────── */
+.dp-chart { display: flex; gap: var(--space-sm); align-items: stretch; }
+.dp-chart__yaxis { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; padding-bottom: var(--space-xl); }
+.dp-chart__ylabel { font-size: var(--font-xs); color: var(--color-text-muted); white-space: nowrap; }
+.dp-chart__bars { display: flex; align-items: flex-end; gap: var(--space-sm); flex: 1; height: 160px; }
+.dp-chart__bar-group { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); flex: 1; height: 100%; }
+.dp-chart__bar-wrap { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; flex: 1; width: 100%; gap: 0; }
+.dp-chart__bar { width: 100%; border-radius: var(--radius-xs) var(--radius-xs) 0 0; }
+.dp-chart__bar--actual    { height: var(--_dp-bar-h, 0%); background: var(--color-accent); }
+.dp-chart__bar--remaining { height: var(--_dp-bar-h, 0%); background: var(--color-accent-subtle); border: 1px solid var(--color-accent); }
+.dp-chart__xlabel { font-size: var(--font-xs); color: var(--color-text-muted); white-space: nowrap; height: 20px; display: flex; align-items: center; }
+.dp-chart__legend { display: flex; gap: var(--space-md); justify-content: flex-end; margin-top: var(--space-sm); }
+.dp-chart__legend-item { display: flex; align-items: center; gap: var(--space-xs); font-size: var(--font-xs); color: var(--color-text-muted); }
+.dp-chart__legend-item::before { content: ''; display: inline-block; width: 12px; height: 12px; border-radius: var(--radius-xs); }
+.dp-chart__legend-item--actual::before    { background: var(--color-accent); }
+.dp-chart__legend-item--remaining::before { background: var(--color-accent-subtle); border: 1px solid var(--color-accent); }
+
+/* ── Funnel ──────────────────────────────────────────────────── */
+.dp-funnel-elapsed { font-size: var(--font-xs); font-weight: normal; color: var(--color-text-muted); margin-left: var(--space-sm); }
+.dp-funnel-row { display: flex; align-items: center; gap: var(--space-sm); }
+.dp-funnel-card { flex: 1; display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-md); border: 1px solid var(--color-border); border-radius: var(--radius-surface); background: var(--color-surface); min-width: 0; }
+.dp-funnel-card--bottleneck { border-color: var(--color-danger); background: var(--color-danger-subtle); }
+.dp-funnel-card__title  { font-size: var(--font-xs); font-weight: var(--font-weight-bold); color: var(--color-text-muted); }
+.dp-funnel-card__actual { font-size: var(--font-stat); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
+.dp-funnel-card__target { font-size: var(--font-xs); color: var(--color-text-muted); }
+.dp-funnel-card__extra  { font-size: var(--font-xs); color: var(--color-text-muted); }
+.dp-funnel-card__rate   { font-size: var(--font-xs); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
+.dp-funnel-arrow { font-size: var(--font-lg); color: var(--color-text-muted); flex-shrink: 0; }
