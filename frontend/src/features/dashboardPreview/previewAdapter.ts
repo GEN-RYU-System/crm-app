@@ -1,5 +1,6 @@
 import { dashboardPreviewCopy } from '../../content/ja/dashboardPreview';
 import type {
+  AiRecommendationData,
   DashboardPreviewRepository,
   FollowUpData,
   FunnelDto,
@@ -7,6 +8,7 @@ import type {
   LeadKpiDto,
   RevenueChartPoint,
   SalesKpiDto,
+  WeeklyAdvisorData,
 } from './contracts';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -154,6 +156,33 @@ function getFunnel(): FunnelDto {
   };
 }
 
+// ─── AI recommendations (priority prospects) ─────────────────────────────────
+
+function getAiRecommendations(): AiRecommendationData {
+  const { updatedAt, reasons, stages } = dashboardPreviewCopy.fakeAiRecommendations;
+  const scores = [94, 87, 81, 76, 71];
+  return {
+    updatedAt,
+    prospects: [
+      { id: 'ai-1', customerName: cx[2], score: scores[0], reason: reasons[0], stage: stages[0], assignee: ax[0] },
+      { id: 'ai-2', customerName: cx[5], score: scores[1], reason: reasons[1], stage: stages[1], assignee: ax[1] },
+      { id: 'ai-3', customerName: cx[8], score: scores[2], reason: reasons[2], stage: stages[2], assignee: ax[2] },
+      { id: 'ai-4', customerName: cx[0], score: scores[3], reason: reasons[3], stage: stages[3], assignee: ax[3] },
+      { id: 'ai-5', customerName: cx[3], score: scores[4], reason: reasons[4], stage: stages[4], assignee: ax[4] },
+    ],
+  };
+}
+
+// ─── Weekly advisor ───────────────────────────────────────────────────────────
+
+function getWeeklyAdvisor(): WeeklyAdvisorData {
+  const { weekLabel, cards } = dashboardPreviewCopy.fakeWeeklyAdvisor;
+  return {
+    weekLabel,
+    cards: cards.map((card, i) => ({ id: `wa-${i + 1}`, ...card })),
+  };
+}
+
 // ─── export ──────────────────────────────────────────────────────────────────
 
 export const dashboardPreviewRepository: DashboardPreviewRepository = {
@@ -163,4 +192,6 @@ export const dashboardPreviewRepository: DashboardPreviewRepository = {
   getSalesKpi,
   getRevenueChart,
   getFunnel,
+  getAiRecommendations,
+  getWeeklyAdvisor,
 };

@@ -13,6 +13,7 @@
  */
 import { type CSSProperties } from 'react';
 import type {
+  AiRecommendationData,
   DashboardPreviewRepository,
   FollowUpData,
   FollowUpItem,
@@ -22,6 +23,7 @@ import type {
   LeadKpiDto,
   RevenueChartPoint,
   SalesKpiDto,
+  WeeklyAdvisorData,
 } from '../../features/dashboardPreview/contracts';
 import { Card, PageHeader } from '../../components/ui';
 import { dashboardPreviewCopy } from '../../content/ja';
@@ -317,17 +319,69 @@ function FunnelSection({ funnel }: { funnel: FunnelDto }) {
   );
 }
 
+// ─── AI Recommendations section (PriorityProspectsSection) ──────────────────
+
+function AiRecommendationSection({ data }: { data: AiRecommendationData }) {
+  const s = c.sections.aiRecommendations;
+  return (
+    <section className="dp-section">
+      <h2 className="dp-section__title">
+        {s.title}
+        {data.updatedAt && <span className="dp-funnel-elapsed">{data.updatedAt}</span>}
+      </h2>
+      <div className="dp-prospect-list">
+        {data.prospects.map(p => (
+          <div key={p.id} className="dp-prospect-item">
+            <span className="dp-prospect-score">{p.score}</span>
+            <span className="dp-prospect-name">{p.customerName}</span>
+            <span className="dp-prospect-reason">{p.reason}</span>
+            <span className="dp-prospect-stage">{p.stage}</span>
+            <span className="dp-prospect-assignee">{s.assigneeLabel}: {p.assignee}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ─── Weekly Advisor section (WeeklyAdvisorSection) ───────────────────────────
+
+function WeeklyAdvisorSection({ data }: { data: WeeklyAdvisorData }) {
+  const s = c.sections.weeklyAdvisor;
+  return (
+    <section className="dp-section">
+      <h2 className="dp-section__title">
+        {s.title}
+        <span className="dp-funnel-elapsed">{data.weekLabel}</span>
+      </h2>
+      <div className="dp-advisor-cards">
+        {data.cards.map(card => (
+          <div key={card.id} className={`dp-advisor-card dp-advisor-card--${card.category}`}>
+            <div className="dp-advisor-card__header">
+              <span className="dp-advisor-card__category">{s.categoryLabel[card.category]}</span>
+              <span className="dp-advisor-card__title">{card.title}</span>
+            </div>
+            <p className="dp-advisor-card__body">{card.body}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 type Props = { repository: DashboardPreviewRepository };
 
 export function DashboardPreviewPage({ repository }: Props) {
-  const followUps = repository.getFollowUps();
-  const goals     = repository.getGoals();
-  const leadKpi   = repository.getLeadKpi();
-  const salesKpi  = repository.getSalesKpi();
-  const chartData = repository.getRevenueChart();
-  const funnel    = repository.getFunnel();
+  const followUps    = repository.getFollowUps();
+  const goals        = repository.getGoals();
+  const leadKpi      = repository.getLeadKpi();
+  const salesKpi     = repository.getSalesKpi();
+  const chartData    = repository.getRevenueChart();
+  const funnel       = repository.getFunnel();
+  const aiRecs       = repository.getAiRecommendations();
+  const weeklyAdv    = repository.getWeeklyAdvisor();
 
   return (
     <div className="dp-page">
@@ -357,6 +411,14 @@ export function DashboardPreviewPage({ repository }: Props) {
 
       <Card>
         <FunnelSection funnel={funnel} />
+      </Card>
+
+      <Card>
+        <AiRecommendationSection data={aiRecs} />
+      </Card>
+
+      <Card>
+        <WeeklyAdvisorSection data={weeklyAdv} />
       </Card>
     </div>
   );

@@ -79,6 +79,39 @@ export type FunnelDto = {
   closed: { won: number; wonTarget: number; wonRate: number; lost: number; achievementRate: number };
 };
 
+// ─── AI Recommendations (priority prospects) ─────────────────────────────────
+export type AiRecommendedProspect = {
+  id: string;
+  customerName: string;
+  /** Priority score 0–100 */
+  score: number;
+  /** Short reason displayed as a tag */
+  reason: string;
+  stage: string;
+  assignee: string;
+};
+
+export type AiRecommendationData = {
+  /** Localized date string supplied by content/ja (e.g. "2026\u5e748\u670826\u65e5 \u66f4\u65b0") */
+  updatedAt: string;
+  prospects: readonly AiRecommendedProspect[];
+};
+
+// ─── Weekly Advisor ───────────────────────────────────────────────────────────
+export type AdvisorCardCategory = 'action' | 'alert' | 'insight';
+
+export type WeeklyAdvisorCard = {
+  id: string;
+  title: string;
+  body: string;
+  category: AdvisorCardCategory;
+};
+
+export type WeeklyAdvisorData = {
+  weekLabel: string;
+  cards: readonly WeeklyAdvisorCard[];
+};
+
 // ─── Repository ──────────────────────────────────────────────────────────────
 export type DashboardPreviewRepository = {
   getFollowUps: () => FollowUpData;
@@ -87,4 +120,6 @@ export type DashboardPreviewRepository = {
   getSalesKpi: () => SalesKpiDto;
   getRevenueChart: () => readonly RevenueChartPoint[];
   getFunnel: () => FunnelDto;
+  getAiRecommendations: () => AiRecommendationData;
+  getWeeklyAdvisor: () => WeeklyAdvisorData;
 };
