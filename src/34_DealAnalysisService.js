@@ -174,7 +174,7 @@ function buildDealAnalysisPrompt(messageText, leadInfo, history) {
 - 顧客名: ${leadInfo['顧客名'] || '不明'}
 - 国: ${leadInfo['国'] || '不明'}
 - リード種別: ${leadInfo['リード種別'] || '不明'}
-- リード進捗: ${leadInfo['リード進捗'] || '不明'}
+- リードステータス: ${leadInfo['リードステータス'] || '不明'}
 
 【過去の会話履歴】
 ${historyText}

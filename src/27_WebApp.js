@@ -1153,11 +1153,9 @@ function assignLeadToSales(leadId) {
 
   // 必要な列インデックスを取得
   const idIndex = headers.indexOf('リードID');
-  const progressIndex = headers.indexOf('リード進捗');
   const assignDateIndex = headers.indexOf('アサイン日');
   const assigneeIndex = headers.indexOf('担当者');
   const assigneeIdIndex = headers.indexOf('担当者ID');
-  const dealProgressIndex = headers.indexOf('商談進捗');
   const customerNameIndex = headers.indexOf('顧客名');
   const updateDateIndex = headers.indexOf('シート更新日');
 
@@ -1231,7 +1229,6 @@ function archiveLeadToArchive(leadId) {
   const data = leadsSheet.getDataRange().getValues();
   const headers = data[0];
   const idIndex = headers.indexOf('リードID');
-  const progressIndex = headers.indexOf('リード進捗');
 
   if (idIndex === -1) {
     return { success: false, message: 'リードID列が見つかりません' };
@@ -1250,11 +1247,6 @@ function archiveLeadToArchive(leadId) {
 
   if (targetRow === -1) {
     return { success: false, message: 'リードが見つかりません: ' + leadId };
-  }
-
-  // リード進捗を「アーカイブ」に更新
-  if (progressIndex !== -1) {
-    targetData[progressIndex] = 'アーカイブ';
   }
 
   // アーカイブシートに追加
@@ -1745,12 +1737,11 @@ function archiveLeadWithReason(leadId, archiveReason) {
     Logger.log('📊 ヘッダー取得: ' + leadsHeaders.length + '列');
 
     const leadIdIdx = leadsHeaders.indexOf('リードID');
-    const leadProgressIdx = leadsHeaders.indexOf('リード進捗');
     const archiveReasonIdx = leadsHeaders.indexOf('アーカイブ理由');
     const archiveDateIdx = leadsHeaders.indexOf('アーカイブ日');
     const updateDateIdx = leadsHeaders.indexOf('シート更新日');
 
-    Logger.log('📍 列インデックス: リードID=' + leadIdIdx + ', リード進捗=' + leadProgressIdx + ', アーカイブ理由=' + archiveReasonIdx + ', アーカイブ日=' + archiveDateIdx + ', シート更新日=' + updateDateIdx);
+    Logger.log('📍 列インデックス: リードID=' + leadIdIdx + ', アーカイブ理由=' + archiveReasonIdx + ', アーカイブ日=' + archiveDateIdx + ', シート更新日=' + updateDateIdx);
 
     if (leadIdIdx === -1) {
       Logger.log('❌ リードID列が見つかりません');
@@ -1776,7 +1767,7 @@ function archiveLeadWithReason(leadId, archiveReason) {
     // リードシートを更新
     const now = new Date();
 
-    // リード進捗への書き込みを廃止。アーカイブ日・アーカイブ理由で管理する
+    // アーカイブ日・アーカイブ理由で管理する
 
     if (archiveReasonIdx >= 0) {
       leadsSheet.getRange(leadRowNum, archiveReasonIdx + 1).setValue(archiveReason);
@@ -1833,7 +1824,7 @@ function getNewAssigns() {
     const headers = data[0];
 
     // 必要な列インデックスを取得
-    const statusIdx = headers.indexOf('商談進捗'); // 実際のシートでは「商談進捗」
+    const statusIdx = headers.indexOf('リードステータス');
     const staffIdIdx = headers.indexOf('担当者ID');
 
     const newAssigns = [];
@@ -3891,7 +3882,6 @@ function restoreLeadFromArchive(leadId, newStatus) {
     const idCol = headers.indexOf('リードID');
     const archiveDateCol = headers.indexOf('アーカイブ日');
     const archiveReasonCol = headers.indexOf('アーカイブ理由');
-    const leadProgressCol = headers.indexOf('リード進捗');
     const leadStaffCol = headers.indexOf('リード担当者'); // 追加
     const staffIdCol = headers.indexOf('担当者ID'); // 追加
     const assignDateCol = headers.indexOf('アサイン日'); // 追加
@@ -3912,10 +3902,10 @@ function restoreLeadFromArchive(leadId, newStatus) {
     const now = new Date();
 
     Logger.log('📍 復元処理開始: leadRowIndex=' + leadRowIndex);
-    Logger.log('📍 列インデックス: archiveDateCol=' + archiveDateCol + ', archiveReasonCol=' + archiveReasonCol + ', leadProgressCol=' + leadProgressCol);
+    Logger.log('📍 列インデックス: archiveDateCol=' + archiveDateCol + ', archiveReasonCol=' + archiveReasonCol);
     Logger.log('📍 列インデックス: leadStaffCol=' + leadStaffCol + ', staffIdCol=' + staffIdCol + ', assignDateCol=' + assignDateCol);
 
-    // アーカイブ情報をクリアし、リード進捗を復元
+    // アーカイブ情報をクリアし、リードステータスを復元
     try {
       if (archiveDateCol >= 0) {
         Logger.log('🔄 Clearing archiveDate at row=' + leadRowIndex + ', col=' + (archiveDateCol + 1));
@@ -3953,7 +3943,7 @@ function restoreLeadFromArchive(leadId, newStatus) {
       throw error;
     }
 
-    Logger.log('✅ リードをアーカイブから復元: ' + leadId + ' → リード進捗: ' + (newStatus || '新規') + ', リード担当者: クリア');
+    Logger.log('✅ リードをアーカイブから復元: ' + leadId + ' → リードステータス: リード対応中, リード担当者: クリア');
     return { success: true };
   } catch (e) {
     console.error('restoreLeadFromArchive error:', e);
@@ -4024,7 +4014,7 @@ function debugLeadsPage() {
   Logger.log('ヘッダー: ' + headers.join(', '));
 
   const typeIdx = headers.indexOf('リード種別');
-  const statusIdx = headers.indexOf('リード進捗');
+  const statusIdx = headers.indexOf('リードステータス');
   Logger.log('リード種別の列インデックス: ' + typeIdx);
   Logger.log('進捗ステータスの列インデックス: ' + statusIdx);
   Logger.log('CONFIG.LEAD_STATUSES: ' + JSON.stringify(CONFIG.LEAD_STATUSES));
@@ -4084,7 +4074,7 @@ function getAllLeadsNoFilter() {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const typeIdx = headers.indexOf('リード種別');
-  const statusIdx = headers.indexOf('リード進捗');
+  const statusIdx = headers.indexOf('リードステータス');
 
   const leads = [];
   const stats = { total: 0, inbound: 0, outbound: 0, newStatus: 0, inProgressStatus: 0, other: 0 };
@@ -4202,7 +4192,7 @@ function diagnoseSheetsStructure() {
   if (lastRow >= 2) {
     const firstDataRow = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
     const typeIdx = headers.indexOf('リード種別');
-    const statusIdx = headers.indexOf('リード進捗');
+    const statusIdx = headers.indexOf('リードステータス');
     Logger.log('最初のデータ行:');
     Logger.log('  リード種別: "' + (typeIdx >= 0 ? firstDataRow[typeIdx] : 'N/A') + '"');
     Logger.log('  進捗ステータス: "' + (statusIdx >= 0 ? firstDataRow[statusIdx] : 'N/A') + '"');
@@ -4388,7 +4378,7 @@ function debugGetLeads() {
 
     const headers = data[0];
     const typeIdx = headers.indexOf('リード種別');
-    const statusIdx = headers.indexOf('リード進捗');
+    const statusIdx = headers.indexOf('リードステータス');
     const idIdx = headers.indexOf('リードID');
 
     console.log('リード種別列: ' + typeIdx);
@@ -4427,8 +4417,8 @@ function debugGetLeads() {
       else if (type === 'アウトバウンド') outboundCount++;
       else otherTypeCount++;
 
-      if (status === '新規') newCount++;
-      else if (status === '対応中') inProgressCount++;
+      if (status === '新規リード') newCount++;
+      else if (status === 'リード対応中') inProgressCount++;
       else otherStatusCount++;
     }
 
@@ -4740,7 +4730,7 @@ function diagnoseDashboardData() {
   const data = leadSheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
 
   // 重要な列のインデックス
-  const statusIdx = headers.indexOf('リード進捗');
+  const statusIdx = headers.indexOf('リードステータス');
   const staffIdx = headers.indexOf('担当者');
   const staffIdIdx = headers.indexOf('担当者ID');
   const customerIdx = headers.indexOf('顧客名');
@@ -5968,131 +5958,113 @@ function exportLeadsSampleCSV() {
   try {
     const headers = HEADERS.LEADS;
 
-    // サンプルデータ（2行）
+    // サンプルデータ（2行・51列スキーマ準拠）
     const sampleData = [
       [
-        'LDI-00001',                    // リードID
-        '2026-01-27',                   // 登録日
-        'インバウンド',                  // リード種別
-        new Date(),                     // シート更新日
-        'Instagram',                    // 流入経路
-        'ABC Trading',                  // 顧客名
-        'ABC',                          // 呼び方（英語）
-        'United States',                // 国
-        'abc@example.com',              // メール
-        '+1-234-567-8900',              // 電話番号
-        'WhatsApp',                     // 連絡手段
-        'https://wa.me/1234567890',     // メッセージURL
-        '2026-01-20',                   // 初回接触日
-        '高',                           // 温度感
-        '大口',                         // 想定規模
-        '信頼重視',                      // 顧客タイプ
-        '24h以内',                      // 返信速度
-        '既存顧客として登録。対応良好。',  // CSメモ
-        0,                              // 問い合わせ回数
-        'アサイン確定',                  // 進捗ステータス
-        '谷澤 伸吾',                     // 担当者
-        'EMP-001',                      // 担当者ID
-        '2026-01-21',                   // アサイン日
-        'EMP-001',                      // 最終対応者ID
-        '85',                           // 見込度
-        '価格表送付',                    // 次回アクション
-        '2026-01-28',                   // 次回アクション日
-        '初回ヒアリング完了。ポケモンカード大口取引希望。',  // 商談メモ
-        '安定した仕入先を探している',    // 相手の課題
-        'Pokemon',                      // 取り扱いタイトル
-        'EC',                           // 販売形態
-        500000,                         // 月間見込み金額
-        100000,                         // 1回の発注金額
-        '月2-3回',                      // 購入頻度
-        'いいえ',                        // 競合比較中
-        '○ 良い',                       // 商談の手応え
-        '',                             // アラート確認日
-        '',                             // 商談結果
-        '',                             // 対象外理由
-        '',                             // 失注理由
-        '',                             // 初回取引日
-        0,                              // 初回取引金額
-        0,                              // 累計取引金額
-        '',                             // Good Point
-        '',                             // More Point
-        '',                             // 反省と今後の抱負
-        '',                             // レポート提出日
-        '',                             // レポート確認者
-        '',                             // レポート確認日
-        '',                             // レポートコメント
-        '',                             // アーカイブ日
-        '',                             // アーカイブ理由
-        '',                             // Buddyフィードバック
-        '',                             // 会話要約
-        '',                             // 最終会話日時
-        0,                              // 会話数
-        'FALSE',                        // 重複フラグ
-        '',                             // 重複元リードID
-        '',                             // 重複確認日
-        ''                              // 重複確認者
+        'LDI-00001',                              // 1: リードID
+        '2026-01-27',                             // 2: 登録日
+        'ABC Trading',                            // 3: 顧客名
+        '',                                       // 4: 商談結果
+        'ABC',                                    // 5: 呼び方（英語）
+        'United States',                          // 6: 国
+        new Date(),                               // 7: シート更新日
+        '谷澤 伸吾',                               // 8: リード担当者
+        'インバウンド',                            // 9: リード種別
+        'Instagram',                              // 10: 流入経路
+        '',                                       // 11: 流入元ID
+        'https://wa.me/1234567890',               // 12: メッセージURL
+        'Pokemon',                                // 13: 取り扱いタイトル
+        '',                                       // 14: 作品ID
+        '既存顧客として登録。対応良好。',           // 15: CSメモ
+        'abc@example.com',                        // 16: メール
+        '+1-234-567-8900',                        // 17: 電話番号
+        'WhatsApp',                               // 18: 連絡手段
+        '高',                                     // 19: 温度感
+        '大口',                                   // 20: 想定規模
+        '24h以内',                                // 21: 返信速度
+        0,                                        // 22: 問い合わせ回数
+        '',                                       // 23: アーカイブ日
+        '',                                       // 24: アーカイブ理由
+        '2026-01-21',                             // 25: アサイン日
+        '谷澤 伸吾',                               // 26: 営業担当者
+        'EMP-001',                                // 27: 担当者ID
+        '信頼重視',                               // 28: 顧客タイプ
+        'EMP-001',                                // 29: 最終対応者ID
+        '85',                                     // 30: 見込度
+        '価格表送付',                              // 31: 次回アクション
+        '2026-01-28',                             // 32: 次回アクション日
+        '初回ヒアリング完了。ポケモンカード大口取引希望。', // 33: 商談メモ
+        '安定した仕入先を探している',              // 34: 相手の課題
+        'EC',                                     // 35: 販売形態
+        500000,                                   // 36: 月間見込み金額
+        'いいえ',                                  // 37: 競合比較中
+        '',                                       // 38: アラート確認日
+        '',                                       // 39: 対象外理由
+        '',                                       // 40: 失注理由
+        '',                                       // 41: 初回取引日
+        0,                                        // 42: 初回取引金額
+        0,                                        // 43: 累計取引金額
+        '',                                       // 44: 会話要約
+        '',                                       // 45: 最終会話日時
+        0,                                        // 46: 会話数
+        'FALSE',                                  // 47: 重複フラグ
+        '',                                       // 48: 重複元リードID
+        '',                                       // 49: 重複確認日
+        '',                                       // 50: 重複確認者
+        'アサイン確定'                             // 51: リードステータス
       ],
       [
-        'LDO-00001',                    // リードID
-        '2026-01-26',                   // 登録日
-        'アウトバウンド',                 // リード種別
-        new Date(),                     // シート更新日
-        'テレアポ',                      // 流入経路
-        'XYZ Corporation',              // 顧客名
-        'XYZ',                          // 呼び方（英語）
-        'Japan',                        // 国
-        'sample@example.com',            // メール
-        '000-0000-0000',                 // 電話番号
-        'メール',                        // 連絡手段
-        '',                             // メッセージURL
-        '2026-01-25',                   // 初回接触日
-        '中',                           // 温度感
-        '中規模',                        // 想定規模
-        '価格重視',                      // 顧客タイプ
-        '48h以内',                      // 返信速度
-        'テレアポでの新規開拓。',        // CSメモ
-        0,                              // 問い合わせ回数
-        '対応中',                        // 進捗ステータス
-        '',                             // 担当者
-        '',                             // 担当者ID
-        '',                             // アサイン日
-        '',                             // 最終対応者ID
-        '',                             // 見込度
-        '',                             // 次回アクション
-        '',                             // 次回アクション日
-        '',                             // 商談メモ
-        '',                             // 相手の課題
-        '',                             // 取り扱いタイトル
-        '',                             // 販売形態
-        0,                              // 月間見込み金額
-        0,                              // 1回の発注金額
-        '',                             // 購入頻度
-        '',                             // 競合比較中
-        '',                             // 商談の手応え
-        '',                             // アラート確認日
-        '',                             // 商談結果
-        '',                             // 対象外理由
-        '',                             // 失注理由
-        '',                             // 初回取引日
-        0,                              // 初回取引金額
-        0,                              // 累計取引金額
-        '',                             // Good Point
-        '',                             // More Point
-        '',                             // 反省と今後の抱負
-        '',                             // レポート提出日
-        '',                             // レポート確認者
-        '',                             // レポート確認日
-        '',                             // レポートコメント
-        '',                             // アーカイブ日
-        '',                             // アーカイブ理由
-        '',                             // Buddyフィードバック
-        '',                             // 会話要約
-        '',                             // 最終会話日時
-        0,                              // 会話数
-        'FALSE',                        // 重複フラグ
-        '',                             // 重複元リードID
-        '',                             // 重複確認日
-        ''                              // 重複確認者
+        'LDO-00001',                              // 1: リードID
+        '2026-01-26',                             // 2: 登録日
+        'XYZ Corporation',                        // 3: 顧客名
+        '',                                       // 4: 商談結果
+        'XYZ',                                    // 5: 呼び方（英語）
+        'Japan',                                  // 6: 国
+        new Date(),                               // 7: シート更新日
+        '',                                       // 8: リード担当者
+        'アウトバウンド',                          // 9: リード種別
+        'テレアポ',                               // 10: 流入経路
+        '',                                       // 11: 流入元ID
+        '',                                       // 12: メッセージURL
+        '',                                       // 13: 取り扱いタイトル
+        '',                                       // 14: 作品ID
+        'テレアポでの新規開拓。',                  // 15: CSメモ
+        'sample@example.com',                     // 16: メール
+        '000-0000-0000',                          // 17: 電話番号
+        'メール',                                  // 18: 連絡手段
+        '中',                                     // 19: 温度感
+        '中規模',                                  // 20: 想定規模
+        '48h以内',                                // 21: 返信速度
+        0,                                        // 22: 問い合わせ回数
+        '',                                       // 23: アーカイブ日
+        '',                                       // 24: アーカイブ理由
+        '',                                       // 25: アサイン日
+        '',                                       // 26: 営業担当者
+        '',                                       // 27: 担当者ID
+        '価格重視',                               // 28: 顧客タイプ
+        '',                                       // 29: 最終対応者ID
+        '',                                       // 30: 見込度
+        '',                                       // 31: 次回アクション
+        '',                                       // 32: 次回アクション日
+        '',                                       // 33: 商談メモ
+        '',                                       // 34: 相手の課題
+        '',                                       // 35: 販売形態
+        0,                                        // 36: 月間見込み金額
+        '',                                       // 37: 競合比較中
+        '',                                       // 38: アラート確認日
+        '',                                       // 39: 対象外理由
+        '',                                       // 40: 失注理由
+        '',                                       // 41: 初回取引日
+        0,                                        // 42: 初回取引金額
+        0,                                        // 43: 累計取引金額
+        '',                                       // 44: 会話要約
+        '',                                       // 45: 最終会話日時
+        0,                                        // 46: 会話数
+        'FALSE',                                  // 47: 重複フラグ
+        '',                                       // 48: 重複元リードID
+        '',                                       // 49: 重複確認日
+        '',                                       // 50: 重複確認者
+        '新規リード'                               // 51: リードステータス
       ]
     ];
 

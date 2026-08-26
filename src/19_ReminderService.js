@@ -25,7 +25,7 @@ function checkAndRemind() {
   const headers = data[0];
 
   const colIndex = buildColIndex(headers, [
-    '商談進捗', 'シート更新日', '顧客名', '担当者ID', 'リードID', '営業担当者'
+    'リードステータス', 'シート更新日', '顧客名', '担当者ID', 'リードID', '営業担当者'
   ]);
 
   const now = new Date();
@@ -35,7 +35,7 @@ function checkAndRemind() {
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    const status = row[colIndex['商談進捗']];
+    const status = row[colIndex['リードステータス']];
     const lastUpdate = row[colIndex['シート更新日']];
     const customerName = row[colIndex['顧客名']] || '不明';
     const staffId = row[colIndex['担当者ID']] || '';
@@ -95,7 +95,7 @@ function checkActionDateRemind() {
   const headers = data[0];
 
   const colIndex = buildColIndex(headers, [
-    '次回アクション日', '次回アクション', '顧客名', '担当者ID', 'リードID', '商談進捗'
+    '次回アクション日', '次回アクション', '顧客名', '担当者ID', 'リードID', 'リードステータス'
   ]);
 
   const today = new Date();
@@ -105,7 +105,7 @@ function checkActionDateRemind() {
     const row = data[i];
     const actionDate = row[colIndex['次回アクション日']];
     const action = row[colIndex['次回アクション']];
-    const status = row[colIndex['商談進捗']];
+    const status = row[colIndex['リードステータス']];
 
     // 完了ステータスはスキップ
     if (CONFIG.CLOSED_STATUSES.includes(status)) continue;
