@@ -201,11 +201,52 @@ git push origin develop
 
 ---
 
+## PR 7: fakeCustomers を英語会社名に変更
+
+- **PR 番号**: #654
+- **URL**: https://github.com/GEN-RYU-System/crm-app/pull/654
+- **マージコミット SHA**: 13fbb7b3c75bc7341016e2feb3d1e817f890edf6
+
+### 変更ファイル一覧
+
+| ファイル | 行数 | 内容 |
+|---------|-----:|------|
+| `frontend/src/content/ja/dashboardPreview.ts` | 153 | `fakeCustomers` 10件を英語架空会社名に差し替え（111–120行） |
+
+### 変更内容
+
+| インデックス | 変更前 | 変更後 |
+|------------|-------|-------|
+| 0 | 田中商事 | Pacific Card Traders LLC |
+| 1 | 中村物産 | Northwind Hobby Distribution Ltd |
+| 2 | 斉藤工業 | Aurora Collectibles GmbH |
+| 3 | 松本技研 | Silverline Trading Pty Ltd |
+| 4 | 渡辺商会 | Meridian Imports S.A. |
+| 5 | 小林製作所 | Coastline Games & More LLC |
+| 6 | 加藤通商 | Redwood Specialty Goods Ltd |
+| 7 | 木村貿易 | Glacier Wholesale GmbH |
+| 8 | 石井商事 | Ironwood Distributors Pty Ltd |
+| 9 | 林産業 | Crestview Commerce S.A. |
+
+末尾（LLC / Ltd / GmbH / Pty Ltd / S.A.）を分散し、B2B輸出の国際取引先らしい見た目にした。実在企業・ブランド名は含まない。`fakeAssignees` は変更なし。
+
+### Deploy to DEV
+- **結果**: success（PR #654 マージ直後の deploy-dev.yml run）
+
+### 戻し方
+```bash
+git revert -m 1 13fbb7b3c75bc7341016e2feb3d1e817f890edf6
+git push origin develop
+```
+
+---
+
 ## 複数 PR を戻す順番
 
-新しい順（PR5 → PR4 → PR2 → PR1）に revert する。
+新しい順（PR7 → PR5 → PR4 → PR2 → PR1）に revert する。
 
 ```bash
+git revert -m 1 13fbb7b3c75bc7341016e2feb3d1e817f890edf6  # PR7
 git revert -m 1 455aefc735d93e486b2d5c2ba0303c85f500e985  # PR5
 git revert -m 1 cd8318bffbbaade7ae8b2dab9d2d38a61d47c982  # PR4
 git revert -m 1 bb3991f0a7f28d007e844178d0b06032f1a3844b  # PR2
