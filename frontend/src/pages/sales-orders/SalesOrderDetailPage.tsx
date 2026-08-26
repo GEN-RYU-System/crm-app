@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { Badge } from '../../components/ui/Badge/Badge';
-import { Button, DataTable, EmptyState, StatusMessage } from '../../components/ui';
+import { Button, DataTable, EmptyState, StatusMessage, Tabs } from '../../components/ui';
+import type { TabItem } from '../../components/ui';
 import { Select } from '../../components/ui/Select/Select';
 import { TextField } from '../../components/ui/TextField/TextField';
 import type { DataTableColumn } from '../../components/ui';
@@ -18,9 +19,11 @@ import {
 import { useSalesOrderListCache } from './SalesOrderListCacheContext';
 import { useSalesOrderDetailCache } from './SalesOrderDetailCacheContext';
 import { PAYMENT_DUE_WARNING_DAYS } from './salesOrderListConfig';
+import { PURCHASE_STATUS_BADGE_VARIANT } from './salesOrderDetailConfig';
 import './SalesOrderDetailPage.css';
 
 type OrderDetail = OrderDetailRecord;
+type DetailTab = 'billing' | 'purchases' | 'shipments';
 
 function formatValue(v: unknown): string {
   if (v === null || v === undefined || v === '') return '-';
@@ -64,6 +67,14 @@ function paymentDueBadge(paymentDueAt: string, paymentConfirmedAt: string): Reac
   warnDate.setDate(todayDate.getDate() + PAYMENT_DUE_WARNING_DAYS);
   if (dueDate <= warnDate) return <Badge variant="warning">{salesOrdersCopy.paymentDueBadgeTomorrow}</Badge>;
   return null;
+}
+
+function purchaseStatusBadge(status: unknown, options: readonly PurchaseStatusOption[]): ReactNode {
+  const label = formatValue(status);
+  if (label === '-') return <span>{label}</span>;
+  const found = options.find((opt) => opt.label === label);
+  const variant = PURCHASE_STATUS_BADGE_VARIANT[found?.key ?? ''] ?? 'neutral';
+  return <Badge variant={variant}>{label}</Badge>;
 }
 
 function AddressBlock({ name, line1, line2, line3, city, state, zip, country }: {
@@ -117,6 +128,9 @@ export function SalesOrderDetailPage() {
   const [purchaseFormError, setPurchaseFormError] = useState<string | undefined>(undefined);
   const [purchaseStatusOptions, setPurchaseStatusOptions] = useState<readonly PurchaseStatusOption[]>([]);
 
+  // tab state
+  const [activeTab, setActiveTab] = useState<DetailTab>('billing');
+
   const { refresh } = useSalesOrderListCache();
   const { recordsByOrderId, errorsByOrderId, ensureLoaded, refresh: refreshDetail } = useSalesOrderDetailCache();
   const records = orderId ? recordsByOrderId[orderId] : undefined;
@@ -135,6 +149,12 @@ export function SalesOrderDetailPage() {
   }, []);
 
   const copy = salesOrdersCopy.detail;
+
+  const DETAIL_TABS: ReadonlyArray<TabItem<DetailTab>> = [
+    { key: 'billing',   label: copy.tabBilling },
+    { key: 'purchases', label: copy.tabPurchases },
+    { key: 'shipments', label: copy.tabShipments },
+  ];
 
   const order = detail?.order;
 
@@ -246,7 +266,7 @@ export function SalesOrderDetailPage() {
           { key: 'SUPPLIER',        header: copy.colSupplier,               renderCell: (r) => formatValue(r.SUPPLIER) },
           { key: 'ORDERED_AT',      header: copy.colOrderedAt,              renderCell: (r) => formatDate(r.ORDERED_AT) },
           { key: 'AMOUNT',          header: copy.colPurchaseAmount,         renderCell: (r) => formatNumber(r.AMOUNT),  cellAlignment: 'center' },
-          { key: 'STATUS',          header: copy.colPurchaseStatus,         renderCell: (r) => formatValue(r.STATUS) },
+          { key: 'STATUS',          header: copy.colPurchaseStatus,         renderCell: (r) => purchaseStatusBadge(r.STATUS, purchaseStatusOptions) },
           { key: 'TRACKING_NUMBER', header: copy.colPurchaseTrackingNumber, renderCell: (r) => formatValue(r.TRACKING_NUMBER) },
         ];
 
@@ -259,7 +279,7 @@ export function SalesOrderDetailPage() {
 
         return (
           <>
-            {/* header row: invoice number + confirm button */}
+            {/* header row: invoice number + conditional confirm button */}
             <div className="sales-order-detail-page__header">
               <div className="sales-order-detail-page__header-left">
                 <h1 className="sales-order-detail-page__title">
@@ -271,107 +291,132 @@ export function SalesOrderDetailPage() {
                 </p>
               </div>
               <div className="sales-order-detail-page__header-right">
-                <Button
-                  variant="primary"
-                  disabled={!canConfirmPayment || confirming}
-                  onClick={() => setConfirmOpen(true)}
-                >
-                  {copy.btnConfirmPayment}
-                </Button>
+                {canConfirmPayment && (
+                  <Button
+                    variant="primary"
+                    disabled={confirming}
+                    onClick={() => setConfirmOpen(true)}
+                  >
+                    {copy.btnConfirmPayment}
+                  </Button>
+                )}
               </div>
             </div>
 
-            {/* payment summary: 4-column grid */}
-            <div className="sales-order-detail-page__summary-grid">
-              <div className="sales-order-detail-page__summary-item">
-                <span className="sales-order-detail-page__summary-label">{copy.labelPaymentDueAtSummary}</span>
-                <span className="sales-order-detail-page__summary-value">
-                  {formatDate(o.PAYMENT_DUE_AT)}
-                  {dueBadge && <span className="sales-order-detail-page__summary-badge">{dueBadge}</span>}
-                </span>
-              </div>
-              <div className="sales-order-detail-page__summary-item">
-                <span className="sales-order-detail-page__summary-label">{copy.labelInvoiceTotalSummary}</span>
-                <span className="sales-order-detail-page__summary-value">{formatWithCurrency(o.INVOICE_TOTAL, o.CURRENCY)}</span>
-              </div>
-              <div className="sales-order-detail-page__summary-item">
-                <span className="sales-order-detail-page__summary-label">{copy.labelPaymentMethodSummary}</span>
-                <span className="sales-order-detail-page__summary-value">{formatValue(o.PAYMENT_METHOD)}</span>
-              </div>
-              <div className="sales-order-detail-page__summary-item">
-                <span className="sales-order-detail-page__summary-label">{copy.labelInvoiceIssuedAtSummary}</span>
-                <span className="sales-order-detail-page__summary-value">{formatDate(o.INVOICE_ISSUED_AT)}</span>
-              </div>
-            </div>
+            {/* tabs */}
+            <Tabs
+              aria-label={copy.tabsLabel}
+              items={DETAIL_TABS}
+              activeKey={activeTab}
+              onChange={setActiveTab}
+              variant="underline"
+              size="md"
+            />
 
-            {/* shipping / billing destinations: 2-column grid */}
-            <div className="sales-order-detail-page__dest-grid">
-              <div className="sales-order-detail-page__dest-section">
-                <p className="sales-order-detail-page__dest-label">{copy.labelShippingDestination}</p>
-                <AddressBlock
-                  name={o.shippingDestinationName}
-                  line1={o.shippingAddressLine1}
-                  line2={o.shippingAddressLine2}
-                  line3={o.shippingAddressLine3}
-                  city={o.shippingCity}
-                  state={o.shippingState}
-                  zip={o.shippingZip}
-                  country={o.shippingCountry}
-                />
-              </div>
-              <div className="sales-order-detail-page__dest-section">
-                <p className="sales-order-detail-page__dest-label">{copy.labelPaymentDestination}</p>
-                <p className="sales-order-detail-page__dest-value">{o.paymentDestinationName || '-'}</p>
-              </div>
-            </div>
+            {/* tab content */}
+            <div className="sales-order-detail-page__tab-content">
+              {activeTab === 'billing' && (
+                <>
+                  {/* payment summary: 4-column grid */}
+                  <div className="sales-order-detail-page__summary-grid">
+                    <div className="sales-order-detail-page__summary-item">
+                      <span className="sales-order-detail-page__summary-label">{copy.labelPaymentDueAtSummary}</span>
+                      <span className="sales-order-detail-page__summary-value">
+                        {formatDate(o.PAYMENT_DUE_AT)}
+                        {dueBadge && <span className="sales-order-detail-page__summary-badge">{dueBadge}</span>}
+                      </span>
+                    </div>
+                    <div className="sales-order-detail-page__summary-item">
+                      <span className="sales-order-detail-page__summary-label">{copy.labelInvoiceTotalSummary}</span>
+                      <span className="sales-order-detail-page__summary-value">{formatWithCurrency(o.INVOICE_TOTAL, o.CURRENCY)}</span>
+                    </div>
+                    <div className="sales-order-detail-page__summary-item">
+                      <span className="sales-order-detail-page__summary-label">{copy.labelPaymentMethodSummary}</span>
+                      <span className="sales-order-detail-page__summary-value">{formatValue(o.PAYMENT_METHOD)}</span>
+                    </div>
+                    <div className="sales-order-detail-page__summary-item">
+                      <span className="sales-order-detail-page__summary-label">{copy.labelInvoiceIssuedAtSummary}</span>
+                      <span className="sales-order-detail-page__summary-value">{formatDate(o.INVOICE_ISSUED_AT)}</span>
+                    </div>
+                  </div>
 
-            {/* shipments section */}
-            <div className="sales-order-detail-page__section">
-              <div className="sales-order-detail-page__section-header">
-                <h2 className="sales-order-detail-page__section-title">{copy.sectionShipments}</h2>
-                <Button variant="ghost" size="sm" disabled>
-                  {copy.btnAddShipment}
-                </Button>
-              </div>
-              {detail.shipments.length === 0 ? (
-                <p className="sales-order-detail-page__empty-note">{copy.noShipments}</p>
-              ) : (
-                <DataTable
-                  ariaLabel={copy.sectionShipments}
-                  columns={shipmentColumns}
-                  rows={detail.shipments}
-                  rowKey={(r) => String(r.SHIPMENT_ID)}
-                  surface="embedded"
-                />
+                  {/* shipping / billing destinations: 2-column grid */}
+                  <div className="sales-order-detail-page__dest-grid">
+                    <div className="sales-order-detail-page__dest-section">
+                      <p className="sales-order-detail-page__dest-label">{copy.labelShippingDestination}</p>
+                      <AddressBlock
+                        name={o.shippingDestinationName}
+                        line1={o.shippingAddressLine1}
+                        line2={o.shippingAddressLine2}
+                        line3={o.shippingAddressLine3}
+                        city={o.shippingCity}
+                        state={o.shippingState}
+                        zip={o.shippingZip}
+                        country={o.shippingCountry}
+                      />
+                    </div>
+                    <div className="sales-order-detail-page__dest-section">
+                      <p className="sales-order-detail-page__dest-label">{copy.labelPaymentDestination}</p>
+                      <p className="sales-order-detail-page__dest-value">{o.paymentDestinationName || '-'}</p>
+                    </div>
+                  </div>
+
+                  {/* order line items */}
+                  <div className="sales-order-detail-page__section">
+                    <div className="sales-order-detail-page__section-header">
+                      <h2 className="sales-order-detail-page__section-title">{copy.sectionLines}</h2>
+                    </div>
+                    {detail.lines.length === 0 ? (
+                      <EmptyState title={copy.noLines} description="" />
+                    ) : (
+                      <DataTable
+                        ariaLabel={copy.sectionLines}
+                        columns={lineColumns}
+                        rows={detail.lines}
+                        rowKey={(r) => String(r.ORDER_LINE_ID)}
+                        surface="embedded"
+                      />
+                    )}
+                  </div>
+
+                  {/* amount detail */}
+                  <div className="sales-order-detail-page__section">
+                    <h2 className="sales-order-detail-page__section-title">{copy.sectionAmountDetail}</h2>
+                    <dl className="sales-order-detail-page__amount-dl">
+                      <div className="sales-order-detail-page__amount-row">
+                        <dt className="sales-order-detail-page__amount-label">{copy.labelLineTotalDetail}</dt>
+                        <dd className="sales-order-detail-page__amount-value">{formatNumber(o.LINE_TOTAL)}</dd>
+                      </div>
+                      <div className="sales-order-detail-page__amount-row">
+                        <dt className="sales-order-detail-page__amount-label">{copy.labelShippingFeeSummary}</dt>
+                        <dd className="sales-order-detail-page__amount-value">{formatNumber(o.SHIPPING_FEE)}</dd>
+                      </div>
+                      <div className="sales-order-detail-page__amount-row">
+                        <dt className="sales-order-detail-page__amount-label">{copy.labelDutySummary}</dt>
+                        <dd className="sales-order-detail-page__amount-value">{formatNumber(o.DUTY)}</dd>
+                      </div>
+                      <div className="sales-order-detail-page__amount-row">
+                        <dt className="sales-order-detail-page__amount-label">{copy.labelDiscountSummary}</dt>
+                        <dd className="sales-order-detail-page__amount-value">{formatNumber(o.DISCOUNT)}</dd>
+                      </div>
+                      <div className="sales-order-detail-page__amount-row">
+                        <dt className="sales-order-detail-page__amount-label">{copy.labelOtherFeeSummary}</dt>
+                        <dd className="sales-order-detail-page__amount-value">{formatNumber(o.OTHER_FEE)}</dd>
+                      </div>
+                      <div className="sales-order-detail-page__amount-row sales-order-detail-page__amount-row--total">
+                        <dt className="sales-order-detail-page__amount-label">{copy.labelInvoiceTotalDetail}</dt>
+                        <dd className="sales-order-detail-page__amount-value">{formatWithCurrency(o.INVOICE_TOTAL, o.CURRENCY)}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                </>
               )}
-            </div>
 
-            {/* order line items section */}
-            <div className="sales-order-detail-page__section">
-              <div className="sales-order-detail-page__section-header">
-                <h2 className="sales-order-detail-page__section-title">{copy.sectionLines}</h2>
-              </div>
-              {detail.lines.length === 0 ? (
-                <EmptyState title={copy.noLines} description="" />
-              ) : (
-                <DataTable
-                  ariaLabel={copy.sectionLines}
-                  columns={lineColumns}
-                  rows={detail.lines}
-                  rowKey={(r) => String(r.ORDER_LINE_ID)}
-                  surface="embedded"
-                />
-              )}
-            </div>
-
-            {/* bottom two-column: purchases + amount detail */}
-            <div className="sales-order-detail-page__section">
-              <div className="sales-order-detail-page__two-col">
-                {/* purchases */}
-                <div>
+              {activeTab === 'purchases' && (
+                <div className="sales-order-detail-page__section">
                   <div className="sales-order-detail-page__section-header">
                     <h2 className="sales-order-detail-page__section-title">{copy.sectionPurchases}</h2>
-                    <Button variant="ghost" size="sm" onClick={() => openPurchaseForm()}>
+                    <Button variant="secondary" size="sm" onClick={() => openPurchaseForm()}>
                       {copy.btnAddPurchase}
                     </Button>
                   </div>
@@ -388,38 +433,29 @@ export function SalesOrderDetailPage() {
                     />
                   )}
                 </div>
+              )}
 
-                {/* amount detail */}
-                <div>
-                  <h2 className="sales-order-detail-page__section-title">{copy.sectionAmountDetail}</h2>
-                  <dl className="sales-order-detail-page__amount-dl">
-                    <div className="sales-order-detail-page__amount-row">
-                      <dt className="sales-order-detail-page__amount-label">{copy.labelLineTotalDetail}</dt>
-                      <dd className="sales-order-detail-page__amount-value">{formatNumber(o.LINE_TOTAL)}</dd>
-                    </div>
-                    <div className="sales-order-detail-page__amount-row">
-                      <dt className="sales-order-detail-page__amount-label">{copy.labelShippingFeeSummary}</dt>
-                      <dd className="sales-order-detail-page__amount-value">{formatNumber(o.SHIPPING_FEE)}</dd>
-                    </div>
-                    <div className="sales-order-detail-page__amount-row">
-                      <dt className="sales-order-detail-page__amount-label">{copy.labelDutySummary}</dt>
-                      <dd className="sales-order-detail-page__amount-value">{formatNumber(o.DUTY)}</dd>
-                    </div>
-                    <div className="sales-order-detail-page__amount-row">
-                      <dt className="sales-order-detail-page__amount-label">{copy.labelDiscountSummary}</dt>
-                      <dd className="sales-order-detail-page__amount-value">{formatNumber(o.DISCOUNT)}</dd>
-                    </div>
-                    <div className="sales-order-detail-page__amount-row">
-                      <dt className="sales-order-detail-page__amount-label">{copy.labelOtherFeeSummary}</dt>
-                      <dd className="sales-order-detail-page__amount-value">{formatNumber(o.OTHER_FEE)}</dd>
-                    </div>
-                    <div className="sales-order-detail-page__amount-row sales-order-detail-page__amount-row--total">
-                      <dt className="sales-order-detail-page__amount-label">{copy.labelInvoiceTotalDetail}</dt>
-                      <dd className="sales-order-detail-page__amount-value">{formatWithCurrency(o.INVOICE_TOTAL, o.CURRENCY)}</dd>
-                    </div>
-                  </dl>
+              {activeTab === 'shipments' && (
+                <div className="sales-order-detail-page__section">
+                  <div className="sales-order-detail-page__section-header">
+                    <h2 className="sales-order-detail-page__section-title">{copy.sectionShipments}</h2>
+                    <Button variant="secondary" size="sm" disabled>
+                      {copy.btnAddShipment}
+                    </Button>
+                  </div>
+                  {detail.shipments.length === 0 ? (
+                    <p className="sales-order-detail-page__empty-note">{copy.noShipments}</p>
+                  ) : (
+                    <DataTable
+                      ariaLabel={copy.sectionShipments}
+                      columns={shipmentColumns}
+                      rows={detail.shipments}
+                      rowKey={(r) => String(r.SHIPMENT_ID)}
+                      surface="embedded"
+                    />
+                  )}
                 </div>
-              </div>
+              )}
             </div>
 
             {/* confirm payment dialog */}
