@@ -44,7 +44,7 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
 
     const timer = setTimeout(() => {
       void (async () => {
-        // [TEMP] GAS response time measurement — remove after analysis
+        // GAS response time measurement — check anytime via window.__prefetchTimings in DevTools
         const CONCURRENCY = 6; // pool size; tune based on DEV measurement
         type TimingRow = { name: string; elapsedMs: number | '(skip)'; startMs: number | '-'; endMs: number | '-' };
         const totalStart = Date.now();
@@ -82,7 +82,6 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
         console.log(`[prefetch] ping=${pingMs ?? 'err'}ms`);
         console.table(timings);
         console.log(`[prefetch] total=${totalElapsedMs}ms (concurrency=${CONCURRENCY})`);
-        // [/TEMP]
       })();
     }, 0);
 
