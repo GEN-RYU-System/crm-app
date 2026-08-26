@@ -39,5 +39,6 @@
   --doc-gap-sm: var(--palette-doc-gap-sm);
   --doc-gap-md: var(--palette-doc-gap-md);
   --doc-gap-lg: var(--palette-doc-gap-lg);
+  --doc-meta-gap: var(--palette-doc-meta-gap);
   --doc-radius: var(--palette-doc-radius);
 }

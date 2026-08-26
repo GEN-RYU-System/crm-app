@@ -326,7 +326,7 @@ export function DocTerms({
         </div>
       )}
       <p className="doc-thanks">{thanksMessage ?? thanksLabel}</p>
-      <p style={{ fontSize: '6pt', color: '#aaa', marginTop: '2pt' }}>BUILD-CHECK-20260826</p>
+      <p style={{ fontSize: '6pt', color: '#aaa', marginTop: '2pt' }}>{`BUILD-${__BUILD_SHA__}`}</p>
     </div>
   );
 }

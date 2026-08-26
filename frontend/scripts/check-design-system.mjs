@@ -244,6 +244,7 @@ const GAS_CLIENT_IN_PAGES_ALLOWLIST = new Set([
   'src/pages/auth/ChangePasswordPage.tsx',    // changeOwnPasswordForFrontend (auth boundary)
   'src/pages/data-management/IssuerMasterPage.tsx', // updateCoreIssuer (save operation)
   'src/pages/orders/OrderDetailPage.tsx',     // type-only import (IssuerRecord)
+  'src/pages/orders/OrderEditorPage.tsx',     // getCoreOrderDetail for invoice print preview (same pattern as OrderDetailPage)
   'src/pages/sales-orders/SalesOrderDetailPage.tsx', // confirmCoreOrderPayment / upsertCorePurchase (save+action)
 ]);
 const pagesDir = resolve(srcDir, 'pages');
@@ -269,10 +270,10 @@ for (const file of pagesTsxFiles) {
 
 // --- Feature component usage check (重複帳票コンポーネント再発防止) ---
 function importsFeatureComponent(source, component, importPath) {
-  return (
-    new RegExp(`from\\s+['"][^'"]*${importPath}['"]`).test(source) &&
-    source.includes(`<${component}`)
-  );
+  const imported = new RegExp(`from\\s+['"][^'"]*${importPath}['"]`).test(source);
+  const usedAsJsx = source.includes(`<${component}`);
+  const usedAsCall = source.includes(`${component}(`);
+  return imported && (usedAsJsx || usedAsCall);
 }
 const featureUsageRules = (checkConfig.featureComponentUsageCheck ?? {}).rules ?? [];
 for (const rule of featureUsageRules) {

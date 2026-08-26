@@ -65,6 +65,8 @@ jobs:
         run: cd frontend && npm ci
 
       - name: Build GAS artifact
+        env:
+          GITHUB_SHA: ${{ steps.target.outputs.sha }}
         run: cd frontend && npm run build:gas
 
       - name: Restore .clasprc.json
