@@ -184,6 +184,171 @@ function applyInventoryDisplayMode_(rows, displayMode) {
 }
 
 /**
+ * 共用在庫一覧と商品オプション一覧を1回のシート読み取りでまとめて返す。
+ * getSharedInventoryForFrontend + getInventoryProductOptions の固定オーバーヘッドを削減する。
+ *
+ * キャッシュ: SHARED_INVENTORY_CACHE_INDEX (在庫) と INVENTORY_PRODUCT_OPTIONS_CACHE_INDEX (商品オプション)
+ * の両方がヒットすればシート読み取りなしで返す。
+ *
+ * @param {string}  sessionId
+ * @param {boolean} [forceRefresh]
+ * @returns {{ inventory: Object[], productOptions: Object[] }}
+ */
+function getInventoryBatchForFrontend(sessionId, forceRefresh) {
+  setEmailFromSession(sessionId);
+  checkPermission('lead_view');
+
+  var ss          = getSpreadsheet();
+  var displayMode = readInventoryDisplayMode_(ss);
+  var invCacheIndex  = SHARED_INVENTORY_CACHE_INDEX + '_' + displayMode;
+  var invCachePrefix = SHARED_INVENTORY_CACHE_PREFIX + displayMode + '_';
+
+  if (forceRefresh !== true) {
+    var cachedInv  = readCacheChunks_(invCacheIndex, invCachePrefix);
+    var cachedOpts = readCacheChunks_(INVENTORY_PRODUCT_OPTIONS_CACHE_INDEX, INVENTORY_PRODUCT_OPTIONS_CACHE_PREFIX);
+    if (cachedInv !== null && cachedOpts !== null) {
+      return { inventory: cachedInv, productOptions: cachedOpts };
+    }
+  }
+
+  // ── 商品マスタ同期: product_id → meta (在庫行用 + 商品オプション用) ──
+  var productMap  = {};
+  var productOrder = []; // product_id の出現順（商品オプションの並び保証用）
+  var productSheet = ss.getSheetByName('商品マスタ同期');
+  if (productSheet && productSheet.getLastRow() > 1) {
+    var pData        = productSheet.getDataRange().getValues();
+    var pH           = pData[0].map(String);
+    var pidIdx       = pH.indexOf('product_id');
+    var jaIdx        = pH.indexOf('Japanese Title');
+    var enIdx        = pH.indexOf('English Title');
+    var markIdx      = pH.indexOf('Mark');
+    var rdIdx        = pH.indexOf('Release Date');
+    var ipIdx        = pH.indexOf('作品ID');
+    var boxWeightIdx = pH.indexOf('Box重量');
+    var cwtIdx       = pH.indexOf('Case重量');
+    var prodSchema   = CORE_SCHEMA_V1_TABLES['PRODUCTS'];
+    var catIdx       = pH.indexOf(prodSchema.headers['CATEGORY']);
+    if (pidIdx !== -1) {
+      for (var pi = 1; pi < pData.length; pi++) {
+        var pr   = pData[pi];
+        var ppid = String(pr[pidIdx] != null ? pr[pidIdx] : '').trim();
+        if (!ppid) continue;
+        var releaseDate = '';
+        if (rdIdx !== -1 && pr[rdIdx] instanceof Date) {
+          releaseDate = Utilities.formatDate(pr[rdIdx], 'JST', 'yyyy-MM-dd');
+        }
+        productMap[ppid] = {
+          japaneseTitle: jaIdx   !== -1 ? String(pr[jaIdx]   != null ? pr[jaIdx]   : '') : '',
+          englishTitle:  enIdx   !== -1 ? String(pr[enIdx]   != null ? pr[enIdx]   : '') : '',
+          mark:          markIdx !== -1 ? String(pr[markIdx]  != null ? pr[markIdx] : '') : '',
+          releaseDate:   releaseDate,
+          ipId:          ipIdx    !== -1 ? String(pr[ipIdx]   != null ? pr[ipIdx]   : '').trim() : '',
+          boxWeight:     boxWeightIdx !== -1 ? (Number(pr[boxWeightIdx]) || 0) : 0,
+          caseWeight:    cwtIdx       !== -1 ? (Number(pr[cwtIdx])       || 0) : 0,
+          category:      catIdx       !== -1 ? String(pr[catIdx]         != null ? pr[catIdx] : '').trim() : ''
+        };
+        productOrder.push(ppid);
+      }
+    }
+  }
+
+  // ── 作品マスタ_共用在庫: ip_id → 表示名 ──
+  var ipMap   = {};
+  var ipSheet = ss.getSheetByName('作品マスタ_共用在庫');
+  if (ipSheet && ipSheet.getLastRow() > 1) {
+    var ipData    = ipSheet.getDataRange().getValues();
+    var ipH       = ipData[0].map(String);
+    var ipIdIdx   = ipH.indexOf('ip_id');
+    var ipNameIdx = ipH.indexOf('作品名');
+    var ipAltIdx  = ipH.indexOf('別名');
+    if (ipIdIdx !== -1 && ipNameIdx !== -1) {
+      for (var ii = 1; ii < ipData.length; ii++) {
+        var ir      = ipData[ii];
+        var ipid    = String(ir[ipIdIdx] != null ? ir[ipIdIdx] : '').trim();
+        if (!ipid) continue;
+        var ipname  = String(ir[ipNameIdx] != null ? ir[ipNameIdx] : '').trim();
+        var ipalt   = ipAltIdx !== -1 ? String(ir[ipAltIdx] != null ? ir[ipAltIdx] : '').trim() : '';
+        ipMap[ipid] = ipalt || ipname;
+      }
+    }
+  }
+
+  // ── 共用在庫: 在庫行 + 商品オプション用の hasQty マップを同時構築 ──
+  var invSheet = ss.getSheetByName('共用在庫');
+  var invRows  = [];
+  var hasQty   = {};
+  if (invSheet && invSheet.getLastRow() > 1) {
+    var invData = invSheet.getDataRange().getValues();
+    var headers = invData[0].map(String);
+    var col = {
+      series:          headers.indexOf('Series'),
+      quantity:        headers.indexOf('Quantity'),
+      unitPrice:       headers.indexOf('Unit Price'),
+      condition:       headers.indexOf('Condition'),
+      status:          headers.indexOf('Status'),
+      noteJa:          headers.indexOf('Note_JA'),
+      noteEn:          headers.indexOf('Note_EN'),
+      supplier:        headers.indexOf('提供者'),
+      productId:       headers.indexOf('product_id'),
+      rawName:         headers.indexOf('raw_name'),
+      exclusionReason: headers.indexOf('除外理由')
+    };
+    var missing = Object.keys(col).filter(function(k) { return col[k] === -1; });
+    if (missing.length > 0) throw new Error('共用在庫ヘッダー不足: ' + missing.join(', '));
+
+    var CONDITION_CASE = CORE_SCHEMA_V1_TABLES['SHARED_INVENTORY'].values.CONDITION.CASE;
+    for (var ri = 1; ri < invData.length; ri++) {
+      var row       = invData[ri];
+      var rowPid    = String(row[col.productId] != null ? row[col.productId] : '').trim();
+      var product   = productMap[rowPid] || {};
+      var ipId      = product.ipId || '';
+      var ipName    = ipId ? (ipMap[ipId] || '') : '';
+      var condition = String(row[col.condition] != null ? row[col.condition] : '');
+      var unitWeight = (condition === CONDITION_CASE) ? (product.caseWeight || 0) : (product.boxWeight || 0);
+      var qty = Number(row[col.quantity]) || 0;
+      invRows.push({
+        series:          String(row[col.series]          != null ? row[col.series]          : ''),
+        quantity:        qty,
+        unitPrice:       Number(row[col.unitPrice])       || 0,
+        condition:       condition,
+        unitWeight:      unitWeight,
+        status:          String(row[col.status]           != null ? row[col.status]           : ''),
+        noteJa:          String(row[col.noteJa]           != null ? row[col.noteJa]           : ''),
+        noteEn:          String(row[col.noteEn]           != null ? row[col.noteEn]           : ''),
+        supplier:        String(row[col.supplier]         != null ? row[col.supplier]         : ''),
+        productId:       rowPid,
+        rawName:         String(row[col.rawName]          != null ? row[col.rawName]          : ''),
+        exclusionReason: String(row[col.exclusionReason]  != null ? row[col.exclusionReason]  : ''),
+        ipId:            ipId,
+        ipName:          ipName,
+        releaseDate:     product.releaseDate   || '',
+        japaneseTitle:   product.japaneseTitle || '',
+        englishTitle:    product.englishTitle  || '',
+        mark:            product.mark          || ''
+      });
+      if (qty > 0 && rowPid && productMap[rowPid]) hasQty[rowPid] = true;
+    }
+  }
+
+  // 在庫行に display_mode を適用
+  var inventoryResult = applyInventoryDisplayMode_(invRows, displayMode);
+
+  // 商品オプション: product_id の出現順を維持（getInventoryProductOptions と同じロジック）
+  var productOptions = [];
+  for (var oi = 0; oi < productOrder.length; oi++) {
+    var opid = productOrder[oi];
+    if (!hasQty[opid]) continue;
+    var p = productMap[opid];
+    productOptions.push({ productId: opid, productName: p.japaneseTitle, category: p.category });
+  }
+
+  writeCacheChunks_(invCacheIndex, invCachePrefix, inventoryResult, SHARED_INVENTORY_CACHE_TTL, SHARED_INVENTORY_CACHE_CHUNK_SIZE);
+  writeCacheChunks_(INVENTORY_PRODUCT_OPTIONS_CACHE_INDEX, INVENTORY_PRODUCT_OPTIONS_CACHE_PREFIX, productOptions, INVENTORY_PRODUCT_OPTIONS_CACHE_TTL, INVENTORY_PRODUCT_OPTIONS_CACHE_CHUNK);
+
+  return { inventory: inventoryResult, productOptions: productOptions };
+}
+
+/**
  * 共用在庫一覧をフロントエンド向けに返す
  * 共用在庫 → product_id → 商品マスタ同期 → 作品ID → 作品マスタ_共用在庫 の2段階結合
  * display_mode に従って集約済みの行を返す。キャッシュは display_mode 別に保持する。

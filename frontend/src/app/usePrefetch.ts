@@ -5,7 +5,6 @@ import { useLeadListCache } from '../pages/leads/LeadListCacheContext';
 import { useLeadFormOptionsCache } from '../pages/leads/LeadFormOptionsCacheContext';
 import { useCustomerListCache } from '../pages/customers/CustomerListCacheContext';
 import { useCustomerAggregateCache } from '../features/customers/CustomerAggregateCacheContext';
-import { useInventoryListCache } from '../pages/inventory/InventoryListCacheContext';
 import { useInventoryProductOptionsCache } from '../pages/inventory/InventoryProductOptionsCacheContext';
 import { useSalesOrderListCache } from '../pages/sales-orders/SalesOrderListCacheContext';
 import { useStaffListCache } from '../pages/staff/StaffListCacheContext';
@@ -19,7 +18,6 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
   const { ensureLoaded: ensureLeadFormOptions } = useLeadFormOptionsCache();
   const { ensureLoaded: ensureCustomers } = useCustomerListCache();
   const { ensureLoaded: ensureAggregates } = useCustomerAggregateCache();
-  const { ensureLoaded: ensureInventory } = useInventoryListCache();
   const { ensureLoaded: ensureInventoryProductOptions } = useInventoryProductOptionsCache();
   const { ensureLoaded: ensureSalesOrders } = useSalesOrderListCache();
   const { ensureLoaded: ensureStaff } = useStaffListCache();
@@ -38,8 +36,7 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
       { name: 'leadFormOptions',        canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.leads,       permissions), load: () => ensureLeadFormOptions() },
       { name: 'customers',              canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.customers,   permissions), load: () => ensureCustomers() },
       { name: 'customerAggregates',     canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.orders,      permissions), load: () => ensureAggregates() },
-      { name: 'inventory',              canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.inventory,   permissions), load: () => ensureInventory() },
-      { name: 'inventoryProductOptions',canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.orders, permissions) || canAccessNavigationItem(NAVIGATION_BY_ID.quotes, permissions), load: () => ensureInventoryProductOptions() },
+      { name: 'inventoryBatch',         canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.inventory, permissions) || canAccessNavigationItem(NAVIGATION_BY_ID.orders, permissions) || canAccessNavigationItem(NAVIGATION_BY_ID.quotes, permissions), load: () => ensureInventoryProductOptions() },
       { name: 'currencies',             canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.orders, permissions) || canAccessNavigationItem(NAVIGATION_BY_ID.quotes, permissions), load: () => ensureCurrencies() },
       { name: 'salesOrders',            canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.salesOrders, permissions), load: () => ensureSalesOrders() },
       { name: 'staff',                  canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.staff,       permissions), load: () => ensureStaff() },
@@ -93,6 +90,6 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [permissions, ensureLeads, ensureLeadFormOptions, ensureCustomers, ensureAggregates, ensureInventory, ensureInventoryProductOptions, ensureCurrencies, ensureIssuer, ensureSalesOrders, ensureStaff, ensureQuotes, prefetchBulk]);
+  }, [permissions, ensureLeads, ensureLeadFormOptions, ensureCustomers, ensureAggregates, ensureInventoryProductOptions, ensureCurrencies, ensureIssuer, ensureSalesOrders, ensureStaff, ensureQuotes, prefetchBulk]);
 
 }
