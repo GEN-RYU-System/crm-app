@@ -871,6 +871,17 @@ export function getInboxConversationDetail(leadId: string): Promise<InboxConvers
   });
 }
 
+export function pingForLatencyCheck(): Promise<{ ok: boolean; serverTs: number }> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => resolve(value as { ok: boolean; serverTs: number }))
+      .withFailureHandler((error) => reject(toError(error)))
+      .pingForLatencyCheck();
+  });
+}
+
 export function getInboxBulkLoad(): Promise<InboxBulkInitialLoadDto> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));

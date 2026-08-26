@@ -8243,3 +8243,11 @@ function checkImportRangeFormula() {
     return { success: false, error: e.message, stack: e.stack };
   }
 }
+
+/**
+ * GAS呼び出し固定コスト計測用（[TEMP] 計測後に削除）。
+ * 認証なし・シート読み込みなし・即 return。
+ */
+function pingForLatencyCheck() {
+  return { ok: true, serverTs: Date.now() };
+}

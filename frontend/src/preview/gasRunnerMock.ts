@@ -474,6 +474,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
       }));
       succeed({ conversationId, messages, hasMore: (offsetIndex + count) < total });
     },
+    pingForLatencyCheck() { succeed({ ok: true, serverTs: Date.now() }); },
     checkSyncSignals(_s: string | null) { succeed(mockSyncSignals); },
     getLeadFormOptions(_s: string | null) {
       succeed({ leadTypes: [], responseSpeeds: [], countries: [], leadSources: [] });
