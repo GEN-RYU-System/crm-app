@@ -13,8 +13,8 @@
 .dp-kpi-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); }
 .dp-kpi-row__card { min-width: 0; }
 
-/* ── Achievement bar ─────────────────────────────────────────── */
-.dp-achievement-bar { height: 6px; border-radius: var(--radius-pill); background: var(--color-border); overflow: hidden; }
+/* ── Achievement bar (SA: --progress-bar-h = 4px) ───────────── */
+.dp-achievement-bar { height: 4px; border-radius: var(--radius-pill); background: var(--color-border); overflow: hidden; }
 .dp-achievement-bar__fill { height: 100%; width: var(--_dp-bar-w, 0%); border-radius: var(--radius-pill); transition: width 0.3s ease; }
 .dp-bar--success .dp-achievement-bar__fill { background: var(--color-success); }
 .dp-bar--accent  .dp-achievement-bar__fill { background: var(--color-accent); }
@@ -49,12 +49,12 @@
 .dp-goal-row__sep    { color: var(--color-border); }
 .dp-goal-row__rate   { font-size: var(--font-xs); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); min-width: 3.5em; text-align: right; }
 
-/* ── KPI tiles ──────────────────────────────────────────────── */
+/* ── KPI tiles (SA: --radius-lg=8px, --shadow-sm, no border) ── */
 .dp-kpi-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-md); }
 .dp-kpi-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.dp-kpi-tile { display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-md); border: 1px solid var(--color-border); border-radius: var(--radius-surface); background: var(--color-surface); }
+.dp-kpi-tile { display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-md); border-radius: var(--radius-card); background: var(--color-surface); box-shadow: var(--shadow-sm); }
 .dp-kpi-tile__label { font-size: var(--font-xs); color: var(--color-text-muted); }
-.dp-kpi-tile__value { font-size: var(--font-stat); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
+.dp-kpi-tile__value { font-size: var(--font-2xl); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
 .dp-kpi-tile__sub   { font-size: var(--font-xs); color: var(--color-text-muted); }
 .dp-kpi-tile--up   .dp-kpi-tile__value { color: var(--color-success-text); }
 .dp-kpi-tile--down .dp-kpi-tile__value { color: var(--color-danger); }
@@ -76,13 +76,13 @@
 .dp-chart__legend-item--actual::before    { background: var(--color-accent); }
 .dp-chart__legend-item--remaining::before { background: var(--color-accent-subtle); border: 1px solid var(--color-accent); }
 
-/* ── Funnel ──────────────────────────────────────────────────── */
+/* ── Funnel (SA: --radius-lg=8px, warning border on bottleneck) ─ */
 .dp-funnel-elapsed { font-size: var(--font-xs); font-weight: normal; color: var(--color-text-muted); margin-left: var(--space-sm); }
 .dp-funnel-row { display: flex; align-items: center; gap: var(--space-sm); }
-.dp-funnel-card { flex: 1; display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-md); border: 1px solid var(--color-border); border-radius: var(--radius-surface); background: var(--color-surface); min-width: 0; }
-.dp-funnel-card--bottleneck { border-color: var(--color-danger); background: var(--color-danger-subtle); }
+.dp-funnel-card { flex: 1; display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-md); border: 2px solid transparent; border-radius: var(--radius-card); background: var(--color-surface); box-shadow: var(--shadow-sm); min-width: 0; }
+.dp-funnel-card--bottleneck { border-color: var(--color-warning); background: var(--color-warning-subtle); }
 .dp-funnel-card__title  { font-size: var(--font-xs); font-weight: var(--font-weight-bold); color: var(--color-text-muted); }
-.dp-funnel-card__actual { font-size: var(--font-stat); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
+.dp-funnel-card__actual { font-size: var(--font-2xl); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
 .dp-funnel-card__target { font-size: var(--font-xs); color: var(--color-text-muted); }
 .dp-funnel-card__extra  { font-size: var(--font-xs); color: var(--color-text-muted); }
 .dp-funnel-card__rate   { font-size: var(--font-xs); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
