@@ -218,7 +218,6 @@ function AppRouter() {
     customers: customersRoute,
     quotes: quotesRoute,
     orders: ordersRoute,
-    inventory: inventoryRoute,
     staff: staffRoute,
     issuerMaster: issuerMasterRoute
   };
@@ -251,6 +250,7 @@ function AppRouter() {
         </Route>
       ))}
     <Route path={NAVIGATION_BY_ID.inbox.hash} element={inboxRoute} />
+    <Route path={NAVIGATION_BY_ID.inventory.hash} element={inventoryRoute} />
     <Route path={NAVIGATION_BY_ID.salesOrders.hash} element={salesOrdersRoute} />
     <Route path="/sales-orders/:orderId" element={canAccessSalesOrders ? <SalesOrderDetailPage /> : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />} />
     <Route path="/leads-chat" element={<Navigate to={NAVIGATION_BY_ID.inbox.hash} replace />} />
