@@ -89,6 +89,29 @@ export function getLeadsByType(leadType?: LeadType, forceRefresh?: boolean): Pro
   });
 }
 
+export type LeadsBatchRecord = {
+  leads: readonly LeadRecord[];
+  formOptions: LeadFormOptions;
+};
+
+export function getLeadsBatch(forceRefresh?: boolean): Promise<LeadsBatchRecord> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value) => {
+        const v = value as { leads: unknown; formOptions: unknown };
+        if (!v || !Array.isArray(v.leads) || !v.formOptions || typeof v.formOptions !== 'object') {
+          reject(new Error(errorCopy.communication));
+          return;
+        }
+        resolve({ leads: v.leads as LeadRecord[], formOptions: v.formOptions as LeadFormOptions });
+      })
+      .withFailureHandler((error) => reject(toError(error)))
+      .getLeadsBatchForFrontend(getStoredSessionId(), forceRefresh === true);
+  });
+}
+
 export function getLeadDetail(leadId: string): Promise<LeadRecord | null> {
   const runner = window.google?.script?.run;
   if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));

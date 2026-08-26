@@ -674,6 +674,21 @@ function getLeadsByType(sessionId, leadType, forceRefresh) {
 }
 
 /**
+ * リード一覧（全件）とフォーム選択肢を1回のGAS呼び出しでまとめて返す。
+ * getLeadsByType + getLeadFormOptions の固定オーバーヘッドを削減する。
+ *
+ * @param {string}  sessionId
+ * @param {boolean} [forceRefresh]
+ * @returns {{ leads: Object[], formOptions: Object }}
+ */
+function getLeadsBatchForFrontend(sessionId, forceRefresh) {
+  // 各関数が内部で setEmailFromSession / checkPermission を呼ぶ
+  const leads      = getLeadsByType(sessionId, undefined, forceRefresh);
+  const formOptions = getLeadFormOptions(sessionId);
+  return { leads: leads, formOptions: formOptions };
+}
+
+/**
  * 見積もりフォームのリード候補表示用。LEAD_ID と顧客名のみを返す（全列取得を避けて転送量を最小化）。
  * @param {string} sessionId
  * @returns {{ leadId: string, customerName: string }[]}
