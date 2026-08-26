@@ -1006,6 +1006,9 @@ function updateLead(sessionId, sheetName, leadId, updateData) {
 
       sheet.getRange(targetRow, 1, 1, headers.length).setValues([rowValues]);
 
+      // リードステータスが成約/失注の場合は商談結果を連携（onEdit経路と共通関数を使用）
+      syncDealResultByStatus_(sheet, headers, targetRow, updateData['リードステータス'] || '');
+
       return leadId;
     }
   );
