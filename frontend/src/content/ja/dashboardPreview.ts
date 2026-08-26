@@ -79,6 +79,23 @@ export const dashboardPreviewCopy = {
       won: '成約',
       lost: '失注',
     },
+
+    aiRecommendations: {
+      title: 'AI推薦 — 優先見込み客',
+      updatedAtLabel: '',
+      scoreLabel: 'スコア',
+      stageLabel: 'ステージ',
+      assigneeLabel: '担当',
+    },
+
+    weeklyAdvisor: {
+      title: '週次アドバイザー',
+      categoryLabel: {
+        action: 'アクション',
+        alert: '警告',
+        insight: 'インサイト',
+      } as Record<string, string>,
+    },
   },
 
   changeLabel: (pct: number): string =>
@@ -97,4 +114,33 @@ export const dashboardPreviewCopy = {
     '石井商事', '林産業',
   ] as readonly string[],
   fakeAssignees: ['山田', '鈴木', '佐藤', '高橋', '伊藤'] as readonly string[],
+
+  /** Fake AI recommendation data — previewAdapter only */
+  fakeAiRecommendations: {
+    updatedAt: '2026年8月26日 更新',
+    reasons: ['過去購買×商談活発', '問い合わせ急増', 'メール開封率高', '長期放置リード', '同業他社比較中'] as readonly string[],
+    stages:  ['商談中', '初回接触', 'ナーチャリング', '放置リード', '提案済み'] as readonly string[],
+  },
+
+  /** Fake weekly advisor data — previewAdapter only */
+  fakeWeeklyAdvisor: {
+    weekLabel: '8月25日週',
+    cards: [
+      {
+        title: '今週の最優先アクション',
+        body: '商談中リードが12件滞留しています。うち3件は2週間以上進展がなく、クロージング活動を推奨します。',
+        category: 'action' as const,
+      },
+      {
+        title: '転換率の警告',
+        body: '今月の転換率 12.9% は目標 15.0% を下回っています。リードの質評価基準を見直してください。',
+        category: 'alert' as const,
+      },
+      {
+        title: '売上トレンド',
+        body: '直近3か月の売上は月平均 +7.2% で推移しています。このペースを維持すると月次目標達成率 95% が見込まれます。',
+        category: 'insight' as const,
+      },
+    ] as readonly { title: string; body: string; category: 'action' | 'alert' | 'insight' }[],
+  },
 } as const;

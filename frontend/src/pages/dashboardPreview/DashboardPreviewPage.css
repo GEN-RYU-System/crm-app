@@ -87,3 +87,26 @@
 .dp-funnel-card__extra  { font-size: var(--font-xs); color: var(--color-text-muted); }
 .dp-funnel-card__rate   { font-size: var(--font-xs); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
 .dp-funnel-arrow { font-size: var(--font-lg); color: var(--color-text-muted); flex-shrink: 0; }
+
+/* ── AI推薦（優先見込み客）────────────────────────────────────────────────── */
+.dp-prospect-list { display: flex; flex-direction: column; gap: var(--space-xs); }
+.dp-prospect-item { display: grid; grid-template-columns: auto 1fr auto auto auto; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-control); background: var(--color-success-bg-subtle); }
+.dp-prospect-score { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 var(--space-xs); font-size: var(--font-xs); font-weight: var(--font-weight-bold); color: var(--color-on-solid); background: var(--color-success); border-radius: var(--radius-pill); }
+.dp-prospect-name { font-size: var(--font-sm); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-prospect-reason { font-size: var(--font-xs); color: var(--color-success-text); background: var(--color-success-subtle); border-radius: var(--radius-control); padding: 0 var(--space-xs); white-space: nowrap; }
+.dp-prospect-stage { font-size: var(--font-xs); color: var(--color-text-muted); white-space: nowrap; }
+.dp-prospect-assignee { font-size: var(--font-xs); color: var(--color-text-muted); white-space: nowrap; }
+
+/* ── 週次アドバイザー ──────────────────────────────────────────────────────── */
+.dp-advisor-cards { display: flex; flex-direction: column; gap: var(--space-sm); }
+.dp-advisor-card { display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-md); border-left: 3px solid transparent; border-radius: var(--radius-control); }
+.dp-advisor-card--action  { border-left-color: var(--color-accent);   background: var(--color-accent-subtle); }
+.dp-advisor-card--alert   { border-left-color: var(--color-warning);  background: var(--color-warning-bg-subtle); }
+.dp-advisor-card--insight { border-left-color: var(--color-success);  background: var(--color-success-bg-subtle); }
+.dp-advisor-card__header { display: flex; align-items: center; gap: var(--space-sm); }
+.dp-advisor-card__category { font-size: var(--font-xs); font-weight: var(--font-weight-bold); white-space: nowrap; }
+.dp-advisor-card--action  .dp-advisor-card__category { color: var(--color-accent); }
+.dp-advisor-card--alert   .dp-advisor-card__category { color: var(--color-warning-text); }
+.dp-advisor-card--insight .dp-advisor-card__category { color: var(--color-success-text); }
+.dp-advisor-card__title { font-size: var(--font-sm); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
+.dp-advisor-card__body { font-size: var(--font-sm); color: var(--color-text-muted); margin: 0; }
