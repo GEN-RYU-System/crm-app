@@ -17,9 +17,9 @@
 
 ## PR 1: 土台（リード KPI セクション）
 
-- **PR 番号**: 未記入（マージ後に記入）
-- **URL**: 未記入
-- **マージコミット SHA**: 未記入
+- **PR 番号**: #643
+- **URL**: https://github.com/GEN-RYU-System/crm-app/pull/643
+- **マージコミット SHA**: 354ae6c3ac82851128ce29594dee76d07a51308b
 
 ### 変更ファイル一覧
 
@@ -52,25 +52,25 @@ GAS に接続せず、全て仮データ（ハードコード）で動作する�
 - **増加量**: −4,930 B（ビルドハッシュ差分による変動）
 
 ### Deploy to DEV
-- **結果**: 未記入（CI・マージ後に記入）
-- **Workflow URL**: 未記入
+- **結果**: success（run #32933552894）
+- **Workflow URL**: https://github.com/GEN-RYU-System/crm-app/actions/runs/32933552894
 
 ### 戻し方
 ```bash
-git revert -m 1 <PR1マージSHA>
+git revert -m 1 354ae6c3ac82851128ce29594dee76d07a51308b
 git push origin develop
 ```
 
 ### 確認用 DEV URL
-未記入（DEV 配布後に記入）
+（DEV 配布後に確認）
 
 ---
 
 ## PR 2: 全セクション
 
-- **PR 番号**: 未記入
-- **URL**: 未記入
-- **マージコミット SHA**: 未記入
+- **PR 番号**: #644
+- **URL**: https://github.com/GEN-RYU-System/crm-app/pull/644
+- **マージコミット SHA**: bb3991f0a7f28d007e844178d0b06032f1a3844b
 
 ### セクション一覧と移植元
 
@@ -84,19 +84,19 @@ git push origin develop
 | ファネル（4段階） | `FunnelSection.tsx:446–543` |
 
 ### ReactPoc.html サイズ
-- **変更前**: 未記入
-- **変更後**: 未記入
-- **増加量**: 未記入
+- **変更前**: 490,410 B（PR1後）
+- **変更後**: 503,440 B（gzip 129.51 KB）
+- **増加量**: +13,030 B
 
 ### Deploy to DEV
-- **結果**: 未記入
-- **Workflow URL**: 未記入
+- **結果**: success（run #32934364653）
+- **Workflow URL**: https://github.com/GEN-RYU-System/crm-app/actions/runs/32934364653
 
 ### 戻し方
 ```bash
-git revert -m 1 <PR2マージSHA>
+git revert -m 1 bb3991f0a7f28d007e844178d0b06032f1a3844b
 git push origin develop
 ```
 
 ### 確認用 DEV URL
-未記入
+（DEV 配布後に確認）
