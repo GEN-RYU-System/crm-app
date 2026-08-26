@@ -4,6 +4,22 @@
  */
 
 /**
+ * リードステータスが成約/失注の場合に商談結果列を同期する（共通ユーティリティ）
+ * onEdit経路とAPI経由updateLead()経路の両方から呼び出す
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @param {string[]} headers - ヘッダー行配列
+ * @param {number} targetRow - 対象行（1-indexed）
+ * @param {string} leadStatus - 新しいリードステータス
+ */
+function syncDealResultByStatus_(sheet, headers, targetRow, leadStatus) {
+  if (leadStatus !== '成約' && leadStatus !== '失注') return;
+  const dealResultIdx = headers.indexOf('商談結果');
+  if (dealResultIdx !== -1) {
+    sheet.getRange(targetRow, dealResultIdx + 1).setValue(leadStatus);
+  }
+}
+
+/**
  * 成約/失注時に自動でアーカイブ情報を設定
  */
 function archiveOnStatusChange(e) {
@@ -38,12 +54,7 @@ function archiveOnStatusChange(e) {
     }
 
     // 成約/失注の場合は商談結果を自動連携
-    if (newStatus === '成約' || newStatus === '失注') {
-      const dealResultColIndex = headers.indexOf('商談結果');
-      if (dealResultColIndex !== -1) {
-        sheet.getRange(editedRow, dealResultColIndex + 1).setValue(newStatus);
-      }
-    }
+    syncDealResultByStatus_(sheet, headers, editedRow, newStatus);
 
     // 顧客名を取得して通知
     const customerNameIndex = headers.indexOf('顧客名');
