@@ -23,3 +23,13 @@
 .inbox-preview__composer .ui-field { flex: 1; }
 @media (max-width: 1100px) { .inbox-preview__workspace { grid-template-columns: var(--inbox-list-width) minmax(var(--conversation-center-min-width), 1fr); } }
 @media (max-width: 767px) { .inbox-preview__tab-row { align-items: stretch; flex-direction: column; }.inbox-preview__tab-row .ui-field { margin: var(--space-sm); }.inbox-preview__workspace { grid-template-columns: minmax(var(--space-none), 1fr); } }
+/* カルテヘッダー: 顧客名（左・flex1）+ バッジ縦2段（右・shrink0） */
+.inbox-preview__karte-header { align-items: center; display: flex; gap: var(--space-sm); min-height: 0; padding: var(--space-sm) var(--space-md) var(--space-none); }
+.inbox-preview__karte-name { flex: 1; font-size: var(--font-sm); font-weight: var(--font-weight-bold); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inbox-preview__karte-badges { display: flex; flex-direction: column; flex-shrink: 0; gap: var(--space-xs); }
+/* 連絡先タブ: メッセージURLリンク */
+.inbox-preview__karte-field-link { display: flex; flex-direction: column; gap: var(--space-xs); margin-bottom: var(--space-lg); }
+.inbox-preview__karte-field-label { color: var(--color-text-muted); font-size: var(--font-sm); font-weight: var(--badge-font-weight); }
+.inbox-preview__karte-field-link a { color: var(--color-accent); font-size: var(--font-sm); overflow-wrap: break-word; word-break: break-all; }
+/* 会話リスト行: ステータスバッジ + 日時 */
+.inbox-preview__row-meta { align-items: center; display: flex; gap: var(--space-xs); flex-wrap: wrap; }
