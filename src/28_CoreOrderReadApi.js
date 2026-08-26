@@ -152,6 +152,7 @@ function getCoreOrderDetailForFrontend(sessionId, orderId) {
     map[id] = {
       name:          coreCustomerFrontendValue(row[shippingDests.indexes.DISPLAY_NAME])
                   || coreCustomerFrontendValue(row[shippingDests.indexes.RECIPIENT_NAME]),
+      recipientName: coreCustomerFrontendValue(row[shippingDests.indexes.RECIPIENT_NAME]),
       addressLine1:  coreCustomerFrontendValue(row[shippingDests.indexes.ADDRESS_LINE_1]),
       addressLine2:  coreCustomerFrontendValue(row[shippingDests.indexes.ADDRESS_LINE_2]),
       addressLine3:  coreCustomerFrontendValue(row[shippingDests.indexes.ADDRESS_LINE_3]),
@@ -164,6 +165,7 @@ function getCoreOrderDetailForFrontend(sessionId, orderId) {
   }, {});
   var shippingDest = shippingDestById[orderRow.SHIPPING_DESTINATION_ID] || {};
   orderRow.shippingDestinationName  = shippingDest.name         || '';
+  orderRow.shippingRecipientName    = shippingDest.recipientName || '';
   orderRow.shippingAddressLine1     = shippingDest.addressLine1 || '';
   orderRow.shippingAddressLine2     = shippingDest.addressLine2 || '';
   orderRow.shippingAddressLine3     = shippingDest.addressLine3 || '';
