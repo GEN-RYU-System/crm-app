@@ -3201,3 +3201,117 @@ clasp run seedDevDemoData_20260826
 
 **コード削除:**
 `git revert d85f1cb6afd2809067c486adbe16435caac87fb6`
+
+---
+
+## GAS prefetch 最適化 完了サマリ（2026-08-26）
+
+### 背景・目標
+
+DEV環境で `window.__prefetchTimings.totalElapsedMs` を計測した結果、
+初期 prefetch に **114,662ms** かかっていることが判明（ping=3.1s × 推定34.7回相当）。
+GAS固定オーバーヘッド（ping実測 3,298ms/call）の削減を目的として
+2フェーズの最適化を実施した。
+
+---
+
+### Phase 1: 並列化 concurrency 3 → 6（PR #651ベースブランチ）
+
+**施策**: prefetch pool の同時実行数を 3 → 6 に変更  
+**結果**: 114,662ms → **未計測**（案1実装と同時のため単独値なし）
+
+---
+
+### Phase 2: GAS呼び出しバッチ化（案1〜案4）
+
+#### 実施順・各案の内容
+
+| 案 | PR | merge日時 | 統合前 | 統合後 | GAS削減 |
+|----|-----|-----------|--------|--------|---------|
+| 案1: inboxバッチ | #651 | 2026-08-26 | `getInboxConversationsForFrontend`（単独ステップ）| `getInboxBulkInitialLoad` の結果から seed | −1 call（−3,298ms） |
+| 案3: 受注バッチ | #656 | 2026-08-26T07:22:56Z | `getCoreOrdersForFrontend` + `getCoreOrderStatusOptionsForFrontend` = 2回 | `getCoreOrdersBatchForFrontend` = 1回 | −1 call（−3,298ms） |
+| 案2: 在庫バッチ | #658 | 2026-08-26T07:45:28Z | `getSharedInventoryForFrontend` + `getInventoryProductOptions` = 2回 | `getInventoryBatchForFrontend` = 1回 | −1 call（−3,298ms） |
+| 案4: リードバッチ | #659 | 2026-08-26T08:03:23Z | `getLeadsByType` + `getLeadFormOptions` = 2回 | `getLeadsBatchForFrontend` = 1回 | −1 call（−3,298ms） |
+
+**合計削減**: 4 call × 3,298ms = **13,192ms**
+
+#### 共通実装パターン（ブリッジパターン）
+
+全案とも同じ構造:
+1. GAS側: バッチ関数が2データセットを1回で返す（`{A, B}` 形式）
+2. INNER provider が batch GAS を呼ぶ → OUTER provider の `seed()` をコールバックで注入
+3. Bridge コンポーネントが OUTER の `seed` を取得して INNER の `onXxxLoaded` prop に渡す
+4. `usePrefetch` から削除したステップは bridge 経由で自動充足される
+
+#### 案3 追記: 権限設計トレードオフ
+
+`getCoreOrdersBatchForFrontend` は orders と salesOrders の両データを返す。
+どちらも `checkPermission('lead_view')` で統一されているため、
+一方のナビゲーションしか持たない利用者にも両データが送信される。
+これはフロントエンドのナビゲーション制御（表示権限）と
+GAS側の読み取り権限（`lead_view`）が分離されている設計上の既知トレードオフ。
+
+---
+
+### 最終計測結果（2026-08-26）
+
+| 指標 | 値 |
+|------|-----|
+| `totalElapsedMs` | **24,372ms** |
+| `pingMs` | 3,100ms |
+| steps 実行数 | 10件 |
+| 改善前 | 114,662ms |
+| **削減率** | **79%減** |
+
+> **計測方法**: プリフェッチの所要時間は DevTools コンソールで
+> `window.__prefetchTimings` を実行すればいつでも確認できる。
+> `totalElapsedMs`（合計）・`pingMs`（GAS固定コスト）・
+> `steps`（ステップ別内訳）が返る。
+> この計測コードは `frontend/src/app/usePrefetch.ts` に正式コードとして組み込まれている。
+
+#### ステップ別内訳（最終計測）
+
+律速ステップ（最も時間がかかったステップ）:
+- **leadsBatch**: 18,600ms（LEADS シートのデータ量が多い + GAS固定コスト）
+- **inventoryBatch**: 15,500ms（商品マスタ同期 + 共用在庫 の結合処理）
+
+これらは pool 内で同時実行されるため、totalElapsedMs は最長ステップに支配される。
+
+#### 改善の限界（下限）
+
+- GAS固定オーバーヘッド: ping = **3,100ms/call**（ネットワーク + スクリプト起動）
+- pool CONCURRENCY=6 の場合、全ステップが1ラウンドに収まるなら下限 ≒ max(各ステップの実行時間)
+- LEADS シートの肥大化が律速であり、これ以上の削減にはシート分割または
+  LEADS の列絞り込み（全列取得をやめる）が必要になる
+
+---
+
+### スコープ外（記録のみ）
+
+以下は今回対象外。次回以降の候補として記録する。
+
+1. **`LeadRepository.getFormOptions` のデッドコード削除**  
+   案4で `LeadFormOptionsCacheProvider` が `repository.getFormOptions()` を呼ばなくなったため、
+   `contracts.ts` の `LeadRepository.getFormOptions` と `gasAdapter.ts` の実装がデッドコード化。
+   次回クリーンアップ PR で削除推奨（Reviewer #659 が MEDIUM として指摘済み）。
+
+2. **LEADS シートが複数関数から読まれている重複**  
+   `getLeadsByType`, `getCoreCustomersForFrontend`, `getCoreQuotesForFrontend`,
+   `getInboxConversationsForFrontend`, `getInboxBulkInitialLoad` の5関数が LEADS を読む。
+   各関数が CacheService を持つため今回対象外としたが、
+   シートが肥大化した場合は列絞り込みと合わせて検討する。
+
+3. **シート読み取りの列絞り込み**  
+   現状は `getDataRange().getValues()` で全列取得。
+   フロントエンドが使う列のみに絞ることで GAS 実行時間を短縮できる可能性がある。
+   特に LEADS（律速 18.6s）と 共用在庫（律速 15.5s）が優先候補。
+
+---
+
+### 戻し方
+
+各案は squash merge のため個別 revert が可能:
+- 案1 #651: `git revert <squash commit SHA>`
+- 案3 #656: `git revert <squash commit SHA>`
+- 案2 #658: `git revert <squash commit SHA>`
+- 案4 #659: `git revert <squash commit SHA>`
