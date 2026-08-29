@@ -31,14 +31,14 @@ export function usePrefetch(permissions: NavigationPermissions | null): void {
 
     const steps: Array<{ name: string; canAccess: boolean; load: () => Promise<void> }> = [
       { name: 'leadsBatch',             canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.leads,       permissions), load: () => ensureLeadFormOptions() },
-      { name: 'customers',              canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.customers,   permissions), load: () => ensureCustomers() },
-      { name: 'customerAggregates',     canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.orders,      permissions), load: () => ensureAggregates() },
       { name: 'inventoryBatch',         canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.inventory, permissions) || canAccessNavigationItem(NAVIGATION_BY_ID.orders, permissions) || canAccessNavigationItem(NAVIGATION_BY_ID.quotes, permissions), load: () => ensureInventoryProductOptions() },
-      { name: 'currencies',             canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.orders, permissions) || canAccessNavigationItem(NAVIGATION_BY_ID.quotes, permissions), load: () => ensureCurrencies() },
+      { name: 'issuer',                 canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.quotes, permissions) || canAccessNavigationItem(NAVIGATION_BY_ID.orders, permissions), load: () => ensureIssuer() },
+      { name: 'quotes',                 canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.quotes,      permissions), load: () => ensureQuotes() },
+      { name: 'customers',              canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.customers,   permissions), load: () => ensureCustomers() },
       { name: 'salesOrders',            canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.salesOrders, permissions), load: () => ensureSalesOrders() },
       { name: 'staff',                  canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.staff,       permissions), load: () => ensureStaff() },
-      { name: 'quotes',                 canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.quotes,      permissions), load: () => ensureQuotes() },
-      { name: 'issuer',                 canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.quotes, permissions) || canAccessNavigationItem(NAVIGATION_BY_ID.orders, permissions), load: () => ensureIssuer() },
+      { name: 'customerAggregates',     canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.orders,      permissions), load: () => ensureAggregates() },
+      { name: 'currencies',             canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.orders, permissions) || canAccessNavigationItem(NAVIGATION_BY_ID.quotes, permissions), load: () => ensureCurrencies() },
       { name: 'inboxDetailBulk',        canAccess: canAccessNavigationItem(NAVIGATION_BY_ID.inbox,       permissions), load: () => prefetchBulk() },
     ];
 
