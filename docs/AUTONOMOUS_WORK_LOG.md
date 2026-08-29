@@ -1,5 +1,52 @@
 # 自律作業ログ
 
+---
+
+## perf(prefetch): steps 順序最適化 — PR #662
+
+**実施日時**: 2026-08-30T16:20:00Z
+
+### 変更内容
+`frontend/src/app/usePrefetch.ts` の steps 配列の順序のみ変更。step の内容（name / canAccess / load）は一切変更しない。
+
+**採用順序（最適化後）:** leadsBatch / inventoryBatch / issuer / quotes / customers / salesOrders / staff / customerAggregates / currencies / inboxDetailBulk
+
+### シミュレーション根拠
+CONCURRENCY=6 greedy pool シミュレーション（実測 elapsedMs 使用）。
+理論下限: pool_time = 20,830ms / totalElapsedMs = 23,930ms。
+issuer（重い単一呼び出し）を pos 9 → pos 3 に前進させることで pool tail を短縮。
+
+### before/after 実測（Playwright preview mock）
+
+| 回 | before totalElapsedMs | after totalElapsedMs |
+|---|---|---|
+| 1 | 4ms | 3ms |
+| 2 | 3ms | 9ms |
+| 3 | 2ms | 3ms |
+| **中央値** | **3ms** | **3ms** |
+
+issuer pool 位置 before: pos 9 / after: pos 3（startMs で確認）
+
+※ preview/mock 環境では全 GAS 呼び出しが即座に返るため totalElapsedMs は 2-9ms のノイズ範囲。
+  シミュレーション予測値（totalElapsedMs −439ms、issuer endMs −10,503ms）は実 GAS 環境での DEV 計測で確認予定。
+
+### 合格条件チェック
+- [x] 全10 step 完了・欠落なし
+- [x] concurrency: 6 維持
+- [x] after 中央値 ≤ before 中央値（3ms ≤ 3ms）
+- [x] issuer pool 位置が前進（pos 9 → pos 3）
+- [x] typecheck ✅
+- [x] check:design-system ✅
+- [x] build:gas ✅
+
+### 戻し方
+`git revert <merge commit SHA>` （merge 後に追記）
+
+### DEV 配布 SHA
+（merge 後に追記）
+
+---
+
 > リポジトリ・クローンの正誤は `docs/REPOSITORY_CANONICAL_STATE.md` を参照。
 
 > **develop凍結解除（2026-08-24）:** redaction2 v2 の履歴書換え・全履歴再スキャンを完了し、凍結を解除した。Actions を通常のDEVデプロイ経路とし、ローカル clasp は障害時のバックアップ経路とする。
