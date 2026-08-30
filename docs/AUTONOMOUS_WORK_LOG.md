@@ -4340,3 +4340,36 @@ mergeCommit (PR #709): 4abf54682b502dfc7c3f3f3c2e8e9a1636a748cb
 ### Deploy to DEV
 
 - Deploy to DEV conclusion: `success` ✓
+
+---
+
+## docs: 要PO確定列の事実確認と Buddy 列の除外判定 — PR #712 / PR #714
+
+### 2026-08-30 要PO確定列の事実確認と Buddy 列の除外判定
+
+- PR-1: #712 / squash SHA: `b2835c9d78ec34523a654fd874185defeec9b050` / src/99_OptionMasterSample.js 追加（読み取り専用）
+- PR-2: #714 / squash SHA: `6b14a58c27608bb789a0dca83324ed75b4cdce4d` / docs/column-rename-plan.md 更新
+- 結果: 為替=`currency`（通貨コード確定）/ Buddy専用 7列 / 他機能も使用 4列 / 未参照 3列 / 【要PO確定】残 5列
+- 検証: 書き込み系 grep 0件 ✓ / マージ後3点検証 pass ✓
+- revert: git revert `6b14a58c27608bb789a0dca83324ed75b4cdce4d` → git revert `b2835c9d78ec34523a654fd874185defeec9b050`（逆順）
+
+### getDeployedSha 照合（PR-2）
+
+```
+deployedSha:              6b14a58c27608bb789a0dca83324ed75b4cdce4d
+mergeCommit (PR #714):    6b14a58c27608bb789a0dca83324ed75b4cdce4d
+→ 一致 ✓
+```
+
+### runCoreSchemaConformanceAudit 結果
+
+- 総不一致 2件（LEADS 列数差13・CUSTOMERS 列数差1）— ベースライン通り ✓
+- ORDERS: 0件 ✓
+
+### dryRunOrderStatusRecalculation 結果
+
+- 総件数: 12件 / 変更なし: 12件 / **変更あり: 0件 ✓**
+
+### Deploy to DEV（PR-2）
+
+- Deploy to DEV conclusion: `success` ✓
