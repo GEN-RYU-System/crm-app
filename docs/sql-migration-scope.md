@@ -13,7 +13,7 @@
 
 ## 2. 移行対象シート一覧
 
-### 2-1. 移行対象（20 シート）
+### 2-1. 移行対象（22 シート）
 
 「移行対象」= 44 フロントエンド関数のいずれかが実際にシート読み書きを行うもの。
 
@@ -35,14 +35,16 @@
 | 14 | 商品マスタ同期 | PRODUCTS | getSharedInventoryForFrontend / getInventoryBatchForFrontend / getInventoryProductOptions 他 |
 | 15 | 作品マスタ_共用在庫 | なし（getSheetByName 文字列リテラル） | getSharedInventoryForFrontend / getInventoryBatchForFrontend |
 | 16 | 国マスタ | COUNTRIES | getCoreOrdersForFrontend / getCoreOrderDetailForFrontend / getLeadFormOptions |
-| 17 | 通貨マスタ | CURRENCIES | getCoreCurrenciesForFrontend |
+| 17 | 通貨マスタ | CURRENCIES | getCoreCurrenciesForFrontend / createCoreOrderForFrontend（為替レート取得） |
 | 18 | 流入元マスタ | LEAD_SOURCES | getLeadFormOptions / getInboxBulkInitialLoad |
 | 19 | 選択肢マスタ | なし（CONFIG.SHEETS.SETTINGS = '選択肢マスタ'、CoreSchemaV1.SETTINGS = 'システム設定' とは別） | getLeadFormOptions |
 | 20 | 発行元マスタ | ISSUER | getCoreIssuerForFrontend / updateCoreIssuerForFrontend |
+| 21 | 会話ログ（商談用） | なし（`CONFIG.SHEETS.CONVERSATION_LOG`='会話ログ' が不在のため getSheetByName('会話ログ（商談用）') にフォールバック） | getInboxConversationsForFrontend / getInboxConversationDetailForFrontend / getInboxBulkInitialLoad / getInboxMoreMessages |
+| 22 | システム設定 | SETTINGS（CoreSchemaV1.SETTINGS = 'システム設定'） | createCoreOrderForFrontend（`getSettingValue('オーダー支払期日日数')`）/ createCoreQuoteForFrontend（`getSettingValue('見積もり有効期限日数')`） |
 
 **注**: `checkSyncSignals` (CacheService のみ) と `pingForLatencyCheck` (シート無アクセス) と `getCoreOrderStatusOptionsForFrontend`・`getCorePurchaseStatusOptionsForFrontend` (CoreSchemaV1 の静的値のみ) の 4 関数はシートアクセスなし。
 
-### 2-2. 除外シート一覧（44 関数が直接アクセスしない 57 シート）
+### 2-2. 除外シート一覧（44 関数が直接アクセスしない 55 シート）
 
 | 除外理由 | シート名 |
 |---------|---------|
@@ -56,7 +58,7 @@
 | 到達不能（CONFIG.SHEETS キーが undefined） | PromptConfig |
 | 非フロントエンド（AI・Buddy 系） | PromptConfig / FAQ / 商材ナレッジ / 営業ナレッジ / 商談レポート |
 | 集計・分析系（参照パターン未確認） | 顧客分析 / 顧客月次分析 / 顧客購入商品分析 / SCM出力同期 / 集計同期 |
-| 管理・マスタ系（参照未確認） | 表示設定マスタ / システム設定 / 通貨マスタ（※） / 地帯表 / ステータス移行表 / 目標設定 / 目標設定_壁打ち / シフト / 発行元マスタ_旧 |
+| 管理・マスタ系（参照未確認） | 表示設定マスタ / 通貨マスタ（※） / 地帯表 / ステータス移行表 / 目標設定 / 目標設定_壁打ち / シフト / 発行元マスタ_旧 |
 | ERP 系（別名で不到達） | FedEx送料 / DHL送料 / UPS送料 / 地帯表 |
 | PDF 出力用 | 請求書_PDF出力 / 見積もり_PDF出力 / 見積もりテンプレート / 見積もり作成 |
 | 共用在庫マスタ系（フロント不到達） | 大分類マスタ_共用在庫 / メーカーマスタ_共用在庫 / 商品区分マスタ_共用在庫 |
@@ -69,7 +71,7 @@
 
 ## 3. シートごとの列一覧
 
-CoreSchemaV1 登録列 vs 実際のシート列を比較した結果。差分ありは LEADS と CUSTOMERS のみ（詳細はセクション 4・5）。
+CoreSchemaV1 登録列 vs 実際のシート列を比較した結果。差分ありは LEADS と CUSTOMERS のみ（詳細はセクション 4・5）。会話ログ・選択肢マスタ・作品マスタ_共用在庫は CoreSchemaV1 未登録のため「—」。
 
 | # | シート名 | CoreSchema 定義列数 | 実シート列数 | 差分 |
 |---|---------|-------------------|------------|------|
@@ -93,6 +95,8 @@ CoreSchemaV1 登録列 vs 実際のシート列を比較した結果。差分あ
 | 18 | 流入元マスタ | 6 | 6 | 0 |
 | 19 | 選択肢マスタ | CoreSchemaV1 未登録 | 36 | — |
 | 20 | 発行元マスタ | 18 | 18 | 0 |
+| 21 | 会話ログ（商談用） | CoreSchemaV1 未登録 | 11 | — |
+| 22 | システム設定 | 5 | 5 | 0 |
 
 ### 3-1. 各シートの CoreSchemaV1 定義列
 
@@ -121,6 +125,25 @@ CoreSchemaV1 登録列 vs 実際のシート列を比較した結果。差分あ
 <summary>選択肢マスタ（CoreSchemaV1 未登録、実際 36 列）</summary>
 
 `getLeadFormOptions` が `CONFIG.SHEETS.SETTINGS = '選択肢マスタ'` 経由でアクセス。CoreSchemaV1.SETTINGS（= 'システム設定'）とは別シート。具体的なヘッダー名は未取得。
+
+</details>
+
+<details>
+<summary>会話ログ（商談用）（CoreSchemaV1 未登録、実際 11 列）</summary>
+
+コードが参照する列: `リードID` / `ログID` / `日時` / `原文` / `送受信`（5 列）。残り 6 列の列名は未取得。
+アクセス経路: `src/28_CoreInboxApi.js:resolveConversationLogSheet_` が `CONFIG.SHEETS.CONVERSATION_LOG`（= '会話ログ'、実在しない）を試みて失敗後、`getSheetByName('会話ログ（商談用）')` にフォールバック。
+
+</details>
+
+<details>
+<summary>システム設定（CoreSchema 5 列 = 実シート 5 列）</summary>
+
+`設定キー` / `設定値` / `値の型` / `説明` / `更新日時`
+
+アクセス経路: `src/08_Config.js:getSettingValue` が `getCoreSchemaV1Sheet(ss, 'SETTINGS')` 経由で読み取り。
+- `createCoreOrderForFrontend` → `getSettingValue('オーダー支払期日日数')`
+- `createCoreQuoteForFrontend` → `getSettingValue('見積もり有効期限日数')`
 
 </details>
 
@@ -183,9 +206,7 @@ CoreSchemaV1 登録列 vs 実際のシート列を比較した結果。差分あ
 | 4 | frontend/src/ の `担当者ID` 3 件が CUSTOMERS.担当者ID を指しているか STAFF / LEADS 等の同名列を指しているか | 各ファイルのコンテキストを精査 |
 | 5 | LEADS 差13列のうち `リード進捗` が frontend/src/content/ja/leads.ts:42 で参照されている理由（i18n ラベルなら移行不要だが、画面に表示されているなら要確認） | frontend/src/content/ja/leads.ts:42 を読んで確認 |
 | 6 | `ログインセッション` シートを移行対象に含めるか（SESSION は GAS 内部 API のみが RW、フロントエンドはセッション ID のみをやりとりする） | PO 判断（セクション 7 参照） |
-| 7 | `会話ログ（商談用）` シートが移行対象に含まれているか（Inbox 系 4 関数がアクセスするが、上記の移行対象 20 件に未掲載） | 後述 Note 参照 |
-
-> **Note（会話ログ）**: `getInboxConversationsForFrontend` / `getInboxConversationDetailForFrontend` / `getInboxBulkInitialLoad` / `getInboxMoreMessages` が `会話ログ（商談用）` シートを参照していることを確認した。本ドキュメントの移行対象 20 件から漏れているため、**21 件に訂正が必要**。セクション 2-1 に追記すること（PO 確認後）。
+| 7 | 会話ログ（商談用）の残り 6 列（コードが参照しない列）の具体的なヘッダー名 | `clasp run dumpAllSheetHeaders` の出力を確認 |
 
 ---
 
@@ -199,6 +220,7 @@ CoreSchemaV1 登録列 vs 実際のシート列を比較した結果。差分あ
 | D | `会話ログ（商談用）` を SQL に移行するか（Inbox 4 関数がアクセス） | (a) SQL に移行 / (b) スコープ外 |
 | E | `作品マスタ_共用在庫`（CoreSchemaV1 未登録、共用在庫 API が参照）を SQL に移行するか | (a) CoreSchemaV1 に追加して SQL 移行 / (b) GAS 側のみに残す |
 | F | `選択肢マスタ`（36 列・CoreSchemaV1 未登録）を SQL に移行するか | (a) SQL に移行 / (b) GAS 側のみに残す |
+| G | `システム設定`（CoreSchemaV1.SETTINGS、5 列）を SQL に移行するか（オーダー支払期日・見積もり有効期限の設定値として `createCoreOrderForFrontend` / `createCoreQuoteForFrontend` が参照） | (a) SQL に移行してアプリ設定を統一 / (b) GAS スプレッドシートに残す |
 
 ---
 
@@ -229,6 +251,9 @@ CoreSchemaV1 登録列 vs 実際のシート列を比較した結果。差分あ
 | `src/28_CoreCurrencyApi.js` | `getCoreCurrenciesForFrontend` のシートアクセス確認 |
 | `src/28_CoreIssuerApi.js` | `getCoreIssuerForFrontend` / `updateCoreIssuerForFrontend` のシートアクセス確認 |
 | `src/28_CorePurchaseApi.js` | `upsertCorePurchaseForFrontend` / `getCorePurchaseStatusOptionsForFrontend` のシートアクセス確認 |
+| `src/26_StaffCredentialService.js` | `recordLoginFailure` / `recordLoginSuccess` のシートアクセス確認（担当者マスタのみ、ログイン履歴不使用を確認） |
+| `src/26_OrderStatusService.js` | `recalculateOrderStatusById` のシートアクセス確認（ORDERS / SHIPMENTS / PURCHASES のみ） |
+| `src/08_Config.js` | `getSettingValue` が CoreSchemaV1.SETTINGS（= 'システム設定'）を参照することを確認 |
 
 ### 未読ファイル（確認が不十分なもの）
 
@@ -238,7 +263,6 @@ CoreSchemaV1 登録列 vs 実際のシート列を比較した結果。差分あ
 | `frontend/src/features/auth.ts` | `担当者ID` が CUSTOMERS 列への参照かを確認（セクション 6-4） |
 | `frontend/src/pages/salesOrders.ts` | 同上 |
 | `frontend/src/pages/quotes.ts` | 同上 |
-| `src/28_CorePurchaseApi.js`（getCorePurchaseStatusOptions 詳細） | `getCorePurchaseStatusOptionsForFrontend` がシートアクセス 0 件であることの再確認 |
 | `src/28_CoreStaffWriteApi.js` | フロント直接呼び出しなしと仮定（44 件リストに存在しないため） |
 
 ---
