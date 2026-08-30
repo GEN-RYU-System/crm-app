@@ -2,6 +2,92 @@
 
 ---
 
+## feat(gas): 発送待ち判定を CONFIRMED または PAID に変更 — PR #665
+
+**日付:** 2026-08-30  
+**PR:** [#665](https://github.com/GEN-RYU-System/crm-app/pull/665)  
+**マージコミットSHA:** `149f72c5178ed1f2f168e689fbf9620f192d7bd4`  
+**mergedAt:** `2026-08-30T07:02:26Z`
+
+### 変更前の状態
+
+- `src/26_OrderStatusService.js:19`（JSDoc コメント）  
+  `4. 発送待ち : purchases のうち少なくとも1件で status が PAID と一致`
+- `src/26_OrderStatusService.js:37`  
+  ```javascript
+  var purchasePaidValue = getCoreSchemaV1Value('PURCHASES', 'STATUS', 'PAID');
+  ```
+- `src/26_OrderStatusService.js:57–63`  
+  ```javascript
+  // 4. 発送待ち: 仕入れ行のうち少なくとも1件でステータスが PAID（支払済み）
+  var hasPurchasePaid = (purchases || []).some(function(p) {
+    return p.status === purchasePaidValue;
+  });
+  if (hasPurchasePaid) {
+    return awaitingShippingValue;
+  }
+  ```
+
+### 変更内容
+
+**`src/26_OrderStatusService.js`**
+
+- `calculateOrderStatus()`:
+  - JSDoc の「4. 発送待ち」条件を `CONFIRMED または PAID` に更新
+  - `purchasePaidValue` → `purchaseConfirmedValue` + `purchasePaidValue` の2変数を取得
+  - 判定ロジックを `CONFIRMED || PAID` の OR 条件に変更（変数名: `hasPurchaseReadyToShip`）
+  - コード内コメント更新（業務順序の理由を注記）
+- `dryRunOrderStatusWithPurchaseConfirmed()` 追加（DEV 限定・書き込みなし・影響試算用）
+- `calculateOrderStatusWithPurchaseConfirmed_()` 追加（上記の内部ヘルパー、同条件を適用）
+
+### 変更理由
+
+業務順序「確定（CONFIRMED）→支払（PAID）」のため、PAID は CONFIRMED を通過済みとみなす。  
+1列のステータス値で段階を表す構造上、PAID になると CONFIRMED が上書きされるため、判定側で両方を吸収する。  
+（Shingo の業務判断。変更前の PAID のみ条件は 2026-08-25 PR #542 で導入されたが変更理由の記録なし。）
+
+### 影響試算（変更前・PAID 条件、DEV 実測）
+
+`dryRunOrderStatusWithPurchasePaid`（変更前デプロイ版）の結果:
+
+```
+purchaseStatusCounts: { 未発注: 4, 発注済み: 3, 支払済み: 5 }（確定済み: 0件）
+statusTransitionCounts:
+  発送待ち → 発送待ち: 2
+  仕入れ中 → 仕入れ中: 2
+  完了 → 完了:         2
+  支払い待ち → 支払い待ち: 3
+  キャンセル → キャンセル: 2
+  不明 → 不明:         1  （計12件）
+```
+
+CONFIRMED OR PAID 条件での推計: 確定済み purchases = 0件 → PAID 側5件が引き続きヒット。  
+発送待ち → 仕入れ中 への移動: **0件**（停止閾値5件未満 ✓）
+
+### 検証結果
+
+| 検証項目 | 結果 |
+|---------|------|
+| `npm run build:gas`（typecheck + vite build + emit-gas-html + check:design-system） | **通過** |
+| CI: Gitleaks | **pass** |
+| CI: Sensitive Content | **pass** |
+| CI: frontend-check | **pass** |
+| CI: gas-global-namespace | **pass** |
+| `?preview`: 受注一覧が表示される | **確認済み** |
+| `?preview`: 詳細ページが白画面にならない | **確認済み** |
+| Deploy to DEV | **success**（`33298273215`） |
+| `getDeployedSha` ↔ `origin/develop HEAD` 一致 | **一致**（`149f72c5...`） |
+| `dryRunOrderStatusRecalculation`: 変更あり件数 | **0件**（総12件、変更なし12件） |
+| `runCoreSchemaConformanceAudit`: ORDERS 不一致 | **0件** ✓ |
+
+### 戻し方
+
+```
+git revert 149f72c5178ed1f2f168e689fbf9620f192d7bd4
+```
+
+---
+
 ## feat: 受注一覧の行クリックで仕入れタブを開く — PR #663
 
 **日付:** 2026-08-30  
