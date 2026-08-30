@@ -427,6 +427,12 @@ export type OrderRecord = {
   purchaseCount?: number;
   /** Key of the least-advanced purchase status (e.g. 'NOT_ORDERED', 'ORDERED'). Empty string when purchaseCount is 0. Available from cache V4. */
   purchaseStatus?: string;
+  /** ISO2 country code of the shipping destination (e.g. 'JP', 'US'). Empty string when absent. */
+  shippingCountry?: string;
+  /** Japanese name of the shipping destination country. Falls back to ISO2 code when not found in country master. Empty string when absent. */
+  shippingCountryJa?: string;
+  /** Key of the least-advanced shipment stage (e.g. 'NOT_STARTED', 'PREPARING', 'DONE'). */
+  shipmentStage?: string;
 };
 
 export function getCoreQuotes(forceRefresh?: boolean): Promise<readonly QuoteRecord[]> {
