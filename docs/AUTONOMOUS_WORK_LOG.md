@@ -2,6 +2,54 @@
 
 ---
 
+## シート実ヘッダー吸い出し — PR #673 / PR #674
+
+**日付:** 2026-08-30  
+**PR-1:** [#673](https://github.com/GEN-RYU-System/crm-app/pull/673) / squash SHA: `fb90782` / src/99_SchemaSnapshot.js 追加  
+**PR-2:** [#674](https://github.com/GEN-RYU-System/crm-app/pull/674) / squash SHA: `c7cd2fe` / docs/sheet-headers-snapshot.md 追加  
+
+### 目的
+
+SQL 移行に向けたスプレッドシートの現物記録。読み取り専用。
+
+### 実施内容
+
+1. **PR #673**: `src/99_SchemaSnapshot.js` を新規追加。`dumpAllSheetHeaders()` 関数のみを含む読み取り専用 GAS ファイル。`clasp run dumpAllSheetHeaders` で全シートのヘッダーを JSON 取得。
+2. **PR #674**: 取得結果を `docs/sheet-headers-snapshot.md` に記録。`gas-sheet-reference-audit.md` との突き合わせ（A/B/C 3分類）を含む。
+
+### 取得結果サマリ
+
+| 項目 | 件数 |
+|------|------|
+| 全シート数 | 77 件 |
+| エラーシート | 0 件 |
+| A. コードが参照し実在する | 30 件 |
+| B. コードが参照するが実在しない | 33 件 |
+| C. 実在するがコードが参照しない | 47 件 |
+
+### 検証
+
+- 書き込み系メソッド grep: 0件（src/99_SchemaSnapshot.js）
+- マージ後3点検証（PR #673）: getDeployedSha 一致 / ORDERS 不一致0件 / dryRun 変更0件
+
+### CI 結果（PR #673 / PR #674 ともに全チェック通過）
+
+| ワークフロー | 結果 |
+|------------|------|
+| Security Content Check (Gitleaks) | success |
+| Security Content Check (Sensitive Content) | success |
+| Frontend Check | success |
+| GAS Global Namespace Check | success |
+
+### revert 方法
+
+```bash
+git revert c7cd2fe  # PR #674 を先に戻す
+git revert fb90782  # PR #673 を戻す（逆順）
+```
+
+---
+
 ## docs: GAS 新旧配線対応表の作成 — PR #669
 
 **日付:** 2026-08-30  
