@@ -75,7 +75,7 @@ CONFIRMED OR PAID 条件での推計: 確定済み purchases = 0件 → PAID 側
 | CI: gas-global-namespace | **pass** |
 | `?preview`: 受注一覧が表示される | **確認済み** |
 | `?preview`: 詳細ページが白画面にならない | **確認済み** |
-| Deploy to DEV | **success**（`33298273215`） |
+| Deploy to DEV | **success** |
 | `getDeployedSha` ↔ `origin/develop HEAD` 一致 | **一致**（`149f72c5...`） |
 | `dryRunOrderStatusRecalculation`: 変更あり件数 | **0件**（総12件、変更なし12件） |
 | `runCoreSchemaConformanceAudit`: ORDERS 不一致 | **0件** ✓ |
