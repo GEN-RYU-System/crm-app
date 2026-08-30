@@ -12,6 +12,15 @@ export const SOURCING_STATUS_KEY = 'SOURCING' as const;
 /** GAS schema key for the AWAITING_SHIPPING (shipment pending) order status tab. */
 export const AWAITING_SHIPPING_STATUS_KEY = 'AWAITING_SHIPPING' as const;
 
+/** Column keys shown on the AWAITING_SHIPPING tab, in display order. */
+export const AWAITING_SHIPPING_TAB_COLUMN_KEYS: readonly (keyof SalesOrderRow)[] = [
+  'orderId',
+  'shipmentStage',
+  'customerName',
+  'shippingCountryJa',
+  'paymentStatus',
+] as const;
+
 /**
  * Purchase stage badge config for each status key shown in the SOURCING tab.
  * CONFIRMED and PAID are excluded: orders with those statuses move to the AWAITING_SHIPPING tab.
