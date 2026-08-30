@@ -4244,3 +4244,37 @@ mergeCommit (PR #705): 6e7f318b28b0e7258c7525f1384498d350f215fc
 ```
 git revert 6e7f318b28b0e7258c7525f1384498d350f215fc
 ```
+
+---
+
+## docs: 列名変換案（英語スネークケース）を追加 — PR #709
+
+### 2026-08-30 列名変換表の作成
+
+- PR: #709 / squash SHA: `4abf54682b502dfc7c3f3f3c2e8e9a1636a748cb`
+- 内容: `docs/column-rename-plan.md` 追加（案のみ。シート・コード変更なし）
+- 結果: 変換案 236列（10シート）/ 【要PO確定】 6列 / SQL予約語衝突 1列（役割→staff_role）
+- 次工程: PO が変換案を確定 → コード先行対応 → シート変更 → 旧名削除
+- revert: `git revert 4abf54682b502dfc7c3f3f3c2e8e9a1636a748cb`
+
+### getDeployedSha 照合
+
+```
+deployedSha:           4abf54682b502dfc7c3f3f3c2e8e9a1636a748cb
+mergeCommit (PR #709): 4abf54682b502dfc7c3f3f3c2e8e9a1636a748cb
+→ 一致 ✓
+```
+
+### runCoreSchemaConformanceAudit 結果
+
+- 総不一致 2件（LEADS 列数差13・CUSTOMERS 列数差1）— ベースライン通り ✓
+- ORDERS: 0件 ✓
+- 本PRはドキュメント追加のみ。不一致は既存のまま変動なし。
+
+### dryRunOrderStatusRecalculation 結果
+
+- 総件数: 12件 / 変更なし: 12件 / **変更あり: 0件 ✓**
+
+### Deploy to DEV
+
+- Deploy to DEV conclusion: `success` ✓
