@@ -3957,3 +3957,16 @@ GAS側の読み取り権限（`lead_view`）が分離されている設計上の
 - 対処: `origin/develop` を直接参照する方法を確立。開始前チェックをルール化（PR #688）
 - PR: #688 / squash SHA: `71c3891`
 - revert: `git revert 71c3891`
+
+## 2026-08-30 SQL 移行対象の確定と差分列の特定
+
+- PR: #694 / squash SHA: `a7dae459`
+- 変更内容: `docs/sql-migration-scope.md` 新規作成
+- 調査基準SHA: `5d99689`（feat: 発送待ちタブに発送段階・請求書番号・発送先の国・支払状況の4列を追加 #692）
+- フロントエンド 44 関数 → 実アクセス 20 シートを特定（`会話ログ（商談用）` は漏れとして未確認に記録）
+- CoreSchemaV1 列差分: LEADS +13列（全て src/ のみ参照・フロント非直接参照）/ CUSTOMERS +1列（担当者ID、フロント3件の参照先未確定）
+- LEADS 差13列全件の src/ / frontend/src/ ヒット数を記録
+- PO 判断必要項目 6件・未確認項目 7件を整理
+- マージ後検証: getDeployedSha → `a7dae459`（一致）/ 監査 総不一致 2件（ベースライン維持）/ dryRun 変更0件
+- Deploy to DEV: success（run #33317140400）
+- revert: `git revert a7dae459`
