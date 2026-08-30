@@ -202,6 +202,8 @@ export const salesOrdersCopy = {
     // 発送詳細インライン表示
     shipmentDetailTitle: '発送情報',
     shipmentDetailClose: '閉じる',
+    labelShipmentId: '発送ID',
+    btnSaveShipment: '保存',
     // 発送フォームフィールドラベル
     labelShipmentBoxNumber: '箱番号',
     labelShipmentShippingMethod: '発送方法',
