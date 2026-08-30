@@ -1,10 +1,10 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useMemo, useState, useRef, type ReactNode } from 'react';
+import { useNavigate, type NavigateFunction } from 'react-router-dom';
 import { CRM_SEARCH_ICON, CRM_SORT_ICONS } from '../../app/icons';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMessage, TextField, type DataTableColumn } from '../../components/ui';
 import { salesOrdersCopy, SALES_ORDER_PAYMENT_STATUS_BADGE_VARIANT } from '../../content/ja';
-import { toSalesOrderRow, type SalesOrderRow } from '../../features/salesOrders/gasAdapter';
+import { toSalesOrderRow, advanceCoreShipmentStage, type SalesOrderRow } from '../../features/salesOrders/gasAdapter';
 import type { SalesOrderTab } from '../../features/salesOrders/contracts';
 import {
   AWAITING_SHIPPING_STAGE_BADGE,
@@ -81,11 +81,61 @@ function renderPurchaseStatusCell(row: SalesOrderRow) {
   return <Badge variant={config.variant}>{config.label}</Badge>;
 }
 
-function renderShipmentStageCell(row: SalesOrderRow) {
-  const key = row.shipmentStage || 'NOT_STARTED';
-  const config = AWAITING_SHIPPING_STAGE_BADGE[key];
-  if (!config) return '-';
-  return <Badge variant={config.variant}>{config.label}</Badge>;
+/** Shipment stage cell renderer — built inside SalesOrderListPage to access navigate and refresh. */
+function createShipmentStageCellRenderer(
+  navigate: NavigateFunction,
+  onRefresh: () => void,
+  advancingOrderIds: React.MutableRefObject<Set<string>>,
+  forceUpdate: () => void,
+) {
+  return function renderShipmentStageCell(row: SalesOrderRow): ReactNode {
+    const key = row.shipmentStage || 'NOT_STARTED';
+    const config = AWAITING_SHIPPING_STAGE_BADGE[key];
+    const badge = config ? <Badge variant={config.variant}>{config.label}</Badge> : <span>-</span>;
+
+    const buttonLabel = salesOrdersCopy.advanceStageButton[key];
+    if (!buttonLabel) {
+      return badge;
+    }
+
+    const isAdvancing = advancingOrderIds.current.has(row.orderId);
+
+    const handleClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (isAdvancing) return;
+
+      if (key === 'LABELING') {
+        void navigate(`/sales-orders/${row.orderId}?tab=shipments`);
+        return;
+      }
+
+      advancingOrderIds.current.add(row.orderId);
+      forceUpdate();
+
+      void advanceCoreShipmentStage(row.orderId).then(() => {
+        advancingOrderIds.current.delete(row.orderId);
+        onRefresh();
+      }).catch(() => {
+        advancingOrderIds.current.delete(row.orderId);
+        forceUpdate();
+      });
+    };
+
+    return (
+      <span className="sales-order-list-page__shipment-stage-cell">
+        {badge}
+        <button
+          type="button"
+          className="sales-order-list-page__advance-stage-btn"
+          onClick={handleClick}
+          disabled={isAdvancing}
+          aria-label={buttonLabel}
+        >
+          {buttonLabel}
+        </button>
+      </span>
+    );
+  };
 }
 
 function renderPaymentStatusBadgeCell(row: SalesOrderRow) {
@@ -103,6 +153,8 @@ export function SalesOrderListPage() {
   const [activeTabLabel, setActiveTabLabel] = useState<string | null>(null);
   const [activeTabKey, setActiveTabKey] = useState<string | null>(null);
   const [purchaseStageFilter, setPurchaseStageFilter] = useState<SourcingPurchaseStageFilter>('all');
+  const [, setAdvanceCount] = useState(0);
+  const advancingOrderIds = useRef<Set<string>>(new Set());
 
   void ensureLoaded();
 
@@ -160,6 +212,13 @@ export function SalesOrderListPage() {
         : { key, direction: 'ascending' },
     ), []);
 
+  const forceUpdate = useCallback(() => setAdvanceCount((c) => c + 1), []);
+
+  const renderShipmentStageCell = useMemo(
+    () => createShipmentStageCellRenderer(navigate, () => void refresh(), advancingOrderIds, forceUpdate),
+    [navigate, refresh, forceUpdate],
+  );
+
   const columns: readonly DataTableColumn<SalesOrderRow>[] = useMemo(() => {
     const isAllTab = activeTabLabel === null;
     return SALES_ORDER_LIST_COLUMNS
@@ -213,7 +272,7 @@ export function SalesOrderListPage() {
           cellAlignment: column.cellAlignment,
         };
       });
-  }, [activeTabLabel, isSourcingTab, isAwaitingShippingTab, sort, changeSort]);
+  }, [activeTabLabel, isSourcingTab, isAwaitingShippingTab, sort, changeSort, renderShipmentStageCell]);
 
   const isLoading = loading || items === undefined;
   const isEmpty = !isLoading && error === undefined && filteredRows.length === 0;

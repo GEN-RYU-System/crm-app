@@ -43,6 +43,7 @@ interface GoogleScriptRun {
   upsertCorePurchaseForFrontend(sessionId: string | null, payload: unknown): void;
   getCorePurchaseStatusOptionsForFrontend(sessionId: string | null): void;
   upsertCoreShipmentForFrontend(sessionId: string | null, payload: unknown): void;
+  advanceCoreShipmentStageForFrontend(_s: string | null, _orderId: string): void;
   checkSyncSignals(sessionId: string | null): void;
   getLeadFormOptions(sessionId: string | null): void;
   getCoreIssuerForFrontend(sessionId: string | null): void;

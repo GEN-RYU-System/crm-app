@@ -1090,3 +1090,18 @@ export function upsertCoreShipment(payload: UpsertShipmentPayload): Promise<Upse
       .upsertCoreShipmentForFrontend(getStoredSessionId(), payload);
   });
 }
+
+export type AdvanceShipmentResult =
+  | { success: true; newStage: string; needsInput?: true }
+  | { success: false; error: string };
+
+export function advanceCoreShipmentStage(orderId: string): Promise<AdvanceShipmentResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as AdvanceShipmentResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .advanceCoreShipmentStageForFrontend(getStoredSessionId(), orderId);
+  });
+}

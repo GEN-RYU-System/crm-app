@@ -25,6 +25,12 @@
 .sales-order-list-page__purchase-stage-btn { display: block; width: 100%; padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-button); border: none; background: transparent; cursor: pointer; text-align: left; font-size: var(--font-sm); color: var(--color-text-muted); transition: background 0.1s; }
 .sales-order-list-page__purchase-stage-btn:hover { background: var(--color-tab-surface-hover); color: var(--color-tab-text-active); }
 .sales-order-list-page__purchase-stage-btn--active { background: var(--color-tab-surface-active); color: var(--color-tab-text-active); font-weight: var(--font-weight-semibold); }
+/* 発送段階セル: バッジ + 進捗ボタン */
+.sales-order-list-page__shipment-stage-cell { display: inline-flex; align-items: center; gap: var(--space-xs); }
+.sales-order-list-page__advance-stage-btn { padding: 0 var(--space-xs); border-radius: var(--radius-button); border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-primary); font-size: var(--font-xs); cursor: pointer; white-space: nowrap; transition: background 0.1s, opacity 0.1s; }
+.sales-order-list-page__advance-stage-btn:hover:not(:disabled) { background: var(--color-tab-surface-hover); }
+.sales-order-list-page__advance-stage-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 @media (max-width: 767px) {
   .sales-order-list-page__layout { flex-direction: column; }
   .sales-order-list-page__sidebar { position: static; max-height: none; overflow-y: visible; width: 100%; }
