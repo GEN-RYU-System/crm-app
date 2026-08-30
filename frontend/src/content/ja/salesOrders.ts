@@ -46,13 +46,20 @@ export const salesOrdersCopy = {
   purchaseStageLabel:      '仕入れ段階',
   /** 発送待ちタブの発送段階 */
   shipmentStageLabel: {
-    PREPARING:       '梱包準備中',
+    PREPARING:       '検品待ち',
     LABELING:        'ラベル貼付待ち',
     AWAITING_PICKUP: '集荷待ち',
     SHIPPED:         '発送済み',
     DONE:            '完了',
     NOT_STARTED:     '未着手',
   },
+  /** 発送待ちタブの段階進捗ボタン文言 */
+  advanceStageButton: {
+    PREPARING:       '検品完了',
+    LABELING:        '入力へ',
+    AWAITING_PICKUP: '集荷依頼済み',
+    SHIPPED:         '通知済み',
+  } as Record<string, string>,
   labelShippingCountry: '発送先の国',
   labelShipmentStage:   '発送段階',
   columns: {

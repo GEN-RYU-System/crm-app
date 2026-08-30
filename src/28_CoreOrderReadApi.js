@@ -440,26 +440,32 @@ function buildShipmentStageByOrder_(ss) {
   });
 
   // ヘッダー名を Registry から解決する
+  // PACKING・STORAGE は段階判定に使用しない（検品完了後、梱包とラベル手配は並行して進むため）
   var orderIdHeader      = getCoreSchemaV1HeaderName('SHIPMENTS', 'ORDER_ID');
   var inspectionHeader   = getCoreSchemaV1HeaderName('SHIPMENTS', 'INSPECTION');
-  var packingHeader      = getCoreSchemaV1HeaderName('SHIPMENTS', 'PACKING');
   var trackingHeader     = getCoreSchemaV1HeaderName('SHIPMENTS', 'TRACKING_NUMBER');
   var pickupHeader       = getCoreSchemaV1HeaderName('SHIPMENTS', 'PICKUP_REQUEST');
   var notificationHeader = getCoreSchemaV1HeaderName('SHIPMENTS', 'NOTIFICATION');
 
   var orderIdIdx      = headerToIdx[orderIdHeader];
   var inspectionIdx   = headerToIdx[inspectionHeader];
-  var packingIdx      = headerToIdx[packingHeader];
   var trackingIdx     = headerToIdx[trackingHeader];
   var pickupIdx       = headerToIdx[pickupHeader];
   var notificationIdx = headerToIdx[notificationHeader];
 
   var STAGE_PRIORITY = ['NOT_STARTED', 'PREPARING', 'LABELING', 'AWAITING_PICKUP', 'SHIPPED', 'DONE'];
 
-  /** 発送行1行の段階を返す */
+  /**
+   * 発送行1行の段階を返す。
+   * NOT_STARTED  : （行なし — 呼び出し元で処理）
+   * PREPARING    : INSPECTION が空
+   * LABELING     : INSPECTION あり、TRACKING_NUMBER が空
+   * AWAITING_PICKUP : TRACKING_NUMBER あり、PICKUP_REQUEST が空
+   * SHIPPED      : PICKUP_REQUEST あり、NOTIFICATION が空
+   * DONE         : NOTIFICATION あり
+   */
   function resolveRowStage(row) {
     var inspection   = String(row[inspectionIdx]   || '').trim();
-    var packing      = String(row[packingIdx]      || '').trim();
     var tracking     = String(row[trackingIdx]     || '').trim();
     var pickup       = String(row[pickupIdx]       || '').trim();
     var notification = String(row[notificationIdx] || '').trim();
@@ -467,7 +473,7 @@ function buildShipmentStageByOrder_(ss) {
     if (notification) return 'DONE';
     if (pickup)       return 'SHIPPED';
     if (tracking)     return 'AWAITING_PICKUP';
-    if (inspection && packing) return 'LABELING';
+    if (inspection)   return 'LABELING';
     return 'PREPARING';
   }
 

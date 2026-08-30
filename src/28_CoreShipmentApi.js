@@ -6,6 +6,7 @@
  *
  * Public functions:
  *   upsertCoreShipmentForFrontend(sessionId, payload)
+ *   advanceCoreShipmentStageForFrontend(sessionId, orderId)
  * Permission key:
  *   write: deal_edit
  */
@@ -143,6 +144,155 @@ function upsertCoreShipmentForFrontend(sessionId, payload) {
   recalculateOrderStatusById(orderId);
 
   return { success: true, shipmentId: resultShipmentId };
+}
+
+/**
+ * 発送段階を1ステップ前進させる。
+ *
+ * 段階判定ルール（PACKING・STORAGE は使用しない）:
+ *   PREPARING    : INSPECTION が空
+ *   LABELING     : INSPECTION あり、TRACKING_NUMBER が空
+ *   AWAITING_PICKUP : TRACKING_NUMBER あり、PICKUP_REQUEST が空
+ *   SHIPPED      : PICKUP_REQUEST あり、NOTIFICATION が空
+ *   DONE         : NOTIFICATION あり
+ *
+ * @param {string} sessionId
+ * @param {string} orderId
+ * @returns {{ success: true, newStage: string, needsInput?: true }
+ *           | { success: false, error: string }}
+ */
+function advanceCoreShipmentStageForFrontend(sessionId, orderId) {
+  setEmailFromSession(sessionId);
+  checkPermission('deal_edit');
+
+  orderId = String(orderId || '').trim();
+  if (!orderId) throw new Error('MISSING_ORDER_ID');
+
+  // ヘッダー名を Registry から取得
+  var orderIdHeader      = getCoreSchemaV1HeaderName('SHIPMENTS', 'ORDER_ID');
+  var inspectionHeader   = getCoreSchemaV1HeaderName('SHIPMENTS', 'INSPECTION');
+  var trackingHeader     = getCoreSchemaV1HeaderName('SHIPMENTS', 'TRACKING_NUMBER');
+  var pickupHeader       = getCoreSchemaV1HeaderName('SHIPMENTS', 'PICKUP_REQUEST');
+  var notificationHeader = getCoreSchemaV1HeaderName('SHIPMENTS', 'NOTIFICATION');
+  var updatedAtHeader    = getCoreSchemaV1HeaderName('SHIPMENTS', 'UPDATED_AT');
+
+  var STAGE_PRIORITY = ['NOT_STARTED', 'PREPARING', 'LABELING', 'AWAITING_PICKUP', 'SHIPPED', 'DONE'];
+
+  /** 発送行1行の段階と対象列インデックスを返す */
+  function resolveRowStageAndTarget(row, hi) {
+    var inspection   = String(row[hi[inspectionHeader]   - 1] || '').trim();
+    var tracking     = String(row[hi[trackingHeader]     - 1] || '').trim();
+    var pickup       = String(row[hi[pickupHeader]       - 1] || '').trim();
+    var notification = String(row[hi[notificationHeader] - 1] || '').trim();
+
+    if (notification) return { stage: 'DONE',            writeHeader: null };
+    if (pickup)       return { stage: 'SHIPPED',         writeHeader: notificationHeader };
+    if (tracking)     return { stage: 'AWAITING_PICKUP', writeHeader: pickupHeader };
+    if (inspection)   return { stage: 'LABELING',        writeHeader: trackingHeader };
+    return           { stage: 'PREPARING',               writeHeader: inspectionHeader };
+  }
+
+  var result = withSheetWrite_(
+    { useLock: true, cacheTargets: [{ indexKey: 'CORE_ORDERS_CACHE_INDEX_V4', prefix: 'CORE_ORDERS_CACHE_V4_' }] },
+    function() {
+      var ss = getSpreadsheet();
+      var validated = validateCoreSchemaV1TableForWrite(ss, 'SHIPMENTS');
+      var sheet = validated.sheet;
+      var hi    = validated.headerIndexes; // 1-indexed
+
+      var pkPhysical = getCoreSchemaV1HeaderName('SHIPMENTS', 'SHIPMENT_ID');
+      var orderIdColIdx = hi[orderIdHeader];
+      if (!orderIdColIdx) throw new Error('ORDER_ID column not found in SHIPMENTS');
+
+      var lastRow = sheet.getLastRow();
+      if (lastRow < 2) {
+        return { success: false, error: 'No shipment rows' };
+      }
+
+      // ORDER_ID 列を全件読み、対象行インデックスを収集
+      var orderIdValues = sheet.getRange(2, orderIdColIdx, lastRow - 1, 1).getValues();
+      var targetRowIndexes = [];
+      for (var i = 0; i < orderIdValues.length; i++) {
+        if (String(orderIdValues[i][0] || '').trim() === orderId) {
+          targetRowIndexes.push(i + 2); // 1-indexed シート行番号
+        }
+      }
+
+      if (targetRowIndexes.length === 0) {
+        return { success: false, error: 'No shipment rows' };
+      }
+
+      // 全列を読み、段階を判定
+      var lastCol = sheet.getLastColumn();
+      var allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+      var minStageIdx = STAGE_PRIORITY.length - 1;
+      var minSheetRow = -1;
+
+      for (var j = 0; j < targetRowIndexes.length; j++) {
+        var sheetRow = targetRowIndexes[j];
+        var rowData  = allData[sheetRow - 2];
+        var stageResult = resolveRowStageAndTarget(rowData, hi);
+        var stageIdx = STAGE_PRIORITY.indexOf(stageResult.stage);
+        if (stageIdx < minStageIdx) {
+          minStageIdx = stageIdx;
+          minSheetRow = sheetRow;
+        }
+      }
+
+      var currentStage = STAGE_PRIORITY[minStageIdx];
+
+      if (currentStage === 'DONE') {
+        return { success: false, error: 'Already DONE' };
+      }
+      if (currentStage === 'NOT_STARTED') {
+        return { success: false, error: 'No shipment rows' };
+      }
+
+      // LABELING は入力が必要（TRACKING_NUMBER はユーザー入力）
+      if (currentStage === 'LABELING') {
+        return { success: true, needsInput: true, newStage: 'LABELING' };
+      }
+
+      // 書き込み対象行の段階を再取得
+      var minRowData    = allData[minSheetRow - 2];
+      var minStageInfo  = resolveRowStageAndTarget(minRowData, hi);
+      var writeHeader   = minStageInfo.writeHeader;
+
+      if (!writeHeader) {
+        return { success: false, error: 'No writable field for stage: ' + currentStage };
+      }
+
+      var writeColIdx = hi[writeHeader];
+      if (!writeColIdx) {
+        throw new Error('Column not found: ' + writeHeader);
+      }
+
+      // INSPECTION / PICKUP_REQUEST / NOTIFICATION に 'TRUE' を書き込む
+      sheet.getRange(minSheetRow, writeColIdx).setValue('TRUE');
+
+      // UPDATED_AT を更新
+      var updatedAtColIdx = hi[updatedAtHeader];
+      if (updatedAtColIdx) {
+        sheet.getRange(minSheetRow, updatedAtColIdx).setValue(new Date());
+      }
+
+      var nextStage;
+      if (currentStage === 'PREPARING')       nextStage = 'LABELING';
+      else if (currentStage === 'AWAITING_PICKUP') nextStage = 'SHIPPED';
+      else if (currentStage === 'SHIPPED')    nextStage = 'DONE';
+      else nextStage = currentStage;
+
+      return { success: true, newStage: nextStage };
+    }
+  );
+
+  if (result.success && !result.needsInput) {
+    // ロック解放後にオーダーステータスを再計算
+    recalculateOrderStatusById(orderId);
+  }
+
+  return result;
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────

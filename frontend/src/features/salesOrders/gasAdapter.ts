@@ -1,4 +1,6 @@
 import type { OrderRecord } from '../../gas/client';
+export { advanceCoreShipmentStage } from '../../gas/client';
+export type { AdvanceShipmentResult } from '../../gas/client';
 
 export type SalesOrderRow = {
   orderId: string;
