@@ -378,7 +378,10 @@ export function SalesOrderListPage() {
                 columns={columns}
                 rows={filteredRows as SalesOrderRow[]}
                 rowKey={(row) => row.orderId}
-                onRowClick={(row) => navigate(`/sales-orders/${row.orderId}?tab=purchases`)}
+                onRowClick={(row) => {
+                  const tab = isAwaitingShippingTab ? 'shipments' : isSourcingTab ? 'purchases' : 'billing';
+                  navigate(`/sales-orders/${row.orderId}?tab=${tab}`);
+                }}
                 surface="embedded"
                 stickyHeader
               />
