@@ -555,6 +555,8 @@ export type OrderDetailRecord = {
     HEIGHT: string | number;
     WEIGHT: string | number;
     ESTIMATED_SHIPPING_FEE: string | number;
+    LABEL_URL: string;
+    INVOICE_URL: string;
     INSPECTION: string;
     PACKING: string;
     STORAGE: string;
@@ -1088,6 +1090,25 @@ export function upsertCoreShipment(payload: UpsertShipmentPayload): Promise<Upse
       .withSuccessHandler((value: unknown) => resolve(value as UpsertShipmentResult))
       .withFailureHandler((error: unknown) => reject(toError(error)))
       .upsertCoreShipmentForFrontend(getStoredSessionId(), payload);
+  });
+}
+
+export type UploadShipmentFilePayload = {
+  shipmentId: string;
+  fileType: 'label' | 'invoice';
+  fileBase64: string;
+};
+
+export type UploadShipmentFileResult = { success: true; url: string };
+
+export function uploadCoreShipmentFile(payload: UploadShipmentFilePayload): Promise<UploadShipmentFileResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as UploadShipmentFileResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .uploadCoreShipmentFileForFrontend(getStoredSessionId(), payload);
   });
 }
 
