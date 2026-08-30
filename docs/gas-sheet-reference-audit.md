@@ -288,11 +288,11 @@ PO はスプレッドシートのシートタブを確認し、「実在する�
 |---------|---------|-------------------|-------------------|
 | M_Zones | ERP_CONFIG.SHEETS.ZONES（GID: 833993881） | src/見積もりページ.js | 　 |
 | FedEx_ShippingRates | ERP_CONFIG.SHEETS.SHIPPING_FEDEX（GID: 264167304） | src/見積もりページ.js | 　 |
-| DHL_ShippingRates | ERP_CONFIG.SHEETS.SHIPPING_DHL（GID: 1214726714） | src/見積もりページ.js | 　 |
+| DHL_ShippingRates | ERP_CONFIG.SHEETS.SHIPPING_DHL（GID: [省略]） | src/見積もりページ.js | 　 |
 | UPS_ShippingRates | ERP_CONFIG.SHEETS.SHIPPING_UPS（GID: 1195813452） | src/見積もりページ.js | 　 |
 | 📋仕入れリスト | ERP_CONFIG.SHEETS.PURCHASE_LIST（GID: 1123262060） | src/仕入れ転記.js | 　 |
 | M_商品 | ERP_CONFIG.SHEETS.PRODUCT_MASTER（GID: 548021217） | src/仕入れ転記.js | 　 |
-| 📝請求書作成 | ERP_CONFIG.SHEETS.INVOICE_INPUT（GID: 1761617187） | src/請求書発行.js / CONFIG.SHEETS.INVOICE_INPUT（現行系も参照） | 　 |
+| 📝請求書作成 | ERP_CONFIG.SHEETS.INVOICE_INPUT（GID: [省略]） | src/請求書発行.js / CONFIG.SHEETS.INVOICE_INPUT（現行系も参照） | 　 |
 | フォーマット | ERP_CONFIG.SHEETS.INVOICE_TEMPLATE（GID: 74688869） | src/請求書発行.js / CONFIG.SHEETS.INVOICE_TEMPLATE（現行系も参照） | 　 |
 | 📊売上データ | 複数（ERP_CONFIG.SHEETS.SALES_DATA / CONFIG.SHEETS.SALES_DATA / GID: 600397303） | src/発送通知.js / src/elogiCSV出力.js / 現行ファイル多数 | 　 |
 | CRM | getSheetByName('CRM') 文字列リテラル | src/発送通知.js | 　 |
