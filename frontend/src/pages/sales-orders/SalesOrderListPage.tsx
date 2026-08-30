@@ -8,12 +8,17 @@ import { toSalesOrderRow, type SalesOrderRow } from '../../features/salesOrders/
 import type { SalesOrderTab } from '../../features/salesOrders/contracts';
 import {
   filterSalesOrderRows,
+  filterSalesOrderRowsByPurchaseStage,
   filterSalesOrderRowsByTab,
   PAYMENT_DUE_WARNING_DAYS,
   SALES_ORDER_LIST_COLUMNS,
   SALES_ORDER_LIST_INITIAL_SORT,
+  SOURCING_PURCHASE_STAGE_BADGE,
+  SOURCING_PURCHASE_STAGE_FILTER_OPTIONS,
+  SOURCING_STATUS_KEY,
   sortSalesOrderRows,
   type SalesOrderSort,
+  type SourcingPurchaseStageFilter,
 } from './salesOrderListConfig';
 import { useSalesOrderListCache } from './SalesOrderListCacheContext';
 import './SalesOrderListPage.css';
@@ -67,14 +72,25 @@ function renderPaymentDueAtCell(row: SalesOrderRow) {
   );
 }
 
+function renderPurchaseStatusCell(row: SalesOrderRow) {
+  const key = row.purchaseStatus === '' ? 'NOT_ORDERED' : row.purchaseStatus;
+  const config = SOURCING_PURCHASE_STAGE_BADGE[key];
+  if (!config) return '-';
+  return <Badge variant={config.variant}>{config.label}</Badge>;
+}
+
 export function SalesOrderListPage() {
   const navigate = useNavigate();
   const { items, statusOptions, error, loading, refreshing, ensureLoaded, refresh, retry } = useSalesOrderListCache();
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SalesOrderSort>(SALES_ORDER_LIST_INITIAL_SORT);
   const [activeTabLabel, setActiveTabLabel] = useState<string | null>(null);
+  const [activeTabKey, setActiveTabKey] = useState<string | null>(null);
+  const [purchaseStageFilter, setPurchaseStageFilter] = useState<SourcingPurchaseStageFilter>('all');
 
   void ensureLoaded();
+
+  const isSourcingTab = activeTabKey === SOURCING_STATUS_KEY;
 
   const records = items ?? [];
 
@@ -88,9 +104,14 @@ export function SalesOrderListPage() {
     [allRows, activeTabLabel],
   );
 
+  const purchaseStageFilteredRows = useMemo(
+    () => isSourcingTab ? filterSalesOrderRowsByPurchaseStage(tabFilteredRows, purchaseStageFilter) : tabFilteredRows,
+    [tabFilteredRows, purchaseStageFilter, isSourcingTab],
+  );
+
   const filteredRows = useMemo(
-    () => filterSalesOrderRows(tabFilteredRows, query),
-    [tabFilteredRows, query],
+    () => filterSalesOrderRows(purchaseStageFilteredRows, query),
+    [purchaseStageFilteredRows, query],
   );
 
   const tabs: SalesOrderTab[] = useMemo(() => {
@@ -103,6 +124,17 @@ export function SalesOrderListPage() {
     }));
     return [all, ...rest];
   }, [allRows, statusOptions]);
+
+  const handleTabClick = useCallback((tab: SalesOrderTab) => {
+    if (tab.key === 'all') {
+      setActiveTabLabel(null);
+      setActiveTabKey(null);
+    } else {
+      setActiveTabLabel(tab.label);
+      setActiveTabKey(tab.key);
+    }
+    setPurchaseStageFilter('all');
+  }, []);
 
   const changeSort = useCallback((key: SalesOrderSort['key']) =>
     setSort((prev) =>
@@ -117,6 +149,8 @@ export function SalesOrderListPage() {
       .filter((column) => {
         // hide status column on non-"all" tabs
         if (column.key === 'status') return isAllTab;
+        // show purchaseStatus column only on the SOURCING tab
+        if (column.key === 'purchaseStatus') return isSourcingTab;
         return true;
       })
       .map((column) => {
@@ -142,7 +176,9 @@ export function SalesOrderListPage() {
                 }
               : column.key === 'paymentDueAt'
                 ? renderPaymentDueAtCell
-                : (row: SalesOrderRow) => row[column.key],
+                : column.key === 'purchaseStatus'
+                  ? renderPurchaseStatusCell
+                  : (row: SalesOrderRow) => String(row[column.key]),
           ...(isSortable
             ? {
                 ariaSort,
@@ -154,7 +190,7 @@ export function SalesOrderListPage() {
           cellAlignment: column.cellAlignment,
         };
       });
-  }, [activeTabLabel, sort, changeSort]);
+  }, [activeTabLabel, isSourcingTab, sort, changeSort]);
 
   const isLoading = loading || items === undefined;
   const isEmpty = !isLoading && error === undefined && filteredRows.length === 0;
@@ -189,7 +225,7 @@ export function SalesOrderListPage() {
                 key={tab.key}
                 type="button"
                 className={`sales-order-list-page__tab${activeTabLabel === (tab.key === 'all' ? null : tab.label) ? ' sales-order-list-page__tab--active' : ''}`}
-                onClick={() => setActiveTabLabel(tab.key === 'all' ? null : tab.label)}
+                onClick={() => handleTabClick(tab)}
                 aria-current={activeTabLabel === (tab.key === 'all' ? null : tab.label) ? 'true' : undefined}
               >
                 <span>{tab.label}</span>
@@ -197,6 +233,24 @@ export function SalesOrderListPage() {
               </button>
             ))}
           </div>
+          {isSourcingTab && (
+            <div className="sales-order-list-page__purchase-stage-filter">
+              <span className="sales-order-list-page__purchase-stage-filter-label">{salesOrdersCopy.purchaseStageLabel}</span>
+              <div className="sales-order-list-page__purchase-stage-filter-buttons">
+                {SOURCING_PURCHASE_STAGE_FILTER_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    className={`sales-order-list-page__purchase-stage-btn${purchaseStageFilter === opt.key ? ' sales-order-list-page__purchase-stage-btn--active' : ''}`}
+                    onClick={() => setPurchaseStageFilter(opt.key as SourcingPurchaseStageFilter)}
+                    aria-pressed={purchaseStageFilter === opt.key}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </nav>
         <div className="sales-order-list-page__main">
           <Card className="sales-order-list-page__data-card">
