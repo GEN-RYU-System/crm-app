@@ -50,6 +50,67 @@ git revert b479088d65f21fe21ecaa9b6d907514a1fc308eb
 
 ---
 
+## feat: 仕入れ中タブに仕入れ段階バッジと絞り込みを追加 — PR #667
+
+**日付:** 2026-08-30  
+**PR:** [#667](https://github.com/GEN-RYU-System/crm-app/pull/667)  
+**マージコミットSHA:** `1092d80a1cbacdf6ae2bc23cd01d12f7cd5d2d5d`  
+**mergedAt:** `2026-08-30T07:47:58Z`
+
+### 変更前の状態
+
+- `src/28_CoreOrderReadApi.js` L6–7: キャッシュバージョン V3、`purchaseCount`/`purchaseStatus` フィールドなし  
+- `frontend/src/gas/client.ts` L413–426: `OrderRecord` 型に `purchaseCount`/`purchaseStatus` なし  
+- `frontend/src/features/salesOrders/gasAdapter.ts` L3–16: `SalesOrderRow` 型に `purchaseCount`/`purchaseStatus` なし  
+- `frontend/src/pages/sales-orders/salesOrderListConfig.ts`: `SOURCING_STATUS_KEY` / バッジ設定 / フィルタ選択肢なし  
+- `frontend/src/pages/sales-orders/SalesOrderListPage.tsx`: 仕入れ段階フィルタUIなし
+
+### 変更内容
+
+**GAS (`src/28_CoreOrderReadApi.js`)**
+- キャッシュバージョン V3 → V4（フィールド追加によるキャッシュ再構築）
+- `getCoreOrdersForFrontend` / `getCoreOrdersBatchForFrontend` に `purchaseCount`（仕入れ行件数）と `purchaseStatus`（最も遅い段階のキー）を追加
+- `buildPurchaseStatusByOrder_()`: PURCHASES シートを1回バッチ読み込みし ORDER_ID → ステータス値[] マップを構築
+- `resolvePurchaseStage_()`: NOT_ORDERED < ORDERED < CONFIRMED < PAID 優先度で最小段階キーを返す
+
+**フロント**
+- `OrderRecord` に `purchaseCount?` / `purchaseStatus?` を追加（optional）
+- `SalesOrderRow` に `purchaseCount` / `purchaseStatus` を追加
+- `salesOrders.ts` に仕入れ段階フィルタ用コピー文字列を追加
+- `salesOrderListConfig.ts`: `SOURCING_STATUS_KEY` / `SOURCING_PURCHASE_STAGE_BADGE` / `SOURCING_PURCHASE_STAGE_FILTER_OPTIONS` / `filterSalesOrderRowsByPurchaseStage` を追加
+- `SalesOrderListPage.tsx`: `activeTabKey` 状態、仕入れ段階バッジ列（SOURCING タブのみ）、絞り込みUI（すべて/未発注/確認中）を追加
+- `SalesOrderListPage.css`: 仕入れ段階フィルタのスタイルを追加
+
+### 変更理由
+
+受注一覧「仕入れ中」タブで仕入れの進み具合を視覚的に把握できなかったため。仕入れ行が0件か NOT_ORDERED の場合は「未発注」（neutral）、ORDERED は「確認中」（warning）バッジを表示し、絞り込みも可能にした。
+
+### 検証結果
+
+| 項目 | 結果 |
+|---|---|
+| `npm run build:gas`（typecheck + build + emit-gas-html + check:design-system） | **通過** |
+| CI: Gitleaks | **pass** |
+| CI: Sensitive Content | **pass** |
+| CI: frontend-check | **pass** |
+| CI: gas-global-namespace | **pass** |
+| `?preview`: 仕入れ中タブ → 仕入れ段階フィルタ（すべて/未発注/確認中）表示 | **確認済み** |
+| `?preview`: すべてタブ → フィルタ非表示・テーブル正常 | **確認済み** |
+| `?preview`: 詳細ページ白画面なし | **確認済み** |
+| `?preview`: 仕入れ中タブのバッジ表示 | **【未確認】** preview に SOURCING 行が0件 |
+| Deploy to DEV | **success** |
+| `getDeployedSha` ↔ `origin/develop HEAD` 一致 | **一致**（`1092d80a...`） |
+| `dryRunOrderStatusRecalculation`: 変更あり件数 | **0件**（総12件） |
+| `runCoreSchemaConformanceAudit`: ORDERS 不一致 | **0件** ✓ |
+
+### 戻し方
+
+```
+git revert 1092d80a1cbacdf6ae2bc23cd01d12f7cd5d2d5d
+```
+
+---
+
 ## feat(gas): 発送待ち判定を CONFIRMED または PAID に変更 — PR #665
 
 **日付:** 2026-08-30  
