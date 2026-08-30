@@ -237,7 +237,7 @@ export function SalesOrderListPage() {
                 columns={columns}
                 rows={filteredRows as SalesOrderRow[]}
                 rowKey={(row) => row.orderId}
-                onRowClick={(row) => navigate(`/sales-orders/${row.orderId}`)}
+                onRowClick={(row) => navigate(`/sales-orders/${row.orderId}?tab=purchases`)}
                 surface="embedded"
                 stickyHeader
               />

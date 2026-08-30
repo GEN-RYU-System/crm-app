@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { Button, DataTable, EmptyState, StatusMessage, Tabs } from '../../components/ui';
@@ -112,8 +112,16 @@ const EMPTY_PURCHASE_FORM: UpsertPurchasePayload = {
   note: '',
 };
 
+const VALID_TABS: ReadonlySet<string> = new Set<DetailTab>(['billing', 'purchases', 'shipments']);
+
+function resolveInitialTab(tabParam: string | null): DetailTab {
+  if (tabParam !== null && VALID_TABS.has(tabParam)) return tabParam as DetailTab;
+  return 'billing';
+}
+
 export function SalesOrderDetailPage() {
   const { orderId } = useParams<{ orderId: string }>();
+  const [searchParams] = useSearchParams();
 
   // confirm payment state
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -128,8 +136,8 @@ export function SalesOrderDetailPage() {
   const [purchaseFormError, setPurchaseFormError] = useState<string | undefined>(undefined);
   const [purchaseStatusOptions, setPurchaseStatusOptions] = useState<readonly PurchaseStatusOption[]>([]);
 
-  // tab state
-  const [activeTab, setActiveTab] = useState<DetailTab>('billing');
+  // tab state: initialise from ?tab= query param; invalid/missing → 'billing'
+  const [activeTab, setActiveTab] = useState<DetailTab>(() => resolveInitialTab(searchParams.get('tab')));
 
   const { refresh } = useSalesOrderListCache();
   const { recordsByOrderId, errorsByOrderId, ensureLoaded, refresh: refreshDetail } = useSalesOrderDetailCache();
