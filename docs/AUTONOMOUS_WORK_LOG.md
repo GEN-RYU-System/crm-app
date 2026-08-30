@@ -2,6 +2,83 @@
 
 ---
 
+## feat(gas): 発送 upsert API 新設・詳細取得列を拡張 — PR #676
+
+**日付:** 2026-08-30
+**PR:** [#676](https://github.com/GEN-RYU-System/crm-app/pull/676)
+**マージコミットSHA:** `65cf58653f7677ffcd914561cf4560e79de8ae03`
+**mergedAt:** `2026-08-30T11:14:24Z`
+
+### 変更前の状態
+
+- `src/28_CoreShipmentApi.js`: 存在しない（発送書き込み API なし）
+- `src/28_CoreOrderReadApi.js` L324–327: `shipmentFields` が
+  `SHIPMENT_ID / ORDER_ID / BOX_NUMBER / SHIPPING_METHOD / SHIPPED_AT /
+  TRACKING_NUMBER / WEIGHT / PICKUP_REQUEST / NOTE` の9列のみ
+  （INSPECTION / PACKING / STORAGE / NOTIFICATION / LENGTH / WIDTH /
+  HEIGHT / ESTIMATED_SHIPPING_FEE / SHIPPING_ASSIGNEE_ID 未取得）
+
+### 変更内容
+
+**`src/28_CoreShipmentApi.js`（新規）**
+- `upsertCoreShipmentForFrontend(sessionId, payload)` を実装
+  - 権限: `deal_edit`
+  - 採番: `SH-####`（4桁）、既存最大値+1
+  - フラグ5列（INSPECTION / PACKING / STORAGE / PICKUP_REQUEST / NOTIFICATION）は `'TRUE'` / `''` の二値
+  - `SHIPPING_ASSIGNEE_ID` はセッションから自動セット
+  - 書き込み後に `recalculateOrderStatusById` を呼び完了判定を即時更新
+  - `LockService` + `withSheetWrite_` 使用
+  - 日本語列名の直書きなし（`getCoreSchemaV1HeaderName` 経由）
+- 内部ヘルパー: `coreShipmentWriteGenerateNextId_` / `coreShipmentWriteValue_` /
+  `coreShipmentWriteNumeric_` / `coreShipmentWriteFlag_`
+
+**`src/28_CoreOrderReadApi.js`**
+- `shipmentFields` に `LENGTH / WIDTH / HEIGHT / ESTIMATED_SHIPPING_FEE /
+  INSPECTION / PACKING / STORAGE / NOTIFICATION / SHIPPING_ASSIGNEE_ID` を追加
+  （詳細ページで全項目を取得できるようにした）
+
+### 変更理由
+
+発送情報の登録フォームを次スプリントで実装するための GAS API が必要だった。
+仕入れAPI（`28_CorePurchaseApi.js`）と同型で設計し、
+書き込み後の完了ステータス自動更新も同様に組み込んだ。
+
+### 書き込みテスト結果
+
+- テスト受注: `ORD-0004`（発送待ち → 完了への移行を確認）
+- 追加した発送行: `SH-0009`
+- 内容: `shippingMethod=FedEx / trackingNumber=TEST-TRK-0001 /
+  pickupRequest=TRUE / inspection=TRUE / packing=TRUE /
+  storage=TRUE / notification=TRUE`
+- `getCoreOrderDetailForFrontend('ORD-0004')` で SH-0009 が返ることを確認
+- `ORD-0004` の STATUS: **「発送待ち」→「完了」** に変化
+  （upsert 後 `recalculateOrderStatusById` が即時実行）
+- `dryRunOrderStatusRecalculation`: 0件（既に正しい状態に更新済み）
+
+### 検証結果
+
+| 項目 | 結果 |
+|---|---|
+| `npm run build:gas`（typecheck + build + check:design-system） | **通過** |
+| `node scripts/test-gas-global-namespace.js`（ローカル） | **PASS** |
+| CI: Gitleaks | **pass** |
+| CI: Sensitive Content | **pass** |
+| CI: frontend-check | **pass** |
+| CI: gas-global-namespace | **pass** |
+| Deploy to DEV | **success** |
+| `getDeployedSha` ↔ `origin/develop HEAD` 一致 | **一致**（`65cf5865...`） |
+| 書き込みテスト: SH-0009 追加・ORD-0004 完了遷移 | **確認済み** |
+| `runCoreSchemaConformanceAudit`: SHIPMENTS 不一致 | **0件** |
+| `runCoreSchemaConformanceAudit`: ORDERS 不一致 | **0件** |
+
+### 戻し方
+
+```
+git revert 65cf58653f7677ffcd914561cf4560e79de8ae03
+```
+
+---
+
 ## docs: GAS 新旧配線対応表の作成 — PR #669
 
 **日付:** 2026-08-30  
