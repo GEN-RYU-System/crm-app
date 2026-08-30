@@ -145,7 +145,7 @@
 | 関数名 | 行 | 操作 | 読み書きするシート名 | 読み書きする列（主要） |
 |-------|-----|-----|------------------|-------------------|
 | `getCountryList` | 4 | 読み取り | M_Zones（ERP_CONFIG.SHEETS.ZONES: GID 833993881） | 全列（getDataRange）、1列目（国名）のみ使用 |
-| `getLiveShippingEstimates` | 14 | 読み取り | M_Zones（GID 833993881）, FedEx_ShippingRates（GID 264167304）, DHL_ShippingRates（GID 1214726714）, UPS_ShippingRates（GID 1195813452） | M_Zones: 国名(col0), Zone名(col1), Carrier(col2); 各ShippingRates: Zone名(col1), MinWeight(col2), MaxWeight(col3), Price(col4) |
+| `getLiveShippingEstimates` | 14 | 読み取り | M_Zones（ERP_CONFIG.SHEETS.ZONES）, FedEx_ShippingRates（ERP_CONFIG.SHEETS.SHIPPING_FEDEX）, DHL_ShippingRates（ERP_CONFIG.SHEETS.SHIPPING_DHL）, UPS_ShippingRates（ERP_CONFIG.SHEETS.SHIPPING_UPS）※GID は src/Config.js:54-58 参照 | M_Zones: 国名(col0), Zone名(col1), Carrier(col2); 各ShippingRates: Zone名(col1), MinWeight(col2), MaxWeight(col3), Price(col4) |
 
 **旧独自処理**: なし（配送見積もり機能。新方式に同等機能の確認が必要）
 
@@ -341,8 +341,8 @@
 
 | 関数名 | 行 | 操作 | 読み書きするシート名 | 読み書きする列（主要） |
 |-------|-----|-----|------------------|-------------------|
-| `revertSalesToInput` | 8 | 読み取り + 書き込み | 📝請求書作成（GID 1761617187）, 📊売上データ（GID 600397303）, M_顧客（GID 884228295, mstSheet） | 📊売上データ: 4行目ヘッダー動的解決（取引状況請求書番号, 取引状況請求書リンク, 取引状況トラブル, 各取引状況列）; 📝請求書作成: I2-I5, J2 セル固定, A-D/F列クリア |
-| `transferAndGeneratePDF` | 146 | 読み取り + 書き込み + PDF出力 | 📝請求書作成（GID 1761617187）, 📊売上データ（GID 600397303）, M_顧客（GID 884228295）, フォーマット（GID 74688869）, ⚙️設定（GID 1159512127） | 📝請求書作成: I2-I5, J2 + 1行目 + 2-17行データ; 📊売上データ: 4行目ヘッダー動的解決（多数の列）; フォーマット: 21行目ヘッダー + 22行目以降データ + 合計欄; ⚙️設定: 1行目ヘッダー（状態, 内容品名, 単位, 通貨, レート, 為替表記, HTS, カテゴリ）|
+| `revertSalesToInput` | 8 | 読み取り + 書き込み | 📝請求書作成（ERP_CONFIG.SHEETS.INVOICE_INPUT）, 📊売上データ（ERP_CONFIG.SHEETS.SALES_DATA）, M_顧客（ERP_CONFIG.SHEETS.CUSTOMER_MASTER）※GID は src/Config.js:47-50 参照 | 📊売上データ: 4行目ヘッダー動的解決（取引状況請求書番号, 取引状況請求書リンク, 取引状況トラブル, 各取引状況列）; 📝請求書作成: I2-I5, J2 セル固定, A-D/F列クリア |
+| `transferAndGeneratePDF` | 146 | 読み取り + 書き込み + PDF出力 | 📝請求書作成（ERP_CONFIG.SHEETS.INVOICE_INPUT）, 📊売上データ（ERP_CONFIG.SHEETS.SALES_DATA）, M_顧客（ERP_CONFIG.SHEETS.CUSTOMER_MASTER）, フォーマット（ERP_CONFIG.SHEETS.INVOICE_TEMPLATE）, ⚙️設定（ERP_CONFIG.SHEETS.CONFIG）※GID は src/Config.js:41-50 参照 | 📝請求書作成: I2-I5, J2 + 1行目 + 2-17行データ; 📊売上データ: 4行目ヘッダー動的解決（多数の列）; フォーマット: 21行目ヘッダー + 22行目以降データ + 合計欄; ⚙️設定: 1行目ヘッダー（状態, 内容品名, 単位, 通貨, レート, 為替表記, HTS, カテゴリ）|
 | `setupTransferConfig` | 482 | 設定読み取り | 📝請求書作成, 📊売上データ, M_顧客, フォーマット, ⚙️設定（全シートをGIDで取得） | ヘッダー行の動的解決 |
 | `createInvoicePDF_Internal` | 564 | PDF生成 + Drive保存 | フォーマット（ERP_CONFIG.SHEETS.INVOICE_TEMPLATE: GID 74688869） | Drive フォルダ `CONFIG.DRIVE.INVOICE_FOLDER_ID` に PDF 保存 |
 
