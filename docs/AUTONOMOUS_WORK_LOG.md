@@ -4111,6 +4111,21 @@ GAS側の読み取り権限（`lead_view`）が分離されている設計上の
 - PR: #688 / squash SHA: `71c3891`
 - revert: `git revert 71c3891`
 
+## 2026-08-30 22シートの SQL 適合性調査
+
+- PR-1: #702 / squash SHA: `1bc146b8bb818425c152291145ad0b43d0a9ebd0` / mergedAt: `2026-08-30T15:19:29Z`
+  - `src/99_SqlReadinessCheck.js` 追加（読み取り専用。書き込み系 grep: 0件確認済み）
+- PR-2: #703 / squash SHA: `aeebe1e302289b918900a42a8d69dda212b77328` / mergedAt: `2026-08-30T15:31:05Z`
+  - `docs/sql-readiness-audit.md` 追加 / `docs/sheet-headers-snapshot.md` 更新（国マスタ 7→8 列反映・会話ログ等 4シートのヘッダー詳細追記）
+- 結果: 適合 8件 / 要整形 14件 / 【未確認】4件（#1〜#7 のうち #6 を PO 判断事項に昇格、残り全て解消）
+- LEADS 13列: Buddy専用 0 / 他機能も使用 13 / 未参照 0
+- PR-1 マージ後3点検証: getDeployedSha 一致 / 監査 総不一致 2件（ベースライン維持）/ dryRun 0件 → **pass**
+- PR-2 マージ後3点検証: getDeployedSha 一致 / 監査 総不一致 **3件**（ベースラインから+1: SHIPMENTS 差2列）/ dryRun 0件
+  - **外部要因**: SHIPMENTS（発送）に `ラベルURL` / `インボイスURL` の2列が別セッション（feat/shipment-stage-columns 等）によって追加されたため。本 PR の変更（読み取り専用関数・docs のみ）は原因でない。revert 対象外と判断。
+- revert（順序）: `git revert aeebe1e` → `git revert 1bc146b`
+
+---
+
 ## 2026-08-30 SQL 移行対象の確定と差分列の特定
 
 - PR: #694 / squash SHA: `a7dae459`
