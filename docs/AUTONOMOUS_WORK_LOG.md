@@ -2,6 +2,39 @@
 
 ---
 
+## docs: Buddyフィードバック/Buddyメンテナンスメニュー表示 Buddy専用判定に修正 — PR #716
+
+**日付:** 2026-08-31
+**PR:** [#716](https://github.com/GEN-RYU-System/crm-app/pull/716)
+**マージコミットSHA:** `f6a26888cb9717cc8aa7170ce8b156ef19fbb074`
+**mergedAt:** `2026-08-30T17:37:02Z`
+
+### 変更前の状態
+
+`docs/column-rename-plan.md` Section 11（Buddy廃止に伴う除外候補）にて、
+`Buddyフィードバック` と `Buddyメンテナンスメニュー表示` が「他機能も使用」と記録されていた。
+
+### 変更内容
+
+Section 14 を追加し、参照元コードを精読して判定を確定した。
+
+| 列名 | 修正前 | 修正後 | 根拠 |
+|------|-------|-------|------|
+| Buddyフィードバック | 他機能も使用 | Buddy専用 | `20_ReportService.js` 全体が Buddy 週次・月次レポート（Phase 6）の実装。L146=既存フィードバック保持、L164=空で初期化、L317=AI生成フィードバック書き込み。非 Buddy 系からの参照なし |
+| Buddyメンテナンスメニュー表示 | 他機能も使用 | Buddy専用 | `32_StaffService.js` L482/L570 で 5 メニューフラグの 1 つとして読み取り。列の業務的目的は Buddy メンテナンスメニューの表示制御のみ。`frontend/src/` からの参照なし（GAS 側 boolean を使用）|
+
+Section 11 集計（他機能も使用: 4列 → 2列）および Section 13 PO判断項目 7 を同時更新。
+
+### getDeployedSha 照合
+
+ドキュメントのみの変更のため照合不要。
+
+### Deploy to DEV conclusion
+
+success ✓
+
+---
+
 ## feat: 発送行のその場編集と、発送待ちタブの行クリック先修正 — PR #711
 
 **日付:** 2026-08-30
