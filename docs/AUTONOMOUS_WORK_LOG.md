@@ -2,6 +2,86 @@
 
 ---
 
+## feat: 発送タブにフォームと全項目表示を追加 — PR #681
+
+**日付:** 2026-08-30
+**PR:** [#681](https://github.com/GEN-RYU-System/crm-app/pull/681)
+**マージコミットSHA:** `d4d69cfa4fbdfd2cfb4c98035dec0cc0b0aaeb1c`
+**mergedAt:** `2026-08-30T11:49:57Z`
+
+### 変更前の状態
+
+- `frontend/src/pages/sales-orders/SalesOrderDetailPage.tsx` L450: 「発送情報を追加」ボタンに `disabled` が付いており押せない状態
+- 発送テーブルは3列（発送方法 / 発送日 / 運送状番号）
+- 行クリックに何も起きない
+- `client.ts` の `OrderDetailRecord.shipments` 型が8フィールドのみ（PR #676 で追加された9フィールドが未反映）
+- `upsertCoreShipment` 関数が存在しない
+
+### 変更内容（フロントエンドのみ・GAS変更なし）
+
+- `frontend/src/gas/client.ts`:
+  - `OrderDetailRecord.shipments` 型を18フィールドに拡張
+    （LENGTH / WIDTH / HEIGHT / ESTIMATED_SHIPPING_FEE / INSPECTION / PACKING /
+     STORAGE / NOTIFICATION / SHIPPING_ASSIGNEE_ID を追加）
+  - `UpsertShipmentPayload` 型・`UpsertShipmentResult` 型・`upsertCoreShipment` 関数を追加
+- `frontend/src/gas/types.d.ts`: `upsertCoreShipmentForFrontend` を `GoogleScriptRun` に登録
+- `frontend/src/preview/gasRunnerMock.ts`: `upsertCoreShipmentForFrontend` モックを追加
+- `frontend/src/content/ja/salesOrders.ts`: 発送フォーム・詳細ラベル26キーを追加
+- `frontend/src/pages/sales-orders/SalesOrderDetailPage.tsx`:
+  - `disabled` 解除、フォームダイアログ（入力→確認→保存）を実装
+  - フラグ5列（検品/梱包/格納/集荷依頼/通知）をチェックボックスで `'TRUE'`/`''` 送信
+  - テーブルを5列に拡張（発送方法/発送日/運送状番号/箱番号/集荷依頼）
+  - 行クリックで全16フィールドのインライン詳細表示（トグル + 閉じるボタン）
+- `frontend/src/pages/sales-orders/SalesOrderDetailPage.css`: 発送ダイアログ・フォームグリッド・チェックボックス・インライン詳細スタイルを追加
+
+### 変更理由
+
+PR #676 で GAS API（`upsertCoreShipmentForFrontend`）を追加したため、
+フロントエンドを対応させて発送情報の登録・閲覧を可能にした。
+
+### ?preview 動作確認結果
+
+| 確認項目 | 結果 |
+|---|---|
+| 「発送情報を追加」ボタンが有効（`disabled` なし） | **OK** |
+| フォームが開く（テキスト/数値9フィールド + チェックボックス5個） | **OK** — 検品/梱包/格納/集荷依頼/通知 |
+| 発送テーブルが5列（発送方法/発送日/運送状番号/箱番号/集荷依頼） | **OK** |
+| 行クリックで全項目インライン表示（「閉じる」で折り畳まれる） | **OK** — 16フィールド表示 + 閉じる動作確認 |
+
+### 検証結果
+
+| 項目 | 結果 |
+|---|---|
+| `npm run build:gas`（typecheck + build + check:design-system） | **通過** |
+| CI: Gitleaks | **pass** |
+| CI: Sensitive Content | **pass** |
+| CI: frontend-check | **pass** |
+| CI: gas-global-namespace | **pass** |
+| Deploy to DEV | **success** |
+| `getDeployedSha` ↔ `origin/develop HEAD` 一致 | **一致**（`d4d69cf...`） |
+| `runCoreSchemaConformanceAudit`: SHIPMENTS 不一致 | **0件** ✓ |
+| `runCoreSchemaConformanceAudit`: 総不一致 | **6件**（全て既存・本PR変更と無関係） |
+| `dryRunOrderStatusRecalculation` | **変更あり 0件** |
+
+### conformance audit 補足
+
+総不一致6件の内訳はすべて PR #676 以前からの既存不一致。
+
+- `LEADS`: 列数差13（定義51 / 実シート64）— 旧来の未定義列
+- `CUSTOMERS`: 列数差1（定義14 / 実シート15）— 旧来の未定義列
+- `SHARED_INVENTORY`: 未定義値4種（Searched pack 等）— 旧来の未定義値
+
+本PR変更（フロントエンドのみ）はシートに一切触れておらず、これら6件との因果関係なし。
+SHIPMENTS（本PR対象）は0件 ✓ のため revert 不要と判断。
+
+### 戻し方
+
+```
+git revert d4d69cfa4fbdfd2cfb4c98035dec0cc0b0aaeb1c
+```
+
+---
+
 ## feat(gas): 発送 upsert API 新設・詳細取得列を拡張 — PR #676
 
 **日付:** 2026-08-30
