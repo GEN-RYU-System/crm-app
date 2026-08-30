@@ -284,7 +284,7 @@
 | 23 | 支払い方法 | `payment_method` | 日→英（意訳）・†支払先マスタと共有 | 08_Config 他 | 13† |
 | 24 | 発送方法 | `shipping_method` | 日→英（意訳）・†オーダー管理と共有 | 08_Config 他 | — |
 | 25 | 商品ステータス | `product_status` | 日→英（意訳: 商品ステータス = product status） | 08_Config 他 | 2 |
-| 26 | 為替 | 【要PO確定】 | 英語名が一意に決まらない（候補: `currency` / `exchange_type` / `forex`。通貨コードか為替種別か不明） | 08_Config, 27_WebApp 他 | 64 |
+| 26 | 為替 | `currency` | **実データ確認済み（Section 10参照）**: 値が JPY/USD/EUR/AUD/GBP（ISO 4217 通貨コード）→ `currency` を採用 | 08_Config, 27_WebApp 他 | 64 |
 | 27 | 為替レート | （除外）→ セクション 7 参照 | GOOGLEFINANCE 数式列。SQL 移行後は外部 API 取得に置き換え | 00_CoreSchema 他 | 60† |
 | 28 | 次回アクション日 | `next_action_date` | 日→英（意訳）・†LEADS と共有 | 00_CoreSchema 他 | 69† |
 | 29 | ページ | 【要PO確定】 | 業務上の意味が不明確（候補: `page` / `screen_page`）。選択肢マスタ内での用途を確認要 | index.html 他（†多数文脈で出現） | 148†（注） |
@@ -375,11 +375,10 @@ PostgreSQL 16 の予約語リスト（non-reserved を除く完全予約語）�
 | リード管理 | 1回の発注金額 | `per_order_amount` / `single_order_amount` | 「1回」が「1取引あたり」か「単品単価」かで意味が変わる |
 | リード管理 | 商談の手応え | `deal_impression` / `deal_confidence` / `deal_response` | 業務上の意味が主観的で一意に訳せない |
 | リード管理 | 反省と今後の抱負 | `reflection_and_aspiration` / `retrospective_note` | 非常に長い概念・2つの概念を1列に持つ設計自体の見直しも含め PO 判断が必要 |
-| 選択肢マスタ | 為替 | `currency` / `exchange_type` / `forex` | 通貨コードリストなのか為替種別リストなのか不明 |
-| 選択肢マスタ | ページ | `page` / `screen_page` | 選択肢マスタ内での業務的用途が不明 |
-| 選択肢マスタ | リードシーン | `lead_scene` / `lead_scenario` | コードに参照なし（用途不明） |
+| 選択肢マスタ | ページ | `page` / `screen_page` | 実データ確認済み（共通/リード/新規/ルート）。英語名は業務文脈の判断が必要（Section 10参照） |
+| 選択肢マスタ | リードシーン | `lead_scene` / `lead_scenario` | コードに参照なし（用途不明・Section 12参照） |
 
-**合計: 6列（閾値 20 列を下回る）**
+**合計: 5列（閾値 20 列を下回る。為替は Section 10 で `currency` に確定済み）**
 
 ---
 
@@ -436,8 +435,8 @@ CC はステップ2を実行してはならない。
 | # | 内容 | 確認方法 |
 |---|------|---------|
 | 1 | 選択肢マスタ `リードID` 列の業務的用途（なぜ選択肢シートにリードIDが存在するか） | 実データを目視確認 |
-| 2 | 選択肢マスタ `ページ` / `リードシーン` の業務的用途 | PO 確認 |
-| 3 | 選択肢マスタ `為替` が通貨コードリストか為替種別リストか | 実データを目視確認 |
+| 2 | 選択肢マスタ `ページ` の業務的用途（英語名: Section 10 に実データあり） | PO 確認 |
+| 3 | ~~選択肢マスタ `為替` が通貨コードリストか為替種別リストか~~ **解決済み** → Section 10 参照 | — |
 | 4 | 配送先マスタ `State` の grep 231 件に JS の状態管理変数 `state` が混在しているか | `grep -n "'State'" src/` で文字列リテラルに絞り再計上 |
 | 5 | 担当者マスタ `役割` を `staff_role` にするか `role` のままでよいかの最終判断 | PO または DB 設計担当者が確認 |
 
@@ -449,6 +448,119 @@ CC はステップ2を実行してはならない。
 | `docs/sql-migration-scope.md` | 移行対象 22 シートの定義 |
 | `docs/sheet-headers-snapshot.md` | 実シートヘッダー一覧 |
 | `src/00_CoreSchemaRegistry.js` | CoreSchemaV1 全テーブル定義（英語キー→日本語列名マッピング） |
+| `src/22_SetupIntegratedSheet.js` | L64,L284,L541（LEAD_SHEET_HEADERS、列幅設定、テストデータ）/ L698-730（月次レポートシート）/ L760-792（週次レポートシート） |
+| `src/23_SheetService.js` | L695-718（リード行初期化コード）|
+| `src/20_ReportService.js` | L146,164,317（Buddyフィードバック列の読み書き）|
+| `src/32_StaffService.js` | L482,570,585,600（Buddyメンテナンスメニュー表示列の読み書き）|
+| `src/13_DealReportService.js` | L47,51,60,77,84,88,413,417,426,469,470,472（商談の手応え・1回の発注金額・Buddyフィードバック）|
+| `src/21_SetupDealReport.js` | L134,138,147,165（商談レポートセットアップ）|
+| `src/06_BuddyFeedbackService.js` | L75,78（1回の発注金額・商談の手応えの参照）|
+| `src/index.html` | L6291,6324（商談の手応え表示）/ L10390-10397,11337-11344（1回の発注金額フォーム）/ L14124-14125（商談の手応えフォーム）/ L14698,16313,16339（Buddyメンテナンスメニュー表示）|
+| `src/99_StaffMasterDump.js` | L219（商談の手応えのリスト定義）|
+
+---
+
+## 10. 実データ確認結果
+
+**調査日**: 2026-08-30  
+**調査方法**: `clasp run getOptionMasterSample`（`src/99_OptionMasterSample.js`・読み取り専用）  
+**対象シート**: 選択肢マスタ（CONFIG.SHEETS.SETTINGS）  
+**書き込み系 grep**: 0件 ✓
+
+### 為替（選択肢マスタ col 26）
+
+先頭30行サンプル（`totalRows: 44`・`sampled: 30`）:
+
+```
+JPY, USD, EUR, AUD, GBP, (空)×25
+```
+
+**判定**: 値が ISO 4217 通貨コード（JPY/USD/EUR/AUD/GBP）のみ → `currency` を採用。
+
+### ページ（選択肢マスタ col 29）
+
+先頭30行サンプル（`totalRows: 44`・`sampled: 30`）:
+
+```
+共通, リード, 新規, ルート, (空)×26
+```
+
+**判定**: 値が画面ページ名（共通/リード/新規/ルート）→ 値をそのまま報告。英語名は PO が決める（【要PO確定】継続）。
+
+---
+
+## 11. Buddy 廃止に伴う除外候補
+
+**背景**: Buddy 機能は廃止決定（PO、2026-08-30）。以下は事実の記録のみ。除外の可否は PO が判断する。
+
+**Buddy ファイルリスト（タスク定義）**: `05_BuddyCoachingService.js` / `06_BuddyFeedbackService.js` / `30_BuddyReportService.js` / `13_DealReportService.js` / `21_SetupDealReport.js` / `22_SetupIntegratedSheet.js` / `23_SheetService.js`
+
+> **注**: `22_SetupIntegratedSheet.js` と `23_SheetService.js` は Buddy専用ファイルではなく、リード管理シート全体の初期化を行う汎用ファイル。以下の列に対する参照（行番号を明記）はリード管理シートの初期化コードであり、Buddy機能専用の処理ではない。
+
+### リード管理
+
+| 列名 | 参照元ファイル（行番号） | 判定 | 参照数(src+fe) |
+|------|------------------------|------|---------------|
+| Good Point | `22_SetupIntegratedSheet.js` L64,L284,L541 / `23_SheetService.js` L707 | Buddy専用（当該箇所はリード管理シート初期化コード） | 0 |
+| More Point | `22_SetupIntegratedSheet.js` L65,L285,L542 / `23_SheetService.js` L708 | Buddy専用（当該箇所はリード管理シート初期化コード） | 0 |
+| 反省と今後の抱負 | `22_SetupIntegratedSheet.js` L66,L286,L543 / `23_SheetService.js` L709 | Buddy専用（当該箇所はリード管理シート初期化コード） | 0 |
+| レポート提出日 | `22_SetupIntegratedSheet.js` L67,L287,L544 / `23_SheetService.js` L710 | Buddy専用（当該箇所はリード管理シート初期化コード） | 0 |
+| レポート確認者 | `22_SetupIntegratedSheet.js` L68,L288,L545 / `23_SheetService.js` L711 | Buddy専用（当該箇所はリード管理シート初期化コード） | 0 |
+| レポート確認日 | `22_SetupIntegratedSheet.js` L69,L289,L546 / `23_SheetService.js` L712 | Buddy専用（当該箇所はリード管理シート初期化コード） | 0 |
+| レポートコメント | `22_SetupIntegratedSheet.js` L70,L290,L547 / `23_SheetService.js` L713 | Buddy専用（当該箇所はリード管理シート初期化コード） | 0 |
+| Buddyフィードバック | `30_BuddyReportService.js` L25,40,86,275,422,426,474 / `06_BuddyFeedbackService.js` / `13_DealReportService.js` L60,77,84,426,472 / `22_SetupIntegratedSheet.js` L75,295,552,707,770 / `23_SheetService.js` L718 / **`20_ReportService.js` L146,164,317** / **`08_Config.js` L341,345** | **他機能も使用**（`20_ReportService.js`=週次・月次レポートサービス、`08_Config.js`=設定ファイルから参照） | 8+0 |
+| 1回の発注金額 | `21_SetupDealReport.js` L134 / `13_DealReportService.js` L47,413,469 / `06_BuddyFeedbackService.js` L75 / `22_SetupIntegratedSheet.js` L52,272,529 / `23_SheetService.js` L695 / **`src/index.html` L10390,L11337** | **他機能も使用**（`src/index.html` = チャットリードフォーム・一般CRM UIから参照） | 17+0 |
+| 商談の手応え | `21_SetupDealReport.js` L138 / `13_DealReportService.js` L51,417,470 / `06_BuddyFeedbackService.js` L78 / `22_SetupIntegratedSheet.js` L55,104,275,532 / `23_SheetService.js` L698 / **`src/index.html` L6291,6324,14124,14125** / **`99_StaffMasterDump.js` L219** | **他機能も使用**（`src/index.html` = 顧客一覧テーブル・営業フォーム、`99_StaffMasterDump.js` = 診断スクリプトから参照） | 17+0 |
+
+### 担当者マスタ
+
+| 列名 | 参照元ファイル（行番号） | 判定 | 参照数(src+fe) |
+|------|------------------------|------|---------------|
+| Buddyメンテナンスメニュー表示 | **`00_CoreSchemaRegistry.js` L167** / **`32_StaffService.js` L482,570,585,600** / **`src/index.html` L14698,16313,16339** | **他機能も使用**（`32_StaffService.js`=担当者サービス全般、`src/index.html`=スタッフ設定UI、いずれもBuddyファイルリスト外） | 8+0 |
+
+### 集計
+
+| 判定 | 列数 | 対象列 |
+|------|------|--------|
+| Buddy専用（当該参照がBuddyファイルのみ） | 7列 | Good Point / More Point / 反省と今後の抱負 / レポート提出日 / レポート確認者 / レポート確認日 / レポートコメント |
+| 他機能も使用 | 4列 | Buddyフィードバック / 1回の発注金額 / 商談の手応え / Buddyメンテナンスメニュー表示 |
+| 未参照 | 0列 | — |
+
+> **注**: 上記「Buddy専用」の7列の参照元（`22_SetupIntegratedSheet.js` と `23_SheetService.js`）はBuddyファイルリストに含まれるが、コード確認済み（行番号明記）のとおり当該箇所はリード管理シート汎用初期化コードであり、Buddy機能専用の処理ではない。
+
+---
+
+## 12. 未参照列の再確認結果
+
+**調査日**: 2026-08-30  
+**調査コマンド**:
+
+```bash
+grep -rn "リードシーン|eLogiCSV格納フォルダ|ラベルPDF格納フォルダ" src/ frontend/src/
+# 結果: 0件
+```
+
+| 列名 | シート | src/ 件数 | frontend/src/ 件数 | 判定 |
+|------|-------|----------|-------------------|------|
+| リードシーン | 選択肢マスタ | 0 | 0 | **未参照**（用途は PO 確認要） |
+| eLogiCSV格納フォルダ | 選択肢マスタ | 0 | 0 | **未参照** |
+| ラベルPDF格納フォルダ | 選択肢マスタ | 0 | 0 | **未参照** |
+
+> 「未参照だから削除してよい」とは書かない。除外の可否は PO が判断する。
+
+---
+
+## 13. PO 判断が必要な項目（更新版）
+
+| # | 項目 | 内容 |
+|---|------|------|
+| 1 | 1回の発注金額 | 候補: `per_order_amount` / `single_order_amount`。`src/index.html`（チャットUI）から参照あり（他機能も使用） |
+| 2 | 商談の手応え | 候補: `deal_impression` / `deal_confidence` / `deal_response`。`src/index.html`（顧客一覧・営業フォーム）から参照あり（他機能も使用） |
+| 3 | 反省と今後の抱負 | 候補: `reflection_and_aspiration` / `retrospective_note`。参照: `22_SetupIntegratedSheet.js` L66 / `23_SheetService.js` L709 のみ（Buddy専用と判定） |
+| 4 | ページ（選択肢マスタ） | 実データ: 共通/リード/新規/ルート（4件）。英語名は PO が決める |
+| 5 | Buddy専用列（7列）を移行対象から外すか | Good Point / More Point / 反省と今後の抱負 / レポート提出日 / レポート確認者 / レポート確認日 / レポートコメント（各列の参照元は Section 11 参照） |
+| 6 | 未参照列（3列）を移行対象から外すか | リードシーン / eLogiCSV格納フォルダ / ラベルPDF格納フォルダ |
+| 7 | 他機能も使用の4列（Buddyフィードバック・1回の発注金額・商談の手応え・Buddyメンテナンスメニュー表示）の扱い | Buddy廃止後も他機能から参照されているため、除外前に当該機能の対応が必要 |
 
 ---
 
