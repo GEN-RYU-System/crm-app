@@ -545,7 +545,28 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
           { ORDER_LINE_ID: 'OL-002', LINE_NUMBER: 2, CATEGORY: 'Card', PRODUCT_NAME: 'Umbreon VMAX Alt', ENGLISH_TITLE: 'Umbreon VMAX Alternate Art', STATUS: 'LP', SKU: '', QUANTITY: 1, UNIT_PRICE: 3000, SUBTOTAL: 3000, PRODUCT_ID: 'PM-002' },
         ],
         purchases: [],
-        shipments: [],
+        shipments: [
+          {
+            SHIPMENT_ID: 'SH-0001', BOX_NUMBER: 1, SHIPPING_METHOD: 'EMS',
+            SHIPPED_AT: '', TRACKING_NUMBER: 'EM123456789JP',
+            LENGTH: 30, WIDTH: 20, HEIGHT: 15, WEIGHT: 2.5,
+            ESTIMATED_SHIPPING_FEE: 3500,
+            LABEL_URL: '', INVOICE_URL: '',
+            INSPECTION: 'TRUE', PACKING: 'TRUE', STORAGE: '',
+            PICKUP_REQUEST: '', NOTIFICATION: '',
+            SHIPPING_ASSIGNEE_ID: 'STF-0001', NOTE: 'Preview shipment with tracking',
+          },
+          {
+            SHIPMENT_ID: 'SH-0002', BOX_NUMBER: 2, SHIPPING_METHOD: 'DHL',
+            SHIPPED_AT: '', TRACKING_NUMBER: '',
+            LENGTH: 25, WIDTH: 20, HEIGHT: 10, WEIGHT: 1.8,
+            ESTIMATED_SHIPPING_FEE: 2800,
+            LABEL_URL: '', INVOICE_URL: '',
+            INSPECTION: '', PACKING: '', STORAGE: '',
+            PICKUP_REQUEST: '', NOTIFICATION: '',
+            SHIPPING_ASSIGNEE_ID: 'STF-0001', NOTE: 'Preview shipment without tracking',
+          },
+        ],
       });
     },
     getInboxConversationsForFrontend(_s: string | null, _force: boolean) {
@@ -650,6 +671,9 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     },
     advanceCoreShipmentStageForFrontend(_s: string | null, _orderId: string) {
       succeed({ success: true, newStage: 'LABELING' });
+    },
+    uploadCoreShipmentFileForFrontend(_s: string | null, _payload: unknown) {
+      succeed({ success: true, url: 'https://drive.google.com/file/d/preview-mock-file-id/view' });
     },
     getCorePurchaseStatusOptionsForFrontend(_s: string | null) {
       succeed([

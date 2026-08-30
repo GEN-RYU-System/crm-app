@@ -13,6 +13,7 @@ import {
   getCorePurchaseStatusOptions,
   upsertCorePurchase,
   upsertCoreShipment,
+  uploadCoreShipmentFile,
   type OrderDetailRecord,
   type PurchaseStatusOption,
   type UpsertPurchasePayload,
@@ -165,6 +166,8 @@ export function SalesOrderDetailPage() {
   const [shipmentSaving, setShipmentSaving] = useState(false);
   const [shipmentFormError, setShipmentFormError] = useState<string | undefined>(undefined);
   const [selectedShipmentId, setSelectedShipmentId] = useState<string | undefined>(undefined);
+  const [uploadingFileType, setUploadingFileType] = useState<'label' | 'invoice' | null>(null);
+  const [uploadError, setUploadError] = useState<string | undefined>(undefined);
 
   // tab state: initialise from ?tab= query param; invalid/missing → 'billing'
   const [activeTab, setActiveTab] = useState<DetailTab>(() => resolveInitialTab(searchParams.get('tab')));
@@ -283,6 +286,31 @@ export function SalesOrderDetailPage() {
       setShipmentFormError(e instanceof Error ? e.message : copy.shipmentFormSaveError);
     } finally {
       setShipmentSaving(false);
+    }
+  };
+
+  const handleShipmentFileUpload = async (fileType: 'label' | 'invoice', file: File) => {
+    if (!orderId || !selectedShipmentId) return;
+    setUploadingFileType(fileType);
+    setUploadError(undefined);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          const b64 = result.split(',')[1];
+          if (!b64) { reject(new Error(copy.shipmentUploadError)); return; }
+          resolve(b64);
+        };
+        reader.onerror = () => reject(new Error(copy.shipmentUploadError));
+        reader.readAsDataURL(file);
+      });
+      await uploadCoreShipmentFile({ shipmentId: selectedShipmentId, fileType, fileBase64: base64 });
+      await refreshDetail(orderId);
+    } catch (e: unknown) {
+      setUploadError(e instanceof Error ? e.message : copy.shipmentUploadError);
+    } finally {
+      setUploadingFileType(null);
     }
   };
 
@@ -570,6 +598,54 @@ export function SalesOrderDetailPage() {
                           <dt>{copy.labelShipmentNote}</dt><dd>{formatValue(s.NOTE)}</dd>
                           <dt>{copy.labelShipmentShippingAssigneeId}</dt><dd>{formatValue(s.SHIPPING_ASSIGNEE_ID)}</dd>
                         </dl>
+                        <div className="sales-order-detail-page__shipment-files">
+                          {!s.TRACKING_NUMBER ? (
+                            <p className="sales-order-detail-page__upload-no-tracking">
+                              {copy.shipmentUploadNoTrackingHint}
+                            </p>
+                          ) : (
+                            <>
+                              {uploadError && <StatusMessage variant="error">{uploadError}</StatusMessage>}
+                              {(['label', 'invoice'] as const).map((ft) => {
+                                const url = ft === 'label' ? s.LABEL_URL : s.INVOICE_URL;
+                                const title = ft === 'label' ? copy.shipmentUploadLabelTitle : copy.shipmentUploadInvoiceTitle;
+                                const isUploading = uploadingFileType === ft;
+                                return (
+                                  <div key={ft} className="sales-order-detail-page__upload-item">
+                                    <span className="sales-order-detail-page__upload-label">{title}</span>
+                                    {url && (
+                                      <a
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="sales-order-detail-page__upload-link"
+                                      >
+                                        {copy.shipmentUploadViewLink}
+                                      </a>
+                                    )}
+                                    <label className="sales-order-detail-page__upload-zone">
+                                      <input
+                                        type="file"
+                                        accept="application/pdf,.pdf"
+                                        style={{ display: 'none' }}
+                                        disabled={isUploading}
+                                        onChange={(e) => {
+                                          const file = e.target.files?.[0];
+                                          if (file) void handleShipmentFileUpload(ft, file);
+                                          e.target.value = '';
+                                        }}
+                                      />
+                                      {isUploading ? copy.shipmentUploadUploading : copy.shipmentUploadDropHint}
+                                      <span className="sales-order-detail-page__upload-hint">
+                                        {copy.shipmentUploadFileSizeHint}
+                                      </span>
+                                    </label>
+                                  </div>
+                                );
+                              })}
+                            </>
+                          )}
+                        </div>
                       </div>
                     );
                   })()}

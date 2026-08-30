@@ -14,7 +14,8 @@
 /* global getCoreSchemaV1HeaderName,
    validateCoreSchemaV1TableForWrite, setEmailFromSession, checkPermission,
    getSpreadsheet, getSessionUser, recalculateOrderStatusById,
-   withSheetWrite_, LockService */
+   withSheetWrite_, LockService,
+   DriveApp, Utilities, getShipmentFileFolderId */
 
 var CORE_SHIPMENT_WRITE_ID_PREFIX = 'SH-';
 var CORE_SHIPMENT_WRITE_ID_DIGITS = 4;
@@ -293,6 +294,122 @@ function advanceCoreShipmentStageForFrontend(sessionId, orderId) {
   }
 
   return result;
+}
+
+/**
+ * Upload a PDF file (ラベル or インボイス) to Google Drive and write the URL
+ * to the corresponding SHIPMENTS column.
+ *
+ * payload fields:
+ *   shipmentId   {string}  required
+ *   fileType     {string}  'label' | 'invoice'  required
+ *   fileBase64   {string}  required  base64-encoded PDF data
+ *
+ * Prerequisites:
+ *   - TRACKING_NUMBER must be non-empty
+ *   - SHIPMENT_FILE_FOLDER_ID must be set in Script Properties
+ *
+ * Side effect:
+ *   If both LABEL_URL and INVOICE_URL are filled after writing, sets STORAGE='TRUE'.
+ *
+ * @param {string} sessionId
+ * @param {{ shipmentId: string, fileType: string, fileBase64: string }} payload
+ * @returns {{ success: true, url: string }}
+ */
+function uploadCoreShipmentFileForFrontend(sessionId, payload) {
+  setEmailFromSession(sessionId);
+  checkPermission('deal_edit');
+
+  if (!payload || typeof payload !== 'object') throw new Error('MISSING_PAYLOAD');
+  var shipmentId = String(payload.shipmentId || '').trim();
+  if (!shipmentId) throw new Error('MISSING_SHIPMENT_ID');
+  var fileType = String(payload.fileType || '').trim().toLowerCase();
+  if (fileType !== 'label' && fileType !== 'invoice') {
+    throw new Error('INVALID_FILE_TYPE: must be label or invoice');
+  }
+  var fileBase64 = String(payload.fileBase64 || '').trim();
+  if (!fileBase64) throw new Error('MISSING_FILE_DATA');
+
+  var folderId = getShipmentFileFolderId();
+  if (!folderId) throw new Error('SHIPMENT_FILE_FOLDER_ID not configured');
+
+  var fileUrl = withSheetWrite_(
+    { useLock: true, cacheTargets: [] },
+    function() {
+      var ss = getSpreadsheet();
+      var result = validateCoreSchemaV1TableForWrite(ss, 'SHIPMENTS');
+      var sheet = result.sheet;
+      var hi    = result.headerIndexes;
+
+      var targetRow;
+
+      function setCell(fieldKey, value) {
+        var header = getCoreSchemaV1HeaderName('SHIPMENTS', fieldKey);
+        var colIdx = hi[header];
+        if (colIdx) sheet.getRange(targetRow, colIdx).setValue(value);
+      }
+
+      function getCell(fieldKey) {
+        var header = getCoreSchemaV1HeaderName('SHIPMENTS', fieldKey);
+        var colIdx = hi[header];
+        if (!colIdx) return '';
+        return String(sheet.getRange(targetRow, colIdx).getValue() || '').trim();
+      }
+
+      // Locate the row by SHIPMENT_ID
+      var pkPhysical = getCoreSchemaV1HeaderName('SHIPMENTS', 'SHIPMENT_ID');
+      var pkColIdx = hi[pkPhysical];
+      if (!pkColIdx) throw new Error('SHIPMENT_ID column not found');
+      var lastRow = sheet.getLastRow();
+      targetRow = -1;
+      if (lastRow >= 2) {
+        var idValues = sheet.getRange(2, pkColIdx, lastRow - 1, 1).getValues();
+        for (var i = 0; i < idValues.length; i++) {
+          if (String(idValues[i][0] || '').trim() === shipmentId) {
+            targetRow = i + 2;
+            break;
+          }
+        }
+      }
+      if (targetRow < 0) throw new Error('SHIPMENT_NOT_FOUND: ' + shipmentId);
+
+      // TRACKING_NUMBER must be present before uploading files
+      var trackingNumber = getCell('TRACKING_NUMBER');
+      if (!trackingNumber) {
+        throw new Error('TRACKING_NUMBER_REQUIRED: set a tracking number before uploading files');
+      }
+
+      var orderId = getCell('ORDER_ID');
+
+      // File name: {orderId}_{trackingNumber}_{label|invoice}.pdf
+      var rawName = orderId + '_' + trackingNumber + '_' + fileType + '.pdf';
+      var safeName = rawName.replace(/[/\\?%*:|"<>]/g, '_');
+
+      // Upload to Drive
+      var blob = Utilities.newBlob(Utilities.base64Decode(fileBase64), 'application/pdf', safeName);
+      var folder = DriveApp.getFolderById(folderId);
+      var file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      var url = file.getUrl();
+
+      // Write URL to LABEL_URL or INVOICE_URL
+      var urlFieldKey = fileType === 'label' ? 'LABEL_URL' : 'INVOICE_URL';
+      setCell(urlFieldKey, url);
+
+      // If both URLs are now filled, set STORAGE='TRUE'
+      var labelUrl   = fileType === 'label'   ? url : getCell('LABEL_URL');
+      var invoiceUrl = fileType === 'invoice' ? url : getCell('INVOICE_URL');
+      if (labelUrl && invoiceUrl) {
+        setCell('STORAGE', 'TRUE');
+      }
+
+      setCell('UPDATED_AT', new Date());
+
+      return url;
+    }
+  );
+
+  return { success: true, url: fileUrl };
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────

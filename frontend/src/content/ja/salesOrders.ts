@@ -219,5 +219,16 @@ export const salesOrdersCopy = {
     labelShipmentNotification: '通知',
     labelShipmentNote: '備考',
     labelShipmentShippingAssigneeId: '担当者ID',
+    // ファイルアップロード
+    labelShipmentLabelUrl: 'ラベルURL',
+    labelShipmentInvoiceUrl: 'インボイスURL',
+    shipmentUploadLabelTitle: 'ラベル PDF',
+    shipmentUploadInvoiceTitle: 'インボイス PDF',
+    shipmentUploadDropHint: 'クリックまたはドラッグ＆ドロップ',
+    shipmentUploadFileSizeHint: 'PDF のみ・最大 10 MB',
+    shipmentUploadNoTrackingHint: '運送状番号を入力してからファイルをアップロードしてください',
+    shipmentUploadUploading: 'アップロード中...',
+    shipmentUploadError: 'アップロードに失敗しました',
+    shipmentUploadViewLink: '表示する',
   },
 } as const;
