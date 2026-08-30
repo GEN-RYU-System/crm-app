@@ -3782,6 +3782,17 @@ GAS側の読み取り権限（`lead_view`）が分離されている設計上の
 - PR-1: #683 / squash SHA: `0ec89a1` / `docs/schema-audit-baseline.md` 追加
 - PR-2: #684 / squash SHA: `1a237da` / `AUTONOMOUS_WORK_RULES.md` 判定基準を修正
 - 背景: PR #680 後の監査で「既存差異」と根拠なく断定した事例を受けて、内訳まで記録する方式へ変更
-- ベースライン: 総不一致 6件（LEADS 差13列 / CUSTOMERS 差1列 / SHARED_INVENTORY 未定義値4種）/ ORDERS 0件
+- ベースライン（確立時）: 総不一致 6件（LEADS 差13列 / CUSTOMERS 差1列 / SHARED_INVENTORY 未定義値4種）/ ORDERS 0件
 - 検証: マージ後3点検証 pass（監査結果はベースラインと同一）
 - revert: `git revert 1a237da` → `git revert 0ec89a1`（逆順）
+
+## 2026-08-30 SHARED_INVENTORY CONDITION 未定義値4種の解消
+
+- PR: #686 / squash SHA: `66c4def`
+- 変更内容: `src/00_CoreSchemaRegistry.js` SHARED_INVENTORY.values.CONDITION に4値追加
+  - SEARCHED_PACK: 'Searched pack' / FLAG_SINGLE: 'FLAG_SINGLE' / DAMAGED_CASE: 'Damaged case' / UNSEARCHED_PACK: 'Unsearched pack'
+- PO 確認: シート側が正（2026-08-30）
+- 実害調査: `src/28_SharedInventoryReadApi.js:buildSharedInventoryRows_` は condition 値をフィルタせず全行返す（実害なし）
+- マージ後監査: SHARED_INVENTORY CONDITION → OK（0件）/ LEADS 差13 / CUSTOMERS 差1 変化なし / ORDERS 0件 / dryRun 変更0件
+- 新ベースライン: 総不一致 2件（LEADS 差13列 / CUSTOMERS 差1列）/ SHARED_INVENTORY 0件 / ORDERS 0件
+- revert: `git revert 66c4def`
