@@ -206,7 +206,11 @@ const CORE_SCHEMA_V1_TABLES = {
         SEALED_BOX:         'Sealed box',
         DAMAGED_SEALED_BOX: 'Damaged sealed box',
         CASE:               'Case',
-        NO_SHRINK_BOX:      'No shrink box'
+        NO_SHRINK_BOX:      'No shrink box',
+        SEARCHED_PACK:      'Searched pack',
+        FLAG_SINGLE:        'FLAG_SINGLE',
+        DAMAGED_CASE:       'Damaged case',
+        UNSEARCHED_PACK:    'Unsearched pack'
       }
     },
     referenceIds: [{ headerKey: 'PRODUCT_ID', targetTableKey: 'PRODUCTS' }]
