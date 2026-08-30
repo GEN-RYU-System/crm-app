@@ -2,6 +2,88 @@
 
 ---
 
+## feat: 発送待ちタブに発送段階・請求書番号・発送先の国・支払状況の4列を追加 — PR #692
+
+**日付:** 2026-08-30
+**PR:** [#692](https://github.com/GEN-RYU-System/crm-app/pull/692)
+**マージコミットSHA:** `5d99689030058bef03f74d5246155ee4f014137b`
+**mergedAt:** `2026-08-30T14:20:55Z`
+
+### 変更前の状態
+
+- `getCoreOrdersForFrontend` は `shippingAddress: '-'`（固定値）しか返しておらず、発送先の国は不明
+- 発送タブの段階情報（SHIPMENTS の INSPECTION / PACKING / TRACKING_NUMBER 等）が一覧に未表示
+- 国マスタは Registry 未登録
+
+### 変更内容
+
+| ファイル | 変更概要 |
+|---------|---------|
+| `src/00_CoreSchemaRegistry.js` | 国マスタ（COUNTRIES）を Registry に登録（8列、primaryKey: 国ID(ISO2)） |
+| `src/28_CoreOrderReadApi.js` | `getCoreOrdersForFrontend` に `shippingCountry` / `shippingCountryJa` / `shipmentStage` を追加。`buildCountryJaNameMap_` と `buildShipmentStageByOrder_` ヘルパーを新設。SHIPMENTS を全件先読みしてオーダーIDでグルーピング |
+| `frontend/src/gas/client.ts` | `OrderRecord` 型に3フィールドを追加 |
+| `frontend/src/features/salesOrders/gasAdapter.ts` | `toSalesOrderRow()` に3フィールドをマッピング追加 |
+| `frontend/src/content/ja/salesOrders.ts` | `shipmentStageLabel`・`labelShippingCountry`・`labelShipmentStage` を追加 |
+| `frontend/src/pages/sales-orders/salesOrderListConfig.ts` | 発送待ちタブ専用列定義（発送段階/請求書番号/発送先の国/支払状況）を追加 |
+| `frontend/src/pages/sales-orders/SalesOrderListPage.tsx` | `tabKey` による列フィルタリングを実装 |
+| `frontend/src/preview/gasRunnerMock.ts` | preview 用に発送待ちサンプルデータを追加 |
+
+### ?preview 動作確認
+
+1. **[確認済み]** 発送待ちタブに4列（発送段階/請求書番号/発送先の国/支払状況）が表示される
+2. **[確認済み]** 他タブ（支払い待ち/仕入れ中/完了/キャンセル）の列が変わっていない
+3. **[確認済み]** 白画面にならない
+4. **[確認済み]** コンソールエラーは既存の既知問題のみ（今回の変更と無関係）
+
+### getDeployedSha 照合
+
+```
+deployedSha: 5d99689030058bef03f74d5246155ee4f014137b
+origin/develop HEAD: 5d99689030058bef03f74d5246155ee4f014137b
+→ 一致 ✓
+```
+
+### runCoreSchemaConformanceAudit 結果
+
+- ORDERS: 0件 ✓
+- SHIPMENTS: 0件 ✓
+- COUNTRIES（国マスタ、今回新規登録）: 0件 ✓
+- 総不一致 2件（LEADS 列数差13・CUSTOMERS 列数差1）は既存の不一致
+
+### dryRunOrderStatusRecalculation 結果
+
+```
+総件数: 12件 / 変更なし: 12件 / 変更あり: 0件
+```
+
+### getCoreOrdersForFrontend 実値確認
+
+| orderId | shippingCountry | shippingCountryJa | shipmentStage |
+|---------|-----------------|-------------------|---------------|
+| ORD-0001 | US | アメリカ合衆国 | DONE |
+| ORD-0002 | ES | スペイン | DONE |
+| ORD-0003 | GB | イギリス | PREPARING |
+| ORD-0004 | FR | フランス | PREPARING |
+| ORD-0005 | JP | 日本 | PREPARING |
+| ORD-0006 | AU | オーストラリア | PREPARING |
+| ORD-0007 | US | アメリカ合衆国 | NOT_STARTED |
+| ORD-0008 | GB | イギリス | NOT_STARTED |
+| ORD-0009 | ES | スペイン | NOT_STARTED |
+| ORD-0010 | FR | フランス | NOT_STARTED |
+| ORD-0011 | JP | 日本 | NOT_STARTED |
+| ORD-0012 | AU | オーストラリア | NOT_STARTED |
+
+`shippingCountryJa`: ISO2 → 日本語名へ正しく解決 ✓
+`shipmentStage`: DONE / PREPARING / NOT_STARTED の実値を返している ✓
+
+### 戻し方
+
+```
+git revert 5d99689030058bef03f74d5246155ee4f014137b
+```
+
+---
+
 ## feat: 国マスタ「国名（日本語）」列へ250件の日本語名を書き込み — PR #690
 
 **日付:** 2026-08-30
