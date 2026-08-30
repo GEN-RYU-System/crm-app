@@ -560,6 +560,9 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     upsertCorePurchaseForFrontend(_s: string | null, _payload: unknown) {
       succeed({ success: true, purchaseId: 'PC-00001' });
     },
+    upsertCoreShipmentForFrontend(_s: string | null, _payload: unknown) {
+      succeed({ success: true, shipmentId: 'SH-00001' });
+    },
     getCorePurchaseStatusOptionsForFrontend(_s: string | null) {
       succeed([
         { key: 'NOT_ORDERED', label: 'preview-not-ordered' },
