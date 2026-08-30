@@ -375,7 +375,7 @@ PostgreSQL 16 の予約語リスト（non-reserved を除く完全予約語）�
 | リード管理 | 1回の発注金額 | `per_order_amount` / `single_order_amount` | 「1回」が「1取引あたり」か「単品単価」かで意味が変わる |
 | リード管理 | 商談の手応え | `deal_impression` / `deal_confidence` / `deal_response` | 業務上の意味が主観的で一意に訳せない |
 | リード管理 | 反省と今後の抱負 | `reflection_and_aspiration` / `retrospective_note` | 非常に長い概念・2つの概念を1列に持つ設計自体の見直しも含め PO 判断が必要 |
-| 選択肢マスタ | ページ | `page` / `screen_page` | 実データ確認済み（共通/リード/新規/ルート）。英語名は業務文脈の判断が必要（Section 10参照） |
+| 選択肢マスタ | ページ | `page` / `screen_page` | 実データ確認済み（共通/リード/新規/ルート）。コード参照なし（Section 15 参照）。メッセージテンプレートシートの「ページ」列との関連はコード上未確認。英語名と用途は PO が判断する |
 | 選択肢マスタ | リードシーン | `lead_scene` / `lead_scenario` | コードに参照なし（用途不明・Section 12参照） |
 
 **合計: 5列（閾値 20 列を下回る。為替は Section 10 で `currency` に確定済み）**
@@ -435,7 +435,7 @@ CC はステップ2を実行してはならない。
 | # | 内容 | 確認方法 |
 |---|------|---------|
 | 1 | 選択肢マスタ `リードID` 列の業務的用途（なぜ選択肢シートにリードIDが存在するか） | 実データを目視確認 |
-| 2 | 選択肢マスタ `ページ` の業務的用途（英語名: Section 10 に実データあり） | PO 確認 |
+| 2 | 選択肢マスタ `ページ` のコード参照元 → **解決済み: コード上は未参照（Section 15 参照）**。英語名と業務的用途は PO が確認 | — |
 | 3 | ~~選択肢マスタ `為替` が通貨コードリストか為替種別リストか~~ **解決済み** → Section 10 参照 | — |
 | 4 | 配送先マスタ `State` の grep 231 件に JS の状態管理変数 `state` が混在しているか | `grep -n "'State'" src/` で文字列リテラルに絞り再計上 |
 | 5 | 担当者マスタ `役割` を `staff_role` にするか `role` のままでよいかの最終判断 | PO または DB 設計担当者が確認 |
@@ -457,6 +457,13 @@ CC はステップ2を実行してはならない。
 | `src/06_BuddyFeedbackService.js` | L75,78（1回の発注金額・商談の手応えの参照）|
 | `src/index.html` | L6291,6324（商談の手応え表示）/ L10390,L11337（1回の発注金額フォーム×2箇所）/ L14124（商談の手応えフォーム）/ L14698,16313,16339（Buddyメンテナンスメニュー表示）|
 | `src/99_StaffMasterDump.js` | L219（商談の手応えのリスト定義）|
+| `src/36_MessageTemplateService.js` | L1-130（メッセージテンプレートシート定義・ページ列の値確認）/ L284-354（getMessageTemplates_service: ページ列の読み取り）/ L376,467,526（getAllMessageTemplates / upsert: ページ列読み書き）|
+| `src/08_Config.js` | L243-273（DEFAULT_DROPDOWN_OPTIONS / DROPDOWN_COLUMNS: ページ列なし確認）/ L906-973（getDropdownOptions / getDropdownOptionsFromSheet: 全列読み込み確認）|
+| `src/28_CoreLeadFormOptionsApi.js` | L1-130 全行（選択肢マスタからリード種別・返信速度のみ取得。ページ列参照なし）|
+| `src/27_WebApp.js` | L244-252（getDropdownOptions ルート: DROPDOWN_OPTIONS グローバル未定義確認）/ L1462-1493（getArchiveReasons: アーカイブ理由列のみ参照）|
+| `src/35_FAQService.js` | L341-389（getFAQCategories: FAQ_カテゴリ列のみ参照）|
+| `src/23_SheetService.js` | L290-338（forceResetSettingsSheet: DROPDOWN_COLUMNS に基づく初期化。ページ列なし確認）/ L515-550（setDataValidations: 役割・ステータスのみ）|
+| `src/13_DealReportService.js` | L314-326（getDealReportDropdownOptions: 6列のみ参照。ページ列なし確認）|
 
 ---
 
@@ -618,6 +625,126 @@ grep -rn "リードシーン|eLogiCSV格納フォルダ|ラベルPDF格納フォ
 |------|------------|------------|------|
 | Buddyフィードバック | 他機能も使用 | **Buddy 専用** | `20_ReportService.js` 全体が Buddy 週次・月次レポート（Phase 6）の実装。非 Buddy からの参照なし |
 | Buddyメンテナンスメニュー表示 | 他機能も使用 | **Buddy 専用** | 列の用途が Buddy メンテナンスメニューの表示制御に限定。管理サービスは汎用だが列の業務的目的は Buddy 専用 |
+
+---
+
+## 15. 追加調査結果（選択肢マスタ「ページ」列の参照元特定）
+
+**調査日**: 2026-08-31  
+**背景**: Section 5 で「業務上の意味が不明確」として【要PO確定】にした「ページ」列について、コード上の参照元を特定する。
+
+---
+
+### 手順 1: 値から追う
+
+```bash
+grep -rn "ルート" src/ frontend/src/
+grep -rn "'共通'\|\"共通\"" src/ frontend/src/
+```
+
+**結果**:
+
+| ファイル | 行 | 内容 |
+|---------|---|------|
+| `src/36_MessageTemplateService.js` | L8 | ファイルヘッダー: `B: ページ (リード / 新規 / ルート / アーカイブ / 共通)` |
+| `src/36_MessageTemplateService.js` | L58,L62,L66 | `'共通'` — メッセージテンプレートシートのサンプルデータ |
+| `src/36_MessageTemplateService.js` | L72,L76,L80 | `'リード'` — 同上 |
+| `src/36_MessageTemplateService.js` | L86,L90,L94 | `'新規'` — 同上 |
+| `src/36_MessageTemplateService.js` | L100,L104 | `'ルート'` — 同上 |
+
+共通・リード・新規・ルートの4値がセットで出現するのは `src/36_MessageTemplateService.js` のみ。
+
+---
+
+### 手順 2: 列位置から追う
+
+#### 選択肢マスタを読む全関数の確認
+
+| 関数 / ファイル:行 | 読む列 | `ページ` を読むか |
+|-----------------|-------|----------------|
+| `getDropdownOptionsFromSheet()` / `src/08_Config.js` L936 | 全列を `options[ヘッダー名]` に格納 | **含まれる**（全列読み込みのため）|
+| `getDropdownOptions()` / `src/08_Config.js` L906 | `getDropdownOptionsFromSheet()` のラッパー | **含まれる** |
+| `getArchiveReasons()` / `src/27_WebApp.js` L1468 | `アーカイブ理由` 列のみ | なし |
+| `getFAQCategories()` / `src/35_FAQService.js` L345 | `FAQ_カテゴリ` 列のみ | なし |
+| `getLeadFormOptions()` / `src/28_CoreLeadFormOptionsApi.js` L27 | `リード種別` / `返信速度` 列のみ | なし |
+| `addDealReportSettingsColumns()` / `src/21_SetupDealReport.js` L36 | 設定シートにデータを**書き込む**（読み取りなし） | — |
+| `initGoalsSheet()` / `src/23_SheetService.js` L179 | `getDropdownOptions()` 経由で `期間タイプ` | なし |
+| `setDataValidations()` / `src/23_SheetService.js` L522 | `getDropdownOptions()` 経由で `役割` / `ステータス` | なし |
+| `getDealReportDropdownOptions()` / `src/13_DealReportService.js` L314 | `getDropdownOptions()` 経由で6列 | なし |
+
+#### `getDropdownOptions()` 戻り値の `ページ` キーを使うコードの確認
+
+```bash
+grep -rn "options\[.ページ.\]\|options\.ページ\|dropdownOptions\[.ページ.\]\|dropdownOptions\.ページ" src/ frontend/src/
+```
+
+**結果: 0件**
+
+`getDropdownOptionsFromSheet()` が選択肢マスタの全列を読み込むため `options['ページ']` は戻り値に含まれるが、この値を参照するコードは皆無。
+
+#### `src/28_CoreLeadFormOptionsApi.js` の確認（L27-L130 全文）
+
+`getLeadFormOptions()` は選択肢マスタから **`リード種別`（L46）** と **`返信速度`（L47）** のみを `indexOf` で取得する。「ページ」列への参照なし（確認済み: L1-L130 全行）。
+
+---
+
+### 手順 3: `src/36_MessageTemplateService.js` の「ページ」との関係
+
+`36_MessageTemplateService.js` は **「メッセージテンプレート」シート**（選択肢マスタとは別シート）の `B列: ページ` を読み書きする。
+
+| 行 | コード | 内容 |
+|----|-------|------|
+| L37 | `['テンプレートID', 'ページ', 'カテゴリ', ...]` | メッセージテンプレートシートのヘッダー定義（ハードコード） |
+| L307 | `const pageIdx = headers.indexOf('ページ');` | `getMessageTemplates_service()` でページ値を読み取り |
+| L376 | `const pageIdx = headers.indexOf('ページ');` | `getAllMessageTemplates_service()` でページ値を読み取り |
+| L467, L526 | `set('ページ', templateData.page \|\| '')` | テンプレート作成・更新時にページ値を書き込み |
+
+このファイルは選択肢マスタ（`CONFIG.SHEETS.SETTINGS`）を一切参照しない。メッセージテンプレートシートと選択肢マスタの「ページ」列はコード上での関連なし。
+
+---
+
+### 手順 4: `DEFAULT_DROPDOWN_OPTIONS` / `DROPDOWN_COLUMNS` の確認
+
+```bash
+grep -n "ページ" src/08_Config.js
+```
+
+| 定数名 | `ページ` の有無 |
+|-------|--------------|
+| `DEFAULT_DROPDOWN_OPTIONS` (L243-264) | **なし** |
+| `DROPDOWN_COLUMNS` (L269-273) | **なし** |
+
+「ページ」は選択肢マスタの公式列定義に含まれない。`forceResetSettingsSheet()` でシートをリセットすると「ページ」列は再現されない。
+
+---
+
+### 判定
+
+**選択肢マスタ「ページ」列: コード上は未参照**
+
+- `getDropdownOptionsFromSheet()` の全列読み込みにより `options['ページ']` は戻り値に含まれるが、どのコードもその値を参照しない
+- `src/36_MessageTemplateService.js` の「ページ」は別シート（メッセージテンプレート）の列であり、選択肢マスタとのコード上の接続はない
+- `DEFAULT_DROPDOWN_OPTIONS` / `DROPDOWN_COLUMNS` に「ページ」は定義されていない
+
+**Section 5 の記録（変換案・英語名候補）について**: コード参照がないため英語名の確定は不要。Section 5 の行は削除せず、以下の注記を加える（Section 9 の未確認項目 2 も解消）。
+
+> 注: 選択肢マスタ「ページ」列への参照はコード上で確認されない（Section 15 参照）。シート上の入力規則としてメッセージテンプレート「ページ」列の選択肢に使われている可能性は否定できないが、GASコードでの参照は0件。英語名の確定はPOが判断する。
+
+---
+
+### Section 5 への追記（ページ行）
+
+Section 5 の「ページ」行の「確定できない理由」を以下に更新:
+
+> 業務上の意味が不明確（コード参照なし: Section 15 参照）。メッセージテンプレートシートの「ページ」列（リード/新規/ルート/アーカイブ/共通）との関連はコード上未確認。PO が用途と英語名を決める。
+
+---
+
+### Section 9 の更新
+
+Section 9 の【未確認】項目 2 を以下に変更:
+
+> ~~選択肢マスタ `ページ` / `リードシーン` の業務的用途~~ → `ページ` のコード参照: **未参照（Section 15 参照）**。`リードシーン`: Section 12 で未参照確定済み
 
 ---
 
