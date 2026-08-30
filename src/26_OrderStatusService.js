@@ -16,7 +16,7 @@
  *   1. キャンセル  : order.cancellationReason に値がある
  *   2. トラブル   : order.status が TROUBLE と一致（手動設定のため計算では変えない）
  *   3. 完了       : shipments のうち少なくとも1件で pickupRequest と trackingNumber 両方に値がある
- *   4. 発送待ち   : purchases のうち少なくとも1件で status が PAID と一致
+ *   4. 発送待ち   : purchases のうち少なくとも1件で status が CONFIRMED または PAID と一致
  *   5. 仕入れ中   : order.paymentConfirmedAt に値がある
  *   6. 支払い待ち : order.invoiceNumber に値がある
  *   7. 不明       : 上記すべて非該当
@@ -34,7 +34,8 @@ function calculateOrderStatus(order, shipments, purchases) {
   var awaitingPaymentValue  = getCoreSchemaV1Value('ORDERS',    'STATUS', 'AWAITING_PAYMENT');
   var cancelledValue        = getCoreSchemaV1Value('ORDERS',    'STATUS', 'CANCELLED');
   var unknownValue          = getCoreSchemaV1Value('ORDERS',    'STATUS', 'UNKNOWN');
-  var purchasePaidValue = getCoreSchemaV1Value('PURCHASES', 'STATUS', 'PAID');
+  var purchaseConfirmedValue = getCoreSchemaV1Value('PURCHASES', 'STATUS', 'CONFIRMED');
+  var purchasePaidValue      = getCoreSchemaV1Value('PURCHASES', 'STATUS', 'PAID');
 
   // 1. キャンセル
   if (!isOrderStatusEmptyValue_(order.cancellationReason)) {
@@ -54,11 +55,12 @@ function calculateOrderStatus(order, shipments, purchases) {
     return completedValue;
   }
 
-  // 4. 発送待ち: 仕入れ行のうち少なくとも1件でステータスが PAID（支払済み）
-  var hasPurchasePaid = (purchases || []).some(function(p) {
-    return p.status === purchasePaidValue;
+  // 4. 発送待ち: 仕入れ行のうち少なくとも1件でステータスが CONFIRMED（確定済み）または PAID（支払済み）
+  //   業務順序: 確定→支払 のため PAID は CONFIRMED 通過済みとみなし、判定側で両方を吸収する
+  var hasPurchaseReadyToShip = (purchases || []).some(function(p) {
+    return p.status === purchaseConfirmedValue || p.status === purchasePaidValue;
   });
-  if (hasPurchasePaid) {
+  if (hasPurchaseReadyToShip) {
     return awaitingShippingValue;
   }
 
@@ -242,6 +244,88 @@ function calculateOrderStatusWithPurchasePaid_(order, shipments, purchases) {
     return !isOrderStatusEmptyValue_(shipment.pickupRequest) && !isOrderStatusEmptyValue_(shipment.trackingNumber);
   })) return completedValue;
   if ((purchases || []).some(function(purchase) { return purchase.status === purchasePaidValue; })) return awaitingShippingValue;
+  if (!isOrderStatusEmptyValue_(order.paymentConfirmedAt)) return sourcingValue;
+  if (!isOrderStatusEmptyValue_(order.invoiceNumber)) return awaitingPaymentValue;
+  return unknownValue;
+}
+
+/**
+ * CONFIRMED（確定済み）を発送待ち条件にした場合の影響を、書き込みなしで試算する。
+ * 本体の calculateOrderStatus() は変更しない。
+ *
+ * @returns {{purchaseStatusCounts: Object<string, number>, statusTransitionCounts: Object<string, number>}}
+ */
+function dryRunOrderStatusWithPurchaseConfirmed() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('dryRunOrderStatusWithPurchaseConfirmed is available only in development');
+  }
+
+  var ss = getSpreadsheet();
+  var ordersMeta = readOrderStatusServiceSheet_(ss, 'ORDERS', [
+    'ORDER_ID', 'STATUS', 'CANCELLATION_REASON', 'PAYMENT_CONFIRMED_AT', 'INVOICE_NUMBER'
+  ]);
+  var shipmentsMeta = readOrderStatusServiceSheet_(ss, 'SHIPMENTS', [
+    'ORDER_ID', 'PICKUP_REQUEST', 'TRACKING_NUMBER'
+  ]);
+  var purchasesMeta = readOrderStatusServiceSheet_(ss, 'PURCHASES', ['ORDER_ID', 'STATUS']);
+  var shipmentsByOrderId = buildOrderStatusLookup_(shipmentsMeta.rows, 'ORDER_ID');
+  var purchasesByOrderId = buildOrderStatusLookup_(purchasesMeta.rows, 'ORDER_ID');
+  var purchaseStatusCounts = {};
+  var statusTransitionCounts = {};
+
+  purchasesMeta.rows.forEach(function(purchaseRow) {
+    var status = isOrderStatusEmptyValue_(purchaseRow.STATUS) ? '（空欄）' : String(purchaseRow.STATUS);
+    purchaseStatusCounts[status] = (purchaseStatusCounts[status] || 0) + 1;
+  });
+
+  ordersMeta.rows.forEach(function(orderRow) {
+    var orderId = String(orderRow.ORDER_ID || '').trim();
+    if (!orderId) return;
+    var shipments = (shipmentsByOrderId[orderId] || []).map(function(shipment) {
+      return { pickupRequest: shipment.PICKUP_REQUEST, trackingNumber: shipment.TRACKING_NUMBER };
+    });
+    var purchases = (purchasesByOrderId[orderId] || []).map(function(purchase) {
+      return { status: purchase.STATUS };
+    });
+    var calculatedStatus = calculateOrderStatusWithPurchaseConfirmed_(
+      {
+        cancellationReason: orderRow.CANCELLATION_REASON,
+        status: orderRow.STATUS,
+        paymentConfirmedAt: orderRow.PAYMENT_CONFIRMED_AT,
+        invoiceNumber: orderRow.INVOICE_NUMBER
+      },
+      shipments,
+      purchases
+    );
+    var transition = String(orderRow.STATUS || '（空欄）') + ' → ' + calculatedStatus;
+    statusTransitionCounts[transition] = (statusTransitionCounts[transition] || 0) + 1;
+  });
+
+  return {
+    purchaseStatusCounts: purchaseStatusCounts,
+    statusTransitionCounts: statusTransitionCounts
+  };
+}
+
+function calculateOrderStatusWithPurchaseConfirmed_(order, shipments, purchases) {
+  var troubleValue = getCoreSchemaV1Value('ORDERS', 'STATUS', 'TROUBLE');
+  var completedValue = getCoreSchemaV1Value('ORDERS', 'STATUS', 'COMPLETED');
+  var awaitingShippingValue = getCoreSchemaV1Value('ORDERS', 'STATUS', 'AWAITING_SHIPPING');
+  var sourcingValue = getCoreSchemaV1Value('ORDERS', 'STATUS', 'SOURCING');
+  var awaitingPaymentValue = getCoreSchemaV1Value('ORDERS', 'STATUS', 'AWAITING_PAYMENT');
+  var cancelledValue = getCoreSchemaV1Value('ORDERS', 'STATUS', 'CANCELLED');
+  var unknownValue = getCoreSchemaV1Value('ORDERS', 'STATUS', 'UNKNOWN');
+  var purchaseConfirmedValue = getCoreSchemaV1Value('PURCHASES', 'STATUS', 'CONFIRMED');
+  var purchasePaidValue      = getCoreSchemaV1Value('PURCHASES', 'STATUS', 'PAID');
+
+  if (!isOrderStatusEmptyValue_(order.cancellationReason)) return cancelledValue;
+  if (order.status === troubleValue) return troubleValue;
+  if ((shipments || []).some(function(shipment) {
+    return !isOrderStatusEmptyValue_(shipment.pickupRequest) && !isOrderStatusEmptyValue_(shipment.trackingNumber);
+  })) return completedValue;
+  if ((purchases || []).some(function(purchase) {
+    return purchase.status === purchaseConfirmedValue || purchase.status === purchasePaidValue;
+  })) return awaitingShippingValue;
   if (!isOrderStatusEmptyValue_(order.paymentConfirmedAt)) return sourcingValue;
   if (!isOrderStatusEmptyValue_(order.invoiceNumber)) return awaitingPaymentValue;
   return unknownValue;
