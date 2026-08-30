@@ -48,8 +48,23 @@
    git log --oneline origin/develop -1
    ```
    SHA が一致しない場合は停止して報告すること
-10. `clasp run runCoreSchemaConformanceAudit`  
-    **総不一致0でなければ即座に revert**
+10. `clasp run runCoreSchemaConformanceAudit`
+
+    **判定基準（2026-08-30 改訂）:**
+
+    変更前の記述（改訂により廃止）:
+    > 総不一致0でなければ即座に revert
+
+    現行ルール:
+    - ベースライン（`docs/schema-audit-baseline.md`）と比較する
+    - 総不一致件数および内訳が**ベースラインと同一** → 通過
+    - **1件でも増えた、または内訳が変化した** → 直前のPRを revert して停止・報告
+    - ORDERS（オーダー管理）は**常に0件**であること。0件でなければ即 revert
+
+    **記録義務:**
+    - 監査を実行したら、総件数だけでなく**内訳の数値**を作業ログに記載する
+    - 「既存差異」と判断する場合は、`docs/schema-audit-baseline.md` の該当行を引用して根拠を示す
+    - 照合せずに「既存」「無関係」と断定してはならない
 
 ---
 
