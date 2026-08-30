@@ -9,6 +9,7 @@ import type { SalesOrderTab } from '../../features/salesOrders/contracts';
 import {
   AWAITING_SHIPPING_STAGE_BADGE,
   AWAITING_SHIPPING_STATUS_KEY,
+  AWAITING_SHIPPING_TAB_COLUMN_KEYS,
   filterSalesOrderRows,
   filterSalesOrderRowsByPurchaseStage,
   filterSalesOrderRowsByTab,
@@ -19,6 +20,7 @@ import {
   SOURCING_PURCHASE_STAGE_FILTER_OPTIONS,
   SOURCING_STATUS_KEY,
   sortSalesOrderRows,
+  type SalesOrderColumnDef,
   type SalesOrderSort,
   type SourcingPurchaseStageFilter,
 } from './salesOrderListConfig';
@@ -221,16 +223,19 @@ export function SalesOrderListPage() {
 
   const columns: readonly DataTableColumn<SalesOrderRow>[] = useMemo(() => {
     const isAllTab = activeTabLabel === null;
-    return SALES_ORDER_LIST_COLUMNS
-      .filter((column) => {
-        // hide status column on non-"all" tabs
-        if (column.key === 'status') return isAllTab;
-        // show purchaseStatus column only on the SOURCING tab
-        if (column.key === 'purchaseStatus') return isSourcingTab;
-        // show AWAITING_SHIPPING-only columns exclusively on that tab
-        if (column.tabKey === 'AWAITING_SHIPPING') return isAwaitingShippingTab;
-        return true;
-      })
+
+    const filteredColumns: SalesOrderColumnDef[] = isAwaitingShippingTab
+      ? AWAITING_SHIPPING_TAB_COLUMN_KEYS
+          .map((key) => SALES_ORDER_LIST_COLUMNS.find((c) => c.key === key))
+          .filter((c): c is SalesOrderColumnDef => c !== undefined)
+      : SALES_ORDER_LIST_COLUMNS.filter((column) => {
+          if (column.key === 'status') return isAllTab;
+          if (column.key === 'purchaseStatus') return isSourcingTab;
+          if (column.tabKey === 'AWAITING_SHIPPING') return false;
+          return true;
+        });
+
+    return filteredColumns
       .map((column) => {
         const isSortable = column.sortable !== false;
         const ariaSort = isSortable && sort.key === column.key ? sort.direction : 'none';
