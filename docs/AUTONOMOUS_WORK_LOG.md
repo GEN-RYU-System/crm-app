@@ -2,6 +2,54 @@
 
 ---
 
+## docs: GAS 新旧配線対応表の作成 — PR #669
+
+**日付:** 2026-08-30  
+**PR:** [#669](https://github.com/GEN-RYU-System/crm-app/pull/669)  
+**マージコミットSHA:** `b479088d65f21fe21ecaa9b6d907514a1fc308eb`  
+**mergedAt:** `2026-08-30T08:02:10Z`
+
+### 作業概要
+
+旧ERP GASファイル群（15ファイル）と新React連携API（44関数）の対応関係を調査し、
+`docs/gas-old-new-wiring-map.md` を新規作成。`src/` への変更ゼロ（ドキュメントのみ）。
+
+### 調査対象
+
+- 旧ERP GASファイル: 15ファイル（`発送通知.js` / `仕入れ転記.js` / `請求書発行.js` / `CRM作成.js` / `elogiCSV出力.js` 等）
+- 新API GASファイル: 44関数（`28_Core*Api.js` / `27_WebApp.js` 等）
+- 参照した既存調査レポート: `gas-cleanup-proposal.md` / `gas-sheet-reference-audit.md` / `gas-undefined-reference-audit.md`
+
+### 判定結果
+
+| 判定区分 | 件数 |
+|---------|------|
+| 重複・削除候補（4条件全該当） | 0件 |
+| 未完了・要判断（旧独自処理あり） | 13件 |
+| 判定不能（ERP_CONFIG定義未解決等） | 2件 |
+
+**重複・削除候補が 0件になった主な理由:**
+旧ERP各ファイルに「新システムに存在しない旧独自処理」が必ず1件以上あり、4条件厳格判定では
+いずれも削除不可と判定された。シート名の相違（例: `M_顧客` vs `顧客マスタ`）も判断の根拠。
+
+### CI 結果
+
+| ワークフロー | 結果 |
+|------------|------|
+| Security Content Check (Gitleaks) | success |
+| Security Content Check (Sensitive Content) | success |
+| Frontend Check | success |
+| GAS Global Namespace Check | success |
+| Deploy to DEV | success |
+
+### revert 方法
+
+```bash
+git revert b479088d65f21fe21ecaa9b6d907514a1fc308eb
+```
+
+---
+
 ## feat(gas): 発送待ち判定を CONFIRMED または PAID に変更 — PR #665
 
 **日付:** 2026-08-30  
