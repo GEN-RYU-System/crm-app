@@ -2,6 +2,54 @@
 
 ---
 
+## feat: 発送タブへのファイルアップロード機能を追加 — PR #707
+
+**日付:** 2026-08-30
+**PR:** [#707](https://github.com/GEN-RYU-System/crm-app/pull/707)
+**マージコミットSHA:** `25a135154e621333ec73feadcbc6d4a194220720`
+**mergedAt:** `2026-08-30T16:12:28Z`
+
+### 変更前の状態
+
+- 発送詳細パネルに LABEL_URL / INVOICE_URL の表示・アップロード機能がなかった
+- GAS に PDF ファイルを Drive へ保存する API が存在しなかった
+
+### 変更内容
+
+| ファイル | 変更概要 |
+|---------|---------|
+| `src/28_CoreShipmentApi.js` | `uploadCoreShipmentFileForFrontend(sessionId, payload)` を追加。TRACKING_NUMBER 必須チェック・Drive アップロード・ANYONE_WITH_LINK 共有・LABEL_URL / INVOICE_URL 書き込み・両列揃い次第 STORAGE='TRUE' 自動セット |
+| `frontend/src/gas/client.ts` | `OrderDetailRecord.shipments` に LABEL_URL / INVOICE_URL フィールド追加。`UploadShipmentFilePayload` / `UploadShipmentFileResult` 型と `uploadCoreShipmentFile` 関数を追加 |
+| `frontend/src/gas/types.d.ts` | `GoogleScriptRun` に `uploadCoreShipmentFileForFrontend` 宣言を追加 |
+| `frontend/src/content/ja/salesOrders.ts` | アップロード UI 用 i18n 文字列 10 件を追加 |
+| `frontend/src/pages/sales-orders/SalesOrderDetailPage.tsx` | 発送詳細パネルにファイルアップロード UI を追加。TRACKING_NUMBER 未入力時はガイダンス表示。既存 URL はリンク表示 |
+| `frontend/src/preview/gasRunnerMock.ts` | `uploadCoreShipmentFileForFrontend` モック追加。発送モックを TRACKING_NUMBER あり/なし 2 行構成に更新 |
+
+### getDeployedSha 照合
+
+```
+deployedAt:  2026-08-30T16:13:16.418Z
+deployedSha: 25a135154e621333ec73feadcbc6d4a194220720
+origin/develop HEAD: 25a135154e621333ec73feadcbc6d4a194220720
+→ 一致 ✓
+```
+
+### auditDevCoreSchemaV1HeaderDetailV3 結果（SHIPMENTS 抜粋）
+
+```
+CORE_SCHEMA | sheetName=発送 | exists=true | columnCount=22
+  col12=ラベルURL | col13=インボイスURL
+  Registry定義22列 / 実列数22 → 完全一致 ✓
+```
+
+### 戻し方
+
+```
+git revert 25a135154e621333ec73feadcbc6d4a194220720
+```
+
+---
+
 ## feat: 発送段階の判定修正と一覧から段階進捗ボタンを追加 — PR #696
 
 **日付:** 2026-08-30
