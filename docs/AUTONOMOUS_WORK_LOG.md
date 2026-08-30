@@ -78,6 +78,66 @@ git revert 443009dbdabdc75837681e5d7fdca955a90ab3fb
 
 ---
 
+## feat: 発送待ちタブの表示列を5列に絞る — PR #700
+
+**日付:** 2026-08-31
+**PR:** [#700](https://github.com/GEN-RYU-System/crm-app/pull/700)
+**マージコミットSHA:** `14b8869cb8758250da77a689dd898ad34d6ac383`
+**mergedAt:** `2026-08-30T15:01:09Z`
+
+### 変更前の状態
+
+発送待ちタブに 発送段階/請求書番号/発送先の国/支払状況（AWAITING_SHIPPING 専用列）＋ 顧客名/発送先住所/通貨/金額/支払期日/請求書発行日（共通列）が表示されており、列が多すぎて一覧性が低かった。
+
+### 変更内容
+
+| ファイル | 変更概要 |
+|---------|---------|
+| `frontend/src/pages/sales-orders/salesOrderListConfig.ts` | `AWAITING_SHIPPING_TAB_COLUMN_KEYS` 定数を追加（5キーを表示順で定義） |
+| `frontend/src/pages/sales-orders/SalesOrderListPage.tsx` | `columns` useMemo で `isAwaitingShippingTab` のとき `AWAITING_SHIPPING_TAB_COLUMN_KEYS` 順に5列のみ返すよう変更 |
+
+### 発送待ちタブの表示列（変更後）
+
+| # | 列名 | key |
+|---|-----|-----|
+| 1 | 受注番号 | orderId |
+| 2 | 発送段階（バッジ＋ボタン） | shipmentStage |
+| 3 | 顧客名 | customerName |
+| 4 | 発送先の国 | shippingCountryJa |
+| 5 | 支払状況（バッジ） | paymentStatus |
+
+他タブ（すべて・支払い待ち・仕入れ中・完了・トラブル・キャンセル）の列構成は変更なし。
+
+### ?preview 動作確認
+
+1. **[確認済み]** 発送待ちタブで5列のみが指定順で表示される
+2. **[確認済み]** 発送段階列にバッジ＋ボタンが正常に表示される
+3. **[確認済み]** 「すべて」タブの列構成が変わっていない
+4. **[確認済み]** 白画面にならない
+
+### getDeployedSha 照合
+
+```
+deployedSha:             14b8869cb8758250da77a689dd898ad34d6ac383
+mergeCommit (PR #700):   14b8869cb8758250da77a689dd898ad34d6ac383
+→ 一致 ✓
+```
+
+### runCoreSchemaConformanceAudit 結果
+
+- ORDERS: 0件 ✓
+- SHIPMENTS: 0件 ✓
+- COUNTRIES: 0件 ✓
+- 総不一致 2件（LEADS 列数差13・CUSTOMERS 列数差1）は既存不一致。本PRはfrontend-only変更のため無関係。
+
+### 戻し方
+
+```
+git revert 14b8869cb8758250da77a689dd898ad34d6ac383
+```
+
+---
+
 ## feat: 発送待ちタブに発送段階・請求書番号・発送先の国・支払状況の4列を追加 — PR #692
 
 **日付:** 2026-08-30
