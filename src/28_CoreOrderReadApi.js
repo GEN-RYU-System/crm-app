@@ -323,8 +323,10 @@ function getCoreOrderDetailForFrontend(sessionId, orderId) {
   // ── SHIPMENTS ───────────────────────────────────────────────────────────────
   var shipmentFields = [
     'SHIPMENT_ID', 'ORDER_ID', 'BOX_NUMBER', 'SHIPPING_METHOD',
-    'SHIPPED_AT', 'TRACKING_NUMBER', 'WEIGHT',
-    'PICKUP_REQUEST', 'NOTE'
+    'SHIPPED_AT', 'TRACKING_NUMBER', 'LENGTH', 'WIDTH', 'HEIGHT',
+    'WEIGHT', 'ESTIMATED_SHIPPING_FEE',
+    'INSPECTION', 'PACKING', 'STORAGE', 'PICKUP_REQUEST', 'NOTIFICATION',
+    'SHIPPING_ASSIGNEE_ID', 'NOTE'
   ];
   var allShipments = readDetailSheet_(ss, 'SHIPMENTS', shipmentFields);
   var shipments = allShipments.filter(function(row) {
