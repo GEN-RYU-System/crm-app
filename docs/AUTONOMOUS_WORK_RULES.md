@@ -1,5 +1,34 @@
 # 自律開発標準ルール
 
+## 作業開始前の必須チェック（canonical clone）
+
+すべての作業の冒頭で以下を実行し、条件を満たさなければ
+作業を開始せず報告して停止する。
+
+```bash
+cd ~/crm-app-canonical-20260830 && git branch --show-current
+cd ~/crm-app-canonical-20260830 && git fetch origin
+cd ~/crm-app-canonical-20260830 && git rev-parse HEAD origin/develop
+```
+
+停止条件:
+- ブランチが `develop` でない
+- `HEAD` が `origin/develop` と一致しない
+- 未コミットの `src/` 変更がある
+
+**なお、`develop` ブランチが別の worktree にチェックアウト済みの場合、**
+**canonical clone では checkout できない。その場合は `origin/develop` を直接参照する:**
+```bash
+git show origin/develop:<パス>
+git ls-tree origin/develop <ディレクトリ>/
+```
+
+**理由:** 古いブランチのまま調査すると、存在するファイルを「存在しない」と誤判定する。
+2026-08-30 に実際に発生（canonical clone が `release/gas-audit-docs` に留まり、
+`docs/sheet-headers-snapshot.md` と `src/99_SchemaSnapshot.js` を「存在しない」と誤報告した）。
+
+---
+
 ## マージ方式
 
 `gh pr merge <番号> --squash` で統一する。  
