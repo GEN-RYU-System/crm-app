@@ -155,8 +155,8 @@
   2. 定義→実シート 欠落ヘッダー: なし
   3. ヘッダー列数: 定義 11 / 実シート 11 → OK
   4. 主キー: null (スキップ)
-  5. Values [CONDITION] (Condition): ★実データに未定義値 4種 → Searched pack, FLAG_SINGLE, Damaged case, Unsearched pack
-  小計不一致: 4件
+  5. Values [CONDITION] (Condition): OK
+  小計不一致: 0件
 
 [CURRENCIES / 通貨マスタ]
   1. シート取得: OK (通貨マスタ)
@@ -200,7 +200,7 @@
   5. Values: 定義なし (スキップ)
   小計不一致: 0件
 
-=== 総不一致: 6 → ★FAIL ===
+=== 総不一致: 2 → ★FAIL ===
 ```
 
 ---
@@ -211,8 +211,8 @@
 |---------|-----------|---------|------------|-----|---------|
 | LEADS / リード管理 | ヘッダー列数 | 51 | 64 | +13 | 下記 3-1 参照 |
 | CUSTOMERS / 顧客マスタ | ヘッダー列数 | 14 | 15 | +1 | 下記 3-2 参照 |
-| SHARED_INVENTORY / 共用在庫 | CONDITION 値 | — | — | 4種 | 下記 3-3 参照 |
-| **合計** | | | | | **6件** |
+| SHARED_INVENTORY / 共用在庫 | CONDITION 値 | — | — | 0 | PR #686 で解消済み（2026-08-30） |
+| **合計** | | | | | **2件** |
 | ORDERS / オーダー管理 | — | 43 | 43 | 0 | **0件（常時必達）** |
 
 ### 3-1. LEADS 差13列 — 実シートにあってコード定義にない列
@@ -252,28 +252,28 @@
 
 参考: `AUTONOMOUS_WORK_LOG.md:274` に「`担当者ID` は PR #590 対応、別セッション管轄」の記述あり。
 
-### 3-3. SHARED_INVENTORY CONDITION 未定義値4種
+### 3-3. SHARED_INVENTORY CONDITION ~~未定義値4種~~ → **PR #686 で解消済み（2026-08-30）**
 
-コード定義値（src/00_CoreSchemaRegistry.js:205-210）:
+**解消前のコード定義値**（src/00_CoreSchemaRegistry.js:205-210 / ベースライン作成時点）:
 ```javascript
 CONDITION: {
   SEALED_BOX:         'Sealed box',
   DAMAGED_SEALED_BOX: 'Damaged sealed box',
   CASE:               'Case',
   NO_SHRINK_BOX:      'No shrink box'
+  // 4種が未定義: Searched pack / FLAG_SINGLE / Damaged case / Unsearched pack
 }
 ```
 
-実シートに存在するが定義にない値:
-| 未定義値 | 実シートの列 | 行数 |
-|---------|-----------|-----|
-| `Searched pack` | Condition 列（4列目） | 【未確認】 |
-| `FLAG_SINGLE` | Condition 列（4列目） | 【未確認】 |
-| `Damaged case` | Condition 列（4列目） | 【未確認】 |
-| `Unsearched pack` | Condition 列（4列目） | 【未確認】 |
+**PR #686 で追加した4種**（PO 確認済み / シート側が正）:
+| 追加キー | 追加値 |
+|---------|------|
+| `SEARCHED_PACK` | `'Searched pack'` |
+| `FLAG_SINGLE` | `'FLAG_SINGLE'` |
+| `DAMAGED_CASE` | `'Damaged case'` |
+| `UNSEARCHED_PACK` | `'Unsearched pack'` |
 
-備考: Condition列の位置は `src/00_CoreSchemaRegistry.js:200` の定義順（4番目の列）から特定。  
-各値の行数は `clasp run` の読み取り専用関数から取得可能だが、本ベースライン作成時点では実行していない。「何行分存在するか」は【未確認】。
+**マージ後監査（2026-08-30T12:28 JST）:** CONDITION → OK / 小計不一致 0件
 
 ---
 
@@ -285,7 +285,7 @@ CONDITION: {
 |---------|------|------|
 | LEADS 差13列 | **定義漏れ**（実シートにあり・コード定義になし） | 監査「欠落ヘッダー: なし」= 定義列はすべて実シートに存在。差分13列はすべて実シート側にのみ存在（src/00_CoreSchemaRegistry.js:4-5 に記述なし） |
 | CUSTOMERS 差1列（担当者ID） | **定義漏れ**（実シートにあり・コード定義になし） | 同上。実シート11列目に `担当者ID` が存在するが src/00_CoreSchemaRegistry.js:16 の CUSTOMERS 定義に含まれていない |
-| SHARED_INVENTORY 未定義値4種 | **定義漏れ**（実シートにあり・コード定義になし） | 実シートに `Searched pack` / `FLAG_SINGLE` / `Damaged case` / `Unsearched pack` が存在するが src/00_CoreSchemaRegistry.js:205-210 の CONDITION 定義に含まれていない |
+| ~~SHARED_INVENTORY 未定義値4種~~ | ~~定義漏れ~~ | **PR #686 で解消済み（2026-08-30）** |
 
 **注意: どちらが正しいかはここでは判定しない。** 実シートとコードのどちらを正とするかは PO の業務判断による。
 
@@ -295,7 +295,6 @@ CONDITION: {
 
 | 項目 | 未確認の内容 | 確認方法 |
 |-----|-----------|---------|
-| SHARED_INVENTORY 未定義値 各行数 | `Searched pack` / `FLAG_SINGLE` / `Damaged case` / `Unsearched pack` が実シートに何行分存在するか | 読み取り専用の `clasp run` 関数で取得可能 |
 | LEADS 差13列の追加経緯 | いつ・どのPRで実シートに追加されたか（コード定義への追加漏れか、意図的な未登録か） | git log / PR 一覧で追跡可能 |
 | CUSTOMERS 担当者ID の追加経緯 | AUTONOMOUS_WORK_LOG:274 に「PR #590 対応」の記述あるが、PR #590 の差分確認はしていない | `gh pr view 590` |
 
@@ -305,7 +304,7 @@ CONDITION: {
 
 | # | 項目 | 内容 |
 |---|-----|------|
-| 1 | SHARED_INVENTORY CONDITION 未定義値4種 | `Searched pack` / `FLAG_SINGLE` / `Damaged case` / `Unsearched pack` は業務上正しい値か。正しい場合はコード定義（src/00_CoreSchemaRegistry.js:205-210）への追加が必要 |
+| ~~1~~ | ~~SHARED_INVENTORY CONDITION 未定義値4種~~ | **PR #686 で解消済み（2026-08-30）** |
 | 2 | LEADS 差13列 | `リード進捗` / `商談進捗` / `1回の発注金額` 等13列をコード定義に追加するか、実シートから削除するか |
 | 3 | CUSTOMERS 担当者ID | 実シートの `担当者ID` 列をコード定義に追加するか |
 
@@ -322,10 +321,10 @@ CONDITION: {
 **ベースライン値（比較用・まとめ）:**
 
 ```
-総不一致: 6件
+総不一致: 2件  ← PR #686 適用後（2026-08-30）
   LEADS:            差 13列（定義51 / 実64）
   CUSTOMERS:        差 1列（定義14 / 実15、欠落列: 担当者ID）
-  SHARED_INVENTORY: 未定義値 4種（Searched pack / FLAG_SINGLE / Damaged case / Unsearched pack）
+  SHARED_INVENTORY: 0件（PR #686 で CONDITION 4種追加済み）
   ORDERS:           0件（常時必達）
 ```
 
