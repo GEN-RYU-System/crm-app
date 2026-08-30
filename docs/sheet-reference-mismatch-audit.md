@@ -140,12 +140,17 @@ deal_edit | team_stats | staff_manage | settings | admin_access | force_reset
 
 **ヘッダー一致: 1 / 17**（`役割名` のみ一致）
 
-**現状:** `DEFAULT_ROLES` ハードコードで動作しているため UI は機能するが、スプレッドシートの権限データを一切参照していない。`権限管理` シートへのメニュー表示制御データは別途 STAFF シートのアクセスで管理されているとみられる（未確認 [?]）。
+**現状:** `DEFAULT_ROLES` ハードコード（src/08_Config.js:745）で動作しているため UI は機能するが、スプレッドシートの権限データを一切参照していない。
 
-**PO への確認事項:**
-1. `権限設定`（英語権限キー形式）のシートを新規作成するか
-2. または `DEFAULT_ROLES` 定数で運用を続けると正式に決定するか
-3. `権限管理` シートが現行コードでどう活用されているかを確認するか
+**PO 決定（2026-08-30）:**
+
+| 項目 | 内容 |
+|-----|------|
+| シート作成 | **意図的に未作成** |
+| 運用方針 | 全ページの移植・構築が完了した時点で `権限設定` シートを作成する |
+| 現在の動作 | `DEFAULT_ROLES`（src/08_Config.js:745 のハードコード）で権限を決定 |
+| 影響 | スプレッドシート上での権限変更は現在できない。変更にはコード修正（src/08_Config.js の `DEFAULT_ROLES` 定数）が必要 |
+| 再検討タイミング | 全ページ移植完了時 |
 
 ---
 
@@ -178,24 +183,11 @@ getInboxMoreMessages                 client.ts:980
 
 ---
 
-## 4. 停止時の記録
-
-### 停止理由
-`PERMISSIONS`（CONFIG.SHEETS.PERMISSIONS = '権限設定'）が **新方式 × 完全不在** に該当。  
-この項目は全 44 フロントエンド関数の認証ガードに使われており、シートが実在しないため DEFAULT_ROLES フォールバックに依存している。シート作成要否の判断は PO が行う必要がある。
+## 4. 作業記録
 
 ### 完了済み範囲
 - [x] B 分類全 38 件の調査・分類
 - [x] 本監査レポート（`docs/sheet-reference-mismatch-audit.md`）の作成
 - [x] STOP 条件（新方式 × 完全不在 1 件）の特定と記録
-
-### 未完了範囲（STOP により保留）
-- [ ] Phase 3: CONVERSATION_LOG の名前修正（`'会話ログ'` → `'会話ログ（商談用）'`）
-  - 対象ファイル: src/08_Config.js:79
-  - 修正はコード 1 行のみ。STOP 解除後に即座に実施可能
-- [ ] Phase 4: 後続検証（`clasp run getDeployedSha`, `runCoreSchemaConformanceAudit`, `dryRunOrderStatusRecalculation`）
-
-### STOP 解除条件
-PO から以下のいずれかの判断を受けた場合：
-- A. 「`権限設定` シートを作成する」→ シート作成後、CONVERSATION_LOG 修正 PR を作成して Phase 3 再開
-- B. 「DEFAULT_ROLES 運用を継続する（シート作成しない）」→ PERMISSIONS を 旧方式 × 完全不在 として記録、CONVERSATION_LOG 修正 PR のみ Phase 3 実施
+- [x] PO 判断の取得・記録（2026-08-30）— DEFAULT_ROLES 運用継続、全ページ移植完了時に再検討
+- [x] Phase 3: CONVERSATION_LOG 名前修正（`'会話ログ'` → `'会話ログ（商談用）'`）
