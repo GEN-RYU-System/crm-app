@@ -76,7 +76,7 @@ const CONFIG = {
     BUDDY_LOG: 'Buddy対話ログ',
 
     // 会話ログシート（統合）
-    CONVERSATION_LOG: '会話ログ',
+    CONVERSATION_LOG: '会話ログ（商談用）',
     TERM_DICTIONARY: '専門用語辞書',
 
     // お知らせシート
