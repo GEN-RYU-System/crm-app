@@ -12,9 +12,11 @@ import {
   confirmCoreOrderPayment,
   getCorePurchaseStatusOptions,
   upsertCorePurchase,
+  upsertCoreShipment,
   type OrderDetailRecord,
   type PurchaseStatusOption,
   type UpsertPurchasePayload,
+  type UpsertShipmentPayload,
 } from '../../gas/client';
 import { useSalesOrderListCache } from './SalesOrderListCacheContext';
 import { useSalesOrderDetailCache } from './SalesOrderDetailCacheContext';
@@ -112,6 +114,26 @@ const EMPTY_PURCHASE_FORM: UpsertPurchasePayload = {
   note: '',
 };
 
+const EMPTY_SHIPMENT_FORM: UpsertShipmentPayload = {
+  orderId: '',
+  shipmentId: undefined,
+  boxNumber: '',
+  shippingMethod: '',
+  shippedAt: '',
+  trackingNumber: '',
+  length: '',
+  width: '',
+  height: '',
+  weight: '',
+  estimatedShippingFee: '',
+  inspection: '',
+  packing: '',
+  storage: '',
+  pickupRequest: '',
+  notification: '',
+  note: '',
+};
+
 const VALID_TABS: ReadonlySet<string> = new Set<DetailTab>(['billing', 'purchases', 'shipments']);
 
 function resolveInitialTab(tabParam: string | null): DetailTab {
@@ -135,6 +157,14 @@ export function SalesOrderDetailPage() {
   const [purchaseSaving, setPurchaseSaving] = useState(false);
   const [purchaseFormError, setPurchaseFormError] = useState<string | undefined>(undefined);
   const [purchaseStatusOptions, setPurchaseStatusOptions] = useState<readonly PurchaseStatusOption[]>([]);
+
+  // shipment form state
+  const [shipmentFormOpen, setShipmentFormOpen] = useState(false);
+  const [shipmentFormStep, setShipmentFormStep] = useState<'input' | 'confirm'>('input');
+  const [shipmentFormData, setShipmentFormData] = useState<UpsertShipmentPayload>(EMPTY_SHIPMENT_FORM);
+  const [shipmentSaving, setShipmentSaving] = useState(false);
+  const [shipmentFormError, setShipmentFormError] = useState<string | undefined>(undefined);
+  const [selectedShipmentId, setSelectedShipmentId] = useState<string | undefined>(undefined);
 
   // tab state: initialise from ?tab= query param; invalid/missing → 'billing'
   const [activeTab, setActiveTab] = useState<DetailTab>(() => resolveInitialTab(searchParams.get('tab')));
@@ -207,6 +237,52 @@ export function SalesOrderDetailPage() {
       setPurchaseFormError(e instanceof Error ? e.message : copy.purchaseFormSaveError);
     } finally {
       setPurchaseSaving(false);
+    }
+  };
+
+  const openShipmentForm = (existing?: OrderDetail['shipments'][number]) => {
+    if (!orderId) return;
+    setShipmentFormData(
+      existing
+        ? {
+            orderId,
+            shipmentId: existing.SHIPMENT_ID,
+            boxNumber: String(existing.BOX_NUMBER ?? ''),
+            shippingMethod: String(existing.SHIPPING_METHOD ?? ''),
+            shippedAt: String(existing.SHIPPED_AT ?? ''),
+            trackingNumber: String(existing.TRACKING_NUMBER ?? ''),
+            length: String(existing.LENGTH ?? ''),
+            width: String(existing.WIDTH ?? ''),
+            height: String(existing.HEIGHT ?? ''),
+            weight: String(existing.WEIGHT ?? ''),
+            estimatedShippingFee: String(existing.ESTIMATED_SHIPPING_FEE ?? ''),
+            inspection: String(existing.INSPECTION ?? ''),
+            packing: String(existing.PACKING ?? ''),
+            storage: String(existing.STORAGE ?? ''),
+            pickupRequest: String(existing.PICKUP_REQUEST ?? ''),
+            notification: String(existing.NOTIFICATION ?? ''),
+            note: String(existing.NOTE ?? ''),
+          }
+        : { ...EMPTY_SHIPMENT_FORM, orderId }
+    );
+    setShipmentFormStep('input');
+    setShipmentFormError(undefined);
+    setShipmentFormOpen(true);
+  };
+
+  const handleShipmentSave = async () => {
+    if (!orderId) return;
+    setShipmentSaving(true);
+    setShipmentFormError(undefined);
+    try {
+      await upsertCoreShipment(shipmentFormData);
+      setShipmentFormOpen(false);
+      void refresh();
+      await refreshDetail(orderId);
+    } catch (e: unknown) {
+      setShipmentFormError(e instanceof Error ? e.message : copy.shipmentFormSaveError);
+    } finally {
+      setShipmentSaving(false);
     }
   };
 
@@ -283,6 +359,8 @@ export function SalesOrderDetailPage() {
           { key: 'SHIPPING_METHOD', header: copy.colShippingMethod,         renderCell: (r) => formatValue(r.SHIPPING_METHOD) },
           { key: 'SHIPPED_AT',      header: copy.colShippedAt,              renderCell: (r) => formatDate(r.SHIPPED_AT) },
           { key: 'TRACKING_NUMBER', header: copy.colShipmentTrackingNumber, renderCell: (r) => formatValue(r.TRACKING_NUMBER) },
+          { key: 'BOX_NUMBER',      header: copy.colBoxNumber,              renderCell: (r) => formatValue(r.BOX_NUMBER) },
+          { key: 'PICKUP_REQUEST',  header: copy.colPickupRequest,          renderCell: (r) => formatValue(r.PICKUP_REQUEST) },
         ];
 
         return (
@@ -447,7 +525,7 @@ export function SalesOrderDetailPage() {
                 <div className="sales-order-detail-page__section">
                   <div className="sales-order-detail-page__section-header">
                     <h2 className="sales-order-detail-page__section-title">{copy.sectionShipments}</h2>
-                    <Button variant="secondary" size="sm" disabled>
+                    <Button variant="secondary" size="sm" onClick={() => openShipmentForm()}>
                       {copy.btnAddShipment}
                     </Button>
                   </div>
@@ -459,9 +537,42 @@ export function SalesOrderDetailPage() {
                       columns={shipmentColumns}
                       rows={detail.shipments}
                       rowKey={(r) => String(r.SHIPMENT_ID)}
+                      onRowClick={(r) => setSelectedShipmentId((prev) => prev === r.SHIPMENT_ID ? undefined : r.SHIPMENT_ID)}
                       surface="embedded"
                     />
                   )}
+                  {selectedShipmentId && (() => {
+                    const s = detail.shipments.find((r) => r.SHIPMENT_ID === selectedShipmentId);
+                    if (!s) return null;
+                    return (
+                      <div className="sales-order-detail-page__shipment-detail">
+                        <div className="sales-order-detail-page__shipment-detail-header">
+                          <h3 className="sales-order-detail-page__section-title">{copy.shipmentDetailTitle}</h3>
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedShipmentId(undefined)}>
+                            {copy.shipmentDetailClose}
+                          </Button>
+                        </div>
+                        <dl className="sales-order-detail-page__purchase-confirm-dl">
+                          <dt>{copy.labelShipmentBoxNumber}</dt><dd>{formatValue(s.BOX_NUMBER)}</dd>
+                          <dt>{copy.labelShipmentShippingMethod}</dt><dd>{formatValue(s.SHIPPING_METHOD)}</dd>
+                          <dt>{copy.labelShipmentShippedAt}</dt><dd>{formatDate(s.SHIPPED_AT)}</dd>
+                          <dt>{copy.labelShipmentTrackingNumber}</dt><dd>{formatValue(s.TRACKING_NUMBER)}</dd>
+                          <dt>{copy.labelShipmentLength}</dt><dd>{formatValue(s.LENGTH)}</dd>
+                          <dt>{copy.labelShipmentWidth}</dt><dd>{formatValue(s.WIDTH)}</dd>
+                          <dt>{copy.labelShipmentHeight}</dt><dd>{formatValue(s.HEIGHT)}</dd>
+                          <dt>{copy.labelShipmentWeight}</dt><dd>{formatValue(s.WEIGHT)}</dd>
+                          <dt>{copy.labelShipmentEstimatedShippingFee}</dt><dd>{formatValue(s.ESTIMATED_SHIPPING_FEE)}</dd>
+                          <dt>{copy.labelShipmentInspection}</dt><dd>{formatValue(s.INSPECTION)}</dd>
+                          <dt>{copy.labelShipmentPacking}</dt><dd>{formatValue(s.PACKING)}</dd>
+                          <dt>{copy.labelShipmentStorage}</dt><dd>{formatValue(s.STORAGE)}</dd>
+                          <dt>{copy.labelShipmentPickupRequest}</dt><dd>{formatValue(s.PICKUP_REQUEST)}</dd>
+                          <dt>{copy.labelShipmentNotification}</dt><dd>{formatValue(s.NOTIFICATION)}</dd>
+                          <dt>{copy.labelShipmentNote}</dt><dd>{formatValue(s.NOTE)}</dd>
+                          <dt>{copy.labelShipmentShippingAssigneeId}</dt><dd>{formatValue(s.SHIPPING_ASSIGNEE_ID)}</dd>
+                        </dl>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -620,6 +731,175 @@ export function SalesOrderDetailPage() {
                           onClick={() => { void handlePurchaseSave(); }}
                         >
                           {purchaseSaving ? copy.purchaseFormSaving : copy.purchaseFormConfirm}
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+            {/* shipment form dialog */}
+            {shipmentFormOpen && (
+              <div className="sales-order-detail-page__confirm-overlay">
+                <div className="sales-order-detail-page__shipment-dialog">
+                  {shipmentFormStep === 'input' ? (
+                    <>
+                      <h3 className="sales-order-detail-page__section-title">
+                        {shipmentFormData.shipmentId ? copy.shipmentFormEditTitle : copy.shipmentFormTitle}
+                      </h3>
+                      <div className="sales-order-detail-page__shipment-form-grid">
+                        <TextField
+                          label={copy.labelShipmentBoxNumber}
+                          type="number"
+                          value={shipmentFormData.boxNumber ?? ''}
+                          onChange={(e) => setShipmentFormData((prev) => ({ ...prev, boxNumber: e.target.value }))}
+                        />
+                        <TextField
+                          label={copy.labelShipmentShippingMethod}
+                          value={shipmentFormData.shippingMethod ?? ''}
+                          onChange={(e) => setShipmentFormData((prev) => ({ ...prev, shippingMethod: e.target.value }))}
+                        />
+                        <TextField
+                          label={copy.labelShipmentShippedAt}
+                          type="date"
+                          value={shipmentFormData.shippedAt ?? ''}
+                          onChange={(e) => setShipmentFormData((prev) => ({ ...prev, shippedAt: e.target.value }))}
+                        />
+                        <TextField
+                          label={copy.labelShipmentTrackingNumber}
+                          value={shipmentFormData.trackingNumber ?? ''}
+                          onChange={(e) => setShipmentFormData((prev) => ({ ...prev, trackingNumber: e.target.value }))}
+                        />
+                        <TextField
+                          label={copy.labelShipmentLength}
+                          type="number"
+                          value={shipmentFormData.length ?? ''}
+                          onChange={(e) => setShipmentFormData((prev) => ({ ...prev, length: e.target.value }))}
+                        />
+                        <TextField
+                          label={copy.labelShipmentWidth}
+                          type="number"
+                          value={shipmentFormData.width ?? ''}
+                          onChange={(e) => setShipmentFormData((prev) => ({ ...prev, width: e.target.value }))}
+                        />
+                        <TextField
+                          label={copy.labelShipmentHeight}
+                          type="number"
+                          value={shipmentFormData.height ?? ''}
+                          onChange={(e) => setShipmentFormData((prev) => ({ ...prev, height: e.target.value }))}
+                        />
+                        <TextField
+                          label={copy.labelShipmentWeight}
+                          type="number"
+                          value={shipmentFormData.weight ?? ''}
+                          onChange={(e) => setShipmentFormData((prev) => ({ ...prev, weight: e.target.value }))}
+                        />
+                        <TextField
+                          label={copy.labelShipmentEstimatedShippingFee}
+                          type="number"
+                          value={shipmentFormData.estimatedShippingFee ?? ''}
+                          onChange={(e) => setShipmentFormData((prev) => ({ ...prev, estimatedShippingFee: e.target.value }))}
+                        />
+                        <div className="sales-order-detail-page__shipment-form-full sales-order-detail-page__shipment-checkbox-group">
+                          <label className="sales-order-detail-page__shipment-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={shipmentFormData.inspection === 'TRUE'}
+                              onChange={(e) => setShipmentFormData((prev) => ({ ...prev, inspection: e.target.checked ? 'TRUE' : '' }))}
+                            />
+                            {copy.labelShipmentInspection}
+                          </label>
+                          <label className="sales-order-detail-page__shipment-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={shipmentFormData.packing === 'TRUE'}
+                              onChange={(e) => setShipmentFormData((prev) => ({ ...prev, packing: e.target.checked ? 'TRUE' : '' }))}
+                            />
+                            {copy.labelShipmentPacking}
+                          </label>
+                          <label className="sales-order-detail-page__shipment-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={shipmentFormData.storage === 'TRUE'}
+                              onChange={(e) => setShipmentFormData((prev) => ({ ...prev, storage: e.target.checked ? 'TRUE' : '' }))}
+                            />
+                            {copy.labelShipmentStorage}
+                          </label>
+                          <label className="sales-order-detail-page__shipment-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={shipmentFormData.pickupRequest === 'TRUE'}
+                              onChange={(e) => setShipmentFormData((prev) => ({ ...prev, pickupRequest: e.target.checked ? 'TRUE' : '' }))}
+                            />
+                            {copy.labelShipmentPickupRequest}
+                          </label>
+                          <label className="sales-order-detail-page__shipment-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={shipmentFormData.notification === 'TRUE'}
+                              onChange={(e) => setShipmentFormData((prev) => ({ ...prev, notification: e.target.checked ? 'TRUE' : '' }))}
+                            />
+                            {copy.labelShipmentNotification}
+                          </label>
+                        </div>
+                        <TextField
+                          label={copy.labelShipmentNote}
+                          value={shipmentFormData.note ?? ''}
+                          onChange={(e) => setShipmentFormData((prev) => ({ ...prev, note: e.target.value }))}
+                          className="sales-order-detail-page__shipment-form-full"
+                        />
+                      </div>
+                      <div className="sales-order-detail-page__confirm-actions">
+                        <Button
+                          variant="secondary"
+                          onClick={() => { setShipmentFormOpen(false); setShipmentFormError(undefined); }}
+                        >
+                          {copy.shipmentFormCancel}
+                        </Button>
+                        <Button
+                          variant="primary"
+                          onClick={() => { setShipmentFormStep('confirm'); }}
+                        >
+                          {copy.shipmentFormConfirmTitle}
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="sales-order-detail-page__section-title">{copy.shipmentFormConfirmTitle}</h3>
+                      <p className="sales-order-detail-page__purchase-confirm-body">{copy.shipmentFormConfirmBody}</p>
+                      <dl className="sales-order-detail-page__purchase-confirm-dl">
+                        {shipmentFormData.boxNumber           && <><dt>{copy.labelShipmentBoxNumber}</dt><dd>{shipmentFormData.boxNumber}</dd></>}
+                        {shipmentFormData.shippingMethod      && <><dt>{copy.labelShipmentShippingMethod}</dt><dd>{shipmentFormData.shippingMethod}</dd></>}
+                        {shipmentFormData.shippedAt           && <><dt>{copy.labelShipmentShippedAt}</dt><dd>{shipmentFormData.shippedAt}</dd></>}
+                        {shipmentFormData.trackingNumber      && <><dt>{copy.labelShipmentTrackingNumber}</dt><dd>{shipmentFormData.trackingNumber}</dd></>}
+                        {shipmentFormData.length              && <><dt>{copy.labelShipmentLength}</dt><dd>{shipmentFormData.length}</dd></>}
+                        {shipmentFormData.width               && <><dt>{copy.labelShipmentWidth}</dt><dd>{shipmentFormData.width}</dd></>}
+                        {shipmentFormData.height              && <><dt>{copy.labelShipmentHeight}</dt><dd>{shipmentFormData.height}</dd></>}
+                        {shipmentFormData.weight              && <><dt>{copy.labelShipmentWeight}</dt><dd>{shipmentFormData.weight}</dd></>}
+                        {shipmentFormData.estimatedShippingFee && <><dt>{copy.labelShipmentEstimatedShippingFee}</dt><dd>{shipmentFormData.estimatedShippingFee}</dd></>}
+                        {shipmentFormData.inspection === 'TRUE' && <><dt>{copy.labelShipmentInspection}</dt><dd>{copy.labelShipmentInspection}</dd></>}
+                        {shipmentFormData.packing === 'TRUE'    && <><dt>{copy.labelShipmentPacking}</dt><dd>{copy.labelShipmentPacking}</dd></>}
+                        {shipmentFormData.storage === 'TRUE'    && <><dt>{copy.labelShipmentStorage}</dt><dd>{copy.labelShipmentStorage}</dd></>}
+                        {shipmentFormData.pickupRequest === 'TRUE' && <><dt>{copy.labelShipmentPickupRequest}</dt><dd>{copy.labelShipmentPickupRequest}</dd></>}
+                        {shipmentFormData.notification === 'TRUE' && <><dt>{copy.labelShipmentNotification}</dt><dd>{copy.labelShipmentNotification}</dd></>}
+                        {shipmentFormData.note                && <><dt>{copy.labelShipmentNote}</dt><dd>{shipmentFormData.note}</dd></>}
+                      </dl>
+                      {shipmentFormError && <StatusMessage variant="error">{shipmentFormError}</StatusMessage>}
+                      <div className="sales-order-detail-page__confirm-actions">
+                        <Button
+                          variant="secondary"
+                          disabled={shipmentSaving}
+                          onClick={() => { setShipmentFormStep('input'); setShipmentFormError(undefined); }}
+                        >
+                          {copy.shipmentFormBack}
+                        </Button>
+                        <Button
+                          variant="primary"
+                          disabled={shipmentSaving}
+                          onClick={() => { void handleShipmentSave(); }}
+                        >
+                          {shipmentSaving ? copy.shipmentFormSaving : copy.shipmentFormConfirm}
                         </Button>
                       </div>
                     </>

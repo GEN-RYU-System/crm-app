@@ -296,3 +296,60 @@
   margin: var(--space-none);
   word-break: break-all;
 }
+
+/* 発送フォームダイアログ */
+.sales-order-detail-page__shipment-dialog {
+  background: var(--color-surface);
+  border-radius: var(--radius-surface);
+  padding: var(--space-xl);
+  max-width: 640px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.sales-order-detail-page__shipment-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-lg);
+}
+
+.sales-order-detail-page__shipment-form-full {
+  grid-column: 1 / -1;
+}
+
+.sales-order-detail-page__shipment-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.sales-order-detail-page__shipment-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+/* 発送詳細インライン */
+.sales-order-detail-page__shipment-detail {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-surface);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  background: var(--color-surface);
+}
+
+.sales-order-detail-page__shipment-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+}

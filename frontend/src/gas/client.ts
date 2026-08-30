@@ -544,8 +544,17 @@ export type OrderDetailRecord = {
     SHIPPING_METHOD: string;
     SHIPPED_AT: string;
     TRACKING_NUMBER: string;
+    LENGTH: string | number;
+    WIDTH: string | number;
+    HEIGHT: string | number;
     WEIGHT: string | number;
+    ESTIMATED_SHIPPING_FEE: string | number;
+    INSPECTION: string;
+    PACKING: string;
+    STORAGE: string;
     PICKUP_REQUEST: string;
+    NOTIFICATION: string;
+    SHIPPING_ASSIGNEE_ID: string;
     NOTE: string;
   }>;
 };
@@ -1040,5 +1049,38 @@ export function upsertCorePurchase(payload: UpsertPurchasePayload): Promise<Upse
       .withSuccessHandler((value: unknown) => resolve(value as UpsertPurchaseResult))
       .withFailureHandler((error: unknown) => reject(toError(error)))
       .upsertCorePurchaseForFrontend(getStoredSessionId(), payload);
+  });
+}
+
+export type UpsertShipmentPayload = {
+  orderId: string;
+  shipmentId?: string;
+  boxNumber?: string;
+  shippingMethod?: string;
+  shippedAt?: string;
+  trackingNumber?: string;
+  length?: string;
+  width?: string;
+  height?: string;
+  weight?: string;
+  estimatedShippingFee?: string;
+  inspection?: string;
+  packing?: string;
+  storage?: string;
+  pickupRequest?: string;
+  notification?: string;
+  note?: string;
+};
+
+export type UpsertShipmentResult = { success: true; shipmentId: string };
+
+export function upsertCoreShipment(payload: UpsertShipmentPayload): Promise<UpsertShipmentResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as UpsertShipmentResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .upsertCoreShipmentForFrontend(getStoredSessionId(), payload);
   });
 }
