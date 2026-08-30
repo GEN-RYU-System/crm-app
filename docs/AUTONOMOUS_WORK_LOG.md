@@ -4022,6 +4022,23 @@ GAS側の読み取り権限（`lead_view`）が分離されている設計上の
 - 新ベースライン: 総不一致 2件（LEADS 差13列 / CUSTOMERS 差1列）/ SHARED_INVENTORY 0件 / ORDERS 0件
 - revert: `git revert 66c4def`
 
+## 2026-08-30 SQL移行対象シート訂正（20→22 件）
+
+- PR: #698 / squash SHA: `b772d71a0850bef1511d41d4ee9a9f95ec866551` / mergedAt: `2026-08-30T14:53:03Z`
+- 変更ファイル: `docs/sql-migration-scope.md` のみ（src/ 変更なし）
+- 訂正内容:
+  - #21 **会話ログ（商談用）**: `resolveConversationLogSheet_` が CONFIG.SHEETS.CONVERSATION_LOG（'会話ログ'）不在のため `getSheetByName('会話ログ（商談用）')` にフォールバック。Inbox 4関数がアクセス
+  - #22 **システム設定**: `getSettingValue` が `getCoreSchemaV1Sheet(ss, 'SETTINGS')` 経由で参照。`createCoreOrderForFrontend` / `createCoreQuoteForFrontend` がアクセス
+  - 44関数を再突き合わせし、全関数の参照シートが一覧に含まれることを確認済み
+- マージ後3点検証: all pass
+  - `getDeployedSha`: `b772d71a0850bef1511d41d4ee9a9f95ec866551`（一致）
+  - `runCoreSchemaConformanceAudit`: 総不一致 2件（ベースライン維持: LEADS 差13列 / CUSTOMERS 差1列）
+  - `dryRunOrderStatusRecalculation`: 変更あり 0件
+- Deploy to DEV: success
+- revert: `git revert b772d71a0850bef1511d41d4ee9a9f95ec866551`
+
+---
+
 ## 2026-08-30 canonical clone のブランチ追従漏れ
 
 - 事象: canonical clone が `release/gas-audit-docs` に留まり、`develop` 未追従。
