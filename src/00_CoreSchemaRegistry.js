@@ -215,6 +215,20 @@ const CORE_SCHEMA_V1_TABLES = {
     },
     referenceIds: [{ headerKey: 'PRODUCT_ID', targetTableKey: 'PRODUCTS' }]
   },
+  COUNTRIES: {
+    sheetName: '国マスタ', canonicalName: '国マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: false,
+    headers: createCoreSchemaV1Headers([
+      ['COUNTRY_CODE',      '国ID(ISO2)'],
+      ['DISPLAY_NAME',      '国名（表示）'],
+      ['NAME_JA',           '国名（日本語）'],
+      ['COUNTRY_NUMBER',    '国番号'],
+      ['STRIP_TRUNK_ZERO',  'トランク0除去'],
+      ['IS_ACTIVE',         '有効'],
+      ['STATE_REQUIRED',    '州必須'],
+      ['ZIP_REQUIRED',      '郵便番号必須']
+    ]), primaryKey: 'COUNTRY_CODE',
+    referenceIds: []
+  },
   CURRENCIES: {
     sheetName: '通貨マスタ', canonicalName: '通貨マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
     headers: createCoreSchemaV1Headers([

@@ -30,14 +30,31 @@ function getCoreOrdersForFrontend(sessionId, forceRefresh) {
     return map;
   }, {});
 
+  // 国マスタを1回だけ読み、ISO2 → 日本語名の対応表を作る
+  var countryJaNameByIso2 = buildCountryJaNameMap_(spreadsheet);
+
   // PURCHASES を1回読み、ORDER_ID → 仕入れ状態キー配列のマップを作る
   var purchaseStatusByOrder = buildPurchaseStatusByOrder_(spreadsheet);
+
+  // SHIPPING_DESTINATIONS を1回読み、SHIPPING_DESTINATION_ID → COUNTRY の対応表を作る
+  var shippingDests = coreCustomerFrontendReadTable(spreadsheet, 'SHIPPING_DESTINATIONS', [
+    'SHIPPING_DESTINATION_ID', 'COUNTRY'
+  ]);
+  var shippingCountryByDestId = shippingDests.rows.reduce(function(map, row) {
+    var id      = coreCustomerFrontendValue(row[shippingDests.indexes.SHIPPING_DESTINATION_ID]);
+    var country = coreCustomerFrontendValue(row[shippingDests.indexes.COUNTRY]);
+    if (id) map[id] = country || '';
+    return map;
+  }, {});
+
+  // SHIPMENTS を1回全件読み、ORDER_ID でグルーピングして発送段階を判定する
+  var shipmentStageByOrder = buildShipmentStageByOrder_(spreadsheet);
 
   var orders = coreCustomerFrontendReadTable(spreadsheet, 'ORDERS', [
     'ORDER_ID', 'CUSTOMER_ID', 'INVOICE_NUMBER', 'INVOICE_ISSUED_AT',
     'PAYMENT_METHOD', 'INVOICE_TOTAL', 'CURRENCY',
     'PAYMENT_DUE_AT', 'PAYMENT_STATUS', 'INVOICE_TOTAL_JPY',
-    'STATUS', 'PAYMENT_CONFIRMED_AT'
+    'STATUS', 'PAYMENT_CONFIRMED_AT', 'SHIPPING_DESTINATION_ID'
   ]);
 
   var rows = orders.rows
@@ -45,9 +62,12 @@ function getCoreOrdersForFrontend(sessionId, forceRefresh) {
       return coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]);
     })
     .map(function(row) {
-      var customerId = coreCustomerFrontendValue(row[orders.indexes.CUSTOMER_ID]);
-      var orderId    = coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]);
-      var psResult   = resolvePurchaseStage_(purchaseStatusByOrder[orderId] || []);
+      var customerId        = coreCustomerFrontendValue(row[orders.indexes.CUSTOMER_ID]);
+      var orderId           = coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]);
+      var shippingDestId    = coreCustomerFrontendValue(row[orders.indexes.SHIPPING_DESTINATION_ID]);
+      var psResult          = resolvePurchaseStage_(purchaseStatusByOrder[orderId] || []);
+      var shippingCountry   = shippingCountryByDestId[shippingDestId] || '';
+      var shippingCountryJa = shippingCountry ? (countryJaNameByIso2[shippingCountry] || shippingCountry) : '';
       return {
         orderId:         orderId,
         customerName:    customerNameById[customerId] || '',
@@ -62,7 +82,10 @@ function getCoreOrdersForFrontend(sessionId, forceRefresh) {
         status:               coreCustomerFrontendValue(row[orders.indexes.STATUS]),
         paymentConfirmedAt:   coreCustomerFrontendValue(row[orders.indexes.PAYMENT_CONFIRMED_AT]),
         purchaseCount:        psResult.count,
-        purchaseStatus:       psResult.key
+        purchaseStatus:       psResult.key,
+        shippingCountry:      shippingCountry,
+        shippingCountryJa:    shippingCountryJa,
+        shipmentStage:        shipmentStageByOrder[orderId] || 'NOT_STARTED'
       };
     });
 
@@ -102,14 +125,31 @@ function getCoreOrdersBatchForFrontend(sessionId, forceRefresh) {
     return map;
   }, {});
 
+  // 国マスタを1回だけ読み、ISO2 → 日本語名の対応表を作る
+  var countryJaNameByIso2 = buildCountryJaNameMap_(spreadsheet);
+
   // PURCHASES を1回読み、ORDER_ID → 仕入れ状態キー配列のマップを作る
   var purchaseStatusByOrder = buildPurchaseStatusByOrder_(spreadsheet);
+
+  // SHIPPING_DESTINATIONS を1回読み、SHIPPING_DESTINATION_ID → COUNTRY の対応表を作る
+  var shippingDests = coreCustomerFrontendReadTable(spreadsheet, 'SHIPPING_DESTINATIONS', [
+    'SHIPPING_DESTINATION_ID', 'COUNTRY'
+  ]);
+  var shippingCountryByDestId = shippingDests.rows.reduce(function(map, row) {
+    var id      = coreCustomerFrontendValue(row[shippingDests.indexes.SHIPPING_DESTINATION_ID]);
+    var country = coreCustomerFrontendValue(row[shippingDests.indexes.COUNTRY]);
+    if (id) map[id] = country || '';
+    return map;
+  }, {});
+
+  // SHIPMENTS を1回全件読み、ORDER_ID でグルーピングして発送段階を判定する
+  var shipmentStageByOrder = buildShipmentStageByOrder_(spreadsheet);
 
   var orders = coreCustomerFrontendReadTable(spreadsheet, 'ORDERS', [
     'ORDER_ID', 'CUSTOMER_ID', 'INVOICE_NUMBER', 'INVOICE_ISSUED_AT',
     'PAYMENT_METHOD', 'INVOICE_TOTAL', 'CURRENCY',
     'PAYMENT_DUE_AT', 'PAYMENT_STATUS', 'INVOICE_TOTAL_JPY',
-    'STATUS', 'PAYMENT_CONFIRMED_AT'
+    'STATUS', 'PAYMENT_CONFIRMED_AT', 'SHIPPING_DESTINATION_ID'
   ]);
 
   var rows = orders.rows
@@ -117,9 +157,12 @@ function getCoreOrdersBatchForFrontend(sessionId, forceRefresh) {
       return coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]);
     })
     .map(function(row) {
-      var customerId = coreCustomerFrontendValue(row[orders.indexes.CUSTOMER_ID]);
-      var orderId    = coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]);
-      var psResult   = resolvePurchaseStage_(purchaseStatusByOrder[orderId] || []);
+      var customerId        = coreCustomerFrontendValue(row[orders.indexes.CUSTOMER_ID]);
+      var orderId           = coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]);
+      var shippingDestId    = coreCustomerFrontendValue(row[orders.indexes.SHIPPING_DESTINATION_ID]);
+      var psResult          = resolvePurchaseStage_(purchaseStatusByOrder[orderId] || []);
+      var shippingCountry   = shippingCountryByDestId[shippingDestId] || '';
+      var shippingCountryJa = shippingCountry ? (countryJaNameByIso2[shippingCountry] || shippingCountry) : '';
       return {
         orderId:            orderId,
         customerName:       customerNameById[customerId] || '',
@@ -134,7 +177,10 @@ function getCoreOrdersBatchForFrontend(sessionId, forceRefresh) {
         status:             coreCustomerFrontendValue(row[orders.indexes.STATUS]),
         paymentConfirmedAt: coreCustomerFrontendValue(row[orders.indexes.PAYMENT_CONFIRMED_AT]),
         purchaseCount:      psResult.count,
-        purchaseStatus:     psResult.key
+        purchaseStatus:     psResult.key,
+        shippingCountry:    shippingCountry,
+        shippingCountryJa:  shippingCountryJa,
+        shipmentStage:      shipmentStageByOrder[orderId] || 'NOT_STARTED'
       };
     });
 
@@ -339,6 +385,117 @@ function getCoreOrderDetailForFrontend(sessionId, orderId) {
     purchases: purchases,
     shipments: shipments
   };
+}
+
+/**
+ * 国マスタを1回読み、ISO2 コード → 日本語名 のマップを返す。
+ * 国マスタシートが存在しない場合は空オブジェクトを返す。
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
+ * @returns {Object}  { [iso2: string]: string }
+ */
+function buildCountryJaNameMap_(ss) {
+  var sheet = ss.getSheetByName('国マスタ');
+  if (!sheet) return {};
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow < 2 || lastCol < 1) return {};
+
+  var rawHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var iso2Idx  = rawHeaders.indexOf('国ID(ISO2)');
+  var nameJaIdx = rawHeaders.indexOf('国名（日本語）');
+  if (iso2Idx === -1 || nameJaIdx === -1) return {};
+
+  var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  var map = {};
+  data.forEach(function(row) {
+    var iso2   = String(row[iso2Idx]  || '').trim();
+    var nameJa = String(row[nameJaIdx] || '').trim();
+    if (iso2 && nameJa) map[iso2] = nameJa;
+  });
+  return map;
+}
+
+/**
+ * SHIPMENTS シートを全件読み、ORDER_ID → 発送段階キー のマップを返す。
+ * 段階判定は「最も進んでいない行の段階」を採用する。
+ *
+ * 段階優先順（低い方が先）:
+ *   NOT_STARTED < PREPARING < LABELING < AWAITING_PICKUP < SHIPPED < DONE
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
+ * @returns {Object}  { [orderId: string]: string }
+ */
+function buildShipmentStageByOrder_(ss) {
+  var sheet = getCoreSchemaV1Sheet(ss, 'SHIPMENTS');
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow < 2 || lastCol < 1) return {};
+
+  var rawHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var headerToIdx = {};
+  rawHeaders.forEach(function(h, i) {
+    var key = String(h).trim();
+    if (key) headerToIdx[key] = i;
+  });
+
+  // ヘッダー名を Registry から解決する
+  var orderIdHeader      = getCoreSchemaV1HeaderName('SHIPMENTS', 'ORDER_ID');
+  var inspectionHeader   = getCoreSchemaV1HeaderName('SHIPMENTS', 'INSPECTION');
+  var packingHeader      = getCoreSchemaV1HeaderName('SHIPMENTS', 'PACKING');
+  var trackingHeader     = getCoreSchemaV1HeaderName('SHIPMENTS', 'TRACKING_NUMBER');
+  var pickupHeader       = getCoreSchemaV1HeaderName('SHIPMENTS', 'PICKUP_REQUEST');
+  var notificationHeader = getCoreSchemaV1HeaderName('SHIPMENTS', 'NOTIFICATION');
+
+  var orderIdIdx      = headerToIdx[orderIdHeader];
+  var inspectionIdx   = headerToIdx[inspectionHeader];
+  var packingIdx      = headerToIdx[packingHeader];
+  var trackingIdx     = headerToIdx[trackingHeader];
+  var pickupIdx       = headerToIdx[pickupHeader];
+  var notificationIdx = headerToIdx[notificationHeader];
+
+  var STAGE_PRIORITY = ['NOT_STARTED', 'PREPARING', 'LABELING', 'AWAITING_PICKUP', 'SHIPPED', 'DONE'];
+
+  /** 発送行1行の段階を返す */
+  function resolveRowStage(row) {
+    var inspection   = String(row[inspectionIdx]   || '').trim();
+    var packing      = String(row[packingIdx]      || '').trim();
+    var tracking     = String(row[trackingIdx]     || '').trim();
+    var pickup       = String(row[pickupIdx]       || '').trim();
+    var notification = String(row[notificationIdx] || '').trim();
+
+    if (notification) return 'DONE';
+    if (pickup)       return 'SHIPPED';
+    if (tracking)     return 'AWAITING_PICKUP';
+    if (inspection && packing) return 'LABELING';
+    return 'PREPARING';
+  }
+
+  var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+  // ORDER_ID → 発送行配列のマップを作成
+  var rowsByOrder = {};
+  data.forEach(function(row) {
+    var orderId = (orderIdIdx !== undefined) ? String(row[orderIdIdx] || '').trim() : '';
+    if (!orderId) return;
+    if (!rowsByOrder[orderId]) rowsByOrder[orderId] = [];
+    rowsByOrder[orderId].push(row);
+  });
+
+  // 各オーダーについて「最も進んでいない段階」を返す
+  var stageByOrder = {};
+  Object.keys(rowsByOrder).forEach(function(orderId) {
+    var rows = rowsByOrder[orderId];
+    var minIdx = STAGE_PRIORITY.length - 1; // 初期値: DONE
+    rows.forEach(function(row) {
+      var stage = resolveRowStage(row);
+      var idx = STAGE_PRIORITY.indexOf(stage);
+      if (idx < minIdx) minIdx = idx;
+    });
+    stageByOrder[orderId] = STAGE_PRIORITY[minIdx];
+  });
+
+  return stageByOrder;
 }
 
 /**

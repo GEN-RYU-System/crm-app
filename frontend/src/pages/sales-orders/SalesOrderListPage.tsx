@@ -7,6 +7,8 @@ import { salesOrdersCopy, SALES_ORDER_PAYMENT_STATUS_BADGE_VARIANT } from '../..
 import { toSalesOrderRow, type SalesOrderRow } from '../../features/salesOrders/gasAdapter';
 import type { SalesOrderTab } from '../../features/salesOrders/contracts';
 import {
+  AWAITING_SHIPPING_STAGE_BADGE,
+  AWAITING_SHIPPING_STATUS_KEY,
   filterSalesOrderRows,
   filterSalesOrderRowsByPurchaseStage,
   filterSalesOrderRowsByTab,
@@ -79,6 +81,20 @@ function renderPurchaseStatusCell(row: SalesOrderRow) {
   return <Badge variant={config.variant}>{config.label}</Badge>;
 }
 
+function renderShipmentStageCell(row: SalesOrderRow) {
+  const key = row.shipmentStage || 'NOT_STARTED';
+  const config = AWAITING_SHIPPING_STAGE_BADGE[key];
+  if (!config) return '-';
+  return <Badge variant={config.variant}>{config.label}</Badge>;
+}
+
+function renderPaymentStatusBadgeCell(row: SalesOrderRow) {
+  const label = row.paymentStatus;
+  if (!label || label === '-') return label || '-';
+  const variant = SALES_ORDER_PAYMENT_STATUS_BADGE_VARIANT[label] ?? 'neutral';
+  return <Badge variant={variant}>{label}</Badge>;
+}
+
 export function SalesOrderListPage() {
   const navigate = useNavigate();
   const { items, statusOptions, error, loading, refreshing, ensureLoaded, refresh, retry } = useSalesOrderListCache();
@@ -91,6 +107,7 @@ export function SalesOrderListPage() {
   void ensureLoaded();
 
   const isSourcingTab = activeTabKey === SOURCING_STATUS_KEY;
+  const isAwaitingShippingTab = activeTabKey === AWAITING_SHIPPING_STATUS_KEY;
 
   const records = items ?? [];
 
@@ -151,6 +168,8 @@ export function SalesOrderListPage() {
         if (column.key === 'status') return isAllTab;
         // show purchaseStatus column only on the SOURCING tab
         if (column.key === 'purchaseStatus') return isSourcingTab;
+        // show AWAITING_SHIPPING-only columns exclusively on that tab
+        if (column.tabKey === 'AWAITING_SHIPPING') return isAwaitingShippingTab;
         return true;
       })
       .map((column) => {
@@ -178,7 +197,11 @@ export function SalesOrderListPage() {
                 ? renderPaymentDueAtCell
                 : column.key === 'purchaseStatus'
                   ? renderPurchaseStatusCell
-                  : (row: SalesOrderRow) => String(row[column.key]),
+                  : column.key === 'shipmentStage'
+                    ? renderShipmentStageCell
+                    : column.key === 'paymentStatus'
+                      ? renderPaymentStatusBadgeCell
+                      : (row: SalesOrderRow) => String(row[column.key]),
           ...(isSortable
             ? {
                 ariaSort,
@@ -190,7 +213,7 @@ export function SalesOrderListPage() {
           cellAlignment: column.cellAlignment,
         };
       });
-  }, [activeTabLabel, isSourcingTab, sort, changeSort]);
+  }, [activeTabLabel, isSourcingTab, isAwaitingShippingTab, sort, changeSort]);
 
   const isLoading = loading || items === undefined;
   const isEmpty = !isLoading && error === undefined && filteredRows.length === 0;
