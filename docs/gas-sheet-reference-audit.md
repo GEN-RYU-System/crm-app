@@ -32,16 +32,16 @@ grep -rn "ERP_CONFIG" src/ --include="*.js" | grep -vE "ERP_CONFIG\.[A-Za-z]"
 | PRODUCT_MASTER | M_商品 | 548021217 |
 | CUSTOMER_MASTER | M_顧客 | 884228295 |
 | SUPPLIER_MASTER | M_仕入先 | 580576840 |
-| INVENTORY | 📦在庫 | 2036676823 |
+| INVENTORY | 📦在庫 | [GID省略] |
 | VIEWER_SUPPLIER_STOCK | 📦仕入在庫参照 | 1186337887 |
-| INVOICE_INPUT | 📝請求書作成 | 1761617187 |
+| INVOICE_INPUT | 📝請求書作成 | [GID省略] |
 | INVOICE_TEMPLATE | フォーマット | 74688869 |
 | SALES_DATA | 📊売上データ | 600397303 |
-| LEDGER | 🗃️古物台帳 | 1079795576 |
+| LEDGER | 🗃️古物台帳 | [GID省略] |
 | PURCHASE_LIST | 📋仕入れリスト | 1123262060 |
 | RAW_FORM_RESPONSES | raw_顧客回答 | 0 |
 | SHIPPING_FEDEX | FedEx_ShippingRates | 264167304 |
-| SHIPPING_DHL | DHL_ShippingRates | 1214726714 |
+| SHIPPING_DHL | DHL_ShippingRates | [GID省略] |
 | SHIPPING_UPS | UPS_ShippingRates | 1195813452 |
 | ZONES | M_Zones | 833993881 |
 | SYSTEM_AGENTS | 90_SystemAgents | （ID未設定） |
@@ -258,14 +258,14 @@ grep -rnoE "getSheetByGid\([^,)]+,\s*[^)]+\)" src/ --include="*.js"
 |---------|-----------|---------|---|------|
 | src/見積もりページ.js | M_Zones | getSheetByConfig(ERP_CONFIG.SHEETS.ZONES) / GID優先 | 5, 24 | GID: 833993881 |
 | src/見積もりページ.js | FedEx_ShippingRates | ERP_CONFIG.SHEETS.SHIPPING_FEDEX / GID優先 | 19 | GID: 264167304 |
-| src/見積もりページ.js | DHL_ShippingRates | ERP_CONFIG.SHEETS.SHIPPING_DHL / GID優先 | 20 | GID: 1214726714 |
+| src/見積もりページ.js | DHL_ShippingRates | ERP_CONFIG.SHEETS.SHIPPING_DHL / GID優先 | 20 | GID: [省略] |
 | src/見積もりページ.js | UPS_ShippingRates | ERP_CONFIG.SHEETS.SHIPPING_UPS / GID優先 | 21 | GID: 1195813452 |
 | src/見積もりページ.js | 【未確認】 | carrier.config 変数経由 | 29 | 実行時にどのシートか決まる |
 | src/仕入れ転記.js | 📋仕入れリスト | getSheetByConfig(ERP_CONFIG.SHEETS.PURCHASE_LIST) / GID優先 | 72 | GID: 1123262060 |
 | src/仕入れ転記.js | M_商品 | getSheetByConfig(ERP_CONFIG.SHEETS.PRODUCT_MASTER) / GID優先 | 96 | GID: 548021217 |
 | src/仕入れ転記.js | 📊売上データ | ERP_CONFIG.SHEETS.SALES_DATA 参照（シート取得ではなくデータ参照） | 10 | GID: 600397303 |
 | src/仕入れ転記.js | ImportLog | getSheetByName('ImportLog')（文字列リテラル） | 173 | |
-| src/請求書発行.js | 📝請求書作成 | getSheetByConfig(ERP_CONFIG.SHEETS.INVOICE_INPUT) / GID優先 | 573 | GID: 1761617187 |
+| src/請求書発行.js | 📝請求書作成 | getSheetByConfig(ERP_CONFIG.SHEETS.INVOICE_INPUT) / GID優先 | 573 | GID: [省略] |
 | src/請求書発行.js | フォーマット | getSheetByConfig(ERP_CONFIG.SHEETS.INVOICE_TEMPLATE) / GID優先 | 591, 592, 595 | GID: 74688869 |
 | src/発送通知.js | 📊売上データ | getSheetByName('📊売上データ')（文字列リテラル） | 3 | |
 | src/発送通知.js | CRM | getSheetByName('CRM')（文字列リテラル） | 4 | |
