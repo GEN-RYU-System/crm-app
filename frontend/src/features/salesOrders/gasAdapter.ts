@@ -13,6 +13,10 @@ export type SalesOrderRow = {
   paymentConfirmedAt: string;
   status: string;
   invoiceIssuedAt: string;
+  /** Number of purchase rows for this order. 0 when no purchases. */
+  purchaseCount: number;
+  /** Key of the least-advanced purchase status (e.g. 'NOT_ORDERED', 'ORDERED'). Empty string when purchaseCount is 0. */
+  purchaseStatus: string;
 };
 
 function text(value: unknown): string {
@@ -36,5 +40,7 @@ export function toSalesOrderRow(record: OrderRecord): SalesOrderRow {
     paymentConfirmedAt:  record.paymentConfirmedAt || '',
     status:              text(record.status),
     invoiceIssuedAt:     formatDate(record.invoiceIssuedAt),
+    purchaseCount:   typeof record.purchaseCount === 'number' ? record.purchaseCount : 0,
+    purchaseStatus:  typeof record.purchaseStatus === 'string' ? record.purchaseStatus : '',
   };
 }

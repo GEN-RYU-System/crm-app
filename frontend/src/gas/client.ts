@@ -423,6 +423,10 @@ export type OrderRecord = {
   invoiceTotalJpy: string;
   status: string;
   paymentConfirmedAt: string;
+  /** Number of purchase rows for this order. Available from cache V4. */
+  purchaseCount?: number;
+  /** Key of the least-advanced purchase status (e.g. 'NOT_ORDERED', 'ORDERED'). Empty string when purchaseCount is 0. Available from cache V4. */
+  purchaseStatus?: string;
 };
 
 export function getCoreQuotes(forceRefresh?: boolean): Promise<readonly QuoteRecord[]> {

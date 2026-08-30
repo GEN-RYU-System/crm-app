@@ -39,6 +39,11 @@ export const salesOrdersCopy = {
   allTab: 'すべて',
   unknownStatus: '不明',
   statusOptionsLoading: 'タブを読み込んでいます。',
+  /** 仕入れ中タブの仕入れ段階フィルタ */
+  purchaseStageAll:        'すべて',
+  purchaseStageNotOrdered: '未発注',
+  purchaseStageOrdered:    '確認中',
+  purchaseStageLabel:      '仕入れ段階',
   columns: {
     orderId:         '受注番号',
     customerName:    '名前',
@@ -48,6 +53,7 @@ export const salesOrdersCopy = {
     paymentDueAt:    '支払期日',
     status:          'ステータス',
     invoiceIssuedAt: '作成日',
+    purchaseStatus:  '仕入れ段階',
   },
   paymentDueBadgeOverdue:  '期限超過',
   paymentDueBadgeToday:    '本日期日',

@@ -18,6 +18,13 @@
 .sales-order-list-page__data-state { padding: var(--space-xl); }
 .sales-order-list-page__payment-due-cell { --_badge-col: 5rem; display: inline-grid; grid-template-columns: var(--_badge-col) 1fr var(--_badge-col); align-items: center; gap: var(--space-xs); }
 .sales-order-list-page__payment-due-badge-slot { justify-self: end; }
+/* 仕入れ段階フィルタ（仕入れ中タブのみ表示） */
+.sales-order-list-page__purchase-stage-filter { margin-top: var(--space-md); padding-top: var(--space-sm); border-top: 1px solid var(--color-border); }
+.sales-order-list-page__purchase-stage-filter-label { display: block; font-size: var(--font-xs); color: var(--color-text-muted); margin-bottom: var(--space-xs); padding: 0 var(--space-sm); }
+.sales-order-list-page__purchase-stage-filter-buttons { display: flex; flex-direction: column; gap: var(--space-xs); }
+.sales-order-list-page__purchase-stage-btn { display: block; width: 100%; padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-button); border: none; background: transparent; cursor: pointer; text-align: left; font-size: var(--font-sm); color: var(--color-text-muted); transition: background 0.1s; }
+.sales-order-list-page__purchase-stage-btn:hover { background: var(--color-tab-surface-hover); color: var(--color-tab-text-active); }
+.sales-order-list-page__purchase-stage-btn--active { background: var(--color-tab-surface-active); color: var(--color-tab-text-active); font-weight: var(--font-weight-semibold); }
 @media (max-width: 767px) {
   .sales-order-list-page__layout { flex-direction: column; }
   .sales-order-list-page__sidebar { position: static; max-height: none; overflow-y: visible; width: 100%; }

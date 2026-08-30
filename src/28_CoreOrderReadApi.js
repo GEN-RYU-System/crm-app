@@ -3,8 +3,8 @@
  * 物理シート名・物理ヘッダー名は 00_CoreSchemaRegistry.js から解決する。
  */
 
-var CORE_ORDERS_CACHE_INDEX      = 'CORE_ORDERS_CACHE_INDEX_V3';
-var CORE_ORDERS_CACHE_PREFIX     = 'CORE_ORDERS_CACHE_V3_';
+var CORE_ORDERS_CACHE_INDEX      = 'CORE_ORDERS_CACHE_INDEX_V4';
+var CORE_ORDERS_CACHE_PREFIX     = 'CORE_ORDERS_CACHE_V4_';
 var CORE_ORDERS_CACHE_CHUNK_SIZE = 90000;
 var CORE_ORDERS_CACHE_TTL        = 600;
 
@@ -30,6 +30,9 @@ function getCoreOrdersForFrontend(sessionId, forceRefresh) {
     return map;
   }, {});
 
+  // PURCHASES を1回読み、ORDER_ID → 仕入れ状態キー配列のマップを作る
+  var purchaseStatusByOrder = buildPurchaseStatusByOrder_(spreadsheet);
+
   var orders = coreCustomerFrontendReadTable(spreadsheet, 'ORDERS', [
     'ORDER_ID', 'CUSTOMER_ID', 'INVOICE_NUMBER', 'INVOICE_ISSUED_AT',
     'PAYMENT_METHOD', 'INVOICE_TOTAL', 'CURRENCY',
@@ -43,8 +46,10 @@ function getCoreOrdersForFrontend(sessionId, forceRefresh) {
     })
     .map(function(row) {
       var customerId = coreCustomerFrontendValue(row[orders.indexes.CUSTOMER_ID]);
+      var orderId    = coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]);
+      var psResult   = resolvePurchaseStage_(purchaseStatusByOrder[orderId] || []);
       return {
-        orderId:         coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]),
+        orderId:         orderId,
         customerName:    customerNameById[customerId] || '',
         invoiceNumber:   coreCustomerFrontendValue(row[orders.indexes.INVOICE_NUMBER]),
         invoiceIssuedAt: coreCustomerFrontendValue(row[orders.indexes.INVOICE_ISSUED_AT]),
@@ -55,7 +60,9 @@ function getCoreOrdersForFrontend(sessionId, forceRefresh) {
         paymentStatus:        coreCustomerFrontendValue(row[orders.indexes.PAYMENT_STATUS]),
         invoiceTotalJpy:      coreCustomerFrontendValue(row[orders.indexes.INVOICE_TOTAL_JPY]),
         status:               coreCustomerFrontendValue(row[orders.indexes.STATUS]),
-        paymentConfirmedAt:   coreCustomerFrontendValue(row[orders.indexes.PAYMENT_CONFIRMED_AT])
+        paymentConfirmedAt:   coreCustomerFrontendValue(row[orders.indexes.PAYMENT_CONFIRMED_AT]),
+        purchaseCount:        psResult.count,
+        purchaseStatus:       psResult.key
       };
     });
 
@@ -95,6 +102,9 @@ function getCoreOrdersBatchForFrontend(sessionId, forceRefresh) {
     return map;
   }, {});
 
+  // PURCHASES を1回読み、ORDER_ID → 仕入れ状態キー配列のマップを作る
+  var purchaseStatusByOrder = buildPurchaseStatusByOrder_(spreadsheet);
+
   var orders = coreCustomerFrontendReadTable(spreadsheet, 'ORDERS', [
     'ORDER_ID', 'CUSTOMER_ID', 'INVOICE_NUMBER', 'INVOICE_ISSUED_AT',
     'PAYMENT_METHOD', 'INVOICE_TOTAL', 'CURRENCY',
@@ -108,8 +118,10 @@ function getCoreOrdersBatchForFrontend(sessionId, forceRefresh) {
     })
     .map(function(row) {
       var customerId = coreCustomerFrontendValue(row[orders.indexes.CUSTOMER_ID]);
+      var orderId    = coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]);
+      var psResult   = resolvePurchaseStage_(purchaseStatusByOrder[orderId] || []);
       return {
-        orderId:            coreCustomerFrontendValue(row[orders.indexes.ORDER_ID]),
+        orderId:            orderId,
         customerName:       customerNameById[customerId] || '',
         invoiceNumber:      coreCustomerFrontendValue(row[orders.indexes.INVOICE_NUMBER]),
         invoiceIssuedAt:    coreCustomerFrontendValue(row[orders.indexes.INVOICE_ISSUED_AT]),
@@ -120,7 +132,9 @@ function getCoreOrdersBatchForFrontend(sessionId, forceRefresh) {
         paymentStatus:      coreCustomerFrontendValue(row[orders.indexes.PAYMENT_STATUS]),
         invoiceTotalJpy:    coreCustomerFrontendValue(row[orders.indexes.INVOICE_TOTAL_JPY]),
         status:             coreCustomerFrontendValue(row[orders.indexes.STATUS]),
-        paymentConfirmedAt: coreCustomerFrontendValue(row[orders.indexes.PAYMENT_CONFIRMED_AT])
+        paymentConfirmedAt: coreCustomerFrontendValue(row[orders.indexes.PAYMENT_CONFIRMED_AT]),
+        purchaseCount:      psResult.count,
+        purchaseStatus:     psResult.key
       };
     });
 
@@ -322,6 +336,55 @@ function getCoreOrderDetailForFrontend(sessionId, orderId) {
     lines:     lines,
     purchases: purchases,
     shipments: shipments
+  };
+}
+
+/**
+ * PURCHASES シートを1回読み、ORDER_ID → 仕入れステータス値（シート格納値）の配列マップを返す。
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
+ * @returns {Object}  { [orderId: string]: string[] }
+ */
+function buildPurchaseStatusByOrder_(ss) {
+  var purchasesTable = coreCustomerFrontendReadTable(ss, 'PURCHASES', ['ORDER_ID', 'STATUS']);
+  var map = {};
+  purchasesTable.rows.forEach(function(row) {
+    var pOrderId = coreCustomerFrontendValue(row[purchasesTable.indexes.ORDER_ID]);
+    var pStatus  = coreCustomerFrontendValue(row[purchasesTable.indexes.STATUS]);
+    if (!pOrderId) return;
+    if (!map[pOrderId]) map[pOrderId] = [];
+    map[pOrderId].push(pStatus);
+  });
+  return map;
+}
+
+/**
+ * 仕入れ行のステータス値（シート格納値）配列から、最も進んでいない段階のキーと件数を返す。
+ * 段階順: NOT_ORDERED < ORDERED < CONFIRMED < PAID
+ * 0件の場合は { count: 0, key: '' } を返す。
+ *
+ * @param {string[]} statusValues  シート格納値の配列（例: ['発注済み', '未発注']）
+ * @returns {{ count: number, key: string }}
+ */
+function resolvePurchaseStage_(statusValues) {
+  var priority = ['NOT_ORDERED', 'ORDERED', 'CONFIRMED', 'PAID'];
+  if (!statusValues || statusValues.length === 0) {
+    return { count: 0, key: '' };
+  }
+  var valueToKey = {};
+  priority.forEach(function(key) {
+    valueToKey[getCoreSchemaV1Value('PURCHASES', 'STATUS', key)] = key;
+  });
+  var minIdx = priority.length;
+  statusValues.forEach(function(val) {
+    var key = valueToKey[val];
+    if (key === undefined) return;
+    var idx = priority.indexOf(key);
+    if (idx < minIdx) minIdx = idx;
+  });
+  return {
+    count: statusValues.length,
+    key:   minIdx < priority.length ? priority[minIdx] : ''
   };
 }
 

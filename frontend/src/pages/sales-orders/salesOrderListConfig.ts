@@ -1,3 +1,4 @@
+import type { BadgeVariant } from '../../components/ui/Badge/Badge';
 import type { DataTableCellAlignment } from '../../components/ui';
 import { salesOrdersCopy } from '../../content/ja';
 import type { SalesOrderRow } from '../../features/salesOrders/gasAdapter';
@@ -5,7 +6,28 @@ import type { SalesOrderRow } from '../../features/salesOrders/gasAdapter';
 /** Days before the payment due date when a warning (yellow) badge is shown. Intended to be configurable from settings in the future. */
 export const PAYMENT_DUE_WARNING_DAYS = 1 as const;
 
-export type SalesOrderSortKey = Exclude<keyof SalesOrderRow, 'orderId'>;
+/** GAS schema key for the SOURCING (in-procurement) order status tab. */
+export const SOURCING_STATUS_KEY = 'SOURCING' as const;
+
+/**
+ * Purchase stage badge config for each status key shown in the SOURCING tab.
+ * CONFIRMED and PAID are excluded: orders with those statuses move to the AWAITING_SHIPPING tab.
+ */
+export const SOURCING_PURCHASE_STAGE_BADGE: Readonly<Record<string, { variant: BadgeVariant; label: string }>> = {
+  NOT_ORDERED: { variant: 'neutral', label: salesOrdersCopy.purchaseStageNotOrdered },
+  ORDERED:     { variant: 'warning', label: salesOrdersCopy.purchaseStageOrdered },
+};
+
+export const SOURCING_PURCHASE_STAGE_FILTER_OPTIONS = [
+  { key: 'all',         label: salesOrdersCopy.purchaseStageAll },
+  { key: 'NOT_ORDERED', label: salesOrdersCopy.purchaseStageNotOrdered },
+  { key: 'ORDERED',     label: salesOrdersCopy.purchaseStageOrdered },
+] as const;
+
+export type SourcingPurchaseStageFilter = 'all' | 'NOT_ORDERED' | 'ORDERED';
+
+// purchaseCount is a number and must be excluded from sort keys (localeCompare-based sort).
+export type SalesOrderSortKey = Exclude<keyof SalesOrderRow, 'orderId' | 'purchaseCount'>;
 export type SalesOrderSortDirection = 'ascending' | 'descending';
 export type SalesOrderSort = { key: SalesOrderSortKey; direction: SalesOrderSortDirection };
 
@@ -21,6 +43,7 @@ export type SalesOrderColumnDef = {
 
 export const SALES_ORDER_LIST_COLUMNS: readonly SalesOrderColumnDef[] = [
   { key: 'orderId',         label: salesOrdersCopy.columns.orderId,         cellAlignment: 'start',  sortable: false },
+  { key: 'purchaseStatus',  label: salesOrdersCopy.columns.purchaseStatus,  cellAlignment: 'center', sortable: false },
   { key: 'customerName',    label: salesOrdersCopy.columns.customerName,    cellAlignment: 'start'  },
   { key: 'shippingAddress', label: salesOrdersCopy.columns.shippingAddress, cellAlignment: 'start'  },
   { key: 'currency',        label: salesOrdersCopy.columns.currency,        cellAlignment: 'center' },
@@ -30,13 +53,15 @@ export const SALES_ORDER_LIST_COLUMNS: readonly SalesOrderColumnDef[] = [
   { key: 'invoiceIssuedAt', label: salesOrdersCopy.columns.invoiceIssuedAt, cellAlignment: 'center' },
 ];
 
-// Exclude paymentDueAt from search: it's a raw ISO string and does not match user-visible date text.
+// Exclude paymentDueAt (raw ISO string) and purchaseStatus (schema key, not user-visible text) from search.
 export const SALES_ORDER_LIST_SEARCH_COLUMNS: readonly (keyof SalesOrderRow)[] =
-  SALES_ORDER_LIST_COLUMNS.filter((col) => col.key !== 'paymentDueAt').map(({ key }) => key);
+  SALES_ORDER_LIST_COLUMNS
+    .filter((col) => col.key !== 'paymentDueAt' && col.key !== 'purchaseStatus')
+    .map(({ key }) => key);
 
 function compareRows(a: SalesOrderRow, b: SalesOrderRow, sort: SalesOrderSort): number {
   const dir = sort.direction === 'ascending' ? 1 : -1;
-  return a[sort.key].localeCompare(b[sort.key], 'ja-JP', { numeric: true, sensitivity: 'base' }) * dir;
+  return String(a[sort.key]).localeCompare(String(b[sort.key]), 'ja-JP', { numeric: true, sensitivity: 'base' }) * dir;
 }
 
 export function sortSalesOrderRows(rows: SalesOrderRow[], sort: SalesOrderSort): SalesOrderRow[] {
@@ -46,11 +71,26 @@ export function sortSalesOrderRows(rows: SalesOrderRow[], sort: SalesOrderSort):
 export function filterSalesOrderRows(rows: readonly SalesOrderRow[], query: string): readonly SalesOrderRow[] {
   const q = query.trim().toLocaleLowerCase('ja-JP');
   if (q === '') return rows;
-  return rows.filter((row) => SALES_ORDER_LIST_SEARCH_COLUMNS.some((key) => row[key].toLocaleLowerCase('ja-JP').includes(q)));
+  return rows.filter((row) =>
+    SALES_ORDER_LIST_SEARCH_COLUMNS.some((key) => String(row[key]).toLocaleLowerCase('ja-JP').includes(q)),
+  );
 }
 
 export function filterSalesOrderRowsByTab(rows: readonly SalesOrderRow[], tabLabel: string | null): readonly SalesOrderRow[] {
   if (tabLabel === null) return rows;
   // filter by label value, not key
   return rows.filter((row) => row.status === tabLabel);
+}
+
+/**
+ * Filters rows by purchase stage (for the SOURCING tab only).
+ * 'NOT_ORDERED' matches rows where purchaseStatus is '' (no purchases) or 'NOT_ORDERED'.
+ */
+export function filterSalesOrderRowsByPurchaseStage(
+  rows: readonly SalesOrderRow[],
+  filter: SourcingPurchaseStageFilter,
+): readonly SalesOrderRow[] {
+  if (filter === 'all') return rows;
+  if (filter === 'NOT_ORDERED') return rows.filter((row) => row.purchaseStatus === '' || row.purchaseStatus === 'NOT_ORDERED');
+  return rows.filter((row) => row.purchaseStatus === filter);
 }
