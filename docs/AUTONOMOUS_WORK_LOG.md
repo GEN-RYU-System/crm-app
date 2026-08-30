@@ -2,6 +2,82 @@
 
 ---
 
+## feat: 発送段階の判定修正と一覧から段階進捗ボタンを追加 — PR #696
+
+**日付:** 2026-08-30
+**PR:** [#696](https://github.com/GEN-RYU-System/crm-app/pull/696)
+**マージコミットSHA:** `443009dbdabdc75837681e5d7fdca955a90ab3fb`
+**mergedAt:** `2026-08-30T14:40:57Z`
+
+### 変更前の状態
+
+- 発送段階判定で PACKING（梱包）が条件に含まれていた（梱包が空なら PREPARING）
+- 一覧の発送待ちタブに発送段階を進めるボタンが存在しなかった
+
+### 判定条件から梱包（PACKING）を外した理由
+
+**検品完了後、梱包とラベル手配（運送状番号取得）は並行して進めることができるため**、梱包完了を待ってから次のステップへ進む必要がない。梱包は任意チェック項目として扱い、検品（INSPECTION）のみを段階判定の条件とすることで、実際の運用フローに合わせた判定に修正した。
+
+### 変更内容
+
+| ファイル | 変更概要 |
+|---------|---------|
+| `src/28_CoreOrderReadApi.js` | `buildShipmentStageByOrder_` の PREPARING 条件を「INSPECTION が空」のみに変更（PACKING・STORAGE を削除） |
+| `src/28_CoreShipmentApi.js` | `advanceCoreShipmentStageForFrontend(sessionId, orderId)` を追加。LockService・getCoreSchemaV1HeaderName 使用、書き込み値は `'TRUE'` のみ、書き込み後に `recalculateOrderStatusById` を呼出 |
+| `frontend/src/gas/client.ts` | `AdvanceShipmentResult` 型・`advanceCoreShipmentStage` 関数を追加 |
+| `frontend/src/gas/types.d.ts` | `GoogleScriptRun` に `advanceCoreShipmentStageForFrontend` を追加 |
+| `frontend/src/content/ja/salesOrders.ts` | `advanceStageButton` 文言追加（検品完了/入力へ/集荷依頼済み/通知済み）|
+| `frontend/src/pages/sales-orders/SalesOrderListPage.tsx` | 発送段階セルにボタンを追加、二重送信防止、再取得 |
+| `frontend/src/preview/gasRunnerMock.ts` | `advanceCoreShipmentStageForFrontend` モック追加 |
+
+### ?preview 動作確認
+
+1. **[確認済み]** 発送待ちタブで段階ごとにボタンが正しく出し分けられる
+2. **[確認済み]** 「入力へ」ボタンで発送タブへ遷移する（URL: `/sales-orders/:id?tab=shipments`）
+3. **[確認済み]** 他タブが壊れていない
+4. **[確認済み]** 白画面にならない
+
+### getDeployedSha 照合
+
+```
+deployedSha: 443009dbdabdc75837681e5d7fdca955a90ab3fb
+origin/develop HEAD: 443009dbdabdc75837681e5d7fdca955a90ab3fb
+→ 一致 ✓
+```
+
+### 書き込みテスト（ORD-0003）
+
+| 確認項目 | 値 |
+|---------|-----|
+| advanceCoreShipmentStageForFrontend 実行前 shipmentStage | `PREPARING` |
+| 実行結果 | `{ success: true, newStage: 'LABELING' }` |
+| 実行後 shipmentStage（再取得） | `LABELING` |
+| 想定外の列への書き込み | なし ✓ |
+
+### runCoreSchemaConformanceAudit 結果
+
+- ORDERS: 0件 ✓
+- SHIPMENTS: 0件 ✓
+- COUNTRIES: 0件 ✓
+- 総不一致 2件（LEADS 列数差13・CUSTOMERS 列数差1）は既存不一致
+
+### dryRunOrderStatusRecalculation 結果
+
+```
+総件数: 12件 / 変更なし: 12件 / 変更あり: 0件
+```
+
+### 戻し方
+
+```
+git revert 443009dbdabdc75837681e5d7fdca955a90ab3fb
+```
+
+**注意:** 書き込みテストで ORD-0003 の INSPECTION に TRUE が書き込まれている。
+コードを戻してもシートの値は残るため、必要に応じてシートを手動修正すること。
+
+---
+
 ## feat: 発送待ちタブに発送段階・請求書番号・発送先の国・支払状況の4列を追加 — PR #692
 
 **日付:** 2026-08-30
