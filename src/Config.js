@@ -134,6 +134,23 @@ function getInvoiceFolderId() {
 }
 
 /**
+ * 発送書類ファイル保存先フォルダIDを取得
+ */
+function getShipmentFileFolderId() {
+  return getERPProperty('SHIPMENT_FILE_FOLDER_ID');
+}
+
+/**
+ * 発送書類ファイル保存先フォルダIDを Script Properties に登録する
+ * clasp run setShipmentFileFolderProperty --params '["<folderId>"]' で呼び出す
+ * @param {string} folderId
+ */
+function setShipmentFileFolderProperty(folderId) {
+  PropertiesService.getScriptProperties().setProperty('SHIPMENT_FILE_FOLDER_ID', folderId);
+  Logger.log('SHIPMENT_FILE_FOLDER_ID registered: ' + String(folderId).substring(0, 4) + '...');
+}
+
+/**
  * Discord Webhook URLを取得
  */
 function getDiscordCRMWebhook() {
