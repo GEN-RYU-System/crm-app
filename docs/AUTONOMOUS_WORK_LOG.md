@@ -4138,3 +4138,61 @@ GAS側の読み取り権限（`lead_view`）が分離されている設計上の
 - マージ後検証: getDeployedSha → `a7dae459`（一致）/ 監査 総不一致 2件（ベースライン維持）/ dryRun 変更0件
 - Deploy to DEV: success（run #33317140400）
 - revert: `git revert a7dae459`
+
+---
+
+## feat: 発送シートの LABEL_URL/INVOICE_URL 2列を Registry に反映 — PR #705
+
+**日付:** 2026-08-31
+**PR:** [#705](https://github.com/GEN-RYU-System/crm-app/pull/705)
+**マージコミットSHA:** `6e7f318b28b0e7258c7525f1384498d350f215fc`
+**mergedAt:** `2026-08-30T15:52:49Z`
+
+### 変更前の状態
+
+発送シートに `ラベルURL`（col12）・`インボイスURL`（col13）の2列が手作業で追加済み（合計22列）だったが、Registry 定義（20列）と乖離したままだった。
+
+### 実測ヘッダー確認
+
+`dumpAllSheetHeaders()` で発送シートの全22列を実測。
+
+| col | キー | ヘッダー名 |
+|-----|------|-----------|
+| 11 | ESTIMATED_SHIPPING_FEE | 見積もり送料 |
+| **12** | **LABEL_URL** | **ラベルURL** |
+| **13** | **INVOICE_URL** | **インボイスURL** |
+| 14 | INSPECTION | 検品 |
+
+### 変更内容
+
+| ファイル | 変更概要 |
+|---------|---------|
+| `src/00_CoreSchemaRegistry.js` | SHIPMENTS 定義に `LABEL_URL`/`INVOICE_URL` を実測順（col12/13）に追加（20→22列） |
+| `src/28_CoreOrderReadApi.js` | `shipmentFields` に `LABEL_URL`/`INVOICE_URL` を追加 |
+| `src/Config.js` | `getShipmentFileFolderId()` / `setShipmentFileFolderProperty(folderId)` を追加 |
+
+### getDeployedSha 照合
+
+```
+deployedSha:           6e7f318b28b0e7258c7525f1384498d350f215fc
+mergeCommit (PR #705): 6e7f318b28b0e7258c7525f1384498d350f215fc
+→ 一致 ✓
+```
+
+### runCoreSchemaConformanceAudit 結果
+
+- SHIPMENTS: 定義 22 / 実シート 22 → **0件 ✓**
+- ORDERS: 0件 ✓
+- COUNTRIES: 0件 ✓
+- 総不一致 2件（LEADS 列数差13・CUSTOMERS 列数差1）は既存不一致。本PRとは無関係。
+
+### Script Properties（SHIPMENT_FILE_FOLDER_ID）
+
+`setShipmentFileFolderProperty(folderId)` を Config.js に追加。
+フォルダIDは Shingo から受領後 `clasp run setShipmentFileFolderProperty --params '["<folderId>"]'` で登録予定。
+
+### 戻し方
+
+```
+git revert 6e7f318b28b0e7258c7525f1384498d350f215fc
+```
