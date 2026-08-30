@@ -3796,3 +3796,15 @@ GAS側の読み取り権限（`lead_view`）が分離されている設計上の
 - マージ後監査: SHARED_INVENTORY CONDITION → OK（0件）/ LEADS 差13 / CUSTOMERS 差1 変化なし / ORDERS 0件 / dryRun 変更0件
 - 新ベースライン: 総不一致 2件（LEADS 差13列 / CUSTOMERS 差1列）/ SHARED_INVENTORY 0件 / ORDERS 0件
 - revert: `git revert 66c4def`
+
+## 2026-08-30 canonical clone のブランチ追従漏れ
+
+- 事象: canonical clone が `release/gas-audit-docs` に留まり、`develop` 未追従。
+  `docs/sheet-headers-snapshot.md` と `src/99_SchemaSnapshot.js` を「存在しない」と誤判定した
+- 影響: `docs/inventory-condition-master-audit.md` の前提記述に誤りあり
+  （調査結論自体はパターンB で変わらず。`docs/gas-sheet-reference-audit.md` から同等の情報を取得済み）
+- 根本原因: `develop` ブランチが `/Users/tanizawashingo/worktrees/shipment-tab-form` に
+  チェックアウト済みのため canonical clone が checkout できない状態だった
+- 対処: `origin/develop` を直接参照する方法を確立。開始前チェックをルール化（本PR）
+- PR: #<番号> / squash SHA: <SHA>（マージ後に更新）
+- revert: `git revert <SHA>`（マージ後に更新）
