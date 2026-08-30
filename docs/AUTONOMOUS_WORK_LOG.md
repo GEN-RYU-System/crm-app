@@ -2,6 +2,68 @@
 
 ---
 
+## feat: 発送行のその場編集と、発送待ちタブの行クリック先修正 — PR #711
+
+**日付:** 2026-08-30
+**PR:** [#711](https://github.com/GEN-RYU-System/crm-app/pull/711)
+**マージコミットSHA:** `9dcaac47e8ddc1993b9e3d0c1ee9681af0faf25a`
+**mergedAt:** `2026-08-30T16:48:31Z`
+
+### 変更前の状態
+
+- どのタブから行クリックしても `?tab=purchases` に遷移していた
+- 発送行の詳細パネルは値の表示のみで編集不可だった
+
+### 変更内容
+
+| ファイル | 変更概要 |
+|---------|---------|
+| `SalesOrderListPage.tsx` | `onRowClick` をタブ別に分岐（発送待ち→shipments / 仕入れ中→purchases / その他→billing） |
+| `SalesOrderDetailPage.tsx` | 発送詳細パネルをインライン編集フォームに変更。チェックボックスは `'TRUE'`/`''` の二値 |
+| `salesOrders.ts` | `labelShipmentId` / `btnSaveShipment` を追加 |
+
+### ?preview 動作確認
+
+| 確認項目 | 結果 |
+|---------|------|
+| 発送待ちタブ行クリック → `?tab=shipments` | ✓ 確認済み |
+| すべてタブ行クリック → `?tab=billing` | ✓ 確認済み |
+| 発送行クリックで入力欄が開く | ✓ 確認済み |
+| チェックボックス操作・保存ボタン動作 | ✓ 確認済み |
+| TRACKING_NUMBER なし行でガイダンス表示 | ✓ 確認済み |
+| 仕入れ中タブ行クリック → `?tab=purchases` | 【未確認】プレビューに行なし（コード確認のみ） |
+| 白画面・他タブ破損なし | ✓ 確認済み |
+
+### getDeployedSha 照合
+
+```
+deployedAt:  2026-08-30T16:49:15.279Z
+deployedSha: 9dcaac47e8ddc1993b9e3d0c1ee9681af0faf25a
+origin/develop HEAD: 9dcaac47e8ddc1993b9e3d0c1ee9681af0faf25a
+→ 一致 ✓
+```
+
+### runCoreSchemaConformanceAudit 結果
+
+- ORDERS: 0件 ✓
+- SHIPMENTS: 0件 ✓
+- COUNTRIES: 0件 ✓
+- 総不一致2件（LEADS 差13・CUSTOMERS 差1）は既存不一致
+
+### dryRunOrderStatusRecalculation 結果
+
+```
+総件数: 12件 / 変更なし: 12件 / 変更あり: 0件
+```
+
+### 戻し方
+
+```
+git revert 9dcaac47e8ddc1993b9e3d0c1ee9681af0faf25a
+```
+
+---
+
 ## feat: 発送タブへのファイルアップロード機能を追加 — PR #707
 
 **日付:** 2026-08-30
