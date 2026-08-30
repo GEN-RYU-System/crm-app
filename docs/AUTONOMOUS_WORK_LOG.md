@@ -2,6 +2,73 @@
 
 ---
 
+## feat: 国マスタ「国名（日本語）」列へ250件の日本語名を書き込み — PR #690
+
+**日付:** 2026-08-30
+**PR:** [#690](https://github.com/GEN-RYU-System/crm-app/pull/690)
+**マージコミットSHA:** `3438b3596446e3b815971e863e701f50b2684190`
+**mergedAt:** `2026-08-30T13:55:22Z`
+
+### 変更前の状態
+
+- 国マスタシートの C 列に「国名（日本語）」の見出しのみ挿入済み（一部4件入力済み）
+- 国マスタを読む全7箇所は `indexOf` による見出し名検索のため列挿入の影響なし（S1調査済み）
+
+### 変更内容
+
+- `src/99_DevCountryMasterJaNames.js` を新規追加
+  - `seedCountryMasterJaNames(mode)` 関数（DRY_RUN / APPLY の2段階）
+  - ISO 3166-1 日本語表記 250件を `COUNTRY_JA_NAMES` オブジェクトとしてファイル内に保持
+  - 列位置は `indexOf` で動的特定（直書きなし）
+  - ISO2コードで行照合（行番号照合なし）
+  - DEV 環境ガード + LockService による保護
+  - 「国名（日本語）」列以外には一切書き込まない
+
+### DRY_RUN 結果
+
+```
+=== seedCountryMasterJaNames(DRY_RUN) ===
+列位置: 国ID(ISO2)=col1、国名（日本語）=col3
+書き込み予定: 250件
+スキップ:     0件
+
+--- DRY RUN 完了（書き込みなし）---
+```
+
+### APPLY 結果
+
+```
+=== seedCountryMasterJaNames(APPLY) ===
+列位置: 国ID(ISO2)=col1、国名（日本語）=col3
+書き込み予定: 250件
+スキップ:     0件
+
+[書き込み結果]
+書き込み完了: 250件
+[検証]
+再読み取り後の空欄残件数: 0件
+✅ 全件書き込み確認済み
+
+--- APPLY 完了 ---
+```
+
+### 検証結果
+
+- `getCountriesForForm()` 実行: `dialCode` が全て数字（日本語名混入なし）✓
+- `surveyCountryColumn()` 実行: `国マスタ件数: 250`（APPLY前後で変化なし）✓
+- Deploy to DEV: `completed / success` ✓
+
+### 戻し方
+
+**注意: シートへの書き込みは `git revert` で戻らない。**
+コードを戻す場合:
+```
+git revert 3438b3596446e3b815971e863e701f50b2684190
+```
+シートの「国名（日本語）」列データを戻す場合は、スプレッドシートで C 列の値を手動削除すること。
+
+---
+
 ## feat: 発送タブにフォームと全項目表示を追加 — PR #681
 
 **日付:** 2026-08-30
