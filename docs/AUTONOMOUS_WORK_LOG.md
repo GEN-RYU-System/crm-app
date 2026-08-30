@@ -2,6 +2,66 @@
 
 ---
 
+## feat: 受注一覧の行クリックで仕入れタブを開く — PR #663
+
+**日付:** 2026-08-30  
+**PR:** [#663](https://github.com/GEN-RYU-System/crm-app/pull/663)  
+**マージコミットSHA:** `72abe108549d3ff287d69a166d61ecccaab90dce`  
+**mergedAt:** `2026-08-30T04:17:06Z`
+
+### 変更前の状態
+
+- `frontend/src/pages/sales-orders/SalesOrderListPage.tsx:240`  
+  ```typescript
+  onRowClick={(row) => navigate(`/sales-orders/${row.orderId}`)}
+  ```
+- `frontend/src/pages/sales-orders/SalesOrderDetailPage.tsx:1`（import 行）  
+  ```typescript
+  import { useParams } from 'react-router-dom';
+  ```
+- `frontend/src/pages/sales-orders/SalesOrderDetailPage.tsx:132`  
+  ```typescript
+  const [activeTab, setActiveTab] = useState<DetailTab>('billing');
+  ```
+- URLクエリ（`?tab=`）による初期タブ指定の仕組みなし
+
+### 変更内容
+
+**`frontend/src/pages/sales-orders/SalesOrderDetailPage.tsx`**
+- `useSearchParams`（react-router-dom）を import に追加
+- `VALID_TABS` 定数（`ReadonlySet<string>`）を追加
+- `resolveInitialTab(tabParam)` 関数を追加。`'billing' | 'purchases' | 'shipments'` に一致すれば採用、不正値・未指定は `'billing'`
+- `useState` の初期値を `() => resolveInitialTab(searchParams.get('tab'))` に変更
+
+**`frontend/src/pages/sales-orders/SalesOrderListPage.tsx`**
+- 行クリック遷移先を `navigate(\`/sales-orders/${row.orderId}?tab=purchases\`)` に変更
+
+### 変更理由
+
+受注一覧から行をクリックしたとき、仕入れタブが開いた状態で詳細ページを表示するため。GAS 側（`src/`）の変更なし。
+
+### 検証結果
+
+| 検証項目 | 結果 |
+|---------|------|
+| `npm run build:gas`（typecheck + vite build + emit-gas-html + check:design-system） | **通過** |
+| CI: Gitleaks | **pass** |
+| CI: Sensitive Content | **pass** |
+| CI: frontend-check | **pass** |
+| CI: gas-global-namespace | **pass** |
+| `?preview`: 一覧の行クリック → 仕入れタブが開く | **確認済み**（`aria-selected=true` 実測） |
+| `?preview`: `?tab=` なしで開くと請求タブが表示される | **確認済み**（`aria-selected=true` 実測） |
+| `?preview`: 詳細ページが白画面にならない | **確認済み** |
+| `getDeployedSha` ↔ `origin/develop HEAD` 一致 | **一致**（`72abe108...`） |
+
+### 戻し方
+
+```
+git revert 72abe108549d3ff287d69a166d61ecccaab90dce
+```
+
+---
+
 ## perf(prefetch): steps 順序最適化 — PR #662
 
 **実施日時**: 2026-08-30T16:20:00Z
