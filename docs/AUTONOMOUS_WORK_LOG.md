@@ -3805,6 +3805,6 @@ GAS側の読み取り権限（`lead_view`）が分離されている設計上の
   （調査結論自体はパターンB で変わらず。`docs/gas-sheet-reference-audit.md` から同等の情報を取得済み）
 - 根本原因: `develop` ブランチが `/Users/tanizawashingo/worktrees/shipment-tab-form` に
   チェックアウト済みのため canonical clone が checkout できない状態だった
-- 対処: `origin/develop` を直接参照する方法を確立。開始前チェックをルール化（本PR）
-- PR: #<番号> / squash SHA: <SHA>（マージ後に更新）
-- revert: `git revert <SHA>`（マージ後に更新）
+- 対処: `origin/develop` を直接参照する方法を確立。開始前チェックをルール化（PR #688）
+- PR: #688 / squash SHA: `71c3891`
+- revert: `git revert 71c3891`
