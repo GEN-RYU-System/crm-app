@@ -3774,3 +3774,14 @@ GAS側の読み取り権限（`lead_view`）が分離されている設計上の
 - 案3 #656: `git revert <squash commit SHA>`
 - 案2 #658: `git revert <squash commit SHA>`
 - 案4 #659: `git revert <squash commit SHA>`
+
+---
+
+## 2026-08-30 スキーマ監査ベースライン確立とルール修正
+
+- PR-1: #683 / squash SHA: `0ec89a1` / `docs/schema-audit-baseline.md` 追加
+- PR-2: #684 / squash SHA: `1a237da` / `AUTONOMOUS_WORK_RULES.md` 判定基準を修正
+- 背景: PR #680 後の監査で「既存差異」と根拠なく断定した事例を受けて、内訳まで記録する方式へ変更
+- ベースライン: 総不一致 6件（LEADS 差13列 / CUSTOMERS 差1列 / SHARED_INVENTORY 未定義値4種）/ ORDERS 0件
+- 検証: マージ後3点検証 pass（監査結果はベースラインと同一）
+- revert: `git revert 1a237da` → `git revert 0ec89a1`（逆順）
