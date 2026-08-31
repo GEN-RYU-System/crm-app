@@ -5217,3 +5217,119 @@ git revert 163218a5e9b813c5dcaae3ba59ba887d39ec2b21
 - 教訓: 「前セッションからの継続」であっても、
   現在の依頼文で禁止されている対象は変更しない
 - revert: git revert &lt;このrevertのSHA&gt;（再適用する場合）
+
+---
+
+### 2026-08-31 荷姿関連マスタ API バグ（ヘッダー行上書き）発生・修正・復旧
+
+#### 事故の内容
+
+PR #748（`28_CorePackageMasterApi.js` 新設）マージ・デプロイ後、
+`upsertCoreSizeForFrontend` の書き込みテストを実施したところ、
+DEV スプレッドシートの **サイズマスタ（SIZES）シートのヘッダー行が上書きされた**。
+同じバグが重量マスタ（WEIGHTS）にも存在し、同様の被害が発生した。
+
+`runCoreSchemaConformanceAudit` の結果:
+- SIZES: 9件不一致（全8ヘッダー欠落 + 主キー欠落）
+- WEIGHTS: 7件不一致
+
+#### 原因
+
+`upsertCoreSizeForFrontend` / `upsertCoreWeightForFrontend` / `upsertCorePackageForFrontend`
+の新規登録ブランチで、以下の順序で呼んでいた:
+
+```javascript
+// 誤: appendRow の後に getLastRow() を呼んでいた
+var maxCols = sheet.getLastColumn();
+sheet.appendRow(new Array(maxCols).fill(''));
+targetRow = sheet.getLastRow();   // ← appendRow 後
+```
+
+GAS の `appendRow(new Array(n).fill(''))` で追加した**全空セルの行は
+`getLastRow()` にカウントされない**。
+そのため、ヘッダー行のみ存在する fresh シートでは
+`targetRow = 1`（ヘッダー行）が返り、後続の `setCell` 呼び出しが
+ヘッダー行を上書きした。
+
+#### 修正内容（PR #755）
+
+`targetRow = sheet.getLastRow() + 1` を `appendRow` の**前**に移動:
+
+```javascript
+// 正: appendRow の前に targetRow を確定
+targetRow = sheet.getLastRow() + 1;   // ← appendRow 前
+var maxCols = sheet.getLastColumn();
+sheet.appendRow(new Array(maxCols).fill(''));
+```
+
+修正箇所（4か所）:
+
+| ファイル | 関数 | 旧行番号 |
+|---------|------|---------|
+| `28_CorePackageMasterApi.js` | `upsertCoreSizeForFrontend` | 210 |
+| `28_CorePackageMasterApi.js` | `upsertCoreWeightForFrontend` | 276 |
+| `28_CorePackageMasterApi.js` | `upsertCorePackageForFrontend` | 379 |
+| `28_CoreShipmentApi.js` | `upsertCoreShipmentForFrontend` | 113 |
+
+発送 API（`28_CoreShipmentApi.js`）にも同一パターンが存在した。
+SHIPMENTS シートは常にデータ行が存在するため今回は被害が顕在化しなかったが、
+fresh シートで同じバグが再現するリスクがあるため同時に修正した。
+
+- PR #755 merge commit: `3befe4d791ee1c1a0b5e4b3868688510076aeee9`
+- 戻し方: `git revert 3befe4d791ee1c1a0b5e4b3868688510076aeee9`
+
+#### 復旧手順
+
+1. **破損シートの削除関数追加**（PR #754）
+   - `99_DevPackageMasterSetup.js` に `deleteCorruptedSizesWeights()` を追加
+   - development 環境ガード付き・対象は SIZES/WEIGHTS の2枚のみ
+   - PR #754 merge commit: `03a9a905f3fec295ee7a8d102559590fbd909590`
+
+2. **バグ修正のデプロイ**（PR #755）— 上記「修正内容」参照
+
+3. **シート削除**（DEV スプレッドシート上の操作）
+   ```bash
+   clasp run deleteCorruptedSizesWeights
+   # 結果: deleted: ['サイズマスタ', '重量マスタ'], notFoundCount: 0
+   ```
+
+4. **DRY_RUN 確認**
+   ```bash
+   clasp run setupPackageMasterSheets --params '["DRY_RUN"]'
+   # 結果: toCreate 2件（サイズマスタ・重量マスタ）、conflicts 2件（荷姿マスタ・商品荷姿マスタ）
+   ```
+
+5. **APPLY（再作成）**
+   ```bash
+   clasp run setupPackageMasterSheets --params '["APPLY"]'
+   # 結果: created 2件（サイズマスタ・重量マスタ）、skipped 2件
+   ```
+
+6. **整合性確認**
+   ```bash
+   clasp run runCoreSchemaConformanceAudit
+   # SIZES/WEIGHTS/PACKAGES/PRODUCT_PACKAGES: 各0件
+   ```
+
+7. **書き込みテスト（修正後確認）**
+
+   各1件登録のたびに監査を実施し、ヘッダー破損がないことを確認:
+
+   | 操作 | 結果 | 監査 |
+   |------|------|------|
+   | `upsertCoreSizeForFrontend` → SIZ-0001 | success | SIZES 0件 ✓ |
+   | `upsertCoreWeightForFrontend` → WGT-0001 | success | WEIGHTS 0件 ✓ |
+   | `upsertCorePackageForFrontend` → PKG-0001 | success | PACKAGES 0件 ✓ |
+   | `upsertCoreSizeForFrontend` 更新（SIZ-0001）| success | SIZES 0件 ✓ |
+
+   異常系:
+   - 不正セッション → `SESSION_INVALID` ✓
+   - 不正 unit 値 → `INVALID_UNIT` ✓
+
+#### 注意: シート削除・再作成は git revert で戻らない
+
+PR #754・#755 を `git revert` しても、
+**DEV スプレッドシート上で削除・再作成したシートの内容は元に戻らない**。
+スプレッドシートへの変更は GAS 経由の操作であり、git の管理外である。
+再度データが必要な場合は手動でデータを入力するか、
+シードスクリプトを新規に作成すること。
