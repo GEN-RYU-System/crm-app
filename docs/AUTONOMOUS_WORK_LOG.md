@@ -2,6 +2,40 @@
 
 ---
 
+### 2026-08-31 選択肢マスタ 36列 使用箇所調査完了（PR #787 / PR #788）
+
+**概要:**
+選択肢マスタ（`CONFIG.SHEETS.SETTINGS`）の全36列について、
+React新path・旧SPA・コード定義・未使用の分類と SSOT 違反の洗い出しを実施。
+読み取り専用の調査関数（PR #787）とレポート（PR #788）の 2-PR 構成で完了。
+
+**調査結果サマリ:**
+
+| 分類 | 件数 | 代表列 |
+|------|------|--------|
+| A — React新path実動（getLeadFormOptions） | 2 | リード種別, 返信速度 |
+| B — 旧SPA実動（getArchiveReasons） | 1 | アーカイブ理由 |
+| C — コード参照あり・API未公開（getDropdownOptions系/setup） | 16 | 流入経路（IN/OUT）, リードステータス, 役割 等 |
+| D — 参照コードなし（dropdown sourceとして未使用） | 16 | 商談ステータス, 仕入元, 支払サイト 等 |
+| E — 専用関数・dispatch未登録（dead code） | 1 | FAQ_カテゴリ |
+
+**主要 SSOT 違反（9件）:**
+- `27_WebApp.js:252` の `DROPDOWN_OPTIONS` が未定義変数 → 旧SPA getDropdownOptions dispatch が undefined を返すバグ
+- `DEFAULT_DROPDOWN_OPTIONS['取り扱いタイトル']` vs シート列名 `取り扱い商材`（キー不一致）
+- `getDealReportDropdownOptions` が `options['販売先']` 参照 → シート列名は `販売形態`
+- DEFAULT_DROPDOWN_OPTIONS / DROPDOWN_COLUMNS に `対象外理由`, `失注理由`, `国`, `期間タイプ` を定義するがシートに列なし
+- 返信速度・次回アクション日・販売形態・商談結果・アーカイブ理由で DEFAULT との値数差（各 +1）
+
+**PR 一覧:**
+- #787 (PR-1): `src/99_OptionMasterFullDump.js` 新規追加（読み取り専用 dump 関数）
+- #788 (PR-2): `docs/option-master-audit.md` 新規追加（本エントリ）
+
+**事後確認（PR-2 後）:**
+- 監査: baseline と同件数 ✅
+- dryRun: 変更あり 0件 ✅
+
+---
+
 ### 2026-08-31 商品マスタ管理画面を新設（PR #785）
 
 **概要:**
