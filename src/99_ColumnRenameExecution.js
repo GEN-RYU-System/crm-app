@@ -158,3 +158,97 @@ function renamePurchaseSheetHeaders() {
     details: details
   };
 }
+
+// ===================================================================
+// 顧客マスタ列名整形 補助関数
+// PR-1: backupCustomerSheet / verifyCustomerSheetBackup / getCustomerSheetCurrentHeaders
+// PR-2: renameCustomerFedexIdHeader（PR-2 で追加予定）
+// ===================================================================
+
+/**
+ * 顧客マスタシートを複製してバックアップを作成する。
+ * 対象: シート名 '顧客マスタ'（CoreSchemaV1 CUSTOMERS）
+ * バックアップ名: '顧客マスタ_backup_20260831'
+ */
+function backupCustomerSheet() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('backupCustomerSheet は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+  var sourceSheet = getCoreSchemaV1Sheet(ss, 'CUSTOMERS');
+  var backupName = '顧客マスタ_backup_20260831';
+
+  var existing = ss.getSheetByName(backupName);
+  if (existing) {
+    throw new Error('バックアップシートが既に存在します: ' + backupName);
+  }
+
+  var copy = sourceSheet.copyTo(ss);
+  copy.setName(backupName);
+  return {
+    status: 'OK',
+    backupName: backupName,
+    sourceRows: sourceSheet.getLastRow(),
+    sourceCols: sourceSheet.getLastColumn()
+  };
+}
+
+/**
+ * バックアップシートと元シートの行数・列数・ヘッダーが完全一致するか検証する。
+ * 合格条件: status === 'OK' かつ headersMatch === true
+ */
+function verifyCustomerSheetBackup() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('verifyCustomerSheetBackup は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+  var sourceSheet = getCoreSchemaV1Sheet(ss, 'CUSTOMERS');
+  var backupName = '顧客マスタ_backup_20260831';
+  var backupSheet = ss.getSheetByName(backupName);
+
+  if (!backupSheet) {
+    throw new Error('バックアップシートが存在しません: ' + backupName);
+  }
+
+  var sourceRows = sourceSheet.getLastRow();
+  var sourceCols = sourceSheet.getLastColumn();
+  var backupRows = backupSheet.getLastRow();
+  var backupCols = backupSheet.getLastColumn();
+
+  var sourceHeaders = sourceCols > 0
+    ? sourceSheet.getRange(1, 1, 1, sourceCols).getDisplayValues()[0]
+    : [];
+  var backupHeaders = backupCols > 0
+    ? backupSheet.getRange(1, 1, 1, backupCols).getDisplayValues()[0]
+    : [];
+
+  var headersMatch = sourceHeaders.length === backupHeaders.length &&
+    sourceHeaders.every(function(h, i) { return h === backupHeaders[i]; });
+
+  var rowColMatch = sourceRows === backupRows && sourceCols === backupCols;
+
+  return {
+    status: rowColMatch && headersMatch ? 'OK' : 'MISMATCH',
+    sourceRows: sourceRows,
+    backupRows: backupRows,
+    sourceCols: sourceCols,
+    backupCols: backupCols,
+    headersMatch: headersMatch,
+    sourceHeaders: sourceHeaders,
+    backupHeaders: backupHeaders
+  };
+}
+
+/**
+ * 顧客マスタシートの現在のヘッダー一覧を返す（記録用）。
+ */
+function getCustomerSheetCurrentHeaders() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('getCustomerSheetCurrentHeaders は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+  var sheet = getCoreSchemaV1Sheet(ss, 'CUSTOMERS');
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return [];
+  return sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+}

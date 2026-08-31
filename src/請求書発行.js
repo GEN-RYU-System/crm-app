@@ -542,11 +542,14 @@ function setupTransferConfig() {
   if (!config.destCol) return null;
   
   config.mstCol = getCols(config.mstSheet, 1, [
-    "B Name", 
-    "D Name", "D Telephone", "D Email", "D Tax ID", "D Address 1", "D Address 2", "D Address 3", 
-    "D City", "D State", "D Zip", "D Country", "営業担当者", "FedEx ID", "顧客ID", "支払い名義"
+    "B Name",
+    "D Name", "D Telephone", "D Email", "D Tax ID", "D Address 1", "D Address 2", "D Address 3",
+    "D City", "D State", "D Zip", "D Country", "営業担当者", "顧客ID", "支払い名義"
   ]);
   if (!config.mstCol) return null;
+  // FedEx ID: 新列名 fedex_id → 旧列名 FedEx ID の順で検索（PR-1 新旧両対応）
+  var fedexOptional = getCols(config.mstSheet, 1, ["fedex_id", "FedEx ID"], true);
+  config.mstCol["FedEx ID"] = fedexOptional["fedex_id"] || fedexOptional["FedEx ID"] || 0;
 
   config.setCol = getCols(config.settingSheet, 1, ["状態", "内容品名", "単位", "通貨", "レート", "為替表記", "HTS"]);
   if (!config.setCol) return null;
