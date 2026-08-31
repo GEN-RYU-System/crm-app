@@ -5671,8 +5671,8 @@ git revert ff548db  # PR #776 squash commit
 
 | PR | CI | mergedAt | Deploy to DEV |
 |----|----|----------|---------------|
-| #779 | 4/4 pass | 2026-08-31T07:58:58Z | 初回 run #33370770908 は GitHub API 遅延で失敗 → workflow_dispatch 再トリガー run #33371058666 で success |
-| #782 | 4/4 pass | 2026-08-31T08:09:35Z | run #33371579584: success (50s) |
+| #779 | 4/4 pass | 2026-08-31T07:58:58Z | 初回 Deploy to DEV run #33370770908 は GitHub API 遅延で失敗 → workflow_dispatch 再トリガー Deploy to DEV run #33371058666 で success |
+| #782 | 4/4 pass | 2026-08-31T08:09:35Z | Deploy to DEV run #33371579584: success (50s) |
 
 #### getDeployedSha 確認
 
