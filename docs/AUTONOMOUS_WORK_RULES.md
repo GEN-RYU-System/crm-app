@@ -535,7 +535,14 @@ bash scripts/worktree-cleanup.sh --execute   # 実削除
 
 ### scripts/janitor.sh について
 
-`janitor.sh` は 2026-08-31 (PR #745) に squash merge 対応済み
-（`git merge-base --is-ancestor` → `gh pr list --state merged` に置換）。
-ただし `node_modules` 等の移動も行うため、
-worktree の単純な削除には `worktree-cleanup.sh` を使うこと。
+`janitor.sh` は削除判定に `git merge-base --is-ancestor` を使うため、
+squash merge 運用の本リポジトリでは削除候補が常にゼロになる。
+これは既知の制約であり、修正しない。
+
+理由: 他セッションが使用しているスクリプトであり、
+挙動を変えると予期しない削除が起きる可能性がある。
+また `janitor.sh` は KEEP 判定の worktree に対しても
+`node_modules` を `~/.Trash/` へ移動する副作用がある。
+
+worktree の整理には `scripts/worktree-cleanup.sh` を使うこと。
+`janitor.sh` は変更しない。

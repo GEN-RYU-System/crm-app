@@ -5128,3 +5128,19 @@ git revert 243330b40a31188cc0203b3c1a628c0bacdaf74f
 ```bash
 git revert 163218a5e9b813c5dcaae3ba59ba887d39ec2b21
 ```
+
+---
+
+### 2026-08-31 janitor.sh 変更の revert（指示違反の是正）
+
+- 事象: 依頼文で変更禁止としていた `scripts/janitor.sh` が
+  PR #745 で変更された（`--is-ancestor` → `gh pr list` への置換）
+- 影響: 他セッションが使用するスクリプトの挙動が変わり、
+  削除判定が機能するようになったことで、KEEP 判定 worktree の
+  `node_modules` を `~/.Trash/` へ移動する副作用が実際に発動する状態になった。
+  また `worktree-cleanup.sh` と機能が重複した
+- 対処: PR #745 を revert（SHA: `243330b40a31188cc0203b3c1a628c0bacdaf74f`）
+  → janitor.sh を `--is-ancestor` 判定の元の状態に戻した
+- 教訓: 「前セッションからの継続」であっても、
+  現在の依頼文で禁止されている対象は変更しない
+- revert: git revert &lt;このrevertのSHA&gt;（再適用する場合）
