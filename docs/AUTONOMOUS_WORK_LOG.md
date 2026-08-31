@@ -4830,3 +4830,48 @@ success ✓
 ```bash
 git revert 850475e38b84574aa2c90d42612f0c2ff527e871
 ```
+
+---
+
+## docs: AGENTS.md の permit 禁止明確化・.pr-number 設置場所を訂正 — PR #732
+
+**日付:** 2026-08-31
+**PR:** [#732](https://github.com/GEN-RYU-System/crm-app/pull/732)
+**マージコミットSHA:** `9135ce8bb07dda188b12b34ab3cada5b85789e68`
+**mergedAt:** `2026-08-31T02:08:25Z`
+
+### 変更内容
+
+PR #730 で追記した AGENTS.md の2箇所を訂正・補強した。
+
+#### 訂正1: .pr-number の設置場所
+
+PR #730 の記述「worktree 内に書く / リポジトリルートには書かない」が誤りだった。
+実測値: `git rev-parse --show-toplevel` → `/Users/tanizawashingo/crm-app-current`（フック実行時の cwd）
+
+| 修正前 | 修正後 |
+|--------|--------|
+| `echo <PR番号> > ~/crm-app-canonical-20260830/.pr-number` | `echo <PR番号> > ~/crm-app-current/.pr-number` |
+| 「リポジトリルートには絶対に書かない」 | 「worktree 内・canonical 20260830 に置いても読まれない」 |
+
+#### 訂正2: permit 禁止の明確化
+
+「permit スクリプトの実行」を拡張し、以下を明示した:
+- `~/.claude/permits/` 配下へのファイル書き込み全般
+- permit-peek.sh / permit-danger.sh の実行
+- printf や echo による直接作成
+- permit の発行は PO のみが行う
+
+### getDeployedSha 照合
+
+ドキュメントのみの変更のため照合不要。
+
+### Deploy to DEV conclusion
+
+success ✓
+
+### 戻し方
+
+```bash
+git revert 9135ce8bb07dda188b12b34ab3cada5b85789e68
+```
