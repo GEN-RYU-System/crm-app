@@ -1,13 +1,4 @@
 /**
- * 担当者マスタのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- */
-function _dumpStaffHeaderIdx(h, newName, oldName) {
-  var idx = h.indexOf(newName);
-  return idx !== -1 ? idx : h.indexOf(oldName);
-}
-
-/**
  * 【読み取り専用】オーダー管理の「ステータス」列のプルダウン選択肢を返す
  * セル値・個人データは出力しない
  */
@@ -107,12 +98,12 @@ function checkStaffNameColumns() {
   var v = sh.getDataRange().getValues();
   var h = v[0];
   var idx = {
-    staffId: _dumpStaffHeaderIdx(h, 'staff_id', '担当者ID'),
-    last:    _dumpStaffHeaderIdx(h, 'last_name_ja', '苗字（日本語）'),
-    first:   _dumpStaffHeaderIdx(h, 'first_name_ja', '名前（日本語）'),
-    full:    _dumpStaffHeaderIdx(h, 'full_name_ja', '氏名（日本語）'),
-    role:    _dumpStaffHeaderIdx(h, 'staff_role', '役割'),
-    status:  _dumpStaffHeaderIdx(h, 'status', 'ステータス')
+    staffId: h.indexOf('staff_id'),
+    last:    h.indexOf('last_name_ja'),
+    first:   h.indexOf('first_name_ja'),
+    full:    h.indexOf('full_name_ja'),
+    role:    h.indexOf('staff_role'),
+    status:  h.indexOf('status')
   };
 
   var stat = { rows: 0, last: 0, first: 0, full: 0, lastAndFirst: 0, fullOnly: 0 };

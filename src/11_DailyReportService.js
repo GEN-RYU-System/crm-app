@@ -3,15 +3,6 @@
 // 営業担当者の日報管理システム
 // ==========================================
 
-/**
- * 担当者マスタのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- */
-function _dailyReportStaffHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
-
 const DAILY_REPORT_SHEET_NAME = '日報';
 
 /**
@@ -622,10 +613,10 @@ function getActiveStaffList() {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const idIdx = _dailyReportStaffHeaderIdx(headers, 'staff_id', '担当者ID');
+  const idIdx = headers.indexOf('staff_id');
   const nameIdx = headers.indexOf('担当者名');
-  const statusIdx = _dailyReportStaffHeaderIdx(headers, 'status', 'ステータス');
-  const discordIdx = _dailyReportStaffHeaderIdx(headers, 'discord_id', 'Discord ID');
+  const statusIdx = headers.indexOf('status');
+  const discordIdx = headers.indexOf('discord_id');
 
   const staffList = [];
 

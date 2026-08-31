@@ -10,15 +10,6 @@
  * - リソース別アクセス権チェック
  */
 
-/**
- * 担当者マスタのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- */
-function _permissionStaffHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
-
 // ============================================================
 // ユーザー認証・権限取得
 // ============================================================
@@ -43,12 +34,12 @@ function getCurrentUserPermissions(email) {
   const data = staffSheet.getDataRange().getValues();
   const headers = data[0];
 
-  const emailIdx = _permissionStaffHeaderIdx(headers, 'email', 'メール');
-  const staffIdIdx = _permissionStaffHeaderIdx(headers, 'staff_id', '担当者ID');
-  const lastNameJpIdx = _permissionStaffHeaderIdx(headers, 'last_name_ja', '苗字（日本語）');
-  const firstNameJpIdx = _permissionStaffHeaderIdx(headers, 'first_name_ja', '名前（日本語）');
-  const roleIdx = _permissionStaffHeaderIdx(headers, 'staff_role', '役割');
-  const statusIdx = _permissionStaffHeaderIdx(headers, 'status', 'ステータス');
+  const emailIdx = headers.indexOf('email');
+  const staffIdIdx = headers.indexOf('staff_id');
+  const lastNameJpIdx = headers.indexOf('last_name_ja');
+  const firstNameJpIdx = headers.indexOf('first_name_ja');
+  const roleIdx = headers.indexOf('staff_role');
+  const statusIdx = headers.indexOf('status');
   const teamIdIdx = headers.indexOf('チームID');
 
   // メールアドレスでユーザーを検索
@@ -112,12 +103,12 @@ function getPermissionsByStaffId(staffId) {
   const data = staffSheet.getDataRange().getValues();
   const headers = data[0];
 
-  const staffIdIdx = _permissionStaffHeaderIdx(headers, 'staff_id', '担当者ID');
-  const roleIdx = _permissionStaffHeaderIdx(headers, 'staff_role', '役割');
-  const statusIdx = _permissionStaffHeaderIdx(headers, 'status', 'ステータス');
+  const staffIdIdx = headers.indexOf('staff_id');
+  const roleIdx = headers.indexOf('staff_role');
+  const statusIdx = headers.indexOf('status');
   const teamIdIdx = headers.indexOf('チームID');
-  const lastNameJpIdx = _permissionStaffHeaderIdx(headers, 'last_name_ja', '苗字（日本語）');
-  const firstNameJpIdx = _permissionStaffHeaderIdx(headers, 'first_name_ja', '名前（日本語）');
+  const lastNameJpIdx = headers.indexOf('last_name_ja');
+  const firstNameJpIdx = headers.indexOf('first_name_ja');
 
   for (let i = 1; i < data.length; i++) {
     if (data[i][staffIdIdx] === staffId) {
@@ -601,11 +592,11 @@ function getAllActiveStaff() {
   const data = staffSheet.getDataRange().getValues();
   const headers = data[0];
 
-  const staffIdIdx = _permissionStaffHeaderIdx(headers, 'staff_id', '担当者ID');
-  const lastNameIdx = _permissionStaffHeaderIdx(headers, 'last_name_ja', '苗字（日本語）');
-  const firstNameIdx = _permissionStaffHeaderIdx(headers, 'first_name_ja', '名前（日本語）');
-  const roleIdx = _permissionStaffHeaderIdx(headers, 'staff_role', '役割');
-  const statusIdx = _permissionStaffHeaderIdx(headers, 'status', 'ステータス');
+  const staffIdIdx = headers.indexOf('staff_id');
+  const lastNameIdx = headers.indexOf('last_name_ja');
+  const firstNameIdx = headers.indexOf('first_name_ja');
+  const roleIdx = headers.indexOf('staff_role');
+  const statusIdx = headers.indexOf('status');
   const teamIdIdx = headers.indexOf('チームID');
 
   const staff = [];
@@ -639,11 +630,11 @@ function getTeamMembers(teamId) {
   const data = staffSheet.getDataRange().getValues();
   const headers = data[0];
 
-  const staffIdIdx = _permissionStaffHeaderIdx(headers, 'staff_id', '担当者ID');
-  const lastNameIdx = _permissionStaffHeaderIdx(headers, 'last_name_ja', '苗字（日本語）');
-  const firstNameIdx = _permissionStaffHeaderIdx(headers, 'first_name_ja', '名前（日本語）');
-  const roleIdx = _permissionStaffHeaderIdx(headers, 'staff_role', '役割');
-  const statusIdx = _permissionStaffHeaderIdx(headers, 'status', 'ステータス');
+  const staffIdIdx = headers.indexOf('staff_id');
+  const lastNameIdx = headers.indexOf('last_name_ja');
+  const firstNameIdx = headers.indexOf('first_name_ja');
+  const roleIdx = headers.indexOf('staff_role');
+  const statusIdx = headers.indexOf('status');
   const teamIdIdx = headers.indexOf('チームID');
 
   const members = [];

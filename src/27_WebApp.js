@@ -10,14 +10,6 @@
  *   TEST_DATA_KEY はスクリプトプロパティで設定。未設定時は実行不可。
  */
 
-/**
- * 担当者マスタのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- */
-function _webAppStaffHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 function doGet(e) {
   const params = e.parameter || {};
 
@@ -861,8 +853,8 @@ function getMyLeads() {
 
   const staffData = staffSheet.getDataRange().getValues();
   const staffHeaders = staffData[0];
-  const staffEmailIndex = _webAppStaffHeaderIdx(staffHeaders, 'email', 'メール');
-  const staffIdIndex = _webAppStaffHeaderIdx(staffHeaders, 'staff_id', '担当者ID');
+  const staffEmailIndex = staffHeaders.indexOf('email');
+  const staffIdIndex = staffHeaders.indexOf('staff_id');
 
   let currentStaffId = null;
   for (let i = 1; i < staffData.length; i++) {
@@ -1426,14 +1418,14 @@ function getStaffListForAssign() {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const idCol = _webAppStaffHeaderIdx(headers, 'staff_id', '担当者ID');
-  const roleCol = _webAppStaffHeaderIdx(headers, 'staff_role', '役割');
-  const statusCol = _webAppStaffHeaderIdx(headers, 'status', 'ステータス');
+  const idCol = headers.indexOf('staff_id');
+  const roleCol = headers.indexOf('staff_role');
+  const statusCol = headers.indexOf('status');
 
   // 新形式と旧形式の両方に対応
-  const familyNameJaCol = _webAppStaffHeaderIdx(headers, 'last_name_ja', '苗字（日本語）');
-  const givenNameJaCol = _webAppStaffHeaderIdx(headers, 'first_name_ja', '名前（日本語）');
-  const oldNameCol = _webAppStaffHeaderIdx(headers, 'full_name_ja', '氏名（日本語）');
+  const familyNameJaCol = headers.indexOf('last_name_ja');
+  const givenNameJaCol = headers.indexOf('first_name_ja');
+  const oldNameCol = headers.indexOf('full_name_ja');
 
   const staffList = [];
 
@@ -1561,11 +1553,11 @@ function getSalesStaffList() {
     const headers = data[0];
 
     // 必要な列インデックスを取得
-    const staffIdIdx = _webAppStaffHeaderIdx(headers, 'staff_id', '担当者ID');
-    const lastNameJpIdx = _webAppStaffHeaderIdx(headers, 'last_name_ja', '苗字（日本語）');
-    const firstNameJpIdx = _webAppStaffHeaderIdx(headers, 'first_name_ja', '名前（日本語）');
-    const roleIdx = _webAppStaffHeaderIdx(headers, 'staff_role', '役割'); // 実際のシートでは「ロール」
-    const statusIdx = _webAppStaffHeaderIdx(headers, 'status', 'ステータス');
+    const staffIdIdx = headers.indexOf('staff_id');
+    const lastNameJpIdx = headers.indexOf('last_name_ja');
+    const firstNameJpIdx = headers.indexOf('first_name_ja');
+    const roleIdx = headers.indexOf('staff_role'); // 実際のシートでは「ロール」
+    const statusIdx = headers.indexOf('status');
 
     const salesStaffList = [];
 
@@ -1617,12 +1609,12 @@ function getUserInfoByEmail(email) {
     const headers = data[0];
 
     // 必要な列インデックスを取得
-    const emailIdx = _webAppStaffHeaderIdx(headers, 'email', 'メール');
-    const staffIdIdx = _webAppStaffHeaderIdx(headers, 'staff_id', '担当者ID');
-    const lastNameJpIdx = _webAppStaffHeaderIdx(headers, 'last_name_ja', '苗字（日本語）');
-    const firstNameJpIdx = _webAppStaffHeaderIdx(headers, 'first_name_ja', '名前（日本語）');
-    const roleIdx = _webAppStaffHeaderIdx(headers, 'staff_role', '役割');
-    const statusIdx = _webAppStaffHeaderIdx(headers, 'status', 'ステータス');
+    const emailIdx = headers.indexOf('email');
+    const staffIdIdx = headers.indexOf('staff_id');
+    const lastNameJpIdx = headers.indexOf('last_name_ja');
+    const firstNameJpIdx = headers.indexOf('first_name_ja');
+    const roleIdx = headers.indexOf('staff_role');
+    const statusIdx = headers.indexOf('status');
 
     // メールアドレス列が見つからない場合
     if (emailIdx === -1) {
@@ -1678,9 +1670,9 @@ function assignLeadToStaff(leadId, staffId) {
     // 1. 担当者情報を取得
     const staffData = staffSheet.getDataRange().getValues();
     const staffHeaders = staffData[0];
-    const staffIdIdx = _webAppStaffHeaderIdx(staffHeaders, 'staff_id', '担当者ID');
-    const lastNameJpIdx = _webAppStaffHeaderIdx(staffHeaders, 'last_name_ja', '苗字（日本語）');
-    const firstNameJpIdx = _webAppStaffHeaderIdx(staffHeaders, 'first_name_ja', '名前（日本語）');
+    const staffIdIdx = staffHeaders.indexOf('staff_id');
+    const lastNameJpIdx = staffHeaders.indexOf('last_name_ja');
+    const firstNameJpIdx = staffHeaders.indexOf('first_name_ja');
     let staffName = '';
 
     for (let i = 1; i < staffData.length; i++) {
@@ -2665,14 +2657,14 @@ function getCurrentUserRole() {
 
   const data = staffSheet.getDataRange().getValues();
   const headers = data[0];
-  const emailCol = _webAppStaffHeaderIdx(headers, 'email', 'メール');
-  const roleCol = _webAppStaffHeaderIdx(headers, 'staff_role', '役割');
-  const idCol = _webAppStaffHeaderIdx(headers, 'staff_id', '担当者ID');
+  const emailCol = headers.indexOf('email');
+  const roleCol = headers.indexOf('staff_role');
+  const idCol = headers.indexOf('staff_id');
 
   // 新形式（苗字/名前分離）と旧形式（氏名統合）の両方に対応
-  const familyNameJaCol = _webAppStaffHeaderIdx(headers, 'last_name_ja', '苗字（日本語）');
-  const givenNameJaCol = _webAppStaffHeaderIdx(headers, 'first_name_ja', '名前（日本語）');
-  const oldNameCol = _webAppStaffHeaderIdx(headers, 'full_name_ja', '氏名（日本語）');
+  const familyNameJaCol = headers.indexOf('last_name_ja');
+  const givenNameJaCol = headers.indexOf('first_name_ja');
+  const oldNameCol = headers.indexOf('full_name_ja');
 
   for (let i = 1; i < data.length; i++) {
     if (data[i][emailCol] === email) {
@@ -3079,13 +3071,13 @@ function getTeamStats() {
   // 担当者一覧を取得
   const staffData = staffSheet.getDataRange().getValues();
   const staffHeaders = staffData[0];
-  const staffIdCol = _webAppStaffHeaderIdx(staffHeaders, 'staff_id', '担当者ID');
-  const roleCol = _webAppStaffHeaderIdx(staffHeaders, 'staff_role', '役割');
+  const staffIdCol = staffHeaders.indexOf('staff_id');
+  const roleCol = staffHeaders.indexOf('staff_role');
 
   // 新形式と旧形式の両方に対応
-  const familyNameJaCol = _webAppStaffHeaderIdx(staffHeaders, 'last_name_ja', '苗字（日本語）');
-  const givenNameJaCol = _webAppStaffHeaderIdx(staffHeaders, 'first_name_ja', '名前（日本語）');
-  const oldNameCol = _webAppStaffHeaderIdx(staffHeaders, 'full_name_ja', '氏名（日本語）');
+  const familyNameJaCol = staffHeaders.indexOf('last_name_ja');
+  const givenNameJaCol = staffHeaders.indexOf('first_name_ja');
+  const oldNameCol = staffHeaders.indexOf('full_name_ja');
 
   const staffMap = {};
   for (let i = 1; i < staffData.length; i++) {
@@ -4828,10 +4820,10 @@ function diagnoseUserMatching() {
   const staffHeaders = staffData[0];
   Logger.log('  ヘッダー: ' + staffHeaders.join(', '));
 
-  const emailCol = _webAppStaffHeaderIdx(staffHeaders, 'email', 'メール');
-  const familyCol = _webAppStaffHeaderIdx(staffHeaders, 'last_name_ja', '苗字（日本語）');
-  const givenCol = _webAppStaffHeaderIdx(staffHeaders, 'first_name_ja', '名前（日本語）');
-  const oldNameCol = _webAppStaffHeaderIdx(staffHeaders, 'full_name_ja', '氏名（日本語）');
+  const emailCol = staffHeaders.indexOf('email');
+  const familyCol = staffHeaders.indexOf('last_name_ja');
+  const givenCol = staffHeaders.indexOf('first_name_ja');
+  const oldNameCol = staffHeaders.indexOf('full_name_ja');
 
   Logger.log('  メール列: ' + emailCol);
   Logger.log('  苗字列: ' + familyCol);
@@ -6616,7 +6608,7 @@ function getStaffFullName() {
 
     // 「氏名」列のインデックスを取得
     const nameIndex = headers.indexOf('氏名');
-    const emailIndex = _webAppStaffHeaderIdx(headers, 'email', 'メール');
+    const emailIndex = headers.indexOf('email');
 
     if (nameIndex === -1 || emailIndex === -1) {
       Logger.log('[getStaffFullName] 氏名列またはメールアドレス列が見つかりません');

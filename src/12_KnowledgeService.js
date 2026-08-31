@@ -4,15 +4,6 @@
  */
 
 /**
- * 担当者マスタのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- */
-function _knowledgeStaffHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
-
-/**
  * ナレッジ全件取得
  */
 function getKnowledgeList() {
@@ -182,9 +173,9 @@ function getStaffNameByEmail_(email) {
 
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
-    const emailIdx = _knowledgeStaffHeaderIdx(headers, 'email', 'メール');
-    const lastNameIdx = _knowledgeStaffHeaderIdx(headers, 'last_name_ja', '苗字（日本語）');
-    const firstNameIdx = _knowledgeStaffHeaderIdx(headers, 'first_name_ja', '名前（日本語）');
+    const emailIdx = headers.indexOf('email');
+    const lastNameIdx = headers.indexOf('last_name_ja');
+    const firstNameIdx = headers.indexOf('first_name_ja');
 
     if (emailIdx === -1 || lastNameIdx === -1 || firstNameIdx === -1) return '';
 

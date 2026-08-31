@@ -165,19 +165,6 @@ const CORE_SCHEMA_V1_TABLES = {
   STAFF: {
     sheetName: '担当者マスタ', canonicalName: '担当者マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
     headers: createCoreSchemaV1Headers([['STAFF_ID', 'staff_id'], ['LAST_NAME_JA', 'last_name_ja'], ['FIRST_NAME_JA', 'first_name_ja'], ['FULL_NAME_JA', 'full_name_ja'], ['LAST_NAME_KANA', 'last_name_kana'], ['FIRST_NAME_KANA', 'first_name_kana'], ['LAST_NAME_EN', 'last_name_en'], ['FIRST_NAME_EN', 'first_name_en'], ['EMAIL', 'email'], ['DISCORD_ID', 'discord_id'], ['ROLE', 'staff_role'], ['STATUS', 'status'], ['SOURCE_CANDIDATE_ID', 'source_candidate_id'], ['DARK_MODE', 'dark_mode'], ['CHAT_MENU_VISIBLE', 'chat_menu_visible'], ['SALES_MENU_VISIBLE', 'sales_menu_visible'], ['SETTINGS_MENU_VISIBLE', 'settings_menu_visible'], ['ADMIN_MENU_VISIBLE', 'admin_menu_visible'], ['BUDDY_MAINTENANCE_MENU_VISIBLE', 'buddy_maintenance_menu_visible'], ['SIDEBAR_VISIBLE', 'sidebar_visible'], ['PASSWORD_HASH', 'password_hash'], ['PASSWORD_SALT', 'password_salt'], ['LOGIN_FAIL_COUNT', 'login_fail_count'], ['LOCKED_UNTIL', 'locked_until']]),
-    headerAliasMap: {
-      '担当者ID': 'staff_id', '苗字（日本語）': 'last_name_ja', '名前（日本語）': 'first_name_ja',
-      '氏名（日本語）': 'full_name_ja', '苗字ふりがな': 'last_name_kana', '名前ふりがな': 'first_name_kana',
-      '苗字（英語）': 'last_name_en', '名前（英語）': 'first_name_en', 'メール': 'email',
-      'Discord ID': 'discord_id', '役割': 'staff_role', 'ステータス': 'status',
-      '元候補者ID': 'source_candidate_id', 'ダークモード': 'dark_mode',
-      'チャットメニュー表示': 'chat_menu_visible', '営業メニュー表示': 'sales_menu_visible',
-      '設定メニュー表示': 'settings_menu_visible', '管理者メニュー表示': 'admin_menu_visible',
-      'Buddyメンテナンスメニュー表示': 'buddy_maintenance_menu_visible',
-      'サイドバー表示': 'sidebar_visible', 'パスワードハッシュ': 'password_hash',
-      'パスワードソルト': 'password_salt', '連続失敗回数': 'login_fail_count',
-      'ロック解除時刻': 'locked_until'
-    },
     primaryKey: 'STAFF_ID', referenceIds: [],
     unmanagedReferenceIds: [{ headerKey: 'SOURCE_CANDIDATE_ID', reason: 'PARENT_TABLE_OUTSIDE_CORE_SCHEMA_V1' }],
     values: {
@@ -585,28 +572,15 @@ function validateCoreSchemaV1TableForWrite(spreadsheet, tableKey) {
   if (new Set(nonEmptyHeaders).size !== nonEmptyHeaders.length) {
     throw new Error('CORE_SCHEMA_NON_EMPTY_HEADER_DUPLICATE');
   }
-  const aliasMap = table.headerAliasMap || {};
-  // headerAliasMap は { 旧名: 新名 } 形式。新名→旧名の逆引きマップを生成する。
-  const reverseAliasMap = Object.keys(aliasMap).reduce(function(acc, oldName) {
-    acc[aliasMap[oldName]] = oldName;
-    return acc;
-  }, {});
   const requiredHeaders = Object.keys(table.headers).map(headerKey => table.headers[headerKey]);
-  // headerAliasMap フォールバック: 新名が見つからなければ旧名（逆引き）で検索する
-  const resolveHeaderIndex = function(headerName) {
-    var idx = headers.indexOf(headerName);
-    if (idx !== -1) return idx;
-    var oldName = reverseAliasMap[headerName];
-    return oldName !== undefined ? headers.indexOf(oldName) : -1;
-  };
-  if (requiredHeaders.some(headerName => resolveHeaderIndex(headerName) === -1)) {
+  if (requiredHeaders.some(headerName => headers.indexOf(headerName) === -1)) {
     throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING');
   }
   return {
     sheet: sheet,
     tableKey: resolveCoreSchemaV1TableKey(tableKey),
     headerIndexes: requiredHeaders.reduce((indexes, headerName) => {
-      indexes[headerName] = resolveHeaderIndex(headerName) + 1;
+      indexes[headerName] = headers.indexOf(headerName) + 1;
       return indexes;
     }, {})
   };
