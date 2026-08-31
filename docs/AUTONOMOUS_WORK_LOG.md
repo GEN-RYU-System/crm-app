@@ -37,7 +37,7 @@
 **CI / デプロイ:**
 - PR #759、CI 4/4 pass（Gitleaks / Sensitive Content / gas-global-namespace / frontend-check）
 - `mergedAt`: 2026-08-31T06:14:59Z
-- Deploy to DEV: `run/33363428440` → success（`a5f0ff1058d79bfbed8d939f0aa97cc82b67f836`）
+- Deploy to DEV: deploy-dev.yml → success（SHA: `a5f0ff1058d79bfbed8d939f0aa97cc82b67f836`）
 - SHA 一致確認: `clasp run getDeployedSha` == `origin/develop` HEAD ✓
 - SIZES/WEIGHTS/PACKAGES/PRODUCT_PACKAGES 各 0件不一致 ✓
 
