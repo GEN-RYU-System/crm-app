@@ -20,8 +20,7 @@ git -C "$ROOT" worktree list --porcelain | awk '/^worktree /{p=$2}/^branch refs\
     printf 'KEEP %s (%s dirty=%s age_days=%s protected)\n' "$path" "$branch" "$dirty" "$age_days"
     continue
   fi
-  merged=$(gh pr list --state merged --head "$branch" --limit 1 --json number 2>/dev/null || echo '[]')
-  if echo "$merged" | grep -qF '"number"' && [ "$dirty" = 0 ]; then
+  if git -C "$ROOT" merge-base --is-ancestor "$branch" origin/develop 2>/dev/null && [ "$dirty" = 0 ]; then
     printf 'REMOVE %s (%s)\n' "$path" "$branch"
     if [ "$DRY_RUN" = false ]; then git -C "$ROOT" worktree remove "$path"; fi
     continue
