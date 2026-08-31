@@ -383,6 +383,84 @@ const CORE_SCHEMA_V1_TABLES = {
       { headerKey: 'OWN_MANUFACTURER_ID', targetTableKey: 'OWN_MANUFACTURERS' },
       { headerKey: 'SHARED_PRODUCT_ID',   targetTableKey: 'PRODUCTS' }
     ]
+  },
+  SIZES: {
+    sheetName: 'サイズマスタ', canonicalName: 'サイズマスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['SIZE_ID',       'サイズID'],
+      ['NAME',          'サイズ名'],
+      ['LENGTH',        '長さ'],
+      ['WIDTH',         '幅'],
+      ['HEIGHT',        '高さ'],
+      ['ACTIVE',        '有効'],
+      ['REGISTERED_AT', '登録日'],
+      ['UPDATED_AT',    '更新日']
+    ]), primaryKey: 'SIZE_ID',
+    referenceIds: []
+  },
+  WEIGHTS: {
+    sheetName: '重量マスタ', canonicalName: '重量マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['WEIGHT_ID',     '重量ID'],
+      ['NAME',          '重量名'],
+      ['WEIGHT',        '重量'],
+      ['ACTIVE',        '有効'],
+      ['REGISTERED_AT', '登録日'],
+      ['UPDATED_AT',    '更新日']
+    ]), primaryKey: 'WEIGHT_ID',
+    referenceIds: []
+  },
+  PACKAGES: {
+    sheetName: '荷姿マスタ', canonicalName: '荷姿マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['PACKAGE_ID',    '荷姿ID'],
+      ['NAME',          '荷姿名'],
+      ['UNIT',          '単位'],
+      ['QUANTITY',      '入数'],
+      ['SIZE_ID',       'サイズID'],
+      ['WEIGHT_ID',     '重量ID'],
+      ['ACTIVE',        '有効'],
+      ['REGISTERED_AT', '登録日'],
+      ['UPDATED_AT',    '更新日']
+    ]), primaryKey: 'PACKAGE_ID',
+    values: {
+      UNIT: {
+        CASE: 'ケース',
+        BOX:  'ボックス',
+        PACK: 'パック'
+      }
+    },
+    referenceIds: [
+      { headerKey: 'SIZE_ID',   targetTableKey: 'SIZES' },
+      { headerKey: 'WEIGHT_ID', targetTableKey: 'WEIGHTS' }
+    ]
+  },
+  PRODUCT_PACKAGES: {
+    sheetName: '商品荷姿マスタ', canonicalName: '商品荷姿マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['PRODUCT_PACKAGE_ID', '商品荷姿ID'],
+      ['SHARED_PRODUCT_ID',  '共用商品ID'],
+      ['OWN_PRODUCT_ID',     '自社商品ID'],
+      ['CASE_PACKAGE_ID',    'ケース荷姿ID'],
+      ['BOX_PACKAGE_ID',     'ボックス荷姿ID'],
+      ['PACK_PACKAGE_ID',    'パック荷姿ID'],
+      ['ITEM_ID',            '品目ID'],
+      ['HTS_CODE_ID',        'HTSコードID'],
+      ['MATERIAL_ID',        '素材ID'],
+      ['ACTIVE',             '有効'],
+      ['REGISTERED_AT',      '登録日'],
+      ['UPDATED_AT',         '更新日']
+    ]), primaryKey: 'PRODUCT_PACKAGE_ID',
+    referenceIds: [
+      { headerKey: 'SHARED_PRODUCT_ID', targetTableKey: 'PRODUCTS' },
+      { headerKey: 'OWN_PRODUCT_ID',    targetTableKey: 'OWN_PRODUCTS' },
+      { headerKey: 'CASE_PACKAGE_ID',   targetTableKey: 'PACKAGES' },
+      { headerKey: 'BOX_PACKAGE_ID',    targetTableKey: 'PACKAGES' },
+      { headerKey: 'PACK_PACKAGE_ID',   targetTableKey: 'PACKAGES' },
+      { headerKey: 'ITEM_ID',           targetTableKey: 'ITEMS' },
+      { headerKey: 'HTS_CODE_ID',       targetTableKey: 'HTS_CODES' },
+      { headerKey: 'MATERIAL_ID',       targetTableKey: 'MATERIALS' }
+    ]
   }
 };
 
