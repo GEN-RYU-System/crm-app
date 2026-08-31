@@ -31,21 +31,23 @@ git rebase / git reset --hard / git push --force は
 
 ## PR 作成後の所有宣言
 
-gh pr create の直後、**canonical repo root** に PR番号を書く:
+gh pr create の直後、`~/crm-app-current/.pr-number` に PR番号を書く:
 
 ```
-echo <PR番号> > ~/crm-app-canonical-20260830/.pr-number
+echo <PR番号> > ~/crm-app-current/.pr-number
 ```
 
 マージ完了後は削除する:
 
 ```
-rm ~/crm-app-canonical-20260830/.pr-number
+rm ~/crm-app-current/.pr-number
 ```
 
-フックは Bash ツール内の cd より前に走るため、
-worktree 内に置いても読まれない（PR #724 で実証済み）。
-worktree 内の .pr-number は gh-scope-guard から読まれない。
+**根拠（実測）:** gh-scope-guard.sh は `git rev-parse --show-toplevel` で
+REPO_ROOT を取得する。フックは Bash ツール内の `cd` より前に走るため、
+cwd は Claude Code のプライマリ作業ディレクトリ（`~/crm-app-current`）になる。
+`git rev-parse --show-toplevel` の実測値は `/Users/tanizawashingo/crm-app-current`。
+worktree 内・`~/crm-app-canonical-20260830/` に置いても読まれない。
 
 ## Frontend smoke checks
 
