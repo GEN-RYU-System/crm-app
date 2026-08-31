@@ -19,12 +19,28 @@ const CORE_SCHEMA_V1_TABLES = {
   },
   SHIPPING_DESTINATIONS: {
     sheetName: '配送先マスタ', canonicalName: '配送先マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
-    headers: createCoreSchemaV1Headers([['SHIPPING_DESTINATION_ID', '配送先ID'], ['CUSTOMER_ID', '顧客ID'], ['RECIPIENT_NAME', '宛名'], ['ADDRESS_LINE_1', 'Address 1'], ['ADDRESS_LINE_2', 'Address 2'], ['ADDRESS_LINE_3', 'Address 3'], ['CITY', 'City'], ['STATE', 'State'], ['ZIP', 'Zip'], ['COUNTRY', '国'], ['PHONE', '電話'], ['COUNTRY_CODE', '国番号'], ['EMAIL', 'D Email'], ['TAX_ID', 'D Tax ID'], ['DISPLAY_NAME', '表示名'], ['IS_DEFAULT', '既定'], ['IS_ACTIVE', '有効']]), primaryKey: 'SHIPPING_DESTINATION_ID',
+    headers: createCoreSchemaV1Headers([['SHIPPING_DESTINATION_ID', 'shipping_destination_id'], ['CUSTOMER_ID', 'customer_id'], ['RECIPIENT_NAME', 'recipient_name'], ['ADDRESS_LINE_1', 'address_line_1'], ['ADDRESS_LINE_2', 'address_line_2'], ['ADDRESS_LINE_3', 'address_line_3'], ['CITY', 'city'], ['STATE', 'state'], ['ZIP', 'zip'], ['COUNTRY', 'country'], ['PHONE', 'phone'], ['COUNTRY_CODE', 'country_code'], ['EMAIL', 'email'], ['TAX_ID', 'tax_id'], ['DISPLAY_NAME', 'display_name'], ['IS_DEFAULT', 'is_default'], ['IS_ACTIVE', 'is_active']]),
+    headerAliasMap: {
+      'shipping_destination_id': '配送先ID', 'customer_id': '顧客ID', 'recipient_name': '宛名',
+      'address_line_1': 'Address 1', 'address_line_2': 'Address 2', 'address_line_3': 'Address 3',
+      'city': 'City', 'state': 'State', 'zip': 'Zip', 'country': '国',
+      'phone': '電話', 'country_code': '国番号', 'email': 'D Email', 'tax_id': 'D Tax ID',
+      'display_name': '表示名', 'is_default': '既定', 'is_active': '有効'
+    },
+    primaryKey: 'SHIPPING_DESTINATION_ID',
     referenceIds: [{ headerKey: 'CUSTOMER_ID', targetTableKey: 'CUSTOMERS' }]
   },
   PAYMENT_DESTINATIONS: {
     sheetName: '支払先マスタ', canonicalName: '支払先マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
-    headers: createCoreSchemaV1Headers([['PAYMENT_DESTINATION_ID', '支払先ID'], ['CUSTOMER_ID', '顧客ID'], ['BILLING_NAME', '請求名義'], ['ADDRESS_LINE_1', 'Address 1'], ['ADDRESS_LINE_2', 'Address 2'], ['ADDRESS_LINE_3', 'Address 3'], ['CITY', 'City'], ['STATE', 'State'], ['ZIP', 'Zip'], ['COUNTRY', '国'], ['PAYMENT_METHOD', '支払方法'], ['CURRENCY', '通貨'], ['TAX_ID', 'B Tax ID'], ['DISPLAY_NAME', '表示名'], ['IS_DEFAULT', '既定'], ['IS_ACTIVE', '有効']]), primaryKey: 'PAYMENT_DESTINATION_ID',
+    headers: createCoreSchemaV1Headers([['PAYMENT_DESTINATION_ID', 'payment_destination_id'], ['CUSTOMER_ID', 'customer_id'], ['BILLING_NAME', 'billing_name'], ['ADDRESS_LINE_1', 'address_line_1'], ['ADDRESS_LINE_2', 'address_line_2'], ['ADDRESS_LINE_3', 'address_line_3'], ['CITY', 'city'], ['STATE', 'state'], ['ZIP', 'zip'], ['COUNTRY', 'country'], ['PAYMENT_METHOD', 'payment_method'], ['CURRENCY', 'currency'], ['TAX_ID', 'tax_id'], ['DISPLAY_NAME', 'display_name'], ['IS_DEFAULT', 'is_default'], ['IS_ACTIVE', 'is_active']]),
+    headerAliasMap: {
+      'payment_destination_id': '支払先ID', 'customer_id': '顧客ID', 'billing_name': '請求名義',
+      'address_line_1': 'Address 1', 'address_line_2': 'Address 2', 'address_line_3': 'Address 3',
+      'city': 'City', 'state': 'State', 'zip': 'Zip', 'country': '国',
+      'payment_method': '支払方法', 'currency': '通貨', 'tax_id': 'B Tax ID',
+      'display_name': '表示名', 'is_default': '既定', 'is_active': '有効'
+    },
+    primaryKey: 'PAYMENT_DESTINATION_ID',
     referenceIds: [{ headerKey: 'CUSTOMER_ID', targetTableKey: 'CUSTOMERS' }]
   },
   ORDERS: {
@@ -97,25 +113,34 @@ const CORE_SCHEMA_V1_TABLES = {
   ISSUER: {
     sheetName: '発行元マスタ', canonicalName: '発行元マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
     headers: createCoreSchemaV1Headers([
-      ['ISSUER_ID',       '発行元ID'],
-      ['COMPANY_NAME',    '会社名'],
-      ['CONTACT_NAME',    '担当者名'],
-      ['ADDRESS_LINE1',   'Address 1'],
-      ['ADDRESS_LINE2',   'Address 2'],
-      ['ADDRESS_LINE3',   'Address 3'],
-      ['CITY',            'City'],
-      ['STATE',           'State'],
-      ['ZIP',             'Zip'],
-      ['COUNTRY',         '国'],
-      ['PHONE',           '電話番号'],
-      ['EMAIL',           'メール'],
-      ['REGISTRATION_NO', '登録番号'],
-      ['PAYEE_NAME',      '受取名義'],
-      ['PAYMENT_EMAIL',   '受取先メール'],
-      ['PAYMENT_NOTE',    '注記'],
-      ['CLOSING_MESSAGE', '結びの文'],
-      ['IS_ACTIVE',       '有効'],
-    ]), primaryKey: 'ISSUER_ID',
+      ['ISSUER_ID',       'issuer_id'],
+      ['COMPANY_NAME',    'company_name'],
+      ['CONTACT_NAME',    'contact_name'],
+      ['ADDRESS_LINE1',   'address_line_1'],
+      ['ADDRESS_LINE2',   'address_line_2'],
+      ['ADDRESS_LINE3',   'address_line_3'],
+      ['CITY',            'city'],
+      ['STATE',           'state'],
+      ['ZIP',             'zip'],
+      ['COUNTRY',         'country'],
+      ['PHONE',           'phone'],
+      ['EMAIL',           'email'],
+      ['REGISTRATION_NO', 'registration_no'],
+      ['PAYEE_NAME',      'payee_name'],
+      ['PAYMENT_EMAIL',   'payment_email'],
+      ['PAYMENT_NOTE',    'note'],
+      ['CLOSING_MESSAGE', 'closing_message'],
+      ['IS_ACTIVE',       'is_active'],
+    ]),
+    headerAliasMap: {
+      'issuer_id': '発行元ID', 'company_name': '会社名', 'contact_name': '担当者名',
+      'address_line_1': 'Address 1', 'address_line_2': 'Address 2', 'address_line_3': 'Address 3',
+      'city': 'City', 'state': 'State', 'zip': 'Zip', 'country': '国',
+      'phone': '電話番号', 'email': 'メール', 'registration_no': '登録番号',
+      'payee_name': '受取名義', 'payment_email': '受取先メール', 'note': '注記',
+      'closing_message': '結びの文', 'is_active': '有効'
+    },
+    primaryKey: 'ISSUER_ID',
     referenceIds: []
   },
   QUOTE_LINES: {
@@ -572,15 +597,23 @@ function validateCoreSchemaV1TableForWrite(spreadsheet, tableKey) {
   if (new Set(nonEmptyHeaders).size !== nonEmptyHeaders.length) {
     throw new Error('CORE_SCHEMA_NON_EMPTY_HEADER_DUPLICATE');
   }
+  const aliasMap = table.headerAliasMap || {};
   const requiredHeaders = Object.keys(table.headers).map(headerKey => table.headers[headerKey]);
-  if (requiredHeaders.some(headerName => headers.indexOf(headerName) === -1)) {
+  // headerAliasMap フォールバック: 新名が見つからなければ旧名で検索する
+  const resolveHeaderIndex = function(headerName) {
+    var idx = headers.indexOf(headerName);
+    if (idx !== -1) return idx;
+    var oldName = aliasMap[headerName];
+    return oldName !== undefined ? headers.indexOf(oldName) : -1;
+  };
+  if (requiredHeaders.some(headerName => resolveHeaderIndex(headerName) === -1)) {
     throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING');
   }
   return {
     sheet: sheet,
     tableKey: resolveCoreSchemaV1TableKey(tableKey),
     headerIndexes: requiredHeaders.reduce((indexes, headerName) => {
-      indexes[headerName] = headers.indexOf(headerName) + 1;
+      indexes[headerName] = resolveHeaderIndex(headerName) + 1;
       return indexes;
     }, {})
   };

@@ -190,10 +190,11 @@ function _validateBlock(block, label, requireEmail, errors) {
 // 3. 採番ヘルパー
 // ============================================================
 
-function _nextId(sh, colName, prefix, digits) {
+function _nextId(sh, colName, prefix, digits, colNameFallback) {
   var data = sh.getDataRange().getValues();
   var h    = data[0];
   var idx  = h.indexOf(colName);
+  if (idx < 0 && colNameFallback) idx = h.indexOf(colNameFallback);
   if (idx < 0) throw new Error(colName + ' 列が見つかりません');
   var max = 0;
   var re  = new RegExp('^' + prefix + '(\\d+)$');
@@ -440,8 +441,9 @@ function registerCustomerFromForm(payload) {
 
     // --- 7. 採番 ---
     customerId = isNew ? _nextId(custSh, coreSchemaTables.CUSTOMERS.headerNames.customerId, 'CT-', 5) : existingCustId;
-    var addrId = _nextId(adSh, coreSchemaTables.SHIPPING_DESTINATIONS.headerNames.shippingDestinationId, 'AD-', 5);
-    var payId  = _nextId(pySh, coreSchemaTables.PAYMENT_DESTINATIONS.headerNames.paymentDestinationId, 'PY-', 5);
+    // フォールバック: シートがまだ旧物理名（配送先ID / 支払先ID）の場合に対応
+    var addrId = _nextId(adSh, coreSchemaTables.SHIPPING_DESTINATIONS.headerNames.shippingDestinationId, 'AD-', 5, '配送先ID');
+    var payId  = _nextId(pySh, coreSchemaTables.PAYMENT_DESTINATIONS.headerNames.paymentDestinationId, 'PY-', 5, '支払先ID');
 
     // --- 8. 書き込み ---
     var defaultFlag = isNew ? 'TRUE' : 'FALSE';  // 2枚目以降は FALSE
