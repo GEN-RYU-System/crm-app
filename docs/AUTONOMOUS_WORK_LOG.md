@@ -6141,3 +6141,64 @@ git revert 4fd884e  # PR #794 squash commit（デュアルサポート追加）
 
 - getDeployedSha: `b482be6f` = deploy-dev.yml headSha ✅
 - runCoreSchemaConformanceAudit: 総不一致 2件 = ベースラインと同一 ✅
+
+---
+
+### 2026-08-31 国マスタに配送先地域6件を追加（PR-T2c / PR #802）
+
+#### 目的
+
+地帯表に存在するが国マスタにない配送先地域を追加し、
+地帯マスタへの投入を可能にした。
+
+#### PR
+
+| PR | 番号 | マージ日時 | squash SHA |
+|----|------|-----------|-----------|
+| PR-T2c 配送先地域追加関数 | #802 | 2026-08-31T18:34:28Z | `a8906f6b` |
+
+#### 変更ファイル
+
+- `src/99_DevCountryMasterShippingRegions.js`（新規）: `addShippingRegionsToCountryMaster(mode)`
+
+#### 追加した6件
+
+| ISO2 | 国名（表示） | 国名（日本語） | 国番号 |
+|------|------------|--------------|-------|
+| AC | Ascension Island | アセンション島 | 247 |
+| IC | Canary Islands | カナリア諸島 | 34 |
+| TA | Tristan da Cunha | トリスタン・ダ・クーニャ | 290 |
+| WK | Wake Island | ウェーキ島 | 1 |
+| MI | Midway Atoll | ミッドウェイ諸島 | 1 |
+| CN-S | China (South) | 中国（南部） | 86 |
+
+トランク0除去=TRUE / 有効=TRUE / 州必須=FALSE / 郵便番号必須=FALSE
+
+#### 非標準コードを追加した理由
+
+上記6件は ISO 3166-1 の正式コードではない。
+FedEx / DHL / UPS が地帯表で独立した配送先として区別しているため、
+地帯マスタ（ZONES）への登録を可能にするために独自追加した。
+
+- AC（アセンション島）/ TA（トリスタン・ダ・クーニャ）: SH（セントヘレナ）の構成領域。
+  地帯表では SH と別ゾーンで管理されている。
+- IC（カナリア諸島）: スペイン（ES）の自治州。配送業者が ES と別扱い。
+- WK（ウェーキ島）/ MI（ミッドウェイ諸島）: 米国領島嶼部（UM）の構成島。
+  地帯表では独立エントリとして扱われている。
+- CN-S（中国南部）: FedEx の公式料金表で定義される中国南部ゾーン。
+  福建省（郵便番号 350000-369999）/ 広東省（510000-529999）が対象。
+  【未確認】UPS の中国南部定義は確認が取れていない。
+
+#### 重要: ロールバックについて
+
+データ追加（APPLY）はスプレッドシートへの直接書き込みであり、
+`git revert` では戻らない。
+ロールバックが必要な場合は国マスタシートから手動で該当行を削除すること。
+
+#### 事後確認
+
+- getDeployedSha: `a8906f6b` = deploy-dev.yml headSha ✅
+- addShippingRegionsToCountryMaster("DRY_RUN"): 追加予定6件・スキップ0件 ✅
+- addShippingRegionsToCountryMaster("APPLY"): 追加6件（AC/IC/TA/WK/MI/CN-S）✅
+- runCoreSchemaConformanceAudit: COUNTRIES 0件・総不一致2件 = ベースライン ✅
+- seedCountryMaster（読み取り専用）: 256行 ✅（250 + 6 = 256）
