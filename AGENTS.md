@@ -9,7 +9,12 @@ gh-scope-guard など）にブロックされた場合、
 禁止される対処（例外なし）:
 - ! プレフィックスでのホスト直接実行
 - GH_SCOPE_OVERRIDE 等の環境変数による強制
-- permit スクリプトの実行
+- permit ファイルの自己作成
+  （~/.claude/permits/ 配下へのファイル書き込み。
+  permit-peek.sh / permit-danger.sh の実行を含む。
+  printf や echo による直接作成も同じ扱いとする）
+  permit の発行は PO のみが行う。
+  エージェントが自分で許可を発行してはならない。
 - フック本体や設定ファイル（agent-tokens.json 等）の編集
 - 他 worktree やリポジトリルートの .pr-number 書き換え
 
@@ -26,10 +31,21 @@ git rebase / git reset --hard / git push --force は
 
 ## PR 作成後の所有宣言
 
-gh pr create の直後に、その worktree 内で
-echo <PR番号> > .pr-number を実行する。
-これは gh-scope-guard の正規手順である。
-リポジトリルートには絶対に書かない。
+gh pr create の直後、**canonical repo root** に PR番号を書く:
+
+```
+echo <PR番号> > ~/crm-app-canonical-20260830/.pr-number
+```
+
+マージ完了後は削除する:
+
+```
+rm ~/crm-app-canonical-20260830/.pr-number
+```
+
+フックは Bash ツール内の cd より前に走るため、
+worktree 内に置いても読まれない（PR #724 で実証済み）。
+worktree 内の .pr-number は gh-scope-guard から読まれない。
 
 ## Frontend smoke checks
 
