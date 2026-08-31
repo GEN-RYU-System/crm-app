@@ -213,6 +213,21 @@ leads が参照実装（リファレンス）。customers はその金型を踏�
 leads の一覧（LeadListPage）は LeadListCacheContext 経由（中間層）、編集（LeadEditorPage）は gas/client 直接。`features/leads/` は存在せず contracts.ts / gasAdapter.ts を持たない。  
 orders / quotes はその後に中間層方式（`features/*/contracts.ts` + `gasAdapter.ts`）へ移行済み。
 
+### マスタ管理ページ（direct pattern — 中間層なし）
+
+管理センター配下のマスタ管理ページ群。Repository/CacheContext を持たず、`gas/client` を直接呼ぶ
+（`check-design-system.mjs` の `GAS_CLIENT_IN_PAGES_ALLOWLIST` に登録済み）。
+
+| ページ | state | 実装ファイル | 主な GAS 関数 |
+|--------|-------|------------|-------------|
+| productMaster（商品マスタ） | `available` | `ProductMasterPage.tsx` 332行 | `getCoreSharedProductsForFrontend` / `getCoreProductPackagesForFrontend` / `upsertCoreProductPackageForFrontend` / `getCoreOwnProductsForFrontend` / `upsertCoreOwnProductWithPackageForFrontend` |
+| packageMaster（荷姿マスタ） | `preview` | `PackageMasterPage.tsx` | `getCoreSizesForFrontend` / `getCorePackagesForFrontend` / `upsertCorePackageForFrontend` 等 |
+| ownMaster（自社マスタ） | `preview` | `OwnMasterPage.tsx` | `getCoreOwnCategoriesForFrontend` / `upsertCoreOwnCategoryForFrontend` 等 |
+| issuerMaster（発行元マスタ） | `preview` | `IssuerMasterPage.tsx` | `getCoreIssuerForFrontend` / `updateCoreIssuerForFrontend` |
+
+`productMaster` は 2026-08-31 に `planned → available` に昇格（PR #785）。
+荷姿ラベルは `packageName · unit · quantityPerUnit入` でフロントエンドが組み立てる。
+
 ### 途中（GAS 未接続・モックのみ）
 
 | ページ | state | Config | GAS 接続 | 実態 |

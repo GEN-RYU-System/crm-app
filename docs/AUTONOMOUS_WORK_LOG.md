@@ -2,6 +2,75 @@
 
 ---
 
+### 2026-08-31 商品マスタ管理画面を新設（PR #785）
+
+**概要:**
+`navigation.ts` の `productMaster` を `state: 'planned'` → `'available'` に昇格し、
+商品マスタ管理画面（`ProductMasterPage`）を新設。
+共用商品タブ（267件リスト・検索・荷姿割当インラインフォーム）と
+自社商品タブ（リスト・新規追加・編集インラインフォーム）を実装した。
+GAS は無変更（`getCoreSharedProductsForFrontend` 等は PR #779 / #782 で先行実装済み）。
+
+**変更ファイル:**
+
+| ファイル | 変更内容 |
+|----------|---------|
+| `frontend/src/app/navigation.ts` | `productMaster`: `planned → available`、`staff_manage → admin_access` |
+| `frontend/src/content/ja/productMaster.ts` | 新規（商品マスタ用コピー文字列） |
+| `frontend/src/content/ja/index.ts` | `productMasterCopy` を re-export |
+| `frontend/src/gas/types.d.ts` | `getCoreSharedProductsForFrontend` 等5メソッドを `GoogleScriptRun` に追加 |
+| `frontend/src/gas/client.ts` | 型定義5件 + 呼び出し関数5件を追加 |
+| `frontend/src/pages/data-management/ProductMasterPage.tsx` | 新規（332行） |
+| `frontend/src/App.tsx` | `productMasterRoute` 追加・`hubIndexRoutes` 登録 |
+| `frontend/scripts/check-design-system.mjs` | `ProductMasterPage.tsx` を `GAS_CLIENT_IN_PAGES_ALLOWLIST` に追加 |
+| `frontend/src/preview/gasRunnerMock.ts` | 商品マスタ系APIのプレビューモックを追加 |
+
+**CI / マージ / デプロイ:**
+
+| PR | CI | mergedAt | Deploy to DEV |
+|----|----|-----------|----|
+| #785 | 4/4 pass | 2026-08-31T09:04:25Z | SHA: `63c92c0` → success |
+
+**DEV 動作確認（Evaluator / Playwright MCP）:**
+
+- 管理センターナビに「商品マスタ」が表示される ✓
+- 共用商品タブ：リスト表示・検索絞り込み・行クリックでフォーム展開・既存荷姿値セット ✓
+- 自社商品タブ：新規追加ボタン・フォーム展開・共用商品ドロップダウン表示 ✓
+- コンソールエラー 0件、白画面なし ✓
+- 隣接ページ（package-master / own-master）への回帰なし ✓
+
+**getDeployedSha 確認:**
+
+```
+sha: '63c92c0f204cd10e3df945e9fea063d44df219ef'（= origin/develop HEAD と一致）
+deployedAt: '2026-08-31T09:05:23.163Z'
+```
+
+**runCoreSchemaConformanceAudit 結果:**
+
+総不一致: 2件（既存）
+
+| テーブル | 不一致内容 |
+|----------|-----------|
+| LEADS | ヘッダー列数: 定義51 / 実シート64（差:13列）既存問題 |
+| CUSTOMERS | ヘッダー列数: 定義14 / 実シート15（差:1列）既存問題 |
+
+今回追加の PRODUCT_PACKAGES（商品荷姿マスタ）は 0件（正常）✓  
+GAS は無変更のため今回の PR による新規不一致はなし。
+
+**影響範囲:**
+
+- フロントエンドのみ（`src/` 配下の GAS は無変更）
+- 既存ページへの影響なし（ナビゲーション追加の関連ファイル除く）
+
+**戻し方:**
+
+```bash
+git revert 63c92c0  # PR #785 squash commit
+```
+
+---
+
 ### 2026-08-31 見積もり管理（QUOTES）PDF_URL 列リネーム完了（PR #778 / #780 / #781）
 
 **概要:**
