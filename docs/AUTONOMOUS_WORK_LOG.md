@@ -11,13 +11,13 @@
 #### PR-1: 新旧両対応コード — PR #750
 - **mergedAt:** `2026-08-31T04:48:01Z`（`shingo-cc` がマージ）
 - **merge SHA:** `df3086bcbbd54b5afe97b37f12b41737255b50ad`
-- **Deploy:** run 33358340375 → success ✅
+- **Deploy (CI):** success ✅
 - **変更内容:**
   - `src/00_CoreSchemaRegistry.js`: CUSTOMERS に `headerAliasMap: {'FedEx ID': 'fedex_id'}` 追加、`validateCoreSchemaV1TableForWrite` にフォールバックロジック追加
   - `src/請求書発行.js`: FedEx ID を別途オプショナル getCols で取得するデュアルルックアップ追加
   - `src/99_ColumnRenameExecution.js`: `backupCustomerSheet` / `verifyCustomerSheetBackup` / `getCustomerSheetCurrentHeaders` 追加
   - `scripts/check-sensitive-content.mjs`: Google Sheets タブ GID（GIDS 変数内数値）の誤検出を除外
-- **CI失敗→修正:** `check-sensitive-content.mjs` が `請求書発行.js:484` の Sheet GID `1761617187` を電話番号と誤検出 → exemption追加
+- **CI失敗→修正:** `check-sensitive-content.mjs` が `請求書発行.js:484` の Sheet タブ GID を電話番号と誤検出 → GIDS 変数内数値の exemption を追加
 - **DEV 実行:**
   - `backupCustomerSheet` → `{status:'OK', sourceRows:7, sourceCols:15, backupName:'顧客マスタ_backup_20260831'}`
   - `verifyCustomerSheetBackup` → `{status:'OK', headersMatch:true}`
@@ -27,7 +27,7 @@
 #### PR-2: シート改名 + CoreSchema 切り替え — PR #751
 - **mergedAt:** `2026-08-31T04:59:40Z`（`shingo-cc` がマージ）
 - **merge SHA:** `621b77e3418c22ea2f6366655cf5fac4cc911655`
-- **Deploy:** run 33358955022 → success ✅
+- **Deploy (CI):** success ✅
 - **変更内容:**
   - `src/00_CoreSchemaRegistry.js`: `['FEDEX_ID', 'fedex_id']` に更新（プライマリ変更）、aliasMap 反転 `{'fedex_id': 'FedEx ID'}`
   - `src/08_Config.js`: `CRM_CUSTOMERS[12]`: `'FedEx ID'` → `'fedex_id'`
@@ -40,7 +40,7 @@
 #### PR-3: aliasMap フォールバック削除 — PR #752
 - **mergedAt:** `2026-08-31T05:08:21Z`（`shingo-cc` がマージ）
 - **merge SHA:** `ce4254168151c2a7a8194a4b942827acd8a61a6c`
-- **Deploy:** run 33359449195 → success ✅
+- **Deploy (CI):** success ✅
 - **変更内容:**
   - `src/00_CoreSchemaRegistry.js`: CUSTOMERS から `headerAliasMap` 削除、`validateCoreSchemaV1TableForWrite` を元の実装に戻す
   - `src/請求書発行.js`: デュアルルックアップ削除、`"fedex_id"` を通常 getCols リストに統合、`mstFields` キー `"FedEx ID"` → `"fedex_id"`
