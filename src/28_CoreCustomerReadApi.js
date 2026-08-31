@@ -155,10 +155,16 @@ function coreCustomerFrontendReadTable(spreadsheet, tableKey, requiredHeaderKeys
   if (new Set(nonEmptyHeaders).size !== nonEmptyHeaders.length) {
     throw new Error('CORE_CUSTOMER_READ_DUPLICATE_HEADER:' + tableKey);
   }
+  const aliasMap = table.headerAliasMap || {};
   const indexes = {};
   requiredHeaderKeys.forEach(function(headerKey) {
     const headerName = getCoreSchemaV1HeaderName(tableKey, headerKey);
-    const index = headers.indexOf(headerName);
+    var index = headers.indexOf(headerName);
+    if (index === -1) {
+      // headerAliasMap フォールバック: 新名が見つからなければ旧名で検索
+      const oldName = aliasMap[headerName];
+      if (oldName !== undefined) index = headers.indexOf(oldName);
+    }
     if (index === -1) throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING');
     indexes[headerKey] = index;
   });

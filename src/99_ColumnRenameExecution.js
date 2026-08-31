@@ -780,3 +780,145 @@ function verifyStaffMasterSheetBackup() {
     backupHeaders: backupHeaders
   };
 }
+
+// ===================================================================
+// Address 共有3シート 列名整形 補助関数
+// Step 2: バックアップ関数（PR-1 に含める / PR-2 マージ前に実行）
+// ===================================================================
+
+/**
+ * 発行元マスタシートを複製してバックアップを作成する。
+ * バックアップ名: '発行元マスタ_backup_20260901'
+ */
+function backupIssuerMasterSheet() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('backupIssuerMasterSheet は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+  var sourceSheet = getCoreSchemaV1Sheet(ss, 'ISSUER');
+  var backupName = '発行元マスタ_backup_20260901';
+
+  var existing = ss.getSheetByName(backupName);
+  if (existing) {
+    throw new Error('バックアップシートが既に存在します: ' + backupName);
+  }
+
+  var copy = sourceSheet.copyTo(ss);
+  copy.setName(backupName);
+  return {
+    status: 'OK',
+    backupName: backupName,
+    sourceRows: sourceSheet.getLastRow(),
+    sourceCols: sourceSheet.getLastColumn()
+  };
+}
+
+/**
+ * 支払先マスタシートを複製してバックアップを作成する。
+ * バックアップ名: '支払先マスタ_backup_20260901'
+ */
+function backupPaymentDestinationsSheet() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('backupPaymentDestinationsSheet は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+  var sourceSheet = getCoreSchemaV1Sheet(ss, 'PAYMENT_DESTINATIONS');
+  var backupName = '支払先マスタ_backup_20260901';
+
+  var existing = ss.getSheetByName(backupName);
+  if (existing) {
+    throw new Error('バックアップシートが既に存在します: ' + backupName);
+  }
+
+  var copy = sourceSheet.copyTo(ss);
+  copy.setName(backupName);
+  return {
+    status: 'OK',
+    backupName: backupName,
+    sourceRows: sourceSheet.getLastRow(),
+    sourceCols: sourceSheet.getLastColumn()
+  };
+}
+
+/**
+ * 配送先マスタシートを複製してバックアップを作成する。
+ * バックアップ名: '配送先マスタ_backup_20260901'
+ */
+function backupShippingDestinationsSheet() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('backupShippingDestinationsSheet は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+  var sourceSheet = getCoreSchemaV1Sheet(ss, 'SHIPPING_DESTINATIONS');
+  var backupName = '配送先マスタ_backup_20260901';
+
+  var existing = ss.getSheetByName(backupName);
+  if (existing) {
+    throw new Error('バックアップシートが既に存在します: ' + backupName);
+  }
+
+  var copy = sourceSheet.copyTo(ss);
+  copy.setName(backupName);
+  return {
+    status: 'OK',
+    backupName: backupName,
+    sourceRows: sourceSheet.getLastRow(),
+    sourceCols: sourceSheet.getLastColumn()
+  };
+}
+
+/**
+ * 3シートのバックアップを一括検証する。
+ * 合格条件: overall === 'OK' かつ全 results の status === 'OK' かつ headersMatch === true
+ */
+function verifyAddressSheetBackups() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('verifyAddressSheetBackups は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+
+  var checks = [
+    { tableKey: 'ISSUER',                backupName: '発行元マスタ_backup_20260901' },
+    { tableKey: 'PAYMENT_DESTINATIONS',  backupName: '支払先マスタ_backup_20260901' },
+    { tableKey: 'SHIPPING_DESTINATIONS', backupName: '配送先マスタ_backup_20260901' }
+  ];
+
+  var results = checks.map(function(c) {
+    var sourceSheet = getCoreSchemaV1Sheet(ss, c.tableKey);
+    var backupSheet = ss.getSheetByName(c.backupName);
+
+    if (!backupSheet) {
+      return { tableKey: c.tableKey, backupName: c.backupName, status: 'ERROR', reason: 'バックアップシートが存在しません' };
+    }
+
+    var sourceRows = sourceSheet.getLastRow();
+    var sourceCols = sourceSheet.getLastColumn();
+    var backupRows = backupSheet.getLastRow();
+    var backupCols = backupSheet.getLastColumn();
+
+    var sourceHeaders = sourceCols > 0
+      ? sourceSheet.getRange(1, 1, 1, sourceCols).getDisplayValues()[0]
+      : [];
+    var backupHeaders = backupCols > 0
+      ? backupSheet.getRange(1, 1, 1, backupCols).getDisplayValues()[0]
+      : [];
+
+    var headersMatch = sourceHeaders.length === backupHeaders.length &&
+      sourceHeaders.every(function(h, i) { return h === backupHeaders[i]; });
+    var rowColMatch = sourceRows === backupRows && sourceCols === backupCols;
+
+    return {
+      tableKey: c.tableKey,
+      backupName: c.backupName,
+      status: rowColMatch && headersMatch ? 'OK' : 'MISMATCH',
+      sourceRows: sourceRows,
+      backupRows: backupRows,
+      sourceCols: sourceCols,
+      backupCols: backupCols,
+      headersMatch: headersMatch
+    };
+  });
+
+  var allOk = results.every(function(r) { return r.status === 'OK'; });
+  return { overall: allOk ? 'OK' : 'MISMATCH', results: results };
+}

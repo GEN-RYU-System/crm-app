@@ -39,11 +39,24 @@ function getCoreIssuerForFrontend(sessionId) {
     ? sheet.getRange(table.headerRowNumber, 1, 1, lastCol).getDisplayValues()[0].map(function(h) { return String(h).trim(); })
     : [];
 
+  var aliasMap = table.headerAliasMap || {};
+  // 旧物理名→新物理名の逆引きマップ（旧名でシートを読んでも新名キーで返すため）
+  var oldToNew = {};
+  Object.keys(aliasMap).forEach(function(newName) {
+    oldToNew[aliasMap[newName]] = newName;
+  });
+
   function indexOf(headerKey) {
     var name = getCoreSchemaV1HeaderName(tableKey, headerKey);
     var idx  = headerNames.indexOf(name);
-    if (idx === -1) throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING:' + headerKey);
-    return idx;
+    if (idx !== -1) return idx;
+    // フォールバック: 旧名で検索
+    var oldName = aliasMap[name];
+    if (oldName !== undefined) {
+      idx = headerNames.indexOf(oldName);
+      if (idx !== -1) return idx;
+    }
+    throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING:' + headerKey);
   }
 
   var isActiveIdx = indexOf('IS_ACTIVE');
@@ -67,7 +80,9 @@ function getCoreIssuerForFrontend(sessionId) {
   var row    = activeIssuers[0];
   var result = {};
   headerNames.forEach(function(name, i) {
-    result[name] = row[i];
+    // 旧物理名のシートの場合、新物理名に変換してキーを返す
+    var key = oldToNew[name] !== undefined ? oldToNew[name] : name;
+    result[key] = row[i];
   });
 
   return { success: true, issuer: result };

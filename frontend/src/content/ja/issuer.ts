@@ -28,26 +28,27 @@ export const issuerCopy = {
 
 /**
  * Physical header names of the ISSUER table in CoreSchemaRegistry.
- * These are the Japanese column names used in the Google Sheets spreadsheet.
+ * These are the snake_case column names used in the Google Sheets spreadsheet.
  * Defined here to keep all Japanese strings in content/ja.
+ * Updated to new physical names (address-rename PR-1).
  */
 export const ISSUER_HEADER = {
-  ISSUER_ID: '発行元ID',
-  COMPANY_NAME: '会社名',
-  CONTACT_NAME: '担当者名',
-  ADDRESS_LINE1: 'Address 1',
-  ADDRESS_LINE2: 'Address 2',
-  ADDRESS_LINE3: 'Address 3',
-  CITY: 'City',
-  STATE: 'State',
-  ZIP: 'Zip',
-  COUNTRY: '国',
-  PHONE: '電話番号',
-  EMAIL: 'メール',
-  REGISTRATION_NO: '登録番号',
-  PAYEE_NAME: '受取名義',
-  PAYMENT_EMAIL: '受取先メール',
-  PAYMENT_NOTE: '注記',
-  CLOSING_MESSAGE: '結びの文',
-  IS_ACTIVE: '有効',
+  ISSUER_ID: 'issuer_id',
+  COMPANY_NAME: 'company_name',
+  CONTACT_NAME: 'contact_name',
+  ADDRESS_LINE1: 'address_line_1',
+  ADDRESS_LINE2: 'address_line_2',
+  ADDRESS_LINE3: 'address_line_3',
+  CITY: 'city',
+  STATE: 'state',
+  ZIP: 'zip',
+  COUNTRY: 'country',
+  PHONE: 'phone',
+  EMAIL: 'email',
+  REGISTRATION_NO: 'registration_no',
+  PAYEE_NAME: 'payee_name',
+  PAYMENT_EMAIL: 'payment_email',
+  PAYMENT_NOTE: 'note',
+  CLOSING_MESSAGE: 'closing_message',
+  IS_ACTIVE: 'is_active',
 } as const;
