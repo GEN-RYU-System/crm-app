@@ -64,6 +64,7 @@ function getLeadFormOptions(sessionId) {
     var cData     = countrySheet.getDataRange().getValues();
     var cH        = cData[0].map(String);
     var nameIdx   = cH.indexOf('国名（表示）');
+    if (nameIdx < 0) nameIdx = cH.indexOf('display_name');
     var codeIdx   = cH.indexOf('国番号');
     var stateIdx  = cH.indexOf('州必須');
     var postalIdx = cH.indexOf('郵便番号必須');

@@ -355,7 +355,7 @@ function normalizePhone(countryName, raw) {
   if (msh) {
     const mData = msh.getDataRange().getValues();
     const mh = mData[0];
-    const nameIdx  = mh.indexOf('国名（表示）');
+    const nameIdx  = mh.indexOf('国名（表示）') !== -1 ? mh.indexOf('国名（表示）') : mh.indexOf('display_name');
     const codeIdx  = mh.indexOf('国番号');
     const trunkIdx = mh.indexOf('トランク0除去');
     const row = mData.slice(1).find(function(r) {
@@ -808,6 +808,7 @@ function expandCountryMaster() {
   }
 
   var isoIdx = h.indexOf('国ID(ISO2)');
+  if (isoIdx < 0) isoIdx = h.indexOf('country_code');
   if (isoIdx < 0) return 'ERROR: 国ID(ISO2) 列が見つかりません';
 
   // 州必須: US, CA のみ

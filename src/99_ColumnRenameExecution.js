@@ -298,3 +298,97 @@ function renameCustomerFedexIdHeader() {
     details: [{ col: targetIndex + 1, before: 'FedEx ID', after: 'fedex_id' }]
   };
 }
+
+// ===================================================================
+// 国マスタ列名整形 補助関数
+// PR-1: backupCountryMasterSheet / verifyCountryMasterSheetBackup / getCountryMasterCurrentHeaders
+// PR-2: renameCountryMasterHeaders（PR-2 で追加予定）
+// ===================================================================
+
+/**
+ * 国マスタシートを複製してバックアップを作成する。
+ * 対象: シート名 '国マスタ'（CoreSchemaV1 COUNTRIES）
+ * バックアップ名: '国マスタ_backup_20260831'
+ */
+function backupCountryMasterSheet() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('backupCountryMasterSheet は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+  var sourceSheet = getCoreSchemaV1Sheet(ss, 'COUNTRIES');
+  var backupName = '国マスタ_backup_20260831';
+
+  var existing = ss.getSheetByName(backupName);
+  if (existing) {
+    throw new Error('バックアップシートが既に存在します: ' + backupName);
+  }
+
+  var copy = sourceSheet.copyTo(ss);
+  copy.setName(backupName);
+  return {
+    status: 'OK',
+    backupName: backupName,
+    sourceRows: sourceSheet.getLastRow(),
+    sourceCols: sourceSheet.getLastColumn()
+  };
+}
+
+/**
+ * バックアップシートと元シートの行数・列数・ヘッダーが完全一致するか検証する。
+ * 合格条件: status === 'OK' かつ headersMatch === true
+ */
+function verifyCountryMasterSheetBackup() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('verifyCountryMasterSheetBackup は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+  var sourceSheet = getCoreSchemaV1Sheet(ss, 'COUNTRIES');
+  var backupName = '国マスタ_backup_20260831';
+  var backupSheet = ss.getSheetByName(backupName);
+
+  if (!backupSheet) {
+    throw new Error('バックアップシートが存在しません: ' + backupName);
+  }
+
+  var sourceRows = sourceSheet.getLastRow();
+  var sourceCols = sourceSheet.getLastColumn();
+  var backupRows = backupSheet.getLastRow();
+  var backupCols = backupSheet.getLastColumn();
+
+  var sourceHeaders = sourceCols > 0
+    ? sourceSheet.getRange(1, 1, 1, sourceCols).getDisplayValues()[0]
+    : [];
+  var backupHeaders = backupCols > 0
+    ? backupSheet.getRange(1, 1, 1, backupCols).getDisplayValues()[0]
+    : [];
+
+  var headersMatch = sourceHeaders.length === backupHeaders.length &&
+    sourceHeaders.every(function(h, i) { return h === backupHeaders[i]; });
+
+  var rowColMatch = sourceRows === backupRows && sourceCols === backupCols;
+
+  return {
+    status: rowColMatch && headersMatch ? 'OK' : 'MISMATCH',
+    sourceRows: sourceRows,
+    backupRows: backupRows,
+    sourceCols: sourceCols,
+    backupCols: backupCols,
+    headersMatch: headersMatch,
+    sourceHeaders: sourceHeaders,
+    backupHeaders: backupHeaders
+  };
+}
+
+/**
+ * 国マスタシートの現在のヘッダー一覧を返す（記録用）。
+ */
+function getCountryMasterCurrentHeaders() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('getCountryMasterCurrentHeaders は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+  var sheet = getCoreSchemaV1Sheet(ss, 'COUNTRIES');
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return [];
+  return sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+}
