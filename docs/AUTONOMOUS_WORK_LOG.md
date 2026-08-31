@@ -4937,3 +4937,43 @@ success ✓
 ```bash
 git revert 850475e38b84574aa2c90d42612f0c2ff527e871
 ```
+
+---
+
+## docs: AUTONOMOUS_WORK_RULES.md の .pr-number 設置場所を実測値に訂正 — PR #737
+
+**日付:** 2026-08-31
+**PR:** [#737](https://github.com/GEN-RYU-System/crm-app/pull/737)
+**マージコミットSHA:** `f00efd5f87fdb135621ce1b6d9899ca9211aa6cf`
+**mergedAt:** `2026-08-31T02:17:59Z`
+
+### 変更内容
+
+`docs/AUTONOMOUS_WORK_RULES.md` の `.pr-number` 設置場所を全箇所訂正した。
+
+| 修正前 | 修正後 |
+|--------|--------|
+| `~/crm-app-canonical-20260830/.pr-number` | `~/crm-app-current/.pr-number` |
+| 「canonical repo root」 | 実測根拠付き記述に変更 |
+
+**根拠:** フック実行時の `git rev-parse --show-toplevel` 実測値 = `/Users/tanizawashingo/crm-app-current`（PR #732 で確認）
+
+### 誤記履歴（背景セクションに追記）
+
+- PR #721: worktree 内と誤記
+- PR #724: `~/crm-app-canonical-20260830/` と誤記（cd より前の事実は正しかったが cwd の特定が誤り）
+- PR #732 以降: `~/crm-app-current/` と実測で確定
+
+### getDeployedSha 照合
+
+ドキュメントのみの変更のため照合不要。
+
+### Deploy to DEV conclusion
+
+success ✓
+
+### 戻し方
+
+```bash
+git revert f00efd5f87fdb135621ce1b6d9899ca9211aa6cf
+```
