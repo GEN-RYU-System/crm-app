@@ -35,7 +35,8 @@ export type NavigationItemId =
   | 'googleDrive'
   | 'issuerMaster'
   | 'components'
-  | 'dashboardPreview';
+  | 'dashboardPreview'
+  | 'packageMaster';
 export type NavigationItemState = 'available' | 'preview' | 'planned';
 export type NavigationItem = {
   id: NavigationItemId;
@@ -89,7 +90,8 @@ const EXTERNAL_LINK_SUB_ITEMS: readonly NavigationItem[] = [
 ];
 
 const SYSTEM_SETTINGS_SUB_ITEMS: readonly NavigationItem[] = [
-  { id: 'issuerMaster', label: dataManagementCopy.issuerMaster, hash: '/issuer-master', icon: 'settings', order: 1, state: 'preview', requiredPermission: 'issuer_manage' }
+  { id: 'issuerMaster', label: dataManagementCopy.issuerMaster, hash: '/issuer-master', icon: 'settings', order: 1, state: 'preview', requiredPermission: 'issuer_manage' },
+  { id: 'packageMaster', label: dataManagementCopy.packageMaster, hash: '/package-master', icon: 'inventory', order: 2, state: 'preview', requiredPermission: 'admin_access' }
 ];
 
 export const DATA_MANAGEMENT_ITEMS: readonly NavigationItem[] = [

@@ -12,6 +12,7 @@
  *   upsertCoreSizeForFrontend(sessionId, payload)
  *   upsertCoreWeightForFrontend(sessionId, payload)
  *   upsertCorePackageForFrontend(sessionId, payload)
+ *   getCorePackageUnitOptionsForFrontend()
  *
  * Permission:
  *   read:  lead_view   (荷姿選択肢として受注・出荷担当者が参照する)
@@ -486,4 +487,17 @@ function corePackageMasterFlag_(value) {
   if (value === null || value === undefined) return '';
   var s = String(value).trim();
   return (s === 'TRUE' || s === 'true' || s === '1') ? 'TRUE' : '';
+}
+
+// ─── Schema Options API ───────────────────────────────────────────────────────
+
+/**
+ * 荷姿マスタの「単位」列の有効値リストを返す。
+ * セッション不要。Registry から静的に取得する。
+ *
+ * @returns {string[]}  例: ['ケース', 'ボックス', 'パック']
+ */
+function getCorePackageUnitOptionsForFrontend() {
+  var table = getCoreSchemaV1Table('PACKAGES');
+  return Object.values(table.values.UNIT);
 }
