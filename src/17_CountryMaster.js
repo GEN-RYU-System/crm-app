@@ -292,7 +292,7 @@ function seedCountryMaster(forceArg) {
     sh = ss.insertSheet(sheetName);
   }
 
-  const headers = ['国ID(ISO2)', '国名（表示）', '国番号', 'トランク0除去', '有効', '州必須', '郵便番号必須'];
+  const headers = ['country_code', 'display_name', '国番号', 'トランク0除去', '有効', '州必須', '郵便番号必須'];
   const headerRange = sh.getRange(1, 1, 1, headers.length);
   headerRange.setValues([headers]);
   headerRange.setFontWeight('bold');
@@ -355,7 +355,7 @@ function normalizePhone(countryName, raw) {
   if (msh) {
     const mData = msh.getDataRange().getValues();
     const mh = mData[0];
-    const nameIdx  = mh.indexOf('国名（表示）') !== -1 ? mh.indexOf('国名（表示）') : mh.indexOf('display_name');
+    const nameIdx  = mh.indexOf('display_name');
     const codeIdx  = mh.indexOf('国番号');
     const trunkIdx = mh.indexOf('トランク0除去');
     const row = mData.slice(1).find(function(r) {
@@ -807,9 +807,8 @@ function expandCountryMaster() {
     return '州必須・郵便番号必須 列は既に存在します（col' + (stateIdx+1) + '・col' + (postalIdx+1) + '）。スキップ。';
   }
 
-  var isoIdx = h.indexOf('国ID(ISO2)');
-  if (isoIdx < 0) isoIdx = h.indexOf('country_code');
-  if (isoIdx < 0) return 'ERROR: 国ID(ISO2) 列が見つかりません';
+  var isoIdx = h.indexOf('country_code');
+  if (isoIdx < 0) return 'ERROR: country_code 列が見つかりません';
 
   // 州必須: US, CA のみ
   var STATE_REQUIRED = { 'US': true, 'CA': true };

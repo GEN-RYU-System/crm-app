@@ -2859,8 +2859,7 @@ function surveyCountryColumn() {
   if (countrySheet && countrySheet.getLastRow() > 1) {
     var cData    = countrySheet.getDataRange().getValues();
     var cH       = cData[0];
-    var nameIdx  = cH.indexOf('国名（表示）');
-    if (nameIdx < 0) nameIdx = cH.indexOf('display_name');
+    var nameIdx  = cH.indexOf('display_name');
     var validIdx = cH.indexOf('有効');
     if (nameIdx >= 0) {
       for (var r = 1; r < cData.length; r++) {
@@ -2938,8 +2937,7 @@ function benchLeadFormOptionsJson() {
   if (countrySheet && countrySheet.getLastRow() > 1) {
     var cData    = countrySheet.getDataRange().getValues();
     var cH       = cData[0];
-    var nameIdx  = cH.indexOf('国名（表示）');
-    if (nameIdx < 0) nameIdx = cH.indexOf('display_name');
+    var nameIdx  = cH.indexOf('display_name');
     var codeIdx  = cH.indexOf('国番号');
     var stateIdx = cH.indexOf('州必須');
     var postalIdx = cH.indexOf('郵便番号必須');
