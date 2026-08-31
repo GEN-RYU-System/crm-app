@@ -5014,3 +5014,69 @@ success ✓
 ```bash
 git revert f00efd5f87fdb135621ce1b6d9899ca9211aa6cf
 ```
+
+---
+
+## feat: サイズ・重量・荷姿・商品荷姿マスタをRegistryに追加しDEVセットアップ関数を新設 — PR #743
+
+**日付:** 2026-08-31
+**PR:** [#743](https://github.com/GEN-RYU-System/crm-app/pull/743)
+**マージコミットSHA:** `66de07d280cad3c5278e63dbf6ef7eb94acc5b7a`
+**mergedAt:** `2026-08-31T03:13:11Z`
+
+### 変更内容
+
+`src/00_CoreSchemaRegistry.js` に荷姿関連4テーブルを追加し、`src/99_DevPackageMasterSetup.js` を新設した。
+
+| テーブルキー | シート名 | 列数 | primaryKey |
+|------------|---------|------|-----------|
+| SIZES | サイズマスタ | 8 | SIZE_ID |
+| WEIGHTS | 重量マスタ | 6 | WEIGHT_ID |
+| PACKAGES | 荷姿マスタ | 9 | PACKAGE_ID |
+| PRODUCT_PACKAGES | 商品荷姿マスタ | 12 | PRODUCT_PACKAGE_ID |
+
+**referenceIds:**
+
+- PACKAGES → SIZES（SIZE_ID）、WEIGHTS（WEIGHT_ID）
+- PRODUCT_PACKAGES → PRODUCTS（SHARED_PRODUCT_ID）、OWN_PRODUCTS（OWN_PRODUCT_ID）、PACKAGES×3（CASE/BOX/PACK_PACKAGE_ID）、ITEMS（ITEM_ID）、HTS_CODES（HTS_CODE_ID）、MATERIALS（MATERIAL_ID）
+
+### DRY_RUN 結果
+
+```
+作成予定: 4件（サイズマスタ・重量マスタ・荷姿マスタ・商品荷姿マスタ）
+衝突（既存シート）: 0件
+```
+
+### APPLY 結果
+
+```
+作成: 4件（サイズマスタ・重量マスタ・荷姿マスタ・商品荷姿マスタ）
+スキップ: 0件
+```
+
+### ConformanceAudit 結果
+
+| テーブル | 不整合件数 |
+|---------|----------|
+| SIZES | 0 ✓ |
+| WEIGHTS | 0 ✓ |
+| PACKAGES | 0 ✓ |
+| PRODUCT_PACKAGES | 0 ✓ |
+
+（LEADS/CUSTOMERS の既存不整合は今回変更なし・ベースライン継続）
+
+### getDeployedSha 照合
+
+`66de07d280cad3c5278e63dbf6ef7eb94acc5b7a` = origin/develop HEAD ✓
+
+### Deploy to DEV conclusion
+
+success ✓
+
+### 戻し方
+
+```bash
+git revert 66de07d280cad3c5278e63dbf6ef7eb94acc5b7a
+```
+
+※ DEV スプレッドシート上の4シート（サイズマスタ・重量マスタ・荷姿マスタ・商品荷姿マスタ）は手動削除が必要。
