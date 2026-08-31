@@ -2,6 +2,34 @@
 
 ---
 
+### 2026-08-31 見積もり管理（QUOTES）PDF_URL 列リネーム完了（PR #778 / #780 / #781）
+
+**概要:**
+見積もり管理シートの `PDF URL` 列を `pdf_url` にリネーム（4シート目の列名整形）。
+3-PR パターン（PR-1: 旧新両対応 → PR-2: CoreSchema 切り替え + シートリネーム → PR-3: フォールバック除去）で実施。
+
+**QUOTES 固有の対応:**
+QUOTES は `writeAllowed: true` のため、read パス（`coreQuoteReadTable`）と write パス
+（`validateCoreSchemaV1TableForWrite`）の両方に aliasMap フォールバックが必要。
+PR-1 で両パスに追加し、PR-2 移行窓中は aliasMap `{ 'pdf_url': 'PDF URL' }` で安全に動作。
+
+**PR 一覧:**
+- #778 (PR-1): コード旧新両対応 — 4ファイル変更
+- #780 (PR-2): CoreSchema 切り替え + renameQuotesMasterHeaders 追加 — 2ファイル変更
+- #781 (PR-3): フォールバック全除去 — 3ファイル変更
+
+**シートリネーム実行結果:**
+```
+{ status: 'OK', renamed: 1, details: [{ col: 16, before: 'PDF URL', after: 'pdf_url' }] }
+```
+
+**事後確認（PR-3 後）:**
+- SHA: `3fa7787` = origin/develop HEAD ✅
+- 監査: 2件（LEADS 1 / CUSTOMERS 1）= baseline ✅、QUOTES 0件 ✅
+- dryRun: 変更あり 0件 ✅
+
+---
+
 ### 2026-08-31 CI Sensitive Content 除外ルール台帳を新規作成（PR #771）
 
 **概要:**
