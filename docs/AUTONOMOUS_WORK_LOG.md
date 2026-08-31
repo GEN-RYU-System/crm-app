@@ -110,6 +110,97 @@ git revert 02ee56cd3d854f983f2af19d084bd2516ae853e8
 
 ---
 
+## feat: 自社側4マスタをRegistryに追加しDEVセットアップ関数を新設 — PR #723
+
+**日付:** 2026-08-31
+**PR:** [#723](https://github.com/GEN-RYU-System/crm-app/pull/723)
+**マージコミットSHA:** `5a4cae5339e245dc1c08bff00d9f01159e2a8ccd`
+**mergedAt:** `2026-08-31T00:56:28Z`
+
+### 変更内容
+
+#### 1. Registry 追加 (`src/00_CoreSchemaRegistry.js`)
+
+| テーブルキー | シート名 | 列構成 | primaryKey |
+|-------------|---------|--------|-----------|
+| OWN_CATEGORIES | 自社大分類マスタ | 自社大分類ID / 名称（英語）/ 名称（日本語）/ 有効 / 登録日 / 更新日（6列） | OWN_CATEGORY_ID |
+| OWN_WORKS | 自社作品マスタ | 自社作品ID / 名称（英語）/ 名称（日本語）/ 有効 / 登録日 / 更新日（6列） | OWN_WORK_ID |
+| OWN_MANUFACTURERS | 自社メーカーマスタ | 自社メーカーID / 名称（英語）/ 名称（日本語）/ 有効 / 登録日 / 更新日（6列） | OWN_MANUFACTURER_ID |
+| OWN_PRODUCTS | 自社商品マスタ | 自社商品ID / 共用商品ID / 商品名（英語）/ 商品名（日本語）/ 自社大分類ID / 自社作品ID / 自社メーカーID / メモ / 有効 / 登録日 / 更新日（11列） | OWN_PRODUCT_ID |
+
+いずれも `writeAllowed: true`, `sheetType: 'MASTER'`。
+OWN_PRODUCTS には `referenceIds` を設定（OWN_CATEGORY_ID → OWN_CATEGORIES、OWN_WORK_ID → OWN_WORKS、OWN_MANUFACTURER_ID → OWN_MANUFACTURERS、SHARED_PRODUCT_ID → PRODUCTS）。
+
+#### 2. DEVセットアップ関数 (`src/99_DevOwnMasterSetup.js`)
+
+`setupOwnMasterSheets(mode)` を新設:
+- `DRY_RUN`: 作成予定シート名・列名を出力（書き込みなし）
+- `APPLY`: DEVスプレッドシートにヘッダー行のみ作成
+- DEV環境ガード付き、既存シートはスキップ（上書き・削除なし）
+- 列名は Registry から取得（直書きなし）
+
+### DRY_RUN 結果
+
+```json
+{
+  "mode": "DRY_RUN",
+  "toCreateCount": 4,
+  "conflictCount": 0,
+  "toCreate": [
+    { "sheetName": "自社大分類マスタ", "headers": ["自社大分類ID","名称（英語）","名称（日本語）","有効","登録日","更新日"] },
+    { "sheetName": "自社作品マスタ",   "headers": ["自社作品ID","名称（英語）","名称（日本語）","有効","登録日","更新日"] },
+    { "sheetName": "自社メーカーマスタ","headers": ["自社メーカーID","名称（英語）","名称（日本語）","有効","登録日","更新日"] },
+    { "sheetName": "自社商品マスタ",   "headers": ["自社商品ID","共用商品ID","商品名（英語）","商品名（日本語）","自社大分類ID","自社作品ID","自社メーカーID","メモ","有効","登録日","更新日"] }
+  ],
+  "conflicts": []
+}
+```
+
+### APPLY 結果
+
+```json
+{
+  "mode": "APPLY",
+  "createdCount": 4,
+  "skippedCount": 0,
+  "created": ["自社大分類マスタ", "自社作品マスタ", "自社メーカーマスタ", "自社商品マスタ"],
+  "skipped": []
+}
+```
+
+### runCoreSchemaConformanceAudit 結果
+
+| テーブル | 不一致件数 |
+|---------|----------|
+| OWN_CATEGORIES / 自社大分類マスタ | **0件** ✓ |
+| OWN_WORKS / 自社作品マスタ | **0件** ✓ |
+| OWN_MANUFACTURERS / 自社メーカーマスタ | **0件** ✓ |
+| OWN_PRODUCTS / 自社商品マスタ | **0件** ✓ |
+| ITEMS / 品目マスタ | 0件 ✓（既存・変化なし） |
+| HTS_CODES / HTSコードマスタ | 0件 ✓（既存・変化なし） |
+| MATERIALS / 素材マスタ | 0件 ✓（既存・変化なし） |
+| ORDERS / オーダー管理 | 0件 ✓（既存・変化なし） |
+| SHIPMENTS / 発送 | 0件 ✓（既存・変化なし） |
+
+### getDeployedSha 照合
+
+`5a4cae5339e245dc1c08bff00d9f01159e2a8ccd` = origin/develop HEAD ✓
+
+### Deploy to DEV conclusion
+
+success ✓
+
+### 戻し方
+
+```bash
+git revert 5a4cae5339e245dc1c08bff00d9f01159e2a8ccd
+```
+
+**注意: シート作成（自社大分類マスタ・自社作品マスタ・自社メーカーマスタ・自社商品マスタ）は git revert では戻らない。**
+シートを削除する場合はスプレッドシートを手動操作すること。
+
+---
+
 ## docs: .pr-number 運用手順を AUTONOMOUS_WORK_RULES.md に追記 — PR #721
 
 **日付:** 2026-08-31
