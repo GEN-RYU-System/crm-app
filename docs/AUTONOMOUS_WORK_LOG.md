@@ -2,6 +2,36 @@
 
 ---
 
+### 2026-08-31 荷姿マスタ メニュー位置移動 システム設定→商品管理（PR #763）
+
+**概要:**
+`navigation.ts` で `packageMaster` を `SYSTEM_SETTINGS_SUB_ITEMS` から
+`PRODUCT_MGMT_SUB_ITEMS` へ移動。商品マスタの次（order: 3）に配置。
+ページ本体・ルート定義・権限・ラベル・アイコン・パスは変更なし。
+
+**変更内容:**
+
+| ファイル | 変更 |
+|---------|------|
+| `frontend/src/app/navigation.ts` | `PRODUCT_MGMT_SUB_ITEMS` に `packageMaster` 追加（order: 3）、`SYSTEM_SETTINGS_SUB_ITEMS` から削除 |
+
+**?preview 確認結果:**
+
+| 確認項目 | 結果 |
+|---------|------|
+| 商品管理グループに「荷姿マスタ」が表示される | ✓ |
+| システム設定グループから「荷姿マスタ」が消えている | ✓ |
+| 荷姿マスタリンクをクリックして画面が開く | ✓ |
+| 他のメニュー項目が消えていない | ✓ |
+
+**CI / デプロイ:**
+- PR #763、CI 4/4 pass（Gitleaks / Sensitive Content / gas-global-namespace / frontend-check）
+- `mergedAt`: 2026-08-31T06:29:39Z
+- Deploy to DEV: deploy-dev.yml success（SHA: `154e03ce2e8bfa39ecef67058f9c2afff730f6b8`）
+- SHA 一致確認: `clasp run getDeployedSha` == `origin/develop` HEAD ✓
+
+---
+
 ### 2026-08-31 荷姿マスタ管理画面 新設（PR #759）
 
 **概要:**
