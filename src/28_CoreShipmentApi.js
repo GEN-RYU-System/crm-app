@@ -108,9 +108,9 @@ function upsertCoreShipmentForFrontend(sessionId, payload) {
       } else {
         // New row: assign ID, append blank row
         shipmentId = coreShipmentWriteGenerateNextId_(sheet, hi);
+        targetRow = sheet.getLastRow() + 1;
         var maxCols = sheet.getLastColumn();
         sheet.appendRow(new Array(maxCols).fill(''));
-        targetRow = sheet.getLastRow();
         setCell('SHIPMENT_ID',   shipmentId);
         setCell('ORDER_ID',      orderId);
         setCell('REGISTERED_AT', now);
