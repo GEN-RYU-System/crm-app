@@ -381,6 +381,30 @@ CC は、自分が `gh pr create` で作成した PR の番号に限り、
 既に `.pr-number` が存在する場合は、上書きせず停止して報告する
 （他セッションが使用中の可能性があるため）。
 
+### 実行上の注意（2026-08-31 追記）
+
+`echo` と `gh` は必ず**別々のコマンド**として実行すること。
+
+```bash
+# ✗ 誤: 同一コマンド内で実行する
+echo <PR番号> > ~/crm-app-current/.pr-number && gh pr checks <PR番号>
+
+# ✓ 正: コマンドを分けて実行する
+echo <PR番号> > ~/crm-app-current/.pr-number
+# （別コマンドとして）
+gh pr checks <PR番号>
+```
+
+**理由:** gh-scope-guard は Bash ツールの実行**前**（PreToolUse）に評価される。
+`&&` で繋いでも、フック評価時点では `echo` がまだ実行されておらず
+`.pr-number` が存在しないため、`gh` コマンドがブロックされる。
+
+2026-08-31 に実際に発生:
+```bash
+# ブロックされたコマンド（意図した順序だが同一コマンド内のため失敗）
+echo 740 > ~/crm-app-canonical-20260830/.pr-number && sleep 35 && gh pr checks 740
+```
+
 ---
 
 ## gh-scope-guard を通すための必須手順（2026-08-31 追加・訂正）
@@ -436,3 +460,38 @@ gh-scope-guard が全ブロックする事象が複数回発生し、
 - PR #732: `git rev-parse --show-toplevel` の実測値が
   `/Users/tanizawashingo/crm-app-current` であることを確認し、
   AGENTS.md に実測根拠付きで記載（PR #732 にて確定）
+
+---
+
+## canonical clone での直接編集の禁止（2026-08-31 追加）
+
+canonical clone（`~/crm-app-canonical-20260830`）上でファイルを編集してはならない。  
+`git pull` が競合して停止し、/tmp への退避など後処理が必要になる。
+
+**2026-08-31 に実際に発生:**  
+`docs/AUTONOMOUS_WORK_LOG.md` を canonical clone 上で編集したため、  
+`git pull origin develop` が以下のエラーで止まった:
+
+```
+error: Your local changes to the following files would be overwritten by merge:
+    docs/AUTONOMOUS_WORK_LOG.md
+Please commit your changes or stash them before you merge.
+```
+
+`git checkout -- docs/AUTONOMOUS_WORK_LOG.md` で変更を破棄し、
+`/tmp` にバックアップを退避してから pull を実施した。
+
+### canonical clone の用途（許可する操作）
+
+| 操作 | 理由 |
+|------|------|
+| `git pull` / `git fetch` | develop の最新取得 |
+| `clasp run <関数名>` | `.clasp.json` が canonical clone にしかない |
+| `echo <PR番号> > .pr-number` | gh-scope-guard のための所有権宣言 |
+| `rm .pr-number` | 完了後の削除 |
+| `git worktree add` / `git worktree remove` | worktree 管理 |
+
+### 禁止する操作
+
+ファイルの編集・新規作成はすべて **worktree 内** で行うこと。  
+canonical clone 上での `Edit` / `Write` ツールの使用は禁止する。
