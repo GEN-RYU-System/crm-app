@@ -3,6 +3,15 @@
  * お知らせの作成、取得、既読管理を担当
  */
 
+/**
+ * 担当者マスタのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ */
+function _noticeStaffHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
 // ============================================================
 // お知らせシート作成（手動実行用）
 // ============================================================
@@ -491,10 +500,10 @@ function getStaffById(staffId) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const idIdx = headers.indexOf('担当者ID');
-  const roleIdx = headers.indexOf('役割');
-  const familyNameIdx = headers.indexOf('苗字（日本語）');
-  const givenNameIdx = headers.indexOf('名前（日本語）');
+  const idIdx = _noticeStaffHeaderIdx(headers, 'staff_id', '担当者ID');
+  const roleIdx = _noticeStaffHeaderIdx(headers, 'staff_role', '役割');
+  const familyNameIdx = _noticeStaffHeaderIdx(headers, 'last_name_ja', '苗字（日本語）');
+  const givenNameIdx = _noticeStaffHeaderIdx(headers, 'first_name_ja', '名前（日本語）');
 
   if (idIdx === -1) return null;
 

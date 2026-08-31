@@ -13,8 +13,8 @@ function devCountStaffDiscordIds() {
   }
   const data = staffSheet.getDataRange().getValues();
   const headers = data[0];
-  const discordCol = headers.indexOf('Discord ID');
-  const staffIdCol = headers.indexOf('担当者ID');
+  const discordCol = (function(h){ var i=h.indexOf('discord_id'); return i!==-1?i:h.indexOf('Discord ID'); })(headers);
+  const staffIdCol = (function(h){ var i=h.indexOf('staff_id'); return i!==-1?i:h.indexOf('担当者ID'); })(headers);
 
   let discordIdFilledCount = 0;
   let ldoFormatCount = 0;
