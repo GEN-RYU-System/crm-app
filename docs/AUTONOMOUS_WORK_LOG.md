@@ -2,6 +2,30 @@
 
 ---
 
+### 2026-08-31 国マスタ 列リネーム 完了（PR #760 / #762 / #764 / #766）
+
+**概要:**
+国マスタの 3列（国ID(ISO2) → country_code、国名（表示） → display_name、国名（日本語） → name_ja）を
+3-PR パターンで安全に列名変更した。
+
+**実施内容:**
+
+| PR | 内容 | マージ |
+|----|------|--------|
+| #762 | check-sensitive-content.mjs 誤検知修正（JSDoc/テストデータの電話番号を除外） | 2026-08-30 |
+| #760 | PR-1: デュアルサポートコード追加（8ファイル、フォールバック付き） | 2026-08-30 |
+| #764 | PR-2: CoreSchema 切り替え + `renameCountryMasterHeaders()` でシート実リネーム | 2026-08-30 |
+| #766 | PR-3: フォールバック除去（7ファイル、新名のみに一本化） | 2026-08-31T06:41:22Z |
+
+**事後確認（PR-3 後）:**
+- 配備 SHA: `8bea4a16a587ef1b921936bea9ec16213a2ce2c5` = origin/develop HEAD ✅
+- 監査: 2件（LEADS 1 / CUSTOMERS 1）= baseline ✅、COUNTRIES 主キー列 (country_code) OK ✅
+- dryRunOrderStatusRecalculation: 変更あり 0件 ✅
+
+**詳細:** `docs/column-rename-execution-log.md` 参照
+
+---
+
 ### 2026-08-31 荷姿マスタ メニュー位置移動 システム設定→商品管理（PR #763）
 
 **概要:**
