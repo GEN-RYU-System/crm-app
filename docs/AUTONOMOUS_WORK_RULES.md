@@ -351,7 +351,7 @@ Playwright 確認後、配布完了を PO（Shingo）に報告し、DEV 実機�
 ## `.pr-number` の自己作成（2026-08-31 追加・PO承認）
 
 CC は、自分が `gh pr create` で作成した PR の番号に限り、
-`~/crm-app-canonical-20260830/.pr-number` に書いてよい。
+`~/crm-app-current/.pr-number` に書いてよい。
 これは所有権の宣言であり、迂回にはあたらない。
 
 | 行為 | 判定 |
@@ -364,19 +364,19 @@ CC は、自分が `gh pr create` で作成した PR の番号に限り、
 ### 手順
 
 1. worktree 内で作業し、`gh pr create` を実行する
-2. 返ってきたPR番号を canonical repo root に書く:
+2. 返ってきたPR番号を `~/crm-app-current/` に書く:
    ```
-   echo <PR番号> > ~/crm-app-canonical-20260830/.pr-number
+   echo <PR番号> > ~/crm-app-current/.pr-number
    ```
 3. `gh pr checks` / `gh pr merge` を実行する
 4. 完了後、必ず削除する:
    ```
-   rm ~/crm-app-canonical-20260830/.pr-number
+   rm ~/crm-app-current/.pr-number
    ```
 
 ### 注意: 並行セッション
 
-canonical repo root の `.pr-number` は1つしかない。
+`~/crm-app-current/.pr-number` は1つしかない。
 並行セッションと衝突するため、作業終了時の削除を怠らないこと。
 既に `.pr-number` が存在する場合は、上書きせず停止して報告する
 （他セッションが使用中の可能性があるため）。
@@ -390,21 +390,22 @@ PR の所有権を判定する。どちらも無い場合、
 安全側に倒れて全ての gh コマンドを拒否する（仕様どおり）。
 
 **重要:** フックは Bash ツール実行前（`cd` より前）に走る。
-そのため `.pr-number` は **canonical repo root**
-（`~/crm-app-canonical-20260830/`）に置く必要がある。
-worktree 内の `.pr-number` は `claims.json` が存在しない限り読まれない。
+そのため `.pr-number` は `~/crm-app-current/` に置く必要がある。
+根拠: フック実行時の `git rev-parse --show-toplevel` の実測値が
+`/Users/tanizawashingo/crm-app-current` であることを PR #732 で確認。
+worktree 内・`~/crm-app-canonical-20260830/` に置いても読まれない。
 
 ### 必須手順
 
 1. 作業は必ず worktree 内で行う（canonical clone では作業しない）
-2. `gh pr create` の直後、**canonical repo root** に PR番号を書く:
+2. `gh pr create` の直後、`~/crm-app-current/` に PR番号を書く:
    ```
-   echo <PR番号> > ~/crm-app-canonical-20260830/.pr-number
+   echo <PR番号> > ~/crm-app-current/.pr-number
    ```
 3. `gh pr checks` / `gh pr diff` / `gh pr merge` を実行する
 4. PR のマージが完了したら `.pr-number` を削除する:
    ```
-   rm ~/crm-app-canonical-20260830/.pr-number
+   rm ~/crm-app-current/.pr-number
    ```
 5. worktree を削除する前に、PR がマージ済みであることを確認する
 
@@ -415,7 +416,7 @@ worktree 内の `.pr-number` は `claims.json` が存在しない限り読まれ
 
 ### 注意: 並行セッション
 
-canonical repo root の `.pr-number` は1つしかない。
+`~/crm-app-current/.pr-number` は1つしかない。
 複数セッションが同時に PR を扱う場合、上書きが起きる可能性がある。
 作業が終わったら必ず `.pr-number` を削除すること。
 
@@ -426,6 +427,12 @@ gh-scope-guard が全ブロックする事象が複数回発生し、
 これが許可ファイル自作（迂回 10 件）の背景となった。
 ガードの不具合ではなく、運用手順の欠落が原因。
 
-2026-08-31、PR #721 追記時に `.pr-number` の設置場所を
-「worktree 内」と誤記した。フックの動作（Bash ツール内の cd より前に実行）を
-実証し、正しい場所が canonical repo root であることを確認した（PR #722 で訂正）。
+2026-08-31、設置場所を2度誤記した経緯:
+- PR #721: 「worktree 内に書く」と誤記
+- PR #724: 「canonical repo root（~/crm-app-canonical-20260830）に置く」と誤記
+  （フックの cd より前に走る、という事実は正しかったが、
+  フック実行時の cwd が crm-app-canonical-20260830 ではなく
+  crm-app-current であることを把握していなかった）
+- PR #732: `git rev-parse --show-toplevel` の実測値が
+  `/Users/tanizawashingo/crm-app-current` であることを確認し、
+  AGENTS.md に実測根拠付きで記載（PR #732 にて確定）
