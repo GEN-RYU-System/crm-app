@@ -36,6 +36,7 @@ import { DataManagementPage } from './pages/data-management/DataManagementPage';
 import { IssuerMasterPage } from './pages/data-management/IssuerMasterPage';
 import { PackageMasterPage } from './pages/data-management/PackageMasterPage';
 import { OwnMasterPage } from './pages/data-management/OwnMasterPage';
+import { ProductMasterPage } from './pages/data-management/ProductMasterPage';
 import { IssuerMasterCacheProvider, useIssuerMasterCache } from './pages/data-management/IssuerMasterCacheContext';
 import { CustomerListCacheProvider } from './pages/customers/CustomerListCacheContext';
 import { CustomerDetailCacheProvider } from './pages/customers/CustomerDetailCacheContext';
@@ -77,6 +78,7 @@ import { SalesOrderListCacheProvider } from './pages/sales-orders/SalesOrderList
 import { customersCopy, errorCopy, inboxCopy, issuerCopy, leadsCopy, ordersCopy, quotesCopy, salesOrdersCopy, staffCopy } from './content/ja';
 import { packageMasterCopy } from './content/ja/packageMaster';
 import { ownMasterCopy } from './content/ja/ownMaster';
+import { productMasterCopy } from './content/ja/productMaster';
 import { authCopy } from './content/ja/auth';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -288,6 +290,12 @@ function AppRouter() {
       ? <OwnMasterPage />
       : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
 
+  const productMasterRoute = permissionState.status === 'checking'
+    ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={productMasterCopy.loading} />{productMasterCopy.loading}</StatusMessage>
+    : canAccessPackageMaster
+      ? <ProductMasterPage />
+      : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+
   const hubIndexRoutes: Partial<Record<NavigationItemId, ReactNode>> = {
     leads: leadsRoute,
     customers: customersRoute,
@@ -296,7 +304,8 @@ function AppRouter() {
     staff: staffRoute,
     issuerMaster: issuerMasterRoute,
     packageMaster: packageMasterRoute,
-    ownMaster: ownMasterRoute
+    ownMaster: ownMasterRoute,
+    productMaster: productMasterRoute
   };
   const hubExtraRoutes: Partial<Record<NavigationItemId, ReactNode[]>> = {
     leads: [

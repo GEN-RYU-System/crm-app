@@ -67,6 +67,11 @@ interface GoogleScriptRun {
   upsertCoreOwnCategoryForFrontend(sessionId: string | null, payload: unknown): void;
   upsertCoreOwnWorkForFrontend(sessionId: string | null, payload: unknown): void;
   upsertCoreOwnManufacturerForFrontend(sessionId: string | null, payload: unknown): void;
+  getCoreSharedProductsForFrontend(sessionId: string | null): void;
+  getCoreProductPackagesForFrontend(sessionId: string | null): void;
+  upsertCoreProductPackageForFrontend(sessionId: string | null, payload: unknown): void;
+  getCoreOwnProductsForFrontend(sessionId: string | null): void;
+  upsertCoreOwnProductWithPackageForFrontend(sessionId: string | null, payload: unknown): void;
 }
 
 interface Window {

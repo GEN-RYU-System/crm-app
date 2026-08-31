@@ -1289,6 +1289,118 @@ export function uploadCoreShipmentFile(payload: UploadShipmentFilePayload): Prom
   });
 }
 
+// ─── Product Master ───────────────────────────────────────────────────────────
+
+export type SharedProductRecord = {
+  productId: string; englishTitle: string; japaneseTitle: string;
+  category: string; item: string; hsCode: string; material: string;
+};
+
+export type ProductPackageRecord = {
+  productPackageId: string;
+  sharedProductId: string; sharedProductEnglishTitle: string; sharedProductJapaneseTitle: string;
+  ownProductId: string; ownProductNameEn: string; ownProductNameJa: string;
+  casePackageId: string; casePackageName: string;
+  boxPackageId: string;  boxPackageName: string;
+  packPackageId: string; packPackageName: string;
+  itemId: string; itemNameEn: string; itemNameJa: string;
+  htsCodeId: string; htsCode: string; htsDescriptionEn: string;
+  materialId: string; materialNameEn: string; materialNameJa: string;
+  isActive: string;
+};
+
+export type OwnProductRecord = {
+  ownProductId: string;
+  sharedProductId: string; sharedProductEnglishTitle: string; sharedProductJapaneseTitle: string;
+  nameEn: string; nameJa: string;
+  ownCategoryId: string; categoryNameEn: string; categoryNameJa: string;
+  ownWorkId: string; workNameEn: string; workNameJa: string;
+  ownManufacturerId: string; manufacturerNameEn: string; manufacturerNameJa: string;
+  note: string; isActive: string;
+};
+
+export type UpsertProductPackagePayload = {
+  productPackageId?: string;
+  sharedProductId?: string; ownProductId?: string;
+  casePackageId?: string; boxPackageId?: string; packPackageId?: string;
+  itemId?: string; htsCodeId?: string; materialId?: string;
+  isActive?: boolean;
+};
+export type UpsertProductPackageResult = { success: true; productPackageId: string };
+
+export type UpsertOwnProductWithPackagePayload = {
+  product: {
+    ownProductId?: string;
+    sharedProductId?: string; nameEn?: string; nameJa?: string;
+    ownCategoryId?: string; ownWorkId?: string; ownManufacturerId?: string;
+    note?: string; isActive?: boolean;
+  };
+  package?: {
+    productPackageId?: string;
+    casePackageId?: string; boxPackageId?: string; packPackageId?: string;
+    itemId?: string; htsCodeId?: string; materialId?: string;
+    isActive?: boolean;
+  };
+};
+export type UpsertOwnProductWithPackageResult = {
+  success: true; ownProductId: string; productPackageId: string | null; failedStep: null;
+};
+
+export function getCoreSharedProducts(): Promise<SharedProductRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as SharedProductRecord[]))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getCoreSharedProductsForFrontend(getStoredSessionId());
+  });
+}
+
+export function getCoreProductPackages(): Promise<ProductPackageRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as ProductPackageRecord[]))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getCoreProductPackagesForFrontend(getStoredSessionId());
+  });
+}
+
+export function upsertCoreProductPackage(payload: UpsertProductPackagePayload): Promise<UpsertProductPackageResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as UpsertProductPackageResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .upsertCoreProductPackageForFrontend(getStoredSessionId(), payload);
+  });
+}
+
+export function getCoreOwnProducts(): Promise<OwnProductRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as OwnProductRecord[]))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getCoreOwnProductsForFrontend(getStoredSessionId());
+  });
+}
+
+export function upsertCoreOwnProductWithPackage(payload: UpsertOwnProductWithPackagePayload): Promise<UpsertOwnProductWithPackageResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as UpsertOwnProductWithPackageResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .upsertCoreOwnProductWithPackageForFrontend(getStoredSessionId(), payload);
+  });
+}
+
 export type AdvanceShipmentResult =
   | { success: true; newStage: string; needsInput?: true }
   | { success: false; error: string };
