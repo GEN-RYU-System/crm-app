@@ -10,6 +10,15 @@
  * - リソース別アクセス権チェック
  */
 
+/**
+ * 担当者マスタのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ */
+function _permissionStaffHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
 // ============================================================
 // ユーザー認証・権限取得
 // ============================================================
@@ -34,12 +43,12 @@ function getCurrentUserPermissions(email) {
   const data = staffSheet.getDataRange().getValues();
   const headers = data[0];
 
-  const emailIdx = headers.indexOf('メール');
-  const staffIdIdx = headers.indexOf('担当者ID');
-  const lastNameJpIdx = headers.indexOf('苗字（日本語）');
-  const firstNameJpIdx = headers.indexOf('名前（日本語）');
-  const roleIdx = headers.indexOf('役割');
-  const statusIdx = headers.indexOf('ステータス');
+  const emailIdx = _permissionStaffHeaderIdx(headers, 'email', 'メール');
+  const staffIdIdx = _permissionStaffHeaderIdx(headers, 'staff_id', '担当者ID');
+  const lastNameJpIdx = _permissionStaffHeaderIdx(headers, 'last_name_ja', '苗字（日本語）');
+  const firstNameJpIdx = _permissionStaffHeaderIdx(headers, 'first_name_ja', '名前（日本語）');
+  const roleIdx = _permissionStaffHeaderIdx(headers, 'staff_role', '役割');
+  const statusIdx = _permissionStaffHeaderIdx(headers, 'status', 'ステータス');
   const teamIdIdx = headers.indexOf('チームID');
 
   // メールアドレスでユーザーを検索
@@ -103,12 +112,12 @@ function getPermissionsByStaffId(staffId) {
   const data = staffSheet.getDataRange().getValues();
   const headers = data[0];
 
-  const staffIdIdx = headers.indexOf('担当者ID');
-  const roleIdx = headers.indexOf('役割');
-  const statusIdx = headers.indexOf('ステータス');
+  const staffIdIdx = _permissionStaffHeaderIdx(headers, 'staff_id', '担当者ID');
+  const roleIdx = _permissionStaffHeaderIdx(headers, 'staff_role', '役割');
+  const statusIdx = _permissionStaffHeaderIdx(headers, 'status', 'ステータス');
   const teamIdIdx = headers.indexOf('チームID');
-  const lastNameJpIdx = headers.indexOf('苗字（日本語）');
-  const firstNameJpIdx = headers.indexOf('名前（日本語）');
+  const lastNameJpIdx = _permissionStaffHeaderIdx(headers, 'last_name_ja', '苗字（日本語）');
+  const firstNameJpIdx = _permissionStaffHeaderIdx(headers, 'first_name_ja', '名前（日本語）');
 
   for (let i = 1; i < data.length; i++) {
     if (data[i][staffIdIdx] === staffId) {
@@ -592,11 +601,11 @@ function getAllActiveStaff() {
   const data = staffSheet.getDataRange().getValues();
   const headers = data[0];
 
-  const staffIdIdx = headers.indexOf('担当者ID');
-  const lastNameIdx = headers.indexOf('苗字（日本語）');
-  const firstNameIdx = headers.indexOf('名前（日本語）');
-  const roleIdx = headers.indexOf('役割');
-  const statusIdx = headers.indexOf('ステータス');
+  const staffIdIdx = _permissionStaffHeaderIdx(headers, 'staff_id', '担当者ID');
+  const lastNameIdx = _permissionStaffHeaderIdx(headers, 'last_name_ja', '苗字（日本語）');
+  const firstNameIdx = _permissionStaffHeaderIdx(headers, 'first_name_ja', '名前（日本語）');
+  const roleIdx = _permissionStaffHeaderIdx(headers, 'staff_role', '役割');
+  const statusIdx = _permissionStaffHeaderIdx(headers, 'status', 'ステータス');
   const teamIdIdx = headers.indexOf('チームID');
 
   const staff = [];
@@ -630,11 +639,11 @@ function getTeamMembers(teamId) {
   const data = staffSheet.getDataRange().getValues();
   const headers = data[0];
 
-  const staffIdIdx = headers.indexOf('担当者ID');
-  const lastNameIdx = headers.indexOf('苗字（日本語）');
-  const firstNameIdx = headers.indexOf('名前（日本語）');
-  const roleIdx = headers.indexOf('役割');
-  const statusIdx = headers.indexOf('ステータス');
+  const staffIdIdx = _permissionStaffHeaderIdx(headers, 'staff_id', '担当者ID');
+  const lastNameIdx = _permissionStaffHeaderIdx(headers, 'last_name_ja', '苗字（日本語）');
+  const firstNameIdx = _permissionStaffHeaderIdx(headers, 'first_name_ja', '名前（日本語）');
+  const roleIdx = _permissionStaffHeaderIdx(headers, 'staff_role', '役割');
+  const statusIdx = _permissionStaffHeaderIdx(headers, 'status', 'ステータス');
   const teamIdIdx = headers.indexOf('チームID');
 
   const members = [];

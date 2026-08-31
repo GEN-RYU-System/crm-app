@@ -3,6 +3,15 @@
  */
 
 /**
+ * 担当者マスタのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ */
+function _emailHelperStaffHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
+/**
  * 値がメールアドレスかどうかをチェック
  * @param {string} value - チェックする値
  * @returns {boolean} メールアドレス形式ならtrue
@@ -96,11 +105,11 @@ function findUserByEmailSmart(email) {
     // メールアドレスで検索
     for (let i = 0; i < dataRows.length; i++) {
       if (dataRows[i][emailIdx] === email) {
-        const staffIdIdx = headers.indexOf('担当者ID');
-        const lastNameJpIdx = headers.indexOf('苗字（日本語）');
-        const firstNameJpIdx = headers.indexOf('名前（日本語）');
-        const roleIdx = headers.indexOf('役割');
-        const statusIdx = headers.indexOf('ステータス');
+        const staffIdIdx = _emailHelperStaffHeaderIdx(headers, 'staff_id', '担当者ID');
+        const lastNameJpIdx = _emailHelperStaffHeaderIdx(headers, 'last_name_ja', '苗字（日本語）');
+        const firstNameJpIdx = _emailHelperStaffHeaderIdx(headers, 'first_name_ja', '名前（日本語）');
+        const roleIdx = _emailHelperStaffHeaderIdx(headers, 'staff_role', '役割');
+        const statusIdx = _emailHelperStaffHeaderIdx(headers, 'status', 'ステータス');
         const teamIdIdx = headers.indexOf('チームID');
 
         return {

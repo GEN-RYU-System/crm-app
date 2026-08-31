@@ -164,7 +164,21 @@ const CORE_SCHEMA_V1_TABLES = {
   },
   STAFF: {
     sheetName: '担当者マスタ', canonicalName: '担当者マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
-    headers: createCoreSchemaV1Headers([['STAFF_ID', '担当者ID'], ['LAST_NAME_JA', '苗字（日本語）'], ['FIRST_NAME_JA', '名前（日本語）'], ['FULL_NAME_JA', '氏名（日本語）'], ['LAST_NAME_KANA', '苗字ふりがな'], ['FIRST_NAME_KANA', '名前ふりがな'], ['LAST_NAME_EN', '苗字（英語）'], ['FIRST_NAME_EN', '名前（英語）'], ['EMAIL', 'メール'], ['DISCORD_ID', 'Discord ID'], ['ROLE', '役割'], ['STATUS', 'ステータス'], ['SOURCE_CANDIDATE_ID', '元候補者ID'], ['DARK_MODE', 'ダークモード'], ['CHAT_MENU_VISIBLE', 'チャットメニュー表示'], ['SALES_MENU_VISIBLE', '営業メニュー表示'], ['SETTINGS_MENU_VISIBLE', '設定メニュー表示'], ['ADMIN_MENU_VISIBLE', '管理者メニュー表示'], ['BUDDY_MAINTENANCE_MENU_VISIBLE', 'Buddyメンテナンスメニュー表示'], ['SIDEBAR_VISIBLE', 'サイドバー表示'], ['PASSWORD_HASH', 'パスワードハッシュ'], ['PASSWORD_SALT', 'パスワードソルト'], ['LOGIN_FAIL_COUNT', '連続失敗回数'], ['LOCKED_UNTIL', 'ロック解除時刻']]), primaryKey: 'STAFF_ID', referenceIds: [],
+    headers: createCoreSchemaV1Headers([['STAFF_ID', 'staff_id'], ['LAST_NAME_JA', 'last_name_ja'], ['FIRST_NAME_JA', 'first_name_ja'], ['FULL_NAME_JA', 'full_name_ja'], ['LAST_NAME_KANA', 'last_name_kana'], ['FIRST_NAME_KANA', 'first_name_kana'], ['LAST_NAME_EN', 'last_name_en'], ['FIRST_NAME_EN', 'first_name_en'], ['EMAIL', 'email'], ['DISCORD_ID', 'discord_id'], ['ROLE', 'staff_role'], ['STATUS', 'status'], ['SOURCE_CANDIDATE_ID', 'source_candidate_id'], ['DARK_MODE', 'dark_mode'], ['CHAT_MENU_VISIBLE', 'chat_menu_visible'], ['SALES_MENU_VISIBLE', 'sales_menu_visible'], ['SETTINGS_MENU_VISIBLE', 'settings_menu_visible'], ['ADMIN_MENU_VISIBLE', 'admin_menu_visible'], ['BUDDY_MAINTENANCE_MENU_VISIBLE', 'buddy_maintenance_menu_visible'], ['SIDEBAR_VISIBLE', 'sidebar_visible'], ['PASSWORD_HASH', 'password_hash'], ['PASSWORD_SALT', 'password_salt'], ['LOGIN_FAIL_COUNT', 'login_fail_count'], ['LOCKED_UNTIL', 'locked_until']]),
+    headerAliasMap: {
+      'staff_id': '担当者ID', 'last_name_ja': '苗字（日本語）', 'first_name_ja': '名前（日本語）',
+      'full_name_ja': '氏名（日本語）', 'last_name_kana': '苗字ふりがな', 'first_name_kana': '名前ふりがな',
+      'last_name_en': '苗字（英語）', 'first_name_en': '名前（英語）', 'email': 'メール',
+      'discord_id': 'Discord ID', 'staff_role': '役割', 'status': 'ステータス',
+      'source_candidate_id': '元候補者ID', 'dark_mode': 'ダークモード',
+      'chat_menu_visible': 'チャットメニュー表示', 'sales_menu_visible': '営業メニュー表示',
+      'settings_menu_visible': '設定メニュー表示', 'admin_menu_visible': '管理者メニュー表示',
+      'buddy_maintenance_menu_visible': 'Buddyメンテナンスメニュー表示',
+      'sidebar_visible': 'サイドバー表示', 'password_hash': 'パスワードハッシュ',
+      'password_salt': 'パスワードソルト', 'login_fail_count': '連続失敗回数',
+      'locked_until': 'ロック解除時刻'
+    },
+    primaryKey: 'STAFF_ID', referenceIds: [],
     unmanagedReferenceIds: [{ headerKey: 'SOURCE_CANDIDATE_ID', reason: 'PARENT_TABLE_OUTSIDE_CORE_SCHEMA_V1' }],
     values: {
       ROLE: {
@@ -571,15 +585,23 @@ function validateCoreSchemaV1TableForWrite(spreadsheet, tableKey) {
   if (new Set(nonEmptyHeaders).size !== nonEmptyHeaders.length) {
     throw new Error('CORE_SCHEMA_NON_EMPTY_HEADER_DUPLICATE');
   }
+  const aliasMap = table.headerAliasMap || {};
   const requiredHeaders = Object.keys(table.headers).map(headerKey => table.headers[headerKey]);
-  if (requiredHeaders.some(headerName => headers.indexOf(headerName) === -1)) {
+  // headerAliasMap フォールバック: 新名が見つからなければ旧名で検索する
+  const resolveHeaderIndex = function(headerName) {
+    var idx = headers.indexOf(headerName);
+    if (idx !== -1) return idx;
+    var oldName = aliasMap[headerName];
+    return oldName !== undefined ? headers.indexOf(oldName) : -1;
+  };
+  if (requiredHeaders.some(headerName => resolveHeaderIndex(headerName) === -1)) {
     throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING');
   }
   return {
     sheet: sheet,
     tableKey: resolveCoreSchemaV1TableKey(tableKey),
     headerIndexes: requiredHeaders.reduce((indexes, headerName) => {
-      indexes[headerName] = headers.indexOf(headerName) + 1;
+      indexes[headerName] = resolveHeaderIndex(headerName) + 1;
       return indexes;
     }, {})
   };

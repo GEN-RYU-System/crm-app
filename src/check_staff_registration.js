@@ -14,9 +14,9 @@ function checkStaffRegistration() {
     Logger.log('ヘッダー:', headers);
     Logger.log('総行数:', data.length);
     
-    const emailIdx = headers.indexOf('メール');
+    const emailIdx = (function(h){ var i=h.indexOf('email'); return i!==-1?i:h.indexOf('メール'); })(headers);
     const nameIdx = headers.indexOf('担当者名');
-    const idIdx = headers.indexOf('担当者ID');
+    const idIdx = (function(h){ var i=h.indexOf('staff_id'); return i!==-1?i:h.indexOf('担当者ID'); })(headers);
     
     if (emailIdx === -1) {
       return { success: false, error: 'メール列が見つかりません', headers };

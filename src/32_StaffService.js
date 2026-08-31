@@ -4,6 +4,19 @@
  */
 
 /**
+ * 担当者マスタのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * @param {Array} headers - ヘッダー配列
+ * @param {string} newName - 新しいヘッダー名
+ * @param {string} oldName - 旧ヘッダー名（フォールバック用）
+ * @returns {number} 列インデックス（見つからない場合は -1）
+ */
+function _staffHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
+/**
  * スタッフ管理の全データを取得
  * @returns {Object} { success: boolean, data: Array, headers: Array }
  */
@@ -342,8 +355,8 @@ function getUserDarkMode() {
 
     const data = staffSheet.getDataRange().getValues();
     const headers = data[0];
-    const emailIdx = headers.indexOf('メール');
-    const darkModeIdx = headers.indexOf('ダークモード');
+    const emailIdx = _staffHeaderIdx(headers, 'email', 'メール');
+    const darkModeIdx = _staffHeaderIdx(headers, 'dark_mode', 'ダークモード');
 
     if (emailIdx === -1) {
       return {
@@ -354,7 +367,7 @@ function getUserDarkMode() {
 
     // ダークモード列がない場合は追加
     if (darkModeIdx === -1) {
-      staffSheet.getRange(1, headers.length + 1).setValue('ダークモード');
+      staffSheet.getRange(1, headers.length + 1).setValue('dark_mode');
       Logger.log('ダークモード列を追加しました');
       return {
         success: true,
@@ -410,8 +423,8 @@ function updateUserDarkMode(darkMode) {
 
     const data = staffSheet.getDataRange().getValues();
     const headers = data[0];
-    const emailIdx = headers.indexOf('メール');
-    let darkModeIdx = headers.indexOf('ダークモード');
+    const emailIdx = _staffHeaderIdx(headers, 'email', 'メール');
+    let darkModeIdx = _staffHeaderIdx(headers, 'dark_mode', 'ダークモード');
 
     if (emailIdx === -1) {
       return {
@@ -422,7 +435,7 @@ function updateUserDarkMode(darkMode) {
 
     // ダークモード列がない場合は追加
     if (darkModeIdx === -1) {
-      staffSheet.getRange(1, headers.length + 1).setValue('ダークモード');
+      staffSheet.getRange(1, headers.length + 1).setValue('dark_mode');
       darkModeIdx = headers.length;
       Logger.log('ダークモード列を追加しました');
     }
@@ -475,12 +488,12 @@ function getUserMenuPreferences() {
 
     const data = staffSheet.getDataRange().getValues();
     const headers = data[0];
-    const emailIdx = headers.indexOf('メール');
-    const chatMenuIdx = headers.indexOf('チャットメニュー表示');
-    const salesMenuIdx = headers.indexOf('営業メニュー表示');
-    const settingsMenuIdx = headers.indexOf('設定メニュー表示');
-    const buddyMenuIdx = headers.indexOf('Buddyメンテナンスメニュー表示');
-    const adminMenuIdx = headers.indexOf('管理者メニュー表示');
+    const emailIdx = _staffHeaderIdx(headers, 'email', 'メール');
+    const chatMenuIdx = _staffHeaderIdx(headers, 'chat_menu_visible', 'チャットメニュー表示');
+    const salesMenuIdx = _staffHeaderIdx(headers, 'sales_menu_visible', '営業メニュー表示');
+    const settingsMenuIdx = _staffHeaderIdx(headers, 'settings_menu_visible', '設定メニュー表示');
+    const buddyMenuIdx = _staffHeaderIdx(headers, 'buddy_maintenance_menu_visible', 'Buddyメンテナンスメニュー表示');
+    const adminMenuIdx = _staffHeaderIdx(headers, 'admin_menu_visible', '管理者メニュー表示');
 
     if (emailIdx === -1) {
       return {
@@ -563,12 +576,12 @@ function updateUserMenuPreferences(menuPreferences) {
 
     const data = staffSheet.getDataRange().getValues();
     const headers = data[0];
-    const emailIdx = headers.indexOf('メール');
-    let chatMenuIdx = headers.indexOf('チャットメニュー表示');
-    let salesMenuIdx = headers.indexOf('営業メニュー表示');
-    let settingsMenuIdx = headers.indexOf('設定メニュー表示');
-    let buddyMenuIdx = headers.indexOf('Buddyメンテナンスメニュー表示');
-    let adminMenuIdx = headers.indexOf('管理者メニュー表示');
+    const emailIdx = _staffHeaderIdx(headers, 'email', 'メール');
+    let chatMenuIdx = _staffHeaderIdx(headers, 'chat_menu_visible', 'チャットメニュー表示');
+    let salesMenuIdx = _staffHeaderIdx(headers, 'sales_menu_visible', '営業メニュー表示');
+    let settingsMenuIdx = _staffHeaderIdx(headers, 'settings_menu_visible', '設定メニュー表示');
+    let buddyMenuIdx = _staffHeaderIdx(headers, 'buddy_maintenance_menu_visible', 'Buddyメンテナンスメニュー表示');
+    let adminMenuIdx = _staffHeaderIdx(headers, 'admin_menu_visible', '管理者メニュー表示');
 
     if (emailIdx === -1) {
       return {
@@ -579,11 +592,11 @@ function updateUserMenuPreferences(menuPreferences) {
 
     // メニュー設定列がない場合は追加
     const columnsToAdd = [];
-    if (chatMenuIdx === -1) columnsToAdd.push('チャットメニュー表示');
-    if (salesMenuIdx === -1) columnsToAdd.push('営業メニュー表示');
-    if (settingsMenuIdx === -1) columnsToAdd.push('設定メニュー表示');
-    if (buddyMenuIdx === -1) columnsToAdd.push('Buddyメンテナンスメニュー表示');
-    if (adminMenuIdx === -1) columnsToAdd.push('管理者メニュー表示');
+    if (chatMenuIdx === -1) columnsToAdd.push('chat_menu_visible');
+    if (salesMenuIdx === -1) columnsToAdd.push('sales_menu_visible');
+    if (settingsMenuIdx === -1) columnsToAdd.push('settings_menu_visible');
+    if (buddyMenuIdx === -1) columnsToAdd.push('buddy_maintenance_menu_visible');
+    if (adminMenuIdx === -1) columnsToAdd.push('admin_menu_visible');
 
     if (columnsToAdd.length > 0) {
       const lastColumn = staffSheet.getLastColumn();
@@ -594,11 +607,11 @@ function updateUserMenuPreferences(menuPreferences) {
 
       // インデックスを再取得
       const newHeaders = staffSheet.getRange(1, 1, 1, staffSheet.getLastColumn()).getValues()[0];
-      chatMenuIdx = newHeaders.indexOf('チャットメニュー表示');
-      salesMenuIdx = newHeaders.indexOf('営業メニュー表示');
-      settingsMenuIdx = newHeaders.indexOf('設定メニュー表示');
-      buddyMenuIdx = newHeaders.indexOf('Buddyメンテナンスメニュー表示');
-      adminMenuIdx = newHeaders.indexOf('管理者メニュー表示');
+      chatMenuIdx = _staffHeaderIdx(newHeaders, 'chat_menu_visible', 'チャットメニュー表示');
+      salesMenuIdx = _staffHeaderIdx(newHeaders, 'sales_menu_visible', '営業メニュー表示');
+      settingsMenuIdx = _staffHeaderIdx(newHeaders, 'settings_menu_visible', '設定メニュー表示');
+      buddyMenuIdx = _staffHeaderIdx(newHeaders, 'buddy_maintenance_menu_visible', 'Buddyメンテナンスメニュー表示');
+      adminMenuIdx = _staffHeaderIdx(newHeaders, 'admin_menu_visible', '管理者メニュー表示');
     }
 
     // ユーザーを検索
@@ -669,8 +682,8 @@ function getUserSidebarPreference(userEmail) {
     const headers = data[0];
 
     // 列インデックスを取得
-    const emailIdx = headers.indexOf('メール');
-    const sidebarIdx = headers.indexOf('サイドバー表示');
+    const emailIdx = _staffHeaderIdx(headers, 'email', 'メール');
+    const sidebarIdx = _staffHeaderIdx(headers, 'sidebar_visible', 'サイドバー表示');
 
     if (emailIdx === -1) {
       Logger.log('getUserSidebarPreference: メール列が見つかりません');
@@ -755,8 +768,8 @@ function updateUserSidebarPreference(userEmail, sidebarOpen) {
     const headers = data[0];
 
     // 列インデックスを取得
-    const emailIdx = headers.indexOf('メール');
-    const sidebarIdx = headers.indexOf('サイドバー表示');
+    const emailIdx = _staffHeaderIdx(headers, 'email', 'メール');
+    const sidebarIdx = _staffHeaderIdx(headers, 'sidebar_visible', 'サイドバー表示');
 
     if (emailIdx === -1) {
       return {
