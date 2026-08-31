@@ -288,6 +288,43 @@ const CORE_SCHEMA_V1_TABLES = {
       ['STAFF_ID',      '担当者ID']
     ]), primaryKey: null,
     referenceIds: [{ headerKey: 'STAFF_ID', targetTableKey: 'STAFF' }]
+  },
+  ITEMS: {
+    sheetName: '品目マスタ', canonicalName: '品目マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['ITEM_ID',       '品目ID'],
+      ['NAME_EN',       '品目名（英語）'],
+      ['NAME_JA',       '品目名（日本語）'],
+      ['ACTIVE',        '有効'],
+      ['REGISTERED_AT', '登録日'],
+      ['UPDATED_AT',    '更新日']
+    ]), primaryKey: 'ITEM_ID',
+    referenceIds: []
+  },
+  HTS_CODES: {
+    sheetName: 'HTSコードマスタ', canonicalName: 'HTSコードマスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['HTS_CODE_ID',   'HTSコードID'],
+      ['HTS_CODE',      'HTSコード'],
+      ['DESCRIPTION_EN','説明（英語）'],
+      ['DESCRIPTION_JA','説明（日本語）'],
+      ['ACTIVE',        '有効'],
+      ['REGISTERED_AT', '登録日'],
+      ['UPDATED_AT',    '更新日']
+    ]), primaryKey: 'HTS_CODE_ID',
+    referenceIds: []
+  },
+  MATERIALS: {
+    sheetName: '素材マスタ', canonicalName: '素材マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['MATERIAL_ID',   '素材ID'],
+      ['NAME_EN',       '素材名（英語）'],
+      ['NAME_JA',       '素材名（日本語）'],
+      ['ACTIVE',        '有効'],
+      ['REGISTERED_AT', '登録日'],
+      ['UPDATED_AT',    '更新日']
+    ]), primaryKey: 'MATERIAL_ID',
+    referenceIds: []
   }
 };
 
