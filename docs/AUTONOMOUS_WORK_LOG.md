@@ -2,6 +2,113 @@
 
 ---
 
+## refactor(purchases): 仕入れシート列名整形 PR-3 — 旧名フォールバック削除 — PR #736
+
+**日付:** 2026-08-31
+**PR:** [#736](https://github.com/GEN-RYU-System/crm-app/pull/736)
+**マージコミットSHA:** `c95c29bdce9d8acdd963cfb9743e6945be530432`
+**mergedAt:** `2026-08-31T02:14:10Z`
+
+### 変更内容
+
+- `src/00_CoreSchemaRegistry.js`: PURCHASES から `headerAliasMap` を削除。`validateCoreSchemaV1TableForWrite` を元のシンプルな実装に戻す
+- `src/28_CoreOrderReadApi.js`: `readDetailSheet_` のaliasMapブランチを削除
+- `src/26_OrderStatusService.js`: `readOrderStatusServiceSheet_` のaliasMapブランチを削除
+
+### 検証結果
+
+- `npm run build:gas` 通過
+- CI全通過
+- DEV配布完了: `2026-08-31T02:15:04Z`
+- SHA照合: `c95c29b` 一致
+- `runCoreSchemaConformanceAudit`: 総不一致2件（LEADS 1 + CUSTOMERS 1）= ベースライン一致 **通過**
+  - PURCHASES: 0件（定義19 / 実シート19 OK）
+
+### 戻し方
+
+```bash
+git revert c95c29bdce9d8acdd963cfb9743e6945be530432
+```
+
+---
+
+## feat(purchases): 仕入れシート列名整形 PR-2 — シート列名変更 — PR #734
+
+**日付:** 2026-08-31
+**PR:** [#734](https://github.com/GEN-RYU-System/crm-app/pull/734)
+**マージコミットSHA:** `79bb30385be87c96c2777919cd99af7b2b6f8fc7`
+**mergedAt:** `2026-08-31T02:07:04Z`
+
+### 変更内容
+
+- `src/00_CoreSchemaRegistry.js`: PURCHASES ヘッダーを英語スネークケースに更新。`headerAliasMap` を英語→日本語に反転
+- `src/08_Config.js`: `HEADERS.PURCHASE`（17列）を英語名に更新
+- `src/99_ColumnRenameExecution.js`: `renamePurchaseSheetHeaders()` を追加
+
+### シート変更実行結果
+
+`clasp run renamePurchaseSheetHeaders`:
+- status: OK, renamed: 19（全19列リネーム完了）
+- 例: col1 仕入れID → purchase_id ... col19 更新日 → updated_at
+
+バックアップ確認:
+- バックアップ（仕入れ_backup_20260831）: 行数=13, 列数=19, 日本語ヘッダーのまま無傷
+- ソース（仕入れ）: 行数=13, 列数=19, 英語ヘッダー
+
+### 3点検証
+
+- SHA照合: `9135ce8` 一致（PR#732 docs-only で上書きされた状態、GAS = `79bb303`相当）
+- `runCoreSchemaConformanceAudit`: 総不一致2件（LEADS 1 + CUSTOMERS 1）= ベースライン一致 **通過**
+  - PURCHASES: 0件（主キー列 purchase_id OK）
+
+### 戻し方
+
+```bash
+git revert 79bb30385be87c96c2777919cd99af7b2b6f8fc7
+# + 仕入れシートをバックアップ（仕入れ_backup_20260831）から復元
+```
+
+---
+
+## feat(purchases): 仕入れシート列名整形 PR-1 — 新旧両対応コード — PR #733
+
+**日付:** 2026-08-31
+**PR:** [#733](https://github.com/GEN-RYU-System/crm-app/pull/733)
+**マージコミットSHA:** `d342b5b719ee15537681140339fa18ffcb5b8683`
+**mergedAt:** `2026-08-31T01:59:53Z`
+
+### 変更内容
+
+仕入れシート（PURCHASES）列名整形 3PR構成のうち PR-1。コードを新旧両対応にする。
+
+1. `src/00_CoreSchemaRegistry.js`
+   - PURCHASES テーブルに `headerAliasMap`（日本語→英語、19列）を追加
+   - `validateCoreSchemaV1TableForWrite` にエイリアスフォールバックを追加
+2. `src/28_CoreOrderReadApi.js`
+   - `readDetailSheet_` にエイリアスフォールバックを追加
+3. `src/26_OrderStatusService.js`
+   - `readOrderStatusServiceSheet_` にエイリアスフォールバックを追加
+4. `src/99_ColumnRenameExecution.js`（新規）
+   - `backupPurchaseSheet()` / `verifyPurchaseSheetBackup()` / `getPurchaseSheetCurrentHeaders()` を追加
+
+### 検証結果
+
+- `npm run build:gas` 通過
+- CI全通過（Gitleaks / Sensitive Content / frontend-check / gas-global-namespace）
+- DEV配布完了: `2026-08-31T02:00:46Z`
+- SHA照合: `d342b5b` 一致
+- `runCoreSchemaConformanceAudit`: 総不一致2件（LEADS 1 + CUSTOMERS 1）= ベースライン一致 **通過**
+- `backupPurchaseSheet`: status=OK, sourceRows=13, sourceCols=19
+- `verifyPurchaseSheetBackup`: status=OK, headersMatch=true（19列完全一致）
+
+### 戻し方
+
+```bash
+git revert d342b5b719ee15537681140339fa18ffcb5b8683
+```
+
+---
+
 ## docs: .pr-number 自己作成をPO承認ルールとして追加 — PR #727
 
 **日付:** 2026-08-31
@@ -4829,49 +4936,4 @@ success ✓
 
 ```bash
 git revert 850475e38b84574aa2c90d42612f0c2ff527e871
-```
-
----
-
-## docs: AGENTS.md の permit 禁止明確化・.pr-number 設置場所を訂正 — PR #732
-
-**日付:** 2026-08-31
-**PR:** [#732](https://github.com/GEN-RYU-System/crm-app/pull/732)
-**マージコミットSHA:** `9135ce8bb07dda188b12b34ab3cada5b85789e68`
-**mergedAt:** `2026-08-31T02:08:25Z`
-
-### 変更内容
-
-PR #730 で追記した AGENTS.md の2箇所を訂正・補強した。
-
-#### 訂正1: .pr-number の設置場所
-
-PR #730 の記述「worktree 内に書く / リポジトリルートには書かない」が誤りだった。
-実測値: `git rev-parse --show-toplevel` → `/Users/tanizawashingo/crm-app-current`（フック実行時の cwd）
-
-| 修正前 | 修正後 |
-|--------|--------|
-| `echo <PR番号> > ~/crm-app-canonical-20260830/.pr-number` | `echo <PR番号> > ~/crm-app-current/.pr-number` |
-| 「リポジトリルートには絶対に書かない」 | 「worktree 内・canonical 20260830 に置いても読まれない」 |
-
-#### 訂正2: permit 禁止の明確化
-
-「permit スクリプトの実行」を拡張し、以下を明示した:
-- `~/.claude/permits/` 配下へのファイル書き込み全般
-- permit-peek.sh / permit-danger.sh の実行
-- printf や echo による直接作成
-- permit の発行は PO のみが行う
-
-### getDeployedSha 照合
-
-ドキュメントのみの変更のため照合不要。
-
-### Deploy to DEV conclusion
-
-success ✓
-
-### 戻し方
-
-```bash
-git revert 9135ce8bb07dda188b12b34ab3cada5b85789e68
 ```
