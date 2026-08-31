@@ -461,6 +461,52 @@ const CORE_SCHEMA_V1_TABLES = {
       { headerKey: 'HTS_CODE_ID',       targetTableKey: 'HTS_CODES' },
       { headerKey: 'MATERIAL_ID',       targetTableKey: 'MATERIALS' }
     ]
+  },
+  CARRIERS: {
+    sheetName: '配送会社マスタ', canonicalName: '配送会社マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['CARRIER_ID',          '配送会社ID'],
+      ['NAME',                '配送会社名'],
+      ['VOLUMETRIC_DIVISOR',  '容積重量除数'],
+      ['ROUNDING_UNIT',       '端数単位'],
+      ['ACTIVE',              '有効'],
+      ['REGISTERED_AT',       '登録日'],
+      ['UPDATED_AT',          '更新日']
+    ]), primaryKey: 'CARRIER_ID',
+    referenceIds: []
+  },
+  ZONES: {
+    sheetName: '地帯マスタ', canonicalName: '地帯マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['ZONE_ID',      '地帯ID'],
+      ['CARRIER_ID',   '配送会社ID'],
+      ['COUNTRY_CODE', '国コード'],
+      ['ZONE',         'ゾーン'],
+      ['ACTIVE',       '有効'],
+      ['REGISTERED_AT','登録日'],
+      ['UPDATED_AT',   '更新日']
+    ]), primaryKey: 'ZONE_ID',
+    referenceIds: [
+      { headerKey: 'CARRIER_ID',   targetTableKey: 'CARRIERS' },
+      { headerKey: 'COUNTRY_CODE', targetTableKey: 'COUNTRIES' }
+    ]
+  },
+  SHIPPING_RATES: {
+    sheetName: '送料表マスタ', canonicalName: '送料表マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['RATE_ID',      '料金ID'],
+      ['CARRIER_ID',   '配送会社ID'],
+      ['ZONE',         'ゾーン'],
+      ['MIN_WEIGHT',   '最小重量'],
+      ['MAX_WEIGHT',   '最大重量'],
+      ['RATE',         '料金'],
+      ['ACTIVE',       '有効'],
+      ['REGISTERED_AT','登録日'],
+      ['UPDATED_AT',   '更新日']
+    ]), primaryKey: 'RATE_ID',
+    referenceIds: [
+      { headerKey: 'CARRIER_ID', targetTableKey: 'CARRIERS' }
+    ]
   }
 };
 
