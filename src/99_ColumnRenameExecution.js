@@ -922,3 +922,179 @@ function verifyAddressSheetBackups() {
   var allOk = results.every(function(r) { return r.status === 'OK'; });
   return { overall: allOk ? 'OK' : 'MISMATCH', results: results };
 }
+
+// ===================================================================
+// Address 共有3シート 列名整形 PR-2: リネーム関数
+// ===================================================================
+
+/**
+ * 発行元マスタのヘッダーを旧列名から英語スネークケースへ一括変更する。
+ *
+ * 対象列（18列）:
+ *   発行元ID     → issuer_id
+ *   会社名       → company_name
+ *   担当者名     → contact_name
+ *   Address 1    → address_line_1
+ *   Address 2    → address_line_2
+ *   Address 3    → address_line_3
+ *   City         → city
+ *   State        → state
+ *   Zip          → zip
+ *   国           → country
+ *   電話番号     → phone
+ *   メール       → email
+ *   登録番号     → registration_no
+ *   受取名義     → payee_name
+ *   受取先メール → payment_email
+ *   注記         → note
+ *   結びの文     → closing_message
+ *   有効         → is_active
+ *
+ * 前提条件:
+ *   - backupIssuerMasterSheet() が実行済みであること（バックアップが存在すること）
+ *   - DEV 環境であること
+ */
+function renameIssuerMasterHeaders() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('renameIssuerMasterHeaders は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+
+  var backupName = '発行元マスタ_backup_20260901';
+  if (!ss.getSheetByName(backupName)) {
+    throw new Error('バックアップシートが存在しません。先に backupIssuerMasterSheet() を実行してください: ' + backupName);
+  }
+
+  var oldToNew = {
+    '発行元ID': 'issuer_id', '会社名': 'company_name', '担当者名': 'contact_name',
+    'Address 1': 'address_line_1', 'Address 2': 'address_line_2', 'Address 3': 'address_line_3',
+    'City': 'city', 'State': 'state', 'Zip': 'zip', '国': 'country',
+    '電話番号': 'phone', 'メール': 'email', '登録番号': 'registration_no',
+    '受取名義': 'payee_name', '受取先メール': 'payment_email', '注記': 'note',
+    '結びの文': 'closing_message', '有効': 'is_active'
+  };
+
+  return _renameSheetHeaders_(ss, getCoreSchemaV1Sheet(ss, 'ISSUER'), oldToNew);
+}
+
+/**
+ * 支払先マスタのヘッダーを旧列名から英語スネークケースへ一括変更する。
+ *
+ * 対象列（16列）:
+ *   支払先ID  → payment_destination_id
+ *   顧客ID    → customer_id
+ *   請求名義  → billing_name
+ *   Address 1 → address_line_1
+ *   Address 2 → address_line_2
+ *   Address 3 → address_line_3
+ *   City      → city
+ *   State     → state
+ *   Zip       → zip
+ *   国        → country
+ *   支払方法  → payment_method
+ *   通貨      → currency
+ *   B Tax ID  → tax_id
+ *   表示名    → display_name
+ *   既定      → is_default
+ *   有効      → is_active
+ */
+function renamePaymentDestinationsHeaders() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('renamePaymentDestinationsHeaders は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+
+  var backupName = '支払先マスタ_backup_20260901';
+  if (!ss.getSheetByName(backupName)) {
+    throw new Error('バックアップシートが存在しません。先に backupPaymentDestinationsSheet() を実行してください: ' + backupName);
+  }
+
+  var oldToNew = {
+    '支払先ID': 'payment_destination_id', '顧客ID': 'customer_id', '請求名義': 'billing_name',
+    'Address 1': 'address_line_1', 'Address 2': 'address_line_2', 'Address 3': 'address_line_3',
+    'City': 'city', 'State': 'state', 'Zip': 'zip', '国': 'country',
+    '支払方法': 'payment_method', '通貨': 'currency', 'B Tax ID': 'tax_id',
+    '表示名': 'display_name', '既定': 'is_default', '有効': 'is_active'
+  };
+
+  return _renameSheetHeaders_(ss, getCoreSchemaV1Sheet(ss, 'PAYMENT_DESTINATIONS'), oldToNew);
+}
+
+/**
+ * 配送先マスタのヘッダーを旧列名から英語スネークケースへ一括変更する。
+ *
+ * 対象列（17列）:
+ *   配送先ID  → shipping_destination_id
+ *   顧客ID    → customer_id
+ *   宛名      → recipient_name
+ *   Address 1 → address_line_1
+ *   Address 2 → address_line_2
+ *   Address 3 → address_line_3
+ *   City      → city
+ *   State     → state
+ *   Zip       → zip
+ *   国        → country
+ *   電話      → phone
+ *   国番号    → country_code
+ *   D Email   → email
+ *   D Tax ID  → tax_id
+ *   表示名    → display_name
+ *   既定      → is_default
+ *   有効      → is_active
+ */
+function renameShippingDestinationsHeaders() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('renameShippingDestinationsHeaders は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+
+  var backupName = '配送先マスタ_backup_20260901';
+  if (!ss.getSheetByName(backupName)) {
+    throw new Error('バックアップシートが存在しません。先に backupShippingDestinationsSheet() を実行してください: ' + backupName);
+  }
+
+  var oldToNew = {
+    '配送先ID': 'shipping_destination_id', '顧客ID': 'customer_id', '宛名': 'recipient_name',
+    'Address 1': 'address_line_1', 'Address 2': 'address_line_2', 'Address 3': 'address_line_3',
+    'City': 'city', 'State': 'state', 'Zip': 'zip', '国': 'country',
+    '電話': 'phone', '国番号': 'country_code', 'D Email': 'email', 'D Tax ID': 'tax_id',
+    '表示名': 'display_name', '既定': 'is_default', '有効': 'is_active'
+  };
+
+  return _renameSheetHeaders_(ss, getCoreSchemaV1Sheet(ss, 'SHIPPING_DESTINATIONS'), oldToNew);
+}
+
+/**
+ * 内部ヘルパー: シートのヘッダー行を oldToNew マップに従って一括変更する。
+ * データ行（2行目以降）は変更しない。
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @param {Object} oldToNew - { 旧名: 新名 }
+ */
+function _renameSheetHeaders_(ss, sheet, oldToNew) {
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) throw new Error(sheet.getName() + ' シートに列がありません');
+
+  var headerRange = sheet.getRange(1, 1, 1, lastCol);
+  var currentHeaders = headerRange.getDisplayValues()[0];
+
+  var details = [];
+  var newHeaders = currentHeaders.map(function(h, i) {
+    var trimmed = String(h).trim();
+    var mapped = oldToNew[trimmed];
+    if (mapped !== undefined && mapped !== trimmed) {
+      details.push({ col: i + 1, before: trimmed, after: mapped });
+      return mapped;
+    }
+    return trimmed;
+  });
+
+  headerRange.setValues([newHeaders]);
+
+  return {
+    status: 'OK',
+    sheetName: sheet.getName(),
+    renamed: details.length,
+    details: details
+  };
+}
