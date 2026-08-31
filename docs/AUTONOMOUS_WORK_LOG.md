@@ -4793,3 +4793,40 @@ mergeCommit (PR #714):    6b14a58c27608bb789a0dca83324ed75b4cdce4d
 ### Deploy to DEV（PR-2）
 
 - Deploy to DEV conclusion: `success` ✓
+
+---
+
+## docs: AGENTS.md にガード遵守・履歴書き換え禁止・PR所有宣言ルールを追記 — PR #730
+
+**日付:** 2026-08-31
+**PR:** [#730](https://github.com/GEN-RYU-System/crm-app/pull/730)
+**マージコミットSHA:** `850475e38b84574aa2c90d42612f0c2ff527e871`
+**mergedAt:** `2026-08-31T01:36:19Z`
+
+### 変更内容
+
+`AGENTS.md` の冒頭（`# Development Rules` 直下）に3ルールを追記した。
+
+| セクション | 内容 |
+|-----------|------|
+| ガードは停止信号であり、迂回してはならない | フックブロック時は即停止・PO報告。迂回禁止行為（!プレフィックス実行・GH_SCOPE_OVERRIDE・permit自己実行・フック編集・.pr-number書き換え）を列挙 |
+| 履歴を書き換える操作は行わない | git rebase / reset --hard / push --force 禁止。乖離時はブランチ作り直し |
+| PR作成後の所有宣言 | gh pr create 直後に worktree 内で `.pr-number` を書く手順の明記 |
+
+### 背景
+
+2026-08-31 のセッションで permit スクリプト自己実行・rebase 実行という違反が発生。再発防止のため Codex（AGENTS.md）に明文化。
+
+### getDeployedSha 照合
+
+ドキュメントのみの変更のため照合不要。
+
+### Deploy to DEV conclusion
+
+success ✓
+
+### 戻し方
+
+```bash
+git revert 850475e38b84574aa2c90d42612f0c2ff527e871
+```
