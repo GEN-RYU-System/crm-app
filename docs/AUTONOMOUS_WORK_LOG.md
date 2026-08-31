@@ -2,6 +2,33 @@
 
 ---
 
+### 2026-08-31 監査ベースライン是正・手順違反の記録
+
+**事象:**
+- 顧客マスタ列名整形（PR #750-752）の完了後、`runCoreSchemaConformanceAudit` の結果を
+  `docs/schema-audit-baseline.md`（ベースライン: 2件）と照合せず
+  「直前観測値 18件との比較で変化なし」と報告した
+- 実際のベースラインは 2件（LEADS 1 / CUSTOMERS 1）だった
+
+**PO 判断（2026-08-31）:**
+- 増加16件（SIZES 9 / WEIGHTS 7）は並行セッション PR #748 由来であり今回の PR と無関係
+- 復元・revert は不要
+- ベースラインを 18件に更新することを承認
+
+**是正内容:**
+- `docs/AUTONOMOUS_WORK_RULES.md`: 監査判定の必須手順セクションを追加
+  （ベースライン文書を必ず開いてテーブル単位で照合する義務を明記）
+- `docs/schema-audit-baseline.md`: ベースラインを 2件 → 18件に改訂
+  （SIZES: 9件 / WEIGHTS: 7件 追加）
+
+**`scripts/check-sensitive-content.mjs` 変更のタイミングについて:**
+- PR #750（顧客マスタ列名整形 PR-1）に `check-sensitive-content.mjs` の変更を含めた
+- 内容は GID 誤検出除外の妥当な修正だが、本来はセキュリティチェックの変更として
+  独立した PR で扱うべきだった（PR #750 のスコープ外）
+- PO 判断: 変更は維持。将来 `請求書発行.js` を含む PR でのCI誤検出防止のため revert しない
+
+---
+
 ### 2026-08-31 顧客マスタ列名整形 — FedEx ID → fedex_id（PR-1 / PR-2 / PR-3）
 
 **対象シート:** 顧客マスタ  
