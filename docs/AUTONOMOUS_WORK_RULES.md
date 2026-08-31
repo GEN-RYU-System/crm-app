@@ -495,3 +495,47 @@ Please commit your changes or stash them before you merge.
 
 ファイルの編集・新規作成はすべて **worktree 内** で行うこと。  
 canonical clone 上での `Edit` / `Write` ツールの使用は禁止する。
+
+---
+
+## worktree の後片付け（2026-08-31 追加）
+
+### 原則: 作った本人が消す
+
+PR をマージしたら、その worktree を必ず削除する。
+これが第一の手段であり、スクリプトは取りこぼしの回収用。
+
+```bash
+git -C ~/crm-app-canonical-20260830 worktree remove <path>
+```
+
+`.pr-number` が残っている場合は先に削除してから実行する。
+
+```bash
+rm <path>/.pr-number
+```
+
+### 上限
+
+`.githooks/pre-push` が worktree 数を検査する（上限19、
+`CRM_MAX_WORKTREES` で変更可）。超えると `git push` が失敗する。
+
+### 取りこぼしの回収
+
+```bash
+bash scripts/worktree-cleanup.sh --dry-run   # 判定のみ
+bash scripts/worktree-cleanup.sh --execute   # 実削除
+```
+
+判定ロジック:
+- PR がマージ済み（`gh pr list --state merged --head <branch>`）
+- 未コミット変更なし（`.pr-number` のみは OK）
+- `develop` / `main` ブランチではない
+- canonical clone でも実行中ワークツリーでもない
+
+### scripts/janitor.sh について
+
+`janitor.sh` は 2026-08-31 (PR #745) に squash merge 対応済み
+（`git merge-base --is-ancestor` → `gh pr list --state merged` に置換）。
+ただし `node_modules` 等の移動も行うため、
+worktree の単純な削除には `worktree-cleanup.sh` を使うこと。
