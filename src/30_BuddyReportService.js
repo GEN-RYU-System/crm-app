@@ -10,15 +10,6 @@
  * - レポート一覧・検索
  */
 
-/**
- * 担当者マスタのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- */
-function _buddyReportStaffHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
-
 // ============================================================
 // シートヘッダー定義
 // ============================================================
@@ -699,9 +690,9 @@ function getStaffNameById(staffId) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  const staffIdIdx = _buddyReportStaffHeaderIdx(headers, 'staff_id', '担当者ID');
-  const lastNameIdx = _buddyReportStaffHeaderIdx(headers, 'last_name_ja', '苗字（日本語）');
-  const firstNameIdx = _buddyReportStaffHeaderIdx(headers, 'first_name_ja', '名前（日本語）');
+  const staffIdIdx = headers.indexOf('staff_id');
+  const lastNameIdx = headers.indexOf('last_name_ja');
+  const firstNameIdx = headers.indexOf('first_name_ja');
 
   for (let i = 1; i < data.length; i++) {
     if (data[i][staffIdIdx] === staffId) {

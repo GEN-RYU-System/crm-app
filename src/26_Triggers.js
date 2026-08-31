@@ -2,14 +2,6 @@
  * onEdit トリガー（インストーラブル）
  */
 
-/**
- * 担当者マスタのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- */
-function _triggersStaffHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 function onEditTrigger(e) {
   if (!e) return;
   
@@ -92,11 +84,10 @@ function autoFillStaffId(e) {
   const staffData = staffSheet.getDataRange().getValues();
   const staffHeaders = staffData[0];
 
-  // 新形式（苗字/名前分離）と旧形式（氏名統合）の両方に対応
-  const familyNameCol = _triggersStaffHeaderIdx(staffHeaders, 'last_name_ja', '苗字（日本語）');
-  const givenNameCol = _triggersStaffHeaderIdx(staffHeaders, 'first_name_ja', '名前（日本語）');
-  const oldNameCol = _triggersStaffHeaderIdx(staffHeaders, 'full_name_ja', '氏名（日本語）');
-  const staffMasterIdCol = _triggersStaffHeaderIdx(staffHeaders, 'staff_id', '担当者ID');
+  const familyNameCol = staffHeaders.indexOf('last_name_ja');
+  const givenNameCol = staffHeaders.indexOf('first_name_ja');
+  const oldNameCol = staffHeaders.indexOf('full_name_ja');
+  const staffMasterIdCol = staffHeaders.indexOf('staff_id');
 
   if (staffMasterIdCol === -1) return;
   if (familyNameCol === -1 && givenNameCol === -1 && oldNameCol === -1) return;

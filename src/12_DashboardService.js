@@ -5,15 +5,6 @@
  */
 
 /**
- * 担当者マスタのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- */
-function _dashboardStaffHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
-
-/**
  * チームダッシュボードデータを取得
  * @returns {Object} チームダッシュボードデータ
  */
@@ -509,10 +500,10 @@ function getPersonalDashboardData(staffId) {
   if (staffSheet) {
     const staffData = staffSheet.getDataRange().getValues();
     const staffHeaders = staffData[0];
-    const idIdx = _dashboardStaffHeaderIdx(staffHeaders, 'staff_id', '担当者ID');
-    const lastNameIdx = _dashboardStaffHeaderIdx(staffHeaders, 'last_name_ja', '苗字（日本語）');
-    const firstNameIdx = _dashboardStaffHeaderIdx(staffHeaders, 'first_name_ja', '名前（日本語）');
-    const fullNameIdx = _dashboardStaffHeaderIdx(staffHeaders, 'full_name_ja', '氏名（日本語）');
+    const idIdx = staffHeaders.indexOf('staff_id');
+    const lastNameIdx = staffHeaders.indexOf('last_name_ja');
+    const firstNameIdx = staffHeaders.indexOf('first_name_ja');
+    const fullNameIdx = staffHeaders.indexOf('full_name_ja');
 
     for (let i = 1; i < staffData.length; i++) {
       if (staffData[i][idIdx] === staffId) {

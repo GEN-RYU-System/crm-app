@@ -8,15 +8,6 @@
  */
 
 /**
- * 担当者マスタのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- */
-function _setupStaffHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
-
-/**
  * リード管理シートの60列ヘッダー定義
  * Config.gs の HEADERS.LEADS と同期必須
  * CLAUDE.md Section 2.2 準拠
@@ -354,10 +345,10 @@ function setDataValidationsForSetup(sheet, ss) {
       // 新形式（苗字/名前分離）と旧形式（氏名統合）の両方に対応
       const staffData = staffSheet.getDataRange().getValues();
       const staffHeaders = staffData[0];
-      const familyNameColIndex = _setupStaffHeaderIdx(staffHeaders, 'last_name_ja', '苗字（日本語）');
-      const givenNameColIndex = _setupStaffHeaderIdx(staffHeaders, 'first_name_ja', '名前（日本語）');
-      const oldNameColIndex = _setupStaffHeaderIdx(staffHeaders, 'full_name_ja', '氏名（日本語）');
-      const statusColIndex = _setupStaffHeaderIdx(staffHeaders, 'status', 'ステータス');
+      const familyNameColIndex = staffHeaders.indexOf('last_name_ja');
+      const givenNameColIndex = staffHeaders.indexOf('first_name_ja');
+      const oldNameColIndex = staffHeaders.indexOf('full_name_ja');
+      const statusColIndex = staffHeaders.indexOf('status');
 
       const staffNames = [];
       for (let i = 1; i < staffData.length; i++) {
@@ -1006,14 +997,14 @@ function migrateStaffMasterData() {
   const headers = data[0];
 
   // 旧形式の列を探す
-  const oldNameJaIdx = _setupStaffHeaderIdx(headers, 'full_name_ja', '氏名（日本語）');
+  const oldNameJaIdx = headers.indexOf('full_name_ja');
   const oldNameEnIdx = headers.indexOf('氏名（英語）');
 
   // 新形式の列を探す
-  const familyNameJaIdx = _setupStaffHeaderIdx(headers, 'last_name_ja', '苗字（日本語）');
-  const givenNameJaIdx = _setupStaffHeaderIdx(headers, 'first_name_ja', '名前（日本語）');
-  const familyNameEnIdx = _setupStaffHeaderIdx(headers, 'last_name_en', '苗字（英語）');
-  const givenNameEnIdx = _setupStaffHeaderIdx(headers, 'first_name_en', '名前（英語）');
+  const familyNameJaIdx = headers.indexOf('last_name_ja');
+  const givenNameJaIdx = headers.indexOf('first_name_ja');
+  const familyNameEnIdx = headers.indexOf('last_name_en');
+  const givenNameEnIdx = headers.indexOf('first_name_en');
 
   // 新形式の列が存在しない場合はヘッダー更新を促す
   if (familyNameJaIdx === -1 || givenNameJaIdx === -1) {
