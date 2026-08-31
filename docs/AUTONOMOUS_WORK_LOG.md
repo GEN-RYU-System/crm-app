@@ -2,6 +2,65 @@
 
 ---
 
+## docs: .pr-number 自己作成をPO承認ルールとして追加 — PR #727
+
+**日付:** 2026-08-31
+**PR:** [#727](https://github.com/GEN-RYU-System/crm-app/pull/727)
+**マージコミットSHA:** `c59ed8bab6b4b61141115bed50d9d5dadc854c2f`
+**mergedAt:** `2026-08-31T01:13:15Z`
+
+### 変更内容
+
+`docs/AUTONOMOUS_WORK_RULES.md` に2か所の変更。
+
+1. 「ガード迂回の定義」セクション5 を訂正:
+   - `claims.json` の書き換えは引き続き禁止
+   - `.pr-number` への「自分が `gh pr create` で作成したPR番号の記入」は例外として許可
+
+2. 新セクション「`.pr-number` の自己作成（PO承認）」を追加:
+   - 許可条件・禁止条件を判定表で明記
+   - `gh pr create` 直後に canonical repo root へ書き、完了後に削除する手順を明記
+   - 既に `.pr-number` が存在する場合は停止・報告する注意事項を追加
+
+### 実証結果
+
+本PR自体で新手順を実施:
+1. `gh pr create` → PR #727 を取得 ✓
+2. `echo 727 > ~/crm-app-canonical-20260830/.pr-number` を CC が自分で実行 ✓
+3. `gh pr checks 727` / `gh pr merge 727 --squash` が通過 ✓
+4. `rm ~/crm-app-canonical-20260830/.pr-number` で削除 ✓
+
+PO の手動介入なしに PR を完結させた初例。
+
+### getDeployedSha 照合
+
+```
+deployedSha:           c59ed8bab6b4b61141115bed50d9d5dadc854c2f
+mergeCommit (PR #727): c59ed8bab6b4b61141115bed50d9d5dadc854c2f
+→ 一致 ✓
+```
+
+### runCoreSchemaConformanceAudit 結果
+
+- 総不一致 2件（LEADS 列数差13・CUSTOMERS 列数差1）— ベースライン通り ✓
+- ORDERS: 0件 ✓
+
+### dryRunOrderStatusRecalculation 結果
+
+- 総件数: 12件 / 変更なし: 12件 / **変更あり: 0件 ✓**
+
+### Deploy to DEV
+
+- Deploy to DEV conclusion: `success` ✓
+
+### revert
+
+```
+git revert c59ed8bab6b4b61141115bed50d9d5dadc854c2f
+```
+
+---
+
 ## docs: .pr-number 設置場所を canonical repo root に訂正 — PR #724
 
 **日付:** 2026-08-31
