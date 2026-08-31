@@ -2,6 +2,32 @@
 
 ---
 
+### 2026-08-31 CI Sensitive Content 除外ルール台帳を新規作成（PR #771）
+
+**概要:**
+`scripts/check-sensitive-content.mjs` の除外ルールが PR #471 / #474 / #480 / #750 / #762
+にわたって累積してきたため、追跡用台帳 `docs/ci-sensitive-content-exclusions.md` を作成。
+
+**記録内容:**
+- `isKnownNonContactNumber` 内の除外ルール A-1〜A-7（全7件）
+- `safePhone` 正規表現（初期フィルタ）
+- スキャンループ内の個別除外 C-1（`getRequiredSpreadsheetProperty`）
+- 各ルールの行番号・条件・コード・追加PR・コミット SHA・理由・除外対象例
+- git blame で事実確認済み。推測なし。
+
+**CI トラブル:**
+ドキュメント内「除外対象の例」列に電話番号サンプルを記載したところ、
+`docs/` ファイルも電話番号チェック対象のため CI fail（Sensitive Content L85/L86/L98/L99）。
+`check-sensitive-content.mjs` は変更禁止のため、ドキュメント側の例示を
+`+81-3-XXXX-XXXX` プレースホルダーに置換して対応（2コミット）。
+
+**事後確認:**
+- SHA: `a462c50efd80453081fba4b8285253e52566f86b` = origin/develop HEAD ✅
+- 監査: 2件（LEADS 1 / CUSTOMERS 1）= baseline ✅
+- dryRun: 変更あり 0件 ✅
+
+---
+
 ### 2026-08-31 共用商品・商品荷姿 GAS API 新設（PR #767 / #769）
 
 **概要:**
