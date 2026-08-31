@@ -28,6 +28,10 @@ function isKnownNonContactNumber(line, match) {
   if (/\bID\s*:\s*$/i.test(prefix)) return true;
   // Google Sheets tab GIDs are numeric string literals, not phone numbers
   if (/\bGIDS?\b/.test(line) && /["']$/.test(prefix)) return true;
+  // JSDoc comment lines (* prefix) and code comment lines (//) contain documentation examples, not real contacts
+  if (/^\s*(?:\/\/|\*)/.test(line)) return true;
+  // Array-literal lines where the phone is inside a string literal are test data (e.g. normalizePhone CASES)
+  if (/^\s*\[/.test(line) && /["']$/.test(prefix)) return true;
   return [...line.matchAll(/[0-9a-f]{40}/gi)].some((sha) => {
     const start = sha.index;
     const end = start + sha[0].length;
