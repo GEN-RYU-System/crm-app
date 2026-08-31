@@ -36,7 +36,8 @@ export type NavigationItemId =
   | 'issuerMaster'
   | 'components'
   | 'dashboardPreview'
-  | 'packageMaster';
+  | 'packageMaster'
+  | 'ownMaster';
 export type NavigationItemState = 'available' | 'preview' | 'planned';
 export type NavigationItem = {
   id: NavigationItemId;
@@ -83,7 +84,8 @@ const DATA_MGMT_SUB_ITEMS: readonly NavigationItem[] = [
 
 const PRODUCT_MGMT_SUB_ITEMS: readonly NavigationItem[] = [
   { id: 'productMaster', label: dataManagementCopy.productMaster, hash: '/product-master', icon: 'inventory', order: 2, state: 'planned', requiredPermission: 'staff_manage' },
-  { id: 'packageMaster', label: dataManagementCopy.packageMaster, hash: '/package-master', icon: 'inventory', order: 3, state: 'preview', requiredPermission: 'admin_access' }
+  { id: 'packageMaster', label: dataManagementCopy.packageMaster, hash: '/package-master', icon: 'inventory', order: 3, state: 'preview', requiredPermission: 'admin_access' },
+  { id: 'ownMaster', label: dataManagementCopy.ownMaster, hash: '/own-master', icon: 'inventory', order: 4, state: 'preview', requiredPermission: 'admin_access' }
 ];
 
 const EXTERNAL_LINK_SUB_ITEMS: readonly NavigationItem[] = [

@@ -1,0 +1,26 @@
+export const ownMasterCopy = {
+  title: '自社マスタ',
+  subtitle: '自社大分類・自社作品・自社メーカーを登録・編集します。',
+  tabCategories: '大分類',
+  tabWorks: '作品',
+  tabManufacturers: 'メーカー',
+  loading: '読み込み中…',
+  loadError: '読み込みに失敗しました。',
+  retry: '再試行',
+  btnAddNew: '新規追加',
+  btnSave: '保存',
+  btnCancel: 'キャンセル',
+  saving: '保存中…',
+  saveSuccess: '保存しました。',
+  saveError: '保存に失敗しました。',
+  // Common columns
+  colId: 'ID',
+  colNameEn: '名称（英語）',
+  colNameJa: '名称（日本語）',
+  colActive: '有効',
+  // Misc
+  inactiveLabel: '（無効）',
+  noData: 'データがありません。',
+  activeLabel: '有効',
+  inactiveSelectLabel: '無効',
+} as const;

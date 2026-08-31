@@ -652,6 +652,24 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     upsertCorePackageForFrontend(_s: string | null, _payload: unknown) {
       succeed({ success: true, packageId: 'PKG-MOCK' });
     },
+    getCoreOwnCategoriesForFrontend(_s: string | null) {
+      succeed([]);
+    },
+    getCoreOwnWorksForFrontend(_s: string | null) {
+      succeed([]);
+    },
+    getCoreOwnManufacturersForFrontend(_s: string | null) {
+      succeed([]);
+    },
+    upsertCoreOwnCategoryForFrontend(_s: string | null, _payload: unknown) {
+      succeed({ success: true, categoryId: 'OWN-CAT-MOCK' });
+    },
+    upsertCoreOwnWorkForFrontend(_s: string | null, _payload: unknown) {
+      succeed({ success: true, workId: 'OWN-WRK-MOCK' });
+    },
+    upsertCoreOwnManufacturerForFrontend(_s: string | null, _payload: unknown) {
+      succeed({ success: true, manufacturerId: 'OWN-MFR-MOCK' });
+    },
     checkSyncSignals(_s: string | null) { succeed(mockSyncSignals); },
     getLeadsBatchForFrontend(_s: string | null, _force: boolean) {
       succeed({ leads: [], formOptions: { leadTypes: [], responseSpeeds: [], countries: [], leadSources: [] } });

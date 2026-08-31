@@ -1143,6 +1143,87 @@ export function upsertCorePackage(payload: UpsertPackagePayload): Promise<Upsert
   });
 }
 
+// ─── Own Master ───────────────────────────────────────────────────────────────
+
+export type OwnCategoryRecord = { categoryId: string; nameEn: string; nameJa: string; isActive: string };
+export type OwnWorkRecord     = { workId: string; nameEn: string; nameJa: string; isActive: string };
+export type OwnManufacturerRecord = { manufacturerId: string; nameEn: string; nameJa: string; isActive: string };
+
+export function getCoreOwnCategories(): Promise<OwnCategoryRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as OwnCategoryRecord[]))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getCoreOwnCategoriesForFrontend(getStoredSessionId());
+  });
+}
+
+export function getCoreOwnWorks(): Promise<OwnWorkRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as OwnWorkRecord[]))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getCoreOwnWorksForFrontend(getStoredSessionId());
+  });
+}
+
+export function getCoreOwnManufacturers(): Promise<OwnManufacturerRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as OwnManufacturerRecord[]))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getCoreOwnManufacturersForFrontend(getStoredSessionId());
+  });
+}
+
+export type UpsertOwnCategoryPayload = { categoryId?: string; nameEn?: string; nameJa?: string; isActive?: boolean };
+export type UpsertOwnCategoryResult  = { success: true; categoryId: string };
+
+export function upsertCoreOwnCategory(payload: UpsertOwnCategoryPayload): Promise<UpsertOwnCategoryResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as UpsertOwnCategoryResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .upsertCoreOwnCategoryForFrontend(getStoredSessionId(), payload);
+  });
+}
+
+export type UpsertOwnWorkPayload = { workId?: string; nameEn?: string; nameJa?: string; isActive?: boolean };
+export type UpsertOwnWorkResult  = { success: true; workId: string };
+
+export function upsertCoreOwnWork(payload: UpsertOwnWorkPayload): Promise<UpsertOwnWorkResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as UpsertOwnWorkResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .upsertCoreOwnWorkForFrontend(getStoredSessionId(), payload);
+  });
+}
+
+export type UpsertOwnManufacturerPayload = { manufacturerId?: string; nameEn?: string; nameJa?: string; isActive?: boolean };
+export type UpsertOwnManufacturerResult  = { success: true; manufacturerId: string };
+
+export function upsertCoreOwnManufacturer(payload: UpsertOwnManufacturerPayload): Promise<UpsertOwnManufacturerResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as UpsertOwnManufacturerResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .upsertCoreOwnManufacturerForFrontend(getStoredSessionId(), payload);
+  });
+}
+
 export type UpsertPurchaseResult = { success: true; purchaseId: string };
 
 export function upsertCorePurchase(payload: UpsertPurchasePayload): Promise<UpsertPurchaseResult> {
