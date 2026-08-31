@@ -6,16 +6,65 @@
  *       読み取り専用の DRY_RUN と、実際にシートを作成する APPLY の2モードを持つ。
  *
  * 禁止事項:
- *   - 既存シートの変更・削除・上書き
+ *   - 既存シートの変更・削除・上書き（deleteCorruptedSizesWeights を除く）
  *   - データ行の書き込み（ヘッダー行のみ作成する）
  *   - PROD 環境での実行
  *
  * 使い方:
  *   clasp run setupPackageMasterSheets --params '["DRY_RUN"]'
  *   clasp run setupPackageMasterSheets --params '["APPLY"]'
+ *   clasp run deleteCorruptedSizesWeights
  */
 
 var PACKAGE_MASTER_TABLE_KEYS = ['SIZES', 'WEIGHTS', 'PACKAGES', 'PRODUCT_PACKAGES'];
+
+/**
+ * サイズマスタ・重量マスタを削除する（ヘッダー破損からの復旧用）。
+ *
+ * 対象シートのみを削除する。他のシートは変更しない。
+ * 荷姿マスタ・商品荷姿マスタは対象外。
+ * development 環境でのみ実行可能。
+ *
+ * 使い方:
+ *   clasp run deleteCorruptedSizesWeights
+ *
+ * @returns {Object} 削除結果
+ */
+function deleteCorruptedSizesWeights() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('deleteCorruptedSizesWeights は development 環境でのみ実行できます。');
+  }
+
+  var TARGET_SHEET_NAMES = [
+    getCoreSchemaV1TableName('SIZES'),
+    getCoreSchemaV1TableName('WEIGHTS')
+  ];
+
+  var ss = getSpreadsheet();
+  var deleted = [];
+  var notFound = [];
+
+  TARGET_SHEET_NAMES.forEach(function(name) {
+    var sheet = ss.getSheetByName(name);
+    if (sheet) {
+      ss.deleteSheet(sheet);
+      Logger.log('  🗑️  ' + name + ' を削除しました。');
+      deleted.push(name);
+    } else {
+      Logger.log('  ⚠️  ' + name + ' は存在しません。スキップしました。');
+      notFound.push(name);
+    }
+  });
+
+  Logger.log('削除完了: ' + deleted.length + '件 / 不在: ' + notFound.length + '件');
+
+  return {
+    deleted: deleted,
+    notFound: notFound,
+    deletedCount: deleted.length,
+    notFoundCount: notFound.length
+  };
+}
 
 /**
  * 荷姿関連4シートを DRY_RUN または APPLY する。
