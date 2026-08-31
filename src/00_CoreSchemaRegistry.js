@@ -325,6 +325,64 @@ const CORE_SCHEMA_V1_TABLES = {
       ['UPDATED_AT',    '更新日']
     ]), primaryKey: 'MATERIAL_ID',
     referenceIds: []
+  },
+  OWN_CATEGORIES: {
+    sheetName: '自社大分類マスタ', canonicalName: '自社大分類マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['OWN_CATEGORY_ID', '自社大分類ID'],
+      ['NAME_EN',         '名称（英語）'],
+      ['NAME_JA',         '名称（日本語）'],
+      ['ACTIVE',          '有効'],
+      ['REGISTERED_AT',   '登録日'],
+      ['UPDATED_AT',      '更新日']
+    ]), primaryKey: 'OWN_CATEGORY_ID',
+    referenceIds: []
+  },
+  OWN_WORKS: {
+    sheetName: '自社作品マスタ', canonicalName: '自社作品マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['OWN_WORK_ID',   '自社作品ID'],
+      ['NAME_EN',       '名称（英語）'],
+      ['NAME_JA',       '名称（日本語）'],
+      ['ACTIVE',        '有効'],
+      ['REGISTERED_AT', '登録日'],
+      ['UPDATED_AT',    '更新日']
+    ]), primaryKey: 'OWN_WORK_ID',
+    referenceIds: []
+  },
+  OWN_MANUFACTURERS: {
+    sheetName: '自社メーカーマスタ', canonicalName: '自社メーカーマスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['OWN_MANUFACTURER_ID', '自社メーカーID'],
+      ['NAME_EN',             '名称（英語）'],
+      ['NAME_JA',             '名称（日本語）'],
+      ['ACTIVE',              '有効'],
+      ['REGISTERED_AT',       '登録日'],
+      ['UPDATED_AT',          '更新日']
+    ]), primaryKey: 'OWN_MANUFACTURER_ID',
+    referenceIds: []
+  },
+  OWN_PRODUCTS: {
+    sheetName: '自社商品マスタ', canonicalName: '自社商品マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['OWN_PRODUCT_ID',      '自社商品ID'],
+      ['SHARED_PRODUCT_ID',   '共用商品ID'],
+      ['NAME_EN',             '商品名（英語）'],
+      ['NAME_JA',             '商品名（日本語）'],
+      ['OWN_CATEGORY_ID',     '自社大分類ID'],
+      ['OWN_WORK_ID',         '自社作品ID'],
+      ['OWN_MANUFACTURER_ID', '自社メーカーID'],
+      ['MEMO',                'メモ'],
+      ['ACTIVE',              '有効'],
+      ['REGISTERED_AT',       '登録日'],
+      ['UPDATED_AT',          '更新日']
+    ]), primaryKey: 'OWN_PRODUCT_ID',
+    referenceIds: [
+      { headerKey: 'OWN_CATEGORY_ID',     targetTableKey: 'OWN_CATEGORIES' },
+      { headerKey: 'OWN_WORK_ID',         targetTableKey: 'OWN_WORKS' },
+      { headerKey: 'OWN_MANUFACTURER_ID', targetTableKey: 'OWN_MANUFACTURERS' },
+      { headerKey: 'SHARED_PRODUCT_ID',   targetTableKey: 'PRODUCTS' }
+    ]
   }
 };
 
