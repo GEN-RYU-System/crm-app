@@ -28,9 +28,11 @@ function verifyShippingRateImport() {
   var zonesHeader = zonesData[0];
   var zonesRows   = zonesData.slice(1);
 
-  var zCarrierIdx = zonesHeader.indexOf('CARRIER_ID');
-  var zCountryIdx = zonesHeader.indexOf('COUNTRY_CODE');
-  var zZoneIdx    = zonesHeader.indexOf('ZONE');
+  // ヘッダーはスキーマの表示名（日本語）で格納されている
+  var zonesSchema = getCoreSchemaV1Table('ZONES').headers;
+  var zCarrierIdx = zonesHeader.indexOf(zonesSchema['CARRIER_ID']);
+  var zCountryIdx = zonesHeader.indexOf(zonesSchema['COUNTRY_CODE']);
+  var zZoneIdx    = zonesHeader.indexOf(zonesSchema['ZONE']);
 
   // --- SHIPPING_RATES シート取得 ---
   var ratesSheet = ss.getSheetByName(getCoreSchemaV1TableName('SHIPPING_RATES'));
