@@ -6202,3 +6202,17 @@ FedEx / DHL / UPS が地帯表で独立した配送先として区別してい�
 - addShippingRegionsToCountryMaster("APPLY"): 追加6件（AC/IC/TA/WK/MI/CN-S）✅
 - runCoreSchemaConformanceAudit: COUNTRIES 0件・総不一致2件 = ベースライン ✅
 - seedCountryMaster（読み取り専用）: 256行 ✅（250 + 6 = 256）
+
+
+---
+
+### 2026-08-31 列名整形（6シート目以降）: Address 共有3シート
+
+- 対象: 発行元マスタ(18列) / 支払先マスタ(16列) / 配送先マスタ(17列)
+- 理由: Address 1/2/3 を3シートで共有しており、単独変更では他シートが壊れるため同時実施
+- PR-1: #800 / `f9f1d467e4e36060d5fcc8b462fa6aed6c2be336` / デュアルサポート追加（headerAliasMap + フォールバック）
+- PR-2: #801 / `300acdfff9889ec7e6b7638e8259d88f0e1500f2` / CoreSchemaレジストリ切り替え + 3シートのヘッダー実リネーム実行
+- PR-3: #804 / `46f604915ccd173f44d4400388c2097cec811528` / 旧名フォールバック削除（headerAliasMap 全除去）
+- バックアップ: 発行元マスタ_backup_20260901 / 支払先マスタ_backup_20260901 / 配送先マスタ_backup_20260901
+- 検証: 危険操作 grep 0件 / 3シートのヘッダー照合一致（renamed各18/16/17件 status:OK）/ 旧列名機能的参照残存0件 / PDF系参照確認済み（frontend/src/content/ja/issuer.ts:39-41 / features/documents/invoiceUtils.ts:21-23）
+- 復元: 3シートを各複製から書き戻し、コードは `git revert 46f604915` → `git revert 300acdfff` → `git revert f9f1d467e`（逆順）

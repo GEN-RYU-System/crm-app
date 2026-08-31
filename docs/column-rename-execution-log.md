@@ -254,3 +254,136 @@
   - dryRun: 変更あり 0件 ✅
 
 **担当者マスタ 列リネーム 完了 ✅**
+
+---
+
+## Address 共有3シート（発行元マスタ / 支払先マスタ / 配送先マスタ）
+
+> 3シートが `Address 1` / `Address 2` / `Address 3` / `City` / `State` / `Zip` を共有しており、  
+> 単独変更では他シートが壊れるため同時実施。
+
+### 対象列
+
+**発行元マスタ（18列）:**
+
+| 旧名 | 新名 |
+|------|------|
+| 発行元ID | issuer_id |
+| 会社名 | company_name |
+| 担当者名 | contact_name |
+| Address 1 | address_line_1 |
+| Address 2 | address_line_2 |
+| Address 3 | address_line_3 |
+| City | city |
+| State | state |
+| Zip | zip |
+| 国 | country |
+| 電話番号 | phone |
+| メール | email |
+| 登録番号 | registration_no |
+| 受取名義 | payee_name |
+| 受取先メール | payment_email |
+| 注記 | note |
+| 結びの文 | closing_message |
+| 有効 | is_active |
+
+**支払先マスタ（16列）:**
+
+| 旧名 | 新名 |
+|------|------|
+| 支払先ID | payment_destination_id |
+| 顧客ID | customer_id |
+| 表示名 | display_name |
+| 請求名義 | billing_name |
+| Address 1 | address_line_1 |
+| Address 2 | address_line_2 |
+| Address 3 | address_line_3 |
+| City | city |
+| State | state |
+| Zip | zip |
+| 国 | country |
+| 支払方法 | payment_method |
+| 通貨 | currency |
+| B Tax ID | tax_id |
+| 既定 | is_default |
+| 有効 | is_active |
+
+**配送先マスタ（17列）:**
+
+| 旧名 | 新名 |
+|------|------|
+| 配送先ID | shipping_destination_id |
+| 顧客ID | customer_id |
+| 表示名 | display_name |
+| 宛名 | recipient_name |
+| Address 1 | address_line_1 |
+| Address 2 | address_line_2 |
+| Address 3 | address_line_3 |
+| City | city |
+| State | state |
+| Zip | zip |
+| 国 | country |
+| 電話 | phone |
+| 国番号 | country_code |
+| D Email | email |
+| D Tax ID | tax_id |
+| 既定 | is_default |
+| 有効 | is_active |
+
+### バックアップ
+
+| シート | バックアップ名 | rows | cols |
+|-------|-------------|------|------|
+| 発行元マスタ | 発行元マスタ_backup_20260901 | 2 | 18 |
+| 支払先マスタ | 支払先マスタ_backup_20260901 | 7 | 16 |
+| 配送先マスタ | 配送先マスタ_backup_20260901 | 7 | 17 |
+
+### PR-1 — デュアルサポート追加
+
+- PR: #800
+- マージ: 2026-08-31T18:16:40Z
+- squash commit SHA: `f9f1d467e4e36060d5fcc8b462fa6aed6c2be336`
+- 変更ファイル: 6ファイル
+  - `src/00_CoreSchemaRegistry.js` — SHIPPING_DESTINATIONS / PAYMENT_DESTINATIONS / ISSUER の headerAliasMap 追加（旧名→新名マップ）、validateCoreSchemaV1TableForWrite にフォールバック追加
+  - `src/28_CoreCustomerReadApi.js` — coreCustomerFrontendReadTable に aliasMap フォールバック追加
+  - `src/28_CoreIssuerApi.js` — getCoreIssuerForFrontend に oldToNew 変換・aliasMap フォールバック追加
+  - `src/18_CustomerRegistration.js` — CoreSchema 経由の書き込みに変更
+  - `src/99_ColumnRenameExecution.js` — backupIssuerMasterSheet / backupPaymentDestinationsSheet / backupShippingDestinationsSheet / renameIssuerMasterHeaders / renamePaymentDestinationsHeaders / renameShippingDestinationsHeaders 追加
+  - `frontend/src/content/ja/issuer.ts` — ISSUER_HEADER 定数を新物理名に更新
+
+### PR-2 — CoreSchema 切り替え + シートリネーム実行
+
+- PR: #801
+- マージ: 2026-08-31T18:31:33Z
+- squash commit SHA: `300acdfff9889ec7e6b7638e8259d88f0e1500f2`
+- 変更ファイル: 4ファイル
+  - `src/00_CoreSchemaRegistry.js` — SHIPPING_DESTINATIONS / PAYMENT_DESTINATIONS / ISSUER の headers を新名に切り替え（headerAliasMap は逆方向に変更）
+  - `src/08_Config.js` — 設定更新
+  - `src/99_ColumnRenameExecution.js` — renameIssuerMasterHeaders / renamePaymentDestinationsHeaders / renameShippingDestinationsHeaders 追加
+  - `src/99_DevDemoSeed20260826.js` — シードデータを新列名に更新
+- シートリネーム実行結果:
+  - `renameIssuerMasterHeaders`: `{status: 'OK', renamed: 18, sheetName: '発行元マスタ'}`
+  - `renamePaymentDestinationsHeaders`: `{status: 'OK', renamed: 16, sheetName: '支払先マスタ'}`
+  - `renameShippingDestinationsHeaders`: `{status: 'OK', renamed: 17, sheetName: '配送先マスタ'}`
+- 事後確認（PR-2 後、シートリネーム後）:
+  - SHA: `a8906f6b5f96ed984997f1b85b949dab234eddc4`, deployedAt: `2026-08-31T18:35:17Z`
+  - 監査: 2件（LEADS 1 / CUSTOMERS 1）= baseline ✅、SHIPPING_DESTINATIONS 0件 ✅、PAYMENT_DESTINATIONS 0件 ✅、ISSUER 0件 ✅
+  - dryRun: 変更あり 0件 ✅
+
+### PR-3 — フォールバック除去
+
+- PR: #804
+- マージ: 2026-08-31T18:46:29Z
+- squash commit SHA: `46f604915ccd173f44d4400388c2097cec811528`
+- 変更ファイル: 5ファイル
+  - `src/00_CoreSchemaRegistry.js` — SHIPPING_DESTINATIONS / PAYMENT_DESTINATIONS / ISSUER の headerAliasMap を完全削除。validateCoreSchemaV1TableForWrite の aliasMap フォールバックコードを除去
+  - `src/28_CoreCustomerReadApi.js` — coreCustomerFrontendReadTable の aliasMap フォールバック除去
+  - `src/28_CoreIssuerApi.js` — getCoreIssuerForFrontend の oldToNew 変換・aliasMap フォールバック除去
+  - `src/17_CountryMaster.js` — fixAddressSplits / auditAddressCharset / auditAddressLength の旧列名を新列名に更新
+  - `src/18_CustomerRegistration.js` — testRegisterCustomer デバッグコードとコメントの旧列名を新列名に更新
+- 事後確認（PR-3 後）:
+  - SHA: `f0020ce4c72c89475988acf89fb2e23e3e415c45`, deployedAt: `2026-08-31T18:48:31Z`
+  - 監査: 2件（LEADS 1 / CUSTOMERS 1）= baseline ✅、SHIPPING_DESTINATIONS 0件 ✅、PAYMENT_DESTINATIONS 0件 ✅、ISSUER 0件 ✅
+  - dryRun: 変更あり 0件 ✅
+
+**Address 共有3シート 列リネーム 完了 ✅**
