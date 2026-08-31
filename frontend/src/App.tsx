@@ -35,6 +35,7 @@ import { DashboardKpiCacheProvider, useDashboardKpiCache } from './pages/dashboa
 import { DataManagementPage } from './pages/data-management/DataManagementPage';
 import { IssuerMasterPage } from './pages/data-management/IssuerMasterPage';
 import { PackageMasterPage } from './pages/data-management/PackageMasterPage';
+import { OwnMasterPage } from './pages/data-management/OwnMasterPage';
 import { IssuerMasterCacheProvider, useIssuerMasterCache } from './pages/data-management/IssuerMasterCacheContext';
 import { CustomerListCacheProvider } from './pages/customers/CustomerListCacheContext';
 import { CustomerDetailCacheProvider } from './pages/customers/CustomerDetailCacheContext';
@@ -75,6 +76,7 @@ import { SalesOrderDetailCacheProvider } from './pages/sales-orders/SalesOrderDe
 import { SalesOrderListCacheProvider } from './pages/sales-orders/SalesOrderListCacheContext';
 import { customersCopy, errorCopy, inboxCopy, issuerCopy, leadsCopy, ordersCopy, quotesCopy, salesOrdersCopy, staffCopy } from './content/ja';
 import { packageMasterCopy } from './content/ja/packageMaster';
+import { ownMasterCopy } from './content/ja/ownMaster';
 import { authCopy } from './content/ja/auth';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -280,6 +282,12 @@ function AppRouter() {
       ? <PackageMasterPage />
       : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
 
+  const ownMasterRoute = permissionState.status === 'checking'
+    ? <StatusMessage variant="loading"><Spinner size="sm" aria-label={ownMasterCopy.loading} />{ownMasterCopy.loading}</StatusMessage>
+    : canAccessPackageMaster
+      ? <OwnMasterPage />
+      : <Navigate to={NAVIGATION_BY_ID.dashboard.hash} replace />;
+
   const hubIndexRoutes: Partial<Record<NavigationItemId, ReactNode>> = {
     leads: leadsRoute,
     customers: customersRoute,
@@ -287,7 +295,8 @@ function AppRouter() {
     orders: ordersRoute,
     staff: staffRoute,
     issuerMaster: issuerMasterRoute,
-    packageMaster: packageMasterRoute
+    packageMaster: packageMasterRoute,
+    ownMaster: ownMasterRoute
   };
   const hubExtraRoutes: Partial<Record<NavigationItemId, ReactNode[]>> = {
     leads: [
