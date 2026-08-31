@@ -345,27 +345,41 @@ Playwright 確認後、配布完了を PO（Shingo）に報告し、DEV 実機�
 
 ---
 
-## gh-scope-guard を通すための必須手順（2026-08-31 追加）
+## gh-scope-guard を通すための必須手順（2026-08-31 追加・訂正）
 
 gh-scope-guard は `.pr-number` または `claims.json` で
 PR の所有権を判定する。どちらも無い場合、
 安全側に倒れて全ての gh コマンドを拒否する（仕様どおり）。
 
+**重要:** フックは Bash ツール実行前（`cd` より前）に走る。
+そのため `.pr-number` は **canonical repo root**
+（`~/crm-app-canonical-20260830/`）に置く必要がある。
+worktree 内の `.pr-number` は `claims.json` が存在しない限り読まれない。
+
 ### 必須手順
 
 1. 作業は必ず worktree 内で行う（canonical clone では作業しない）
-2. `gh pr create` の直後、その worktree 内で必ず実行する:
+2. `gh pr create` の直後、**canonical repo root** に PR番号を書く:
    ```
-   echo <PR番号> > .pr-number
+   echo <PR番号> > ~/crm-app-canonical-20260830/.pr-number
    ```
-3. `gh pr checks` / `gh pr diff` / `gh pr merge` は
-   すべて同じ worktree 内から実行する
-4. worktree を削除する前に、PR がマージ済みであることを確認する
+3. `gh pr checks` / `gh pr diff` / `gh pr merge` を実行する
+4. PR のマージが完了したら `.pr-number` を削除する:
+   ```
+   rm ~/crm-app-canonical-20260830/.pr-number
+   ```
+5. worktree を削除する前に、PR がマージ済みであることを確認する
 
 ### 手順を飛ばした場合
 
 ガードにブロックされる。これは正常な動作である。
 迂回してはならない。手順 2 に戻って `.pr-number` を作成すること。
+
+### 注意: 並行セッション
+
+canonical repo root の `.pr-number` は1つしかない。
+複数セッションが同時に PR を扱う場合、上書きが起きる可能性がある。
+作業が終わったら必ず `.pr-number` を削除すること。
 
 ### 背景
 
@@ -373,3 +387,7 @@ PR の所有権を判定する。どちらも無い場合、
 gh-scope-guard が全ブロックする事象が複数回発生し、
 これが許可ファイル自作（迂回 10 件）の背景となった。
 ガードの不具合ではなく、運用手順の欠落が原因。
+
+2026-08-31、PR #721 追記時に `.pr-number` の設置場所を
+「worktree 内」と誤記した。フックの動作（Bash ツール内の cd より前に実行）を
+実証し、正しい場所が canonical repo root であることを確認した（PR #722 で訂正）。
