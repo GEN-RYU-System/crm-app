@@ -434,7 +434,8 @@ function getQuotePDFUrl(quoteId) {
     }
 
     const quoteIdCol = colMapping['見積書ID'];
-    const pdfUrlCol = colMapping['PDF URL'];
+    const pdfUrlCol = colMapping['PDF URL'] || colMapping['pdf_url'];
+    if (!pdfUrlCol) throw new Error('PDF_URL_COLUMN_NOT_FOUND');
 
     // 見積書IDでデータを検索（最初の行のみ）
     const data = quoteSheet.getRange(2, 1, lastRow - 1, Math.max(quoteIdCol, pdfUrlCol)).getValues();
@@ -498,7 +499,8 @@ function updateQuotePDFUrl(quoteId, pdfUrl) {
     }
 
     const quoteIdCol = colMapping['見積書ID'];
-    const pdfUrlCol = colMapping['PDF URL'];
+    const pdfUrlCol = colMapping['PDF URL'] || colMapping['pdf_url'];
+    if (!pdfUrlCol) throw new Error('PDF_URL_COLUMN_NOT_FOUND');
 
     // 見積書IDでデータを検索して更新
     const quoteIdRange = quoteSheet.getRange(2, quoteIdCol, lastRow - 1, 1);

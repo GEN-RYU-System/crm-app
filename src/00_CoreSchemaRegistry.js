@@ -80,6 +80,8 @@ const CORE_SCHEMA_V1_TABLES = {
     headers: createCoreSchemaV1Headers([
       ['QUOTE_ID', '見積書ID'], ['LEAD_ID', 'リードID'], ['CUSTOMER_ID', '顧客ID'], ['ORDER_ID', 'オーダーID'], ['STAFF_ID', '担当者ID'], ['ISSUED_DATE', '発行日'], ['EXPIRY_DATE', '有効期限'], ['STATUS', 'ステータス'], ['CURRENCY', '通貨'], ['EXCHANGE_RATE', '為替レート'], ['SUBTOTAL', '小計'], ['SHIPPING_FEE', '送料'], ['DISCOUNT', '値引き'], ['TOTAL_AMOUNT', '合計金額'], ['TOTAL_AMOUNT_JPY', '円換算合計'], ['PDF_URL', 'PDF URL'], ['NOTE', '備考'], ['CREATED_AT', '作成日時'], ['UPDATED_AT', '更新日時']
     ]), primaryKey: 'QUOTE_ID',
+    // PR-2 で schema を 'pdf_url' に切り替える際は aliasMap を { 'pdf_url': 'PDF URL' } に反転すること
+    headerAliasMap: { 'PDF URL': 'pdf_url' },
     values: {
       STATUS: {
         DRAFT:   '下書き',
@@ -525,15 +527,21 @@ function validateCoreSchemaV1TableForWrite(spreadsheet, tableKey) {
   if (new Set(nonEmptyHeaders).size !== nonEmptyHeaders.length) {
     throw new Error('CORE_SCHEMA_NON_EMPTY_HEADER_DUPLICATE');
   }
+  const aliasMap = table.headerAliasMap || {};
   const requiredHeaders = Object.keys(table.headers).map(headerKey => table.headers[headerKey]);
-  if (requiredHeaders.some(headerName => headers.indexOf(headerName) === -1)) {
+  if (requiredHeaders.some(headerName => {
+    return headers.indexOf(headerName) === -1 &&
+           (!aliasMap[headerName] || headers.indexOf(aliasMap[headerName]) === -1);
+  })) {
     throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING');
   }
   return {
     sheet: sheet,
     tableKey: resolveCoreSchemaV1TableKey(tableKey),
     headerIndexes: requiredHeaders.reduce((indexes, headerName) => {
-      indexes[headerName] = headers.indexOf(headerName) + 1;
+      let idx = headers.indexOf(headerName);
+      if (idx === -1 && aliasMap[headerName]) idx = headers.indexOf(aliasMap[headerName]);
+      indexes[headerName] = idx + 1;
       return indexes;
     }, {})
   };
