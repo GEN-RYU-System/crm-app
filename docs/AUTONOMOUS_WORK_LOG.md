@@ -5080,3 +5080,24 @@ git revert 66de07d280cad3c5278e63dbf6ef7eb94acc5b7a
 ```
 
 ※ DEV スプレッドシート上の4シート（サイズマスタ・重量マスタ・荷姿マスタ・商品荷姿マスタ）は手動削除が必要。
+
+---
+
+### 2026-08-31 janitor.sh squash merge 対応（PR #745）
+
+- PR: #745 / squash SHA: `243330b40a31188cc0203b3c1a628c0bacdaf74f`
+- 背景: `scripts/janitor.sh` L23 が `git merge-base --is-ancestor` を使用していたため、
+  squash merge 運用の本リポジトリでは削除判定が常に false を返していた。
+  worktree が上限20に達し `git push` が失敗した原因（`.githooks/pre-push` L13、上限19）
+- 修正: `gh pr list --state merged --head "$branch"` による GitHub API 判定に置換
+- 変更ファイル: `scripts/janitor.sh`（1ファイル、2行変更）
+- 検証:
+  - Deploy to DEV: success（初回 race condition で failure → rerun で success）
+  - SHA: `243330b` = origin/develop HEAD ✓
+  - 総不一致: 2件（LEADS 1 / CUSTOMERS 1）/ ORDERS 0 / PURCHASES 0 ✓
+  - dry-run 変更あり: 0件 ✓
+- 戻し方:
+
+```bash
+git revert 243330b40a31188cc0203b3c1a628c0bacdaf74f
+```
