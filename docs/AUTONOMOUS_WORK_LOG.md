@@ -5101,3 +5101,30 @@ git revert 66de07d280cad3c5278e63dbf6ef7eb94acc5b7a
 ```bash
 git revert 243330b40a31188cc0203b3c1a628c0bacdaf74f
 ```
+
+---
+
+### 2026-08-31 worktree 整理スクリプトの新規作成（PR #746）
+
+- PR: #746 / squash SHA: `163218a5e9b813c5dcaae3ba59ba887d39ec2b21`
+- 背景: janitor.sh は --is-ancestor 判定のため squash merge 運用では
+  削除候補が常にゼロ。worktree が上限20に達し push 失敗が発生した
+  （PR #745 で janitor.sh の判定ロジック自体は修正済み）
+- 対処: scripts/worktree-cleanup.sh を新規追加（janitor.sh は変更せず）
+  - デフォルト dry-run。`--execute` で実削除
+  - 判定: PR マージ済み（gh pr list）+ 未コミット変更なし + develop/main 以外
+  - canonical clone / 実行中ワークツリーを自動保護
+- 検証:
+  - 危険操作 grep: 0件 ✅
+  - 構文チェック: OK ✅
+  - dry-run で canonical clone・実行中ワークツリーが保護 ✅
+  - Deploy to DEV: success ✅
+  - SHA: `163218a` = origin/develop HEAD ✅
+  - 総不一致: 2件（LEADS 1 / CUSTOMERS 1）/ ORDERS 0 / PURCHASES 0 ✅
+  - dry-run 変更あり: 0件 ✅
+- 注意: --execute での実削除は本依頼では未実施（PO 判断）
+- 戻し方:
+
+```bash
+git revert 163218a5e9b813c5dcaae3ba59ba887d39ec2b21
+```
