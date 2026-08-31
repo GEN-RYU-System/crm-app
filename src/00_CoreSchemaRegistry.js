@@ -136,7 +136,7 @@ const CORE_SCHEMA_V1_TABLES = {
   },
   PURCHASES: {
     sheetName: '仕入れ', canonicalName: '仕入れ管理', aliases: ['仕入れ'], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
-    headers: createCoreSchemaV1Headers([['PURCHASE_ID', '仕入れID'], ['ORDER_ID', 'オーダーID'], ['PURCHASE_ASSIGNEE_ID', '仕入れ担当ID'], ['PAID_BY_ID', '仕入れ支払者ID'], ['ORDERED_AT', '注文日'], ['PAID_AT', '仕入れ支払日'], ['TRANSACTION_NUMBER', '取引番号'], ['SUPPLIER', '仕入元'], ['SUPPLIER_URL', '仕入元URL'], ['QUANTITY', '数量'], ['UNIT_PRICE', '単価'], ['AMOUNT', '金額'], ['SHIPPING_OR_AGENCY_FEE', '送料/代行費'], ['CARRIER', '運送会社'], ['TRACKING_NUMBER', '送り状番号'], ['STATUS', 'ステータス'], ['NOTE', '備考'], ['REGISTERED_AT', '登録日'], ['UPDATED_AT', '更新日']]), primaryKey: 'PURCHASE_ID',
+    headers: createCoreSchemaV1Headers([['PURCHASE_ID', 'purchase_id'], ['ORDER_ID', 'order_id'], ['PURCHASE_ASSIGNEE_ID', 'purchase_assignee_id'], ['PAID_BY_ID', 'paid_by_id'], ['ORDERED_AT', 'ordered_at'], ['PAID_AT', 'paid_at'], ['TRANSACTION_NUMBER', 'transaction_number'], ['SUPPLIER', 'supplier'], ['SUPPLIER_URL', 'supplier_url'], ['QUANTITY', 'quantity'], ['UNIT_PRICE', 'unit_price'], ['AMOUNT', 'amount'], ['SHIPPING_OR_AGENCY_FEE', 'shipping_or_agency_fee'], ['CARRIER', 'carrier'], ['TRACKING_NUMBER', 'tracking_number'], ['STATUS', 'status'], ['NOTE', 'note'], ['REGISTERED_AT', 'registered_at'], ['UPDATED_AT', 'updated_at']]), primaryKey: 'PURCHASE_ID',
     values: {
       STATUS: {
         CONFIRMED: '確定済み',
@@ -146,12 +146,12 @@ const CORE_SCHEMA_V1_TABLES = {
       }
     },
     headerAliasMap: {
-      '仕入れID': 'purchase_id', 'オーダーID': 'order_id', '仕入れ担当ID': 'purchase_assignee_id',
-      '仕入れ支払者ID': 'paid_by_id', '注文日': 'ordered_at', '仕入れ支払日': 'paid_at',
-      '取引番号': 'transaction_number', '仕入元': 'supplier', '仕入元URL': 'supplier_url',
-      '数量': 'quantity', '単価': 'unit_price', '金額': 'amount',
-      '送料/代行費': 'shipping_or_agency_fee', '運送会社': 'carrier', '送り状番号': 'tracking_number',
-      'ステータス': 'status', '備考': 'note', '登録日': 'registered_at', '更新日': 'updated_at'
+      'purchase_id': '仕入れID', 'order_id': 'オーダーID', 'purchase_assignee_id': '仕入れ担当ID',
+      'paid_by_id': '仕入れ支払者ID', 'ordered_at': '注文日', 'paid_at': '仕入れ支払日',
+      'transaction_number': '取引番号', 'supplier': '仕入元', 'supplier_url': '仕入元URL',
+      'quantity': '数量', 'unit_price': '単価', 'amount': '金額',
+      'shipping_or_agency_fee': '送料/代行費', 'carrier': '運送会社', 'tracking_number': '送り状番号',
+      'status': 'ステータス', 'note': '備考', 'registered_at': '登録日', 'updated_at': '更新日'
     },
     referenceIds: [{ headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' }, { headerKey: 'PURCHASE_ASSIGNEE_ID', targetTableKey: 'STAFF' }, { headerKey: 'PAID_BY_ID', targetTableKey: 'STAFF' }]
   },
