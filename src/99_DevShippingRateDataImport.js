@@ -38,6 +38,35 @@ var CARRIER_DEFINITIONS = [
 ];
 
 /**
+ * 地帯表の「国」列（日本語名）を直接 ISO2/非ISO コードにマッピングする上書き辞書。
+ * 英語名だけでは区別できない国・表記揺れ・非ISO配送地域を網羅する。
+ * _buildZonesRows での照合順序: 本マップ優先 → 英語名 → 日本語名
+ */
+var ZONE_COUNTRY_OVERRIDE_MAP = {
+  // 英語名が区別できないため日本語名で特定
+  'サン・マルタン':                              'MF',
+  'シント・マールテン（セント・マーチン）':       'SX',
+  // 表記揺れ（国マスタの DISPLAY_NAME / NAME_JA と一致しない表記）
+  'サイパン':                                    'MP',
+  'セントビンセント・グレナディーン':              'VC',
+  'バーブーダ':                                  'AG',
+  'バチカン':                                    'VA',
+  'ピトケアン':                                  'PN',
+  'ボネール、シント・ユースタティウスおよびサバ':   'BQ',
+  '中央アフリカ':                                'CF',
+  '北朝鮮':                                      'KP',
+  '韓国':                                        'KR',
+  // 非ISO配送地域（国マスタに addShippingRegionsToCountryMaster で追加済み）
+  'アセンション島':                              'AC',
+  'カナリア諸島':                                'IC',
+  'トリスタン・ダ・クーニャ':                    'TA',
+  'ウェーキ':                                    'WK',
+  'ミッドウェイ諸島':                            'MI',
+  // 中国南部（DHL対象外 "-"、FedEx=K、UPS=10）
+  '中国（南部）（FedEx/eLogi/UPS）':             'CN-S'
+};
+
+/**
  * 既存の横持ちシートから3マスタへデータを変換投入する。
  *
  * @param {string} mode - 'DRY_RUN' または 'APPLY'
@@ -272,9 +301,9 @@ function _buildZonesRows(ss, countryMapping, now) {
 
     if (!nameJa && !nameEn) return; // 空行スキップ
 
-    // 国コード解決: 英語名優先、次に日本語名
-    var countryCode = null;
-    if (nameEn) {
+    // 国コード解決: 上書き辞書 → 英語名 → 日本語名
+    var countryCode = ZONE_COUNTRY_OVERRIDE_MAP[nameJa] || null;
+    if (!countryCode && nameEn) {
       countryCode = countryMapping.byEnglish[nameEn.toLowerCase()] || null;
     }
     if (!countryCode && nameJa) {
