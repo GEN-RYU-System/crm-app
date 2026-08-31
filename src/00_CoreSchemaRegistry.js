@@ -15,7 +15,6 @@ const CORE_SCHEMA_V1_TABLES = {
     sheetName: '顧客マスタ', canonicalName: '顧客マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
     headers: createCoreSchemaV1Headers([['CUSTOMER_ID', '顧客ID'], ['SOURCE_LEAD_ID', '源流リードID'], ['CUSTOMER_NAME', '顧客名'], ['COUNTRY', '国'], ['EMAIL', 'メール'], ['PHONE', '電話番号'], ['COUNTRY_CODE', '国番号'], ['FIRST_TRANSACTION_DATE', '初回取引日'], ['REGISTERED_AT', '登録日'], ['SALES_ASSIGNEE_NAME', '営業担当者'], ['CONTACT_TOOL', '連絡ツール'], ['FEDEX_ID', 'fedex_id'], ['SHIPPING_NOTE', '発送時メモ'], ['CUSTOMER_SCALE', '顧客規模']]),
     primaryKey: 'CUSTOMER_ID',
-    headerAliasMap: { 'fedex_id': 'FedEx ID' },
     referenceIds: [{ headerKey: 'SOURCE_LEAD_ID', targetTableKey: 'LEADS' }]
   },
   SHIPPING_DESTINATIONS: {
@@ -526,20 +525,15 @@ function validateCoreSchemaV1TableForWrite(spreadsheet, tableKey) {
   if (new Set(nonEmptyHeaders).size !== nonEmptyHeaders.length) {
     throw new Error('CORE_SCHEMA_NON_EMPTY_HEADER_DUPLICATE');
   }
-  const aliasMap = table.headerAliasMap || {};
   const requiredHeaders = Object.keys(table.headers).map(headerKey => table.headers[headerKey]);
-  if (requiredHeaders.some(headerName =>
-    headers.indexOf(headerName) === -1 &&
-    (aliasMap[headerName] === undefined || headers.indexOf(aliasMap[headerName]) === -1)
-  )) {
+  if (requiredHeaders.some(headerName => headers.indexOf(headerName) === -1)) {
     throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING');
   }
   return {
     sheet: sheet,
     tableKey: resolveCoreSchemaV1TableKey(tableKey),
     headerIndexes: requiredHeaders.reduce((indexes, headerName) => {
-      var effectiveName = headers.indexOf(headerName) !== -1 ? headerName : (aliasMap[headerName] || headerName);
-      indexes[headerName] = headers.indexOf(effectiveName) + 1;
+      indexes[headerName] = headers.indexOf(headerName) + 1;
       return indexes;
     }, {})
   };
