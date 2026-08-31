@@ -1047,6 +1047,102 @@ export function getCorePurchaseStatusOptions(): Promise<readonly PurchaseStatusO
   });
 }
 
+// ─── Package Master ───────────────────────────────────────────────────────────
+
+export type SizeRecord = { sizeId: string; sizeName: string; length: string; width: string; height: string; isActive: string };
+export type WeightRecord = { weightId: string; weightName: string; weight: string; isActive: string };
+export type PackageRecord = {
+  packageId: string; packageName: string; unit: string; quantityPerUnit: string; isActive: string;
+  sizeId: string; sizeName: string; length: string; width: string; height: string;
+  weightId: string; weightName: string; weight: string;
+};
+
+export function getCoreSizes(): Promise<SizeRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as SizeRecord[]))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getCoreSizesForFrontend(getStoredSessionId());
+  });
+}
+
+export function getCoreWeights(): Promise<WeightRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as WeightRecord[]))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getCoreWeightsForFrontend(getStoredSessionId());
+  });
+}
+
+export function getCorePackages(): Promise<PackageRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as PackageRecord[]))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getCorePackagesForFrontend(getStoredSessionId());
+  });
+}
+
+export function getCorePackageUnitOptions(): Promise<string[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as string[]))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getCorePackageUnitOptionsForFrontend();
+  });
+}
+
+export type UpsertSizePayload = { sizeId?: string; sizeName?: string; length?: string; width?: string; height?: string; isActive?: boolean };
+export type UpsertSizeResult = { success: true; sizeId: string };
+
+export function upsertCoreSize(payload: UpsertSizePayload): Promise<UpsertSizeResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as UpsertSizeResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .upsertCoreSizeForFrontend(getStoredSessionId(), payload);
+  });
+}
+
+export type UpsertWeightPayload = { weightId?: string; weightName?: string; weight?: string; isActive?: boolean };
+export type UpsertWeightResult = { success: true; weightId: string };
+
+export function upsertCoreWeight(payload: UpsertWeightPayload): Promise<UpsertWeightResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as UpsertWeightResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .upsertCoreWeightForFrontend(getStoredSessionId(), payload);
+  });
+}
+
+export type UpsertPackagePayload = { packageId?: string; packageName?: string; unit?: string; quantityPerUnit?: string; sizeId?: string; weightId?: string; isActive?: boolean };
+export type UpsertPackageResult = { success: true; packageId: string };
+
+export function upsertCorePackage(payload: UpsertPackagePayload): Promise<UpsertPackageResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as UpsertPackageResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .upsertCorePackageForFrontend(getStoredSessionId(), payload);
+  });
+}
+
 export type UpsertPurchaseResult = { success: true; purchaseId: string };
 
 export function upsertCorePurchase(payload: UpsertPurchasePayload): Promise<UpsertPurchaseResult> {

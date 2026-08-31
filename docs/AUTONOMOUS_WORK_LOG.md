@@ -2,6 +2,47 @@
 
 ---
 
+### 2026-08-31 荷姿マスタ管理画面 新設（PR #759）
+
+**概要:**
+管理センター > システム設定 に「荷姿マスタ」ページを新設した。
+サイズ / 重量 / 荷姿の3タブ構成で DataTable + インライン編集 + 新規追加を実装。
+
+**実装内容:**
+
+| ファイル | 変更 |
+|---------|------|
+| `src/28_CorePackageMasterApi.js` | `getCorePackageUnitOptionsForFrontend()` 追加（Registry から単位選択肢） |
+| `frontend/src/pages/data-management/PackageMasterPage.tsx` | 新規作成（~410行） |
+| `frontend/src/content/ja/packageMaster.ts` | i18n コピー新規作成 |
+| `frontend/src/gas/client.ts` | SizeRecord / WeightRecord / PackageRecord 型 + 7API関数 |
+| `frontend/src/gas/types.d.ts` | GoogleScriptRun に7メソッド宣言追加 |
+| `frontend/src/preview/gasRunnerMock.ts` | 7スタブ追加 |
+| `frontend/src/app/navigation.ts` | packageMaster を SystemSettings グループに追加（admin_access, order=2） |
+| `frontend/src/App.tsx` | packageMasterRoute 追加 |
+| `frontend/scripts/check-design-system.mjs` | PackageMasterPage を gas/client allowlist に追加 |
+
+**?preview 確認結果:**
+
+| 確認項目 | 結果 |
+|---------|------|
+| 管理センターに「荷姿マスタ」リンク表示 | ✓ |
+| 3タブ切り替え（サイズ/重量/荷姿） | ✓ |
+| 各タブで一覧表示 | ✓ |
+| 行クリックでインライン編集フォーム開閉（同行再クリックで閉じる） | ✓ |
+| 新規追加ボタンで空フォーム表示 | ✓ |
+| 荷姿タブのプルダウンにサイズ・重量（有効のみ）が出る | ✓ |
+| 他ページ（ダッシュボード等）正常表示 | ✓ |
+
+**CI / デプロイ:**
+- PR #759、CI 4/4 pass（Gitleaks / Sensitive Content / gas-global-namespace / frontend-check）
+- `mergedAt`: 2026-08-31T06:14:59Z
+- Deploy to DEV: deploy-dev.yml → success（SHA: `a5f0ff1058d79bfbed8d939f0aa97cc82b67f836`）
+- SHA 一致確認: `clasp run getDeployedSha` == `origin/develop` HEAD ✓
+- SIZES/WEIGHTS/PACKAGES/PRODUCT_PACKAGES 各 0件不一致 ✓
+
+---
+
 ### 2026-08-31 監査ベースライン是正・手順違反の記録
 
 **事象:**

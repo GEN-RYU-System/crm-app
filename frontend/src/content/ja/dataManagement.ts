@@ -16,5 +16,6 @@ export const dataManagementCopy = {
   inventory: '在庫',
   productMaster: '商品マスタ',
   googleDrive: 'Google Drive',
-  issuerMaster: '発行元情報'
+  issuerMaster: '発行元情報',
+  packageMaster: '荷姿マスタ'
 } as const;

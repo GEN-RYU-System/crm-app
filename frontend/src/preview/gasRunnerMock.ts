@@ -624,6 +624,34 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
       succeed({ conversationId, messages, hasMore: (offsetIndex + count) < total });
     },
     pingForLatencyCheck() { succeed({ ok: true, serverTs: Date.now() }); },
+    getCoreSizesForFrontend(_s: string | null) {
+      succeed([
+        { sizeId: 'SIZ-0001', sizeName: 'Size A', length: '35', width: '25', height: '15', isActive: 'TRUE' },
+        { sizeId: 'SIZ-0002', sizeName: 'Size B (inactive)', length: '', width: '1', height: '1', isActive: '' },
+      ]);
+    },
+    getCoreWeightsForFrontend(_s: string | null) {
+      succeed([
+        { weightId: 'WGT-0001', weightName: 'Weight A', weight: '500', isActive: 'TRUE' },
+      ]);
+    },
+    getCorePackagesForFrontend(_s: string | null) {
+      succeed([
+        { packageId: 'PKG-0001', packageName: 'Package A', unit: 'BOX', quantityPerUnit: '1', isActive: 'TRUE', sizeId: 'SIZ-0001', sizeName: 'Size A', length: '35', width: '25', height: '15', weightId: 'WGT-0001', weightName: 'Weight A', weight: '500' },
+      ]);
+    },
+    getCorePackageUnitOptionsForFrontend() {
+      succeed(['CASE', 'BOX', 'PACK']);
+    },
+    upsertCoreSizeForFrontend(_s: string | null, _payload: unknown) {
+      succeed({ success: true, sizeId: 'SIZ-MOCK' });
+    },
+    upsertCoreWeightForFrontend(_s: string | null, _payload: unknown) {
+      succeed({ success: true, weightId: 'WGT-MOCK' });
+    },
+    upsertCorePackageForFrontend(_s: string | null, _payload: unknown) {
+      succeed({ success: true, packageId: 'PKG-MOCK' });
+    },
     checkSyncSignals(_s: string | null) { succeed(mockSyncSignals); },
     getLeadsBatchForFrontend(_s: string | null, _force: boolean) {
       succeed({ leads: [], formOptions: { leadTypes: [], responseSpeeds: [], countries: [], leadSources: [] } });
