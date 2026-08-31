@@ -20,26 +20,12 @@ const CORE_SCHEMA_V1_TABLES = {
   SHIPPING_DESTINATIONS: {
     sheetName: '配送先マスタ', canonicalName: '配送先マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
     headers: createCoreSchemaV1Headers([['SHIPPING_DESTINATION_ID', 'shipping_destination_id'], ['CUSTOMER_ID', 'customer_id'], ['RECIPIENT_NAME', 'recipient_name'], ['ADDRESS_LINE_1', 'address_line_1'], ['ADDRESS_LINE_2', 'address_line_2'], ['ADDRESS_LINE_3', 'address_line_3'], ['CITY', 'city'], ['STATE', 'state'], ['ZIP', 'zip'], ['COUNTRY', 'country'], ['PHONE', 'phone'], ['COUNTRY_CODE', 'country_code'], ['EMAIL', 'email'], ['TAX_ID', 'tax_id'], ['DISPLAY_NAME', 'display_name'], ['IS_DEFAULT', 'is_default'], ['IS_ACTIVE', 'is_active']]),
-    headerAliasMap: {
-      '配送先ID': 'shipping_destination_id', '顧客ID': 'customer_id', '宛名': 'recipient_name',
-      'Address 1': 'address_line_1', 'Address 2': 'address_line_2', 'Address 3': 'address_line_3',
-      'City': 'city', 'State': 'state', 'Zip': 'zip', '国': 'country',
-      '電話': 'phone', '国番号': 'country_code', 'D Email': 'email', 'D Tax ID': 'tax_id',
-      '表示名': 'display_name', '既定': 'is_default', '有効': 'is_active'
-    },
     primaryKey: 'SHIPPING_DESTINATION_ID',
     referenceIds: [{ headerKey: 'CUSTOMER_ID', targetTableKey: 'CUSTOMERS' }]
   },
   PAYMENT_DESTINATIONS: {
     sheetName: '支払先マスタ', canonicalName: '支払先マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
     headers: createCoreSchemaV1Headers([['PAYMENT_DESTINATION_ID', 'payment_destination_id'], ['CUSTOMER_ID', 'customer_id'], ['BILLING_NAME', 'billing_name'], ['ADDRESS_LINE_1', 'address_line_1'], ['ADDRESS_LINE_2', 'address_line_2'], ['ADDRESS_LINE_3', 'address_line_3'], ['CITY', 'city'], ['STATE', 'state'], ['ZIP', 'zip'], ['COUNTRY', 'country'], ['PAYMENT_METHOD', 'payment_method'], ['CURRENCY', 'currency'], ['TAX_ID', 'tax_id'], ['DISPLAY_NAME', 'display_name'], ['IS_DEFAULT', 'is_default'], ['IS_ACTIVE', 'is_active']]),
-    headerAliasMap: {
-      '支払先ID': 'payment_destination_id', '顧客ID': 'customer_id', '請求名義': 'billing_name',
-      'Address 1': 'address_line_1', 'Address 2': 'address_line_2', 'Address 3': 'address_line_3',
-      'City': 'city', 'State': 'state', 'Zip': 'zip', '国': 'country',
-      '支払方法': 'payment_method', '通貨': 'currency', 'B Tax ID': 'tax_id',
-      '表示名': 'display_name', '既定': 'is_default', '有効': 'is_active'
-    },
     primaryKey: 'PAYMENT_DESTINATION_ID',
     referenceIds: [{ headerKey: 'CUSTOMER_ID', targetTableKey: 'CUSTOMERS' }]
   },
@@ -132,14 +118,6 @@ const CORE_SCHEMA_V1_TABLES = {
       ['CLOSING_MESSAGE', 'closing_message'],
       ['IS_ACTIVE',       'is_active'],
     ]),
-    headerAliasMap: {
-      '発行元ID': 'issuer_id', '会社名': 'company_name', '担当者名': 'contact_name',
-      'Address 1': 'address_line_1', 'Address 2': 'address_line_2', 'Address 3': 'address_line_3',
-      'City': 'city', 'State': 'state', 'Zip': 'zip', '国': 'country',
-      '電話番号': 'phone', 'メール': 'email', '登録番号': 'registration_no',
-      '受取名義': 'payee_name', '受取先メール': 'payment_email', '注記': 'note',
-      '結びの文': 'closing_message', '有効': 'is_active'
-    },
     primaryKey: 'ISSUER_ID',
     referenceIds: []
   },
@@ -597,23 +575,15 @@ function validateCoreSchemaV1TableForWrite(spreadsheet, tableKey) {
   if (new Set(nonEmptyHeaders).size !== nonEmptyHeaders.length) {
     throw new Error('CORE_SCHEMA_NON_EMPTY_HEADER_DUPLICATE');
   }
-  const aliasMap = table.headerAliasMap || {};
   const requiredHeaders = Object.keys(table.headers).map(headerKey => table.headers[headerKey]);
-  // headerAliasMap フォールバック: 新名が見つからなければ旧名で検索する
-  const resolveHeaderIndex = function(headerName) {
-    var idx = headers.indexOf(headerName);
-    if (idx !== -1) return idx;
-    var oldName = aliasMap[headerName];
-    return oldName !== undefined ? headers.indexOf(oldName) : -1;
-  };
-  if (requiredHeaders.some(headerName => resolveHeaderIndex(headerName) === -1)) {
+  if (requiredHeaders.some(headerName => headers.indexOf(headerName) === -1)) {
     throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING');
   }
   return {
     sheet: sheet,
     tableKey: resolveCoreSchemaV1TableKey(tableKey),
     headerIndexes: requiredHeaders.reduce((indexes, headerName) => {
-      indexes[headerName] = resolveHeaderIndex(headerName) + 1;
+      indexes[headerName] = headers.indexOf(headerName) + 1;
       return indexes;
     }, {})
   };
