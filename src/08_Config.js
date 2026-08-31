@@ -557,41 +557,41 @@ const HEADERS = {
 
   // 配送先マスタ（16列: 電話をナショナル番号+国番号に分離）
   CRM_SHIPPING: [
-    '配送先ID',   // 1: AD-00001
-    '顧客ID',     // 2: CT-00001
-    '宛名',       // 3: D Name
-    'Address 1',  // 4: D Address 1
-    'Address 2',  // 5: D Address 2
-    'Address 3',  // 6: D Address 3
-    'City',       // 7: D City
-    'State',      // 8: D State
-    'Zip',        // 9: D Zip
-    '国',         // 10: D Country
-    '電話',       // 11: D Telephone ナショナル番号
-    '国番号',     // 12: 国番号のみ ← PR36で追加
-    'D Email',    // 13: 旧ヘッダー名維持
-    'D Tax ID',   // 14: 旧ヘッダー名維持
-    '既定',       // 15: TRUE/FALSE
-    '有効'        // 16: TRUE/FALSE
+    'shipping_destination_id',  // 1: AD-00001
+    'customer_id',              // 2: CT-00001
+    'recipient_name',           // 3: 宛名
+    'address_line_1',           // 4
+    'address_line_2',           // 5
+    'address_line_3',           // 6
+    'city',                     // 7
+    'state',                    // 8
+    'zip',                      // 9
+    'country',                  // 10
+    'phone',                    // 11 ナショナル番号
+    'country_code',             // 12
+    'email',                    // 13
+    'tax_id',                   // 14
+    'is_default',               // 15: TRUE/FALSE
+    'is_active'                 // 16: TRUE/FALSE
   ],
 
-  // 支払先マスタ（15列: Address 3 追加）
+  // 支払先マスタ（15列）
   CRM_PAYMENT: [
-    '支払先ID',   // 1: PY-00001
-    '顧客ID',     // 2: CT-00001
-    '請求名義',   // 3: 支払い名義
-    'Address 1',  // 4: B Address 1
-    'Address 2',  // 5: B Address 2
-    'Address 3',  // 6: B Address 3 ← PR17改訂で追加
-    'City',       // 7: B City
-    'State',      // 8: B State
-    'Zip',        // 9: B Zip
-    '国',         // 10: B Country
-    '支払方法',   // 11: 空欄（旧データになし）
-    '通貨',       // 12: 空欄（旧データになし）
-    'B Tax ID',   // 13: VAT/税番号（顧客マスタから移設）
-    '既定',       // 14: TRUE/FALSE
-    '有効'        // 15: TRUE/FALSE
+    'payment_destination_id',   // 1: PY-00001
+    'customer_id',              // 2: CT-00001
+    'billing_name',             // 3
+    'address_line_1',           // 4
+    'address_line_2',           // 5
+    'address_line_3',           // 6
+    'city',                     // 7
+    'state',                    // 8
+    'zip',                      // 9
+    'country',                  // 10
+    'payment_method',           // 11
+    'currency',                 // 12
+    'tax_id',                   // 13
+    'is_default',               // 14: TRUE/FALSE
+    'is_active'                 // 15: TRUE/FALSE
   ],
 
   // ============================================================

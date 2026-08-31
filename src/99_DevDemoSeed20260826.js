@@ -382,40 +382,40 @@ function seedDevDemoData_20260826() {
     var paymentDestSheet = getCoreSchemaV1Sheet(ss, 'PAYMENT_DESTINATIONS');
     var paymentDestsData = [
       {
-        '支払先ID': 'PD-0001', '顧客ID': 'CT-0001', '請求名義': 'Alex Thompson',
-        'Address 1': '123 Main St', 'City': 'New York', 'State': 'NY',
-        'Zip': '10001', '国': 'US', '支払方法': 'Wise', '通貨': 'USD',
-        '既定': 'TRUE', '有効': 'TRUE'
+        payment_destination_id: 'PD-0001', customer_id: 'CT-0001', billing_name: 'Alex Thompson',
+        address_line_1: '123 Main St', city: 'New York', state: 'NY',
+        zip: '10001', country: 'US', payment_method: 'Wise', currency: 'USD',
+        is_default: 'TRUE', is_active: 'TRUE'
       },
       {
-        '支払先ID': 'PD-0002', '顧客ID': 'CT-0002', '請求名義': 'Maria Garcia',
-        'Address 1': '456 Calle Mayor', 'City': 'Madrid', 'State': 'Madrid',
-        'Zip': '28001', '国': 'ES', '支払方法': 'Wise', '通貨': 'EUR',
-        '既定': 'TRUE', '有効': 'TRUE'
+        payment_destination_id: 'PD-0002', customer_id: 'CT-0002', billing_name: 'Maria Garcia',
+        address_line_1: '456 Calle Mayor', city: 'Madrid', state: 'Madrid',
+        zip: '28001', country: 'ES', payment_method: 'Wise', currency: 'EUR',
+        is_default: 'TRUE', is_active: 'TRUE'
       },
       {
-        '支払先ID': 'PD-0003', '顧客ID': 'CT-0003', '請求名義': 'James Wilson',
-        'Address 1': '789 High Street', 'City': 'London', 'State': 'England',
-        'Zip': 'SW1A 1AA', '国': 'GB', '支払方法': 'PayPal', '通貨': 'GBP',
-        '既定': 'TRUE', '有効': 'TRUE'
+        payment_destination_id: 'PD-0003', customer_id: 'CT-0003', billing_name: 'James Wilson',
+        address_line_1: '789 High Street', city: 'London', state: 'England',
+        zip: 'SW1A 1AA', country: 'GB', payment_method: 'PayPal', currency: 'GBP',
+        is_default: 'TRUE', is_active: 'TRUE'
       },
       {
-        '支払先ID': 'PD-0004', '顧客ID': 'CT-0004', '請求名義': 'Sophie Martin',
-        'Address 1': '12 Rue de Rivoli', 'City': 'Paris', 'State': 'Île-de-France',
-        'Zip': '75001', '国': 'FR', '支払方法': 'Wise', '通貨': 'EUR',
-        '既定': 'TRUE', '有効': 'TRUE'
+        payment_destination_id: 'PD-0004', customer_id: 'CT-0004', billing_name: 'Sophie Martin',
+        address_line_1: '12 Rue de Rivoli', city: 'Paris', state: 'Île-de-France',
+        zip: '75001', country: 'FR', payment_method: 'Wise', currency: 'EUR',
+        is_default: 'TRUE', is_active: 'TRUE'
       },
       {
-        '支払先ID': 'PD-0005', '顧客ID': 'CT-0005', '請求名義': 'Hiroshi Tanaka',
-        'Address 1': '東京都渋谷区デモ通り1-1', 'City': 'Tokyo', 'State': 'Tokyo',
-        'Zip': '150-0001', '国': 'JP', '支払方法': 'Wise', '通貨': 'JPY',
-        '既定': 'TRUE', '有効': 'TRUE'
+        payment_destination_id: 'PD-0005', customer_id: 'CT-0005', billing_name: 'Hiroshi Tanaka',
+        address_line_1: '東京都渋谷区デモ通り1-1', city: 'Tokyo', state: 'Tokyo',
+        zip: '150-0001', country: 'JP', payment_method: 'Wise', currency: 'JPY',
+        is_default: 'TRUE', is_active: 'TRUE'
       },
       {
-        '支払先ID': 'PD-0006', '顧客ID': 'CT-0006', '請求名義': 'Emma Davis',
-        'Address 1': '321 George St', 'City': 'Sydney', 'State': 'NSW',
-        'Zip': '2000', '国': 'AU', '支払方法': 'Wise', '通貨': 'AUD',
-        '既定': 'TRUE', '有効': 'TRUE'
+        payment_destination_id: 'PD-0006', customer_id: 'CT-0006', billing_name: 'Emma Davis',
+        address_line_1: '321 George St', city: 'Sydney', state: 'NSW',
+        zip: '2000', country: 'AU', payment_method: 'Wise', currency: 'AUD',
+        is_default: 'TRUE', is_active: 'TRUE'
       }
     ];
     writeDataRows(paymentDestSheet, paymentDestsData);
@@ -424,40 +424,40 @@ function seedDevDemoData_20260826() {
     var shippingDestSheet = getCoreSchemaV1Sheet(ss, 'SHIPPING_DESTINATIONS');
     var shippingDestsData = [
       {
-        '配送先ID': 'SD-0001', '顧客ID': 'CT-0001', '宛名': 'Alex Thompson',
-        'Address 1': '123 Main St', 'City': 'New York', 'State': 'NY',
-        'Zip': '10001', '国': 'US', '電話': '+1-555-0101', '国番号': '+1',
-        '既定': 'TRUE', '有効': 'TRUE'
+        shipping_destination_id: 'SD-0001', customer_id: 'CT-0001', recipient_name: 'Alex Thompson',
+        address_line_1: '123 Main St', city: 'New York', state: 'NY',
+        zip: '10001', country: 'US', phone: '+1-555-0101', country_code: '+1',
+        is_default: 'TRUE', is_active: 'TRUE'
       },
       {
-        '配送先ID': 'SD-0002', '顧客ID': 'CT-0002', '宛名': 'Maria Garcia',
-        'Address 1': '456 Calle Mayor', 'City': 'Madrid', 'State': 'Madrid',
-        'Zip': '28001', '国': 'ES', '電話': '+34-555-0202', '国番号': '+34',
-        '既定': 'TRUE', '有効': 'TRUE'
+        shipping_destination_id: 'SD-0002', customer_id: 'CT-0002', recipient_name: 'Maria Garcia',
+        address_line_1: '456 Calle Mayor', city: 'Madrid', state: 'Madrid',
+        zip: '28001', country: 'ES', phone: '+34-555-0202', country_code: '+34',
+        is_default: 'TRUE', is_active: 'TRUE'
       },
       {
-        '配送先ID': 'SD-0003', '顧客ID': 'CT-0003', '宛名': 'James Wilson',
-        'Address 1': '789 High Street', 'City': 'London', 'State': 'England',
-        'Zip': 'SW1A 1AA', '国': 'GB', '電話': '+44-555-0303', '国番号': '+44',
-        '既定': 'TRUE', '有効': 'TRUE'
+        shipping_destination_id: 'SD-0003', customer_id: 'CT-0003', recipient_name: 'James Wilson',
+        address_line_1: '789 High Street', city: 'London', state: 'England',
+        zip: 'SW1A 1AA', country: 'GB', phone: '+44-555-0303', country_code: '+44',
+        is_default: 'TRUE', is_active: 'TRUE'
       },
       {
-        '配送先ID': 'SD-0004', '顧客ID': 'CT-0004', '宛名': 'Sophie Martin',
-        'Address 1': '12 Rue de Rivoli', 'City': 'Paris', 'State': 'Île-de-France',
-        'Zip': '75001', '国': 'FR', '電話': '+33-555-0404', '国番号': '+33',
-        '既定': 'TRUE', '有効': 'TRUE'
+        shipping_destination_id: 'SD-0004', customer_id: 'CT-0004', recipient_name: 'Sophie Martin',
+        address_line_1: '12 Rue de Rivoli', city: 'Paris', state: 'Île-de-France',
+        zip: '75001', country: 'FR', phone: '+33-555-0404', country_code: '+33',
+        is_default: 'TRUE', is_active: 'TRUE'
       },
       {
-        '配送先ID': 'SD-0005', '顧客ID': 'CT-0005', '宛名': 'Hiroshi Tanaka',
-        'Address 1': '東京都渋谷区デモ通り1-1', 'City': 'Tokyo', 'State': 'Tokyo',
-        'Zip': '150-0001', '国': 'JP', '電話': '+81-555-0505', '国番号': '+81',
-        '既定': 'TRUE', '有効': 'TRUE'
+        shipping_destination_id: 'SD-0005', customer_id: 'CT-0005', recipient_name: 'Hiroshi Tanaka',
+        address_line_1: '東京都渋谷区デモ通り1-1', city: 'Tokyo', state: 'Tokyo',
+        zip: '150-0001', country: 'JP', phone: '+81-555-0505', country_code: '+81',
+        is_default: 'TRUE', is_active: 'TRUE'
       },
       {
-        '配送先ID': 'SD-0006', '顧客ID': 'CT-0006', '宛名': 'Emma Davis',
-        'Address 1': '321 George St', 'City': 'Sydney', 'State': 'NSW',
-        'Zip': '2000', '国': 'AU', '電話': '+61-555-0606', '国番号': '+61',
-        '既定': 'TRUE', '有効': 'TRUE'
+        shipping_destination_id: 'SD-0006', customer_id: 'CT-0006', recipient_name: 'Emma Davis',
+        address_line_1: '321 George St', city: 'Sydney', state: 'NSW',
+        zip: '2000', country: 'AU', phone: '+61-555-0606', country_code: '+61',
+        is_default: 'TRUE', is_active: 'TRUE'
       }
     ];
     writeDataRows(shippingDestSheet, shippingDestsData);
