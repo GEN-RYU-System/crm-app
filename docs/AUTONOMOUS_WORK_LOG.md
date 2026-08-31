@@ -6085,3 +6085,59 @@ git revert 4fd884e  # PR #794 squash commit（デュアルサポート追加）
 # DEV スプレッドシートのヘッダーを旧名（日本語）に戻す場合は手動で実施
 # バックアップシート「担当者マスタ_backup_20260831」のヘッダーを参照する
 ```
+
+---
+
+### 2026-08-31 地帯表 行検索関数を追加（PR-T2b / PR #798）
+
+地帯表のデータ行を keyword で検索する読み取り専用関数を追加した。
+シント・マールテン / 中国関連エントリの実データを確定するための調査用。
+
+#### PR
+
+| PR | 番号 | マージ日時 | squash SHA |
+|----|------|-----------|-----------|
+| PR-T2b 地帯表行検索関数 | #798 | 2026-08-31T18:06:32Z | `b482be6f` |
+
+#### 変更ファイル
+
+- `src/99_DevZoneSheetReader.js`（新規）: `readZoneSheetRows(keyword)`
+
+#### 調査結果（clasp run 実測値）
+
+**"Martin" 検索（3件）:**
+
+| 国 | Country | FedEx | DHL | UPS |
+|----|---------|-------|-----|-----|
+| サン・マルタン | St. Martin | G | 8 | - |
+| シント・マールテン（セント・マーチン） | St.Martin | G | 8 | 7 |
+| マルティニーク | Martinique | G | 8 | 4 |
+
+**"Maarten" 検索:** 0件（マスタに "Maarten" 表記なし）
+
+**"中国" / "China" 検索（2件）:**
+
+| 国 | Country | FedEx | DHL | UPS |
+|----|---------|-------|-----|-----|
+| 中国 | China | W | 2 | 1 |
+| 中国（南部）（FedEx/eLogi/UPS） | China (South)(FedEx/eLogi) | K | - | 10 |
+
+**香港・台湾・マカオ（各1件）:**
+
+| 国 | Country | FedEx | DHL | UPS |
+|----|---------|-------|-----|-----|
+| 香港 | Hong Kong | V | 2 | 10 |
+| 台湾 | Taiwan | X | 1 | 1 |
+| マカオ | Macao | A | 2 | 1 |
+
+#### 判明事項
+
+- 地帯表の「シント・マールテン（セント・マーチン） / St.Martin」は1エントリ（MF/SX の統合表記）
+- 「サン・マルタン / St. Martin」は別エントリ（UPS = "-"、UPS 対象外）
+- 中国南部 は DHL 対象外（"-"）、FedEx/UPS のみ
+- 「中国南部」は CN と別エントリで存在し、ゾーンも異なる（FedEx: W vs K、UPS: 1 vs 10）
+
+#### 事後確認
+
+- getDeployedSha: `b482be6f` = deploy-dev.yml headSha ✅
+- runCoreSchemaConformanceAudit: 総不一致 2件 = ベースラインと同一 ✅
