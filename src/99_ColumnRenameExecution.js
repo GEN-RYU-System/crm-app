@@ -544,3 +544,57 @@ function getQuotesMasterCurrentHeaders() {
   if (lastCol < 1) return [];
   return sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
 }
+
+/**
+ * 見積もり管理シートのヘッダー行を旧列名から英語スネークケースへ一括変更する。
+ *
+ * 対象列:
+ *   PDF URL → pdf_url
+ *
+ * 前提条件:
+ *   - backupQuotesMasterSheet() が実行済みであること
+ *   - DEV 環境であること
+ *
+ * @returns {{ status: string, renamed: number, details: Array<{col: number, before: string, after: string}> }}
+ */
+function renameQuotesMasterHeaders() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('renameQuotesMasterHeaders は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+
+  var backupName = '見積もり管理_backup_20260831';
+  if (!ss.getSheetByName(backupName)) {
+    throw new Error('バックアップシートが存在しません。先に backupQuotesMasterSheet() を実行してください: ' + backupName);
+  }
+
+  var oldToNew = {
+    'PDF URL': 'pdf_url'
+  };
+
+  var sheet = getCoreSchemaV1Sheet(ss, 'QUOTES');
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) throw new Error('見積もり管理シートに列がありません');
+
+  var headerRange = sheet.getRange(1, 1, 1, lastCol);
+  var currentHeaders = headerRange.getDisplayValues()[0];
+
+  var details = [];
+  var newHeaders = currentHeaders.map(function(h, i) {
+    var trimmed = String(h).trim();
+    var mapped = oldToNew[trimmed];
+    if (mapped !== undefined && mapped !== trimmed) {
+      details.push({ col: i + 1, before: trimmed, after: mapped });
+      return mapped;
+    }
+    return trimmed;
+  });
+
+  headerRange.setValues([newHeaders]);
+
+  return {
+    status: 'OK',
+    renamed: details.length,
+    details: details
+  };
+}
