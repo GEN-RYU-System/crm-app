@@ -13,6 +13,9 @@
  *   upsertCoreWeightForFrontend(sessionId, payload)
  *   upsertCorePackageForFrontend(sessionId, payload)
  *   getCorePackageUnitOptionsForFrontend()
+ *   getCoreSharedProductsForFrontend(sessionId)
+ *   getCoreProductPackagesForFrontend(sessionId)
+ *   upsertCoreProductPackageForFrontend(sessionId, payload)
  *
  * Permission:
  *   read:  lead_view   (荷姿選択肢として受注・出荷担当者が参照する)
@@ -27,10 +30,12 @@
 
 // ─── ID prefix / digits ──────────────────────────────────────────────────────
 
-var CORE_SIZE_ID_PREFIX    = 'SIZ-';
-var CORE_WEIGHT_ID_PREFIX  = 'WGT-';
-var CORE_PACKAGE_ID_PREFIX = 'PKG-';
-var CORE_PACKAGE_ID_DIGITS = 4;
+var CORE_SIZE_ID_PREFIX            = 'SIZ-';
+var CORE_WEIGHT_ID_PREFIX          = 'WGT-';
+var CORE_PACKAGE_ID_PREFIX         = 'PKG-';
+var CORE_PACKAGE_ID_DIGITS         = 4;
+var CORE_PRODUCT_PACKAGE_ID_PREFIX = 'PPK-';
+var CORE_PRODUCT_PACKAGE_ID_DIGITS = 4;
 
 // ─── Read APIs ────────────────────────────────────────────────────────────────
 
@@ -500,4 +505,308 @@ function corePackageMasterFlag_(value) {
 function getCorePackageUnitOptionsForFrontend() {
   var table = getCoreSchemaV1Table('PACKAGES');
   return Object.values(table.values.UNIT);
+}
+
+// ─── Shared Product / Product Package APIs ────────────────────────────────────
+
+/**
+ * 共用商品マスタ（PRODUCTS）の全行を返す。
+ * PRODUCTS は writeAllowed: false のため読み取りのみ。
+ *
+ * 返す項目:
+ *   productId / englishTitle / japaneseTitle / category / item / hsCode / material
+ *
+ * @param {string} sessionId
+ * @returns {Array<Object>}
+ */
+function getCoreSharedProductsForFrontend(sessionId) {
+  setEmailFromSession(sessionId);
+  checkPermission('lead_view');
+
+  var ss = getSpreadsheet();
+  var data = coreCustomerFrontendReadTable(ss, 'PRODUCTS', [
+    'PRODUCT_ID', 'ENGLISH_TITLE', 'JAPANESE_TITLE', 'CATEGORY', 'ITEM', 'HS_CODE', 'MATERIAL'
+  ]);
+
+  return data.rows.map(function(row) {
+    return {
+      productId:     coreCustomerFrontendValue(row[data.indexes.PRODUCT_ID]),
+      englishTitle:  coreCustomerFrontendValue(row[data.indexes.ENGLISH_TITLE]),
+      japaneseTitle: coreCustomerFrontendValue(row[data.indexes.JAPANESE_TITLE]),
+      category:      coreCustomerFrontendValue(row[data.indexes.CATEGORY]),
+      item:          coreCustomerFrontendValue(row[data.indexes.ITEM]),
+      hsCode:        coreCustomerFrontendValue(row[data.indexes.HS_CODE]),
+      material:      coreCustomerFrontendValue(row[data.indexes.MATERIAL])
+    };
+  }).filter(function(r) { return r.productId !== ''; });
+}
+
+/**
+ * 商品荷姿マスタ（PRODUCT_PACKAGES）の全行を、参照先名称を結合して返す。
+ *
+ * 結合先:
+ *   SHARED_PRODUCT_ID  → PRODUCTS (englishTitle / japaneseTitle)
+ *   OWN_PRODUCT_ID     → OWN_PRODUCTS (nameEn / nameJa)
+ *   CASE/BOX/PACK_PACKAGE_ID → PACKAGES (name)
+ *   ITEM_ID            → ITEMS (nameEn / nameJa)
+ *   HTS_CODE_ID        → HTS_CODES (htsCode / descriptionEn)
+ *   MATERIAL_ID        → MATERIALS (nameEn / nameJa)
+ *
+ * ラベル文字列は GAS で合成せず、各値を個別に返す。
+ *
+ * @param {string} sessionId
+ * @returns {Array<Object>}
+ */
+function getCoreProductPackagesForFrontend(sessionId) {
+  setEmailFromSession(sessionId);
+  checkPermission('lead_view');
+
+  var ss = getSpreadsheet();
+
+  // 商品荷姿マスタ
+  var ppData = coreCustomerFrontendReadTable(ss, 'PRODUCT_PACKAGES', [
+    'PRODUCT_PACKAGE_ID', 'SHARED_PRODUCT_ID', 'OWN_PRODUCT_ID',
+    'CASE_PACKAGE_ID', 'BOX_PACKAGE_ID', 'PACK_PACKAGE_ID',
+    'ITEM_ID', 'HTS_CODE_ID', 'MATERIAL_ID', 'ACTIVE'
+  ]);
+
+  // 共用商品マスタ (PRODUCTS)
+  var prodData = coreCustomerFrontendReadTable(ss, 'PRODUCTS', [
+    'PRODUCT_ID', 'ENGLISH_TITLE', 'JAPANESE_TITLE'
+  ]);
+  var productById = {};
+  prodData.rows.forEach(function(row) {
+    var id = coreCustomerFrontendValue(row[prodData.indexes.PRODUCT_ID]);
+    if (id) productById[id] = row;
+  });
+
+  // 自社商品マスタ (OWN_PRODUCTS)
+  var ownProdData = coreCustomerFrontendReadTable(ss, 'OWN_PRODUCTS', [
+    'OWN_PRODUCT_ID', 'NAME_EN', 'NAME_JA'
+  ]);
+  var ownProductById = {};
+  ownProdData.rows.forEach(function(row) {
+    var id = coreCustomerFrontendValue(row[ownProdData.indexes.OWN_PRODUCT_ID]);
+    if (id) ownProductById[id] = row;
+  });
+
+  // 荷姿マスタ (PACKAGES)
+  var pkgData = coreCustomerFrontendReadTable(ss, 'PACKAGES', [
+    'PACKAGE_ID', 'NAME'
+  ]);
+  var packageById = {};
+  pkgData.rows.forEach(function(row) {
+    var id = coreCustomerFrontendValue(row[pkgData.indexes.PACKAGE_ID]);
+    if (id) packageById[id] = row;
+  });
+
+  // 品目マスタ (ITEMS)
+  var itemData = coreCustomerFrontendReadTable(ss, 'ITEMS', [
+    'ITEM_ID', 'NAME_EN', 'NAME_JA'
+  ]);
+  var itemById = {};
+  itemData.rows.forEach(function(row) {
+    var id = coreCustomerFrontendValue(row[itemData.indexes.ITEM_ID]);
+    if (id) itemById[id] = row;
+  });
+
+  // HTSコードマスタ (HTS_CODES)
+  var htsData = coreCustomerFrontendReadTable(ss, 'HTS_CODES', [
+    'HTS_CODE_ID', 'HTS_CODE', 'DESCRIPTION_EN'
+  ]);
+  var htsById = {};
+  htsData.rows.forEach(function(row) {
+    var id = coreCustomerFrontendValue(row[htsData.indexes.HTS_CODE_ID]);
+    if (id) htsById[id] = row;
+  });
+
+  // 素材マスタ (MATERIALS)
+  var matData = coreCustomerFrontendReadTable(ss, 'MATERIALS', [
+    'MATERIAL_ID', 'NAME_EN', 'NAME_JA'
+  ]);
+  var materialById = {};
+  matData.rows.forEach(function(row) {
+    var id = coreCustomerFrontendValue(row[matData.indexes.MATERIAL_ID]);
+    if (id) materialById[id] = row;
+  });
+
+  return ppData.rows
+    .map(function(row) {
+      var ppId = coreCustomerFrontendValue(row[ppData.indexes.PRODUCT_PACKAGE_ID]);
+      if (!ppId) return null;
+
+      var sharedProductId = coreCustomerFrontendValue(row[ppData.indexes.SHARED_PRODUCT_ID]);
+      var ownProductId    = coreCustomerFrontendValue(row[ppData.indexes.OWN_PRODUCT_ID]);
+      var casePackageId   = coreCustomerFrontendValue(row[ppData.indexes.CASE_PACKAGE_ID]);
+      var boxPackageId    = coreCustomerFrontendValue(row[ppData.indexes.BOX_PACKAGE_ID]);
+      var packPackageId   = coreCustomerFrontendValue(row[ppData.indexes.PACK_PACKAGE_ID]);
+      var itemId          = coreCustomerFrontendValue(row[ppData.indexes.ITEM_ID]);
+      var htsCodeId       = coreCustomerFrontendValue(row[ppData.indexes.HTS_CODE_ID]);
+      var materialId      = coreCustomerFrontendValue(row[ppData.indexes.MATERIAL_ID]);
+
+      var prodRow    = productById[sharedProductId]   || null;
+      var ownProdRow = ownProductById[ownProductId]   || null;
+      var casePkgRow = packageById[casePackageId]     || null;
+      var boxPkgRow  = packageById[boxPackageId]      || null;
+      var packPkgRow = packageById[packPackageId]     || null;
+      var itemRow    = itemById[itemId]               || null;
+      var htsRow     = htsById[htsCodeId]             || null;
+      var matRow     = materialById[materialId]       || null;
+
+      return {
+        productPackageId:          ppId,
+        sharedProductId:           sharedProductId,
+        sharedProductEnglishTitle: prodRow ? coreCustomerFrontendValue(prodRow[prodData.indexes.ENGLISH_TITLE])  : '',
+        sharedProductJapaneseTitle: prodRow ? coreCustomerFrontendValue(prodRow[prodData.indexes.JAPANESE_TITLE]) : '',
+        ownProductId:              ownProductId,
+        ownProductNameEn:          ownProdRow ? coreCustomerFrontendValue(ownProdRow[ownProdData.indexes.NAME_EN]) : '',
+        ownProductNameJa:          ownProdRow ? coreCustomerFrontendValue(ownProdRow[ownProdData.indexes.NAME_JA]) : '',
+        casePackageId:             casePackageId,
+        casePackageName:           casePkgRow ? coreCustomerFrontendValue(casePkgRow[pkgData.indexes.NAME]) : '',
+        boxPackageId:              boxPackageId,
+        boxPackageName:            boxPkgRow  ? coreCustomerFrontendValue(boxPkgRow[pkgData.indexes.NAME])  : '',
+        packPackageId:             packPackageId,
+        packPackageName:           packPkgRow ? coreCustomerFrontendValue(packPkgRow[pkgData.indexes.NAME]) : '',
+        itemId:                    itemId,
+        itemNameEn:                itemRow ? coreCustomerFrontendValue(itemRow[itemData.indexes.NAME_EN]) : '',
+        itemNameJa:                itemRow ? coreCustomerFrontendValue(itemRow[itemData.indexes.NAME_JA]) : '',
+        htsCodeId:                 htsCodeId,
+        htsCode:                   htsRow ? coreCustomerFrontendValue(htsRow[htsData.indexes.HTS_CODE])       : '',
+        htsDescriptionEn:          htsRow ? coreCustomerFrontendValue(htsRow[htsData.indexes.DESCRIPTION_EN]) : '',
+        materialId:                materialId,
+        materialNameEn:            matRow ? coreCustomerFrontendValue(matRow[matData.indexes.NAME_EN]) : '',
+        materialNameJa:            matRow ? coreCustomerFrontendValue(matRow[matData.indexes.NAME_JA]) : '',
+        isActive:                  coreCustomerFrontendValue(row[ppData.indexes.ACTIVE])
+      };
+    })
+    .filter(Boolean);
+}
+
+/**
+ * 商品荷姿を1件追加または更新する。
+ *
+ * payload:
+ *   productPackageId  {string}   省略時は新規採番（PPK-0001 形式）
+ *   sharedProductId   {string}   共用商品ID（ownProductId と排他）
+ *   ownProductId      {string}   自社商品ID（sharedProductId と排他）
+ *   casePackageId     {string}   ケース荷姿ID（PACKAGES に存在すること）
+ *   boxPackageId      {string}   ボックス荷姿ID（PACKAGES に存在すること）
+ *   packPackageId     {string}   パック荷姿ID（PACKAGES に存在すること）
+ *   itemId            {string}   品目ID（ITEMS に存在すること）
+ *   htsCodeId         {string}   HTSコードID（HTS_CODES に存在すること）
+ *   materialId        {string}   素材ID（MATERIALS に存在すること）
+ *   isActive          {*}        'TRUE' または '' の二値
+ *
+ * @param {string} sessionId
+ * @param {Object} payload
+ * @returns {{ success: true, productPackageId: string }}
+ */
+function upsertCoreProductPackageForFrontend(sessionId, payload) {
+  setEmailFromSession(sessionId);
+  checkPermission('deal_edit');
+
+  if (!payload || typeof payload !== 'object') throw new Error('MISSING_PAYLOAD');
+
+  // sharedProductId と ownProductId の排他チェック
+  var sharedProductId = String(payload.sharedProductId || '').trim();
+  var ownProductId    = String(payload.ownProductId    || '').trim();
+  if (sharedProductId && ownProductId) {
+    throw new Error('PRODUCT_ID_CONFLICT: sharedProductId と ownProductId はどちらか一方のみ指定できます。');
+  }
+
+  var now              = new Date();
+  var productPackageId = String(payload.productPackageId || '').trim();
+  var isNew            = !productPackageId;
+
+  var resultId = withSheetWrite_(
+    { useLock: true, cacheTargets: [] },
+    function() {
+      var ss = getSpreadsheet();
+
+      // 荷姿IDの存在確認（指定されたものだけ検証）
+      var casePackageId = String(payload.casePackageId || '').trim();
+      var boxPackageId  = String(payload.boxPackageId  || '').trim();
+      var packPackageId = String(payload.packPackageId || '').trim();
+      if (casePackageId || boxPackageId || packPackageId) {
+        var pkgResult = validateCoreSchemaV1TableForWrite(ss, 'PACKAGES');
+        if (casePackageId && !corePackageMasterIdExists_(pkgResult.sheet, pkgResult.headerIndexes, 'PACKAGES', 'PACKAGE_ID', casePackageId)) {
+          throw new Error('PACKAGE_NOT_FOUND: ' + casePackageId);
+        }
+        if (boxPackageId && !corePackageMasterIdExists_(pkgResult.sheet, pkgResult.headerIndexes, 'PACKAGES', 'PACKAGE_ID', boxPackageId)) {
+          throw new Error('PACKAGE_NOT_FOUND: ' + boxPackageId);
+        }
+        if (packPackageId && !corePackageMasterIdExists_(pkgResult.sheet, pkgResult.headerIndexes, 'PACKAGES', 'PACKAGE_ID', packPackageId)) {
+          throw new Error('PACKAGE_NOT_FOUND: ' + packPackageId);
+        }
+      }
+
+      // 品目IDの存在確認
+      var itemId = String(payload.itemId || '').trim();
+      if (itemId) {
+        var itemResult = validateCoreSchemaV1TableForWrite(ss, 'ITEMS');
+        if (!corePackageMasterIdExists_(itemResult.sheet, itemResult.headerIndexes, 'ITEMS', 'ITEM_ID', itemId)) {
+          throw new Error('ITEM_NOT_FOUND: ' + itemId);
+        }
+      }
+
+      // HTSコードIDの存在確認
+      var htsCodeId = String(payload.htsCodeId || '').trim();
+      if (htsCodeId) {
+        var htsResult = validateCoreSchemaV1TableForWrite(ss, 'HTS_CODES');
+        if (!corePackageMasterIdExists_(htsResult.sheet, htsResult.headerIndexes, 'HTS_CODES', 'HTS_CODE_ID', htsCodeId)) {
+          throw new Error('HTS_CODE_NOT_FOUND: ' + htsCodeId);
+        }
+      }
+
+      // 素材IDの存在確認
+      var materialId = String(payload.materialId || '').trim();
+      if (materialId) {
+        var matResult = validateCoreSchemaV1TableForWrite(ss, 'MATERIALS');
+        if (!corePackageMasterIdExists_(matResult.sheet, matResult.headerIndexes, 'MATERIALS', 'MATERIAL_ID', materialId)) {
+          throw new Error('MATERIAL_NOT_FOUND: ' + materialId);
+        }
+      }
+
+      // 商品荷姿マスタへの書き込み
+      var result = validateCoreSchemaV1TableForWrite(ss, 'PRODUCT_PACKAGES');
+      var sheet  = result.sheet;
+      var hi     = result.headerIndexes;
+
+      function setCell(fieldKey, value) {
+        var header = getCoreSchemaV1HeaderName('PRODUCT_PACKAGES', fieldKey);
+        var colIdx = hi[header];
+        if (colIdx) sheet.getRange(targetRow, colIdx).setValue(value);
+      }
+
+      var targetRow;
+
+      if (!isNew) {
+        targetRow = corePackageMasterFindRow_(sheet, hi, 'PRODUCT_PACKAGES', 'PRODUCT_PACKAGE_ID', productPackageId);
+        if (targetRow < 0) throw new Error('PRODUCT_PACKAGE_NOT_FOUND: ' + productPackageId);
+      } else {
+        productPackageId = corePackageMasterGenerateNextId_(sheet, hi, 'PRODUCT_PACKAGES', 'PRODUCT_PACKAGE_ID', CORE_PRODUCT_PACKAGE_ID_PREFIX, CORE_PRODUCT_PACKAGE_ID_DIGITS);
+        targetRow = sheet.getLastRow() + 1;
+        var maxCols = sheet.getLastColumn();
+        sheet.appendRow(new Array(maxCols).fill(''));
+        setCell('PRODUCT_PACKAGE_ID', productPackageId);
+        setCell('REGISTERED_AT', now);
+      }
+
+      if (payload.sharedProductId !== undefined) setCell('SHARED_PRODUCT_ID', sharedProductId);
+      if (payload.ownProductId    !== undefined) setCell('OWN_PRODUCT_ID',    ownProductId);
+      if (payload.casePackageId   !== undefined) setCell('CASE_PACKAGE_ID',   casePackageId);
+      if (payload.boxPackageId    !== undefined) setCell('BOX_PACKAGE_ID',    boxPackageId);
+      if (payload.packPackageId   !== undefined) setCell('PACK_PACKAGE_ID',   packPackageId);
+      if (payload.itemId          !== undefined) setCell('ITEM_ID',           itemId);
+      if (payload.htsCodeId       !== undefined) setCell('HTS_CODE_ID',       htsCodeId);
+      if (payload.materialId      !== undefined) setCell('MATERIAL_ID',       materialId);
+      if (payload.isActive        !== undefined) setCell('ACTIVE',            corePackageMasterFlag_(payload.isActive));
+
+      setCell('UPDATED_AT', now);
+
+      return productPackageId;
+    }
+  );
+
+  return { success: true, productPackageId: resultId };
 }
