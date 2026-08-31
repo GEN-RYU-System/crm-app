@@ -2,6 +2,43 @@
 
 ---
 
+## docs: .pr-number の echo+gh 分離と canonical clone 直接編集禁止を追記 — PR #741
+
+**日付:** 2026-08-31
+**PR:** [#741](https://github.com/GEN-RYU-System/crm-app/pull/741)
+**マージコミットSHA:** `f9ff1cb66e689565ee5445f3c43ea6ca84139af6`
+**mergedAt:** `2026-08-31T03:08:14Z`
+
+### 変更内容
+
+`docs/AUTONOMOUS_WORK_RULES.md` に2件の注意事項を追記。
+
+1. **「実行上の注意」サブセクション**（`.pr-number` の自己作成セクション内）  
+   `echo <PR番号> > .pr-number && gh pr checks <PR番号>` を同一コマンドで実行すると、
+   gh-scope-guard が PreToolUse（Bash ツール実行前）に評価されるためブロックされる。
+   `echo` と `gh` は必ず別コマンドで実行することを明記した。
+
+2. **「canonical clone での直接編集の禁止」セクション**（新規）  
+   canonical clone 上でファイルを編集すると `git pull` が競合停止する。
+   許可操作（pull/fetch/clasp run/.pr-number/worktree管理）と禁止操作（Edit/Write）を表で整理した。
+
+### 検証結果
+
+- docs のみ変更。`npm run build:gas` 対象外
+- CI全通過（Gitleaks / Sensitive Content / frontend-check / gas-global-namespace）
+- DEV配布完了: `2026-08-31T03:09:05Z`
+- SHA照合: `f9ff1cb` 一致
+- `runCoreSchemaConformanceAudit`: 総不一致2件（LEADS 1 + CUSTOMERS 1）= ベースライン一致 **通過**
+  - ORDERS: 0件 / PURCHASES: 0件
+
+### 戻し方
+
+```bash
+git revert f9ff1cb66e689565ee5445f3c43ea6ca84139af6
+```
+
+---
+
 ## refactor(purchases): 仕入れシート列名整形 PR-3 — 旧名フォールバック削除 — PR #736
 
 **日付:** 2026-08-31
