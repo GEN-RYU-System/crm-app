@@ -86,3 +86,62 @@
   - dryRun: 変更あり 0件 ✅
 
 **国マスタ 列リネーム 完了 ✅**
+
+---
+
+## 見積もり管理（QUOTES）
+
+**対象列 1本:**
+| 旧名 | 新名 |
+|------|------|
+| PDF URL | pdf_url |
+
+### PR-1 — デュアルサポート追加
+
+- PR: #778
+- マージ: 2026-08-31T07:54:03Z
+- 変更ファイル: 4ファイル
+  - `src/00_CoreSchemaRegistry.js` — headerAliasMap 追加 + validateCoreSchemaV1TableForWrite に aliasMap フォールバック追加
+  - `src/28_CoreQuoteApi.js` — coreQuoteReadTable に aliasMap フォールバック追加
+  - `src/11_QuoteService.js` — colMapping['PDF URL'] || colMapping['pdf_url'] に変更（2箇所）+ pdfUrlCol ガード追加
+  - `src/99_ColumnRenameExecution.js` — backupQuotesMasterSheet / verifyQuotesMasterSheetBackup / getQuotesMasterCurrentHeaders 追加
+
+### バックアップ実行（PR-1 マージ後）
+
+```
+{ status: 'OK', backupName: '見積もり管理_backup_20260831', sourceRows: 2, sourceCols: 19 }
+{ status: 'OK', headersMatch: true, sourceCols: 19, backupCols: 19, sourceRows: 2, backupRows: 2 }
+```
+
+### PR-2 — CoreSchema 切り替え + シート実リネーム
+
+- PR: #780
+- マージ: 2026-08-31T08:02:42Z
+- 変更ファイル:
+  - `src/00_CoreSchemaRegistry.js` — PDF_URL の canonical header を 'pdf_url' に切り替え、aliasMap を {'pdf_url': 'PDF URL'} に反転
+  - `src/99_ColumnRenameExecution.js` — renameQuotesMasterHeaders() 追加
+- シートリネーム実行結果:
+  ```
+  { status: 'OK', renamed: 1, details: [
+    { col: 16, before: 'PDF URL', after: 'pdf_url' }
+  ]}
+  ```
+- 事後確認（PR-2 後）:
+  - SHA: `c918e4a2` = origin/develop HEAD ✅
+  - 監査: 2件（LEADS 1 / CUSTOMERS 1）= baseline ✅
+  - dryRun: 変更あり 0件 ✅
+
+### PR-3 — フォールバック除去
+
+- PR: #781
+- マージ: 2026-08-31T08:14:27Z
+- 変更ファイル: 3ファイル
+  - `src/00_CoreSchemaRegistry.js` — headerAliasMap 削除 + validateCoreSchemaV1TableForWrite の aliasMap フォールバック除去
+  - `src/11_QuoteService.js` — colMapping['pdf_url'] 直引きに統一（2箇所）
+  - `src/28_CoreQuoteApi.js` — coreQuoteReadTable の aliasMap フォールバック除去
+- 事後確認（PR-3 後）:
+  - SHA: `3fa7787` = origin/develop HEAD ✅
+  - 監査: 2件（LEADS 1 / CUSTOMERS 1）= baseline ✅、QUOTES 0件 ✅
+  - dryRun: 変更あり 0件 ✅
+
+**見積もり管理 列リネーム 完了 ✅**
