@@ -5575,3 +5575,71 @@ ID 採番: `OWN-CAT-0001` / `OWN-WRK-0001` / `OWN-MFR-0001`
 git revert 894dd2c  # PR #772 squash commit
 # DEV スプレッドシートに挿入したテストデータ（OWN-CAT-0001 等）は手動削除が必要
 ```
+
+---
+
+### 2026-08-31 PR-S2b: 自社マスタ管理画面新設
+
+**目的**: PR #772 で実装した GAS API を使い、自社大分類・作品・メーカーを画面から登録・編集できるようにする。
+
+#### 実施内容
+
+**PR #776** — 自社マスタ管理画面（荷姿マスタと同じパターン）
+
+変更ファイル:
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `frontend/src/pages/data-management/OwnMasterPage.tsx`（新規）| 自社マスタ画面（3タブ・インライン編集） |
+| `frontend/src/content/ja/ownMaster.ts`（新規）| コピー文字列 |
+| `frontend/src/gas/client.ts` | 6関数・6型追加 |
+| `frontend/src/gas/types.d.ts` | `GoogleScriptRun` に6メソッド追加 |
+| `frontend/src/preview/gasRunnerMock.ts` | `?preview` 用モック追加 |
+| `frontend/src/app/navigation.ts` | `ownMaster`（商品管理 order:4, preview, admin_access）追加 |
+| `frontend/src/content/ja/dataManagement.ts` | `ownMaster: '自社マスタ'` 追加 |
+| `frontend/src/content/ja/index.ts` | `ownMasterCopy` export 追加 |
+| `frontend/src/App.tsx` | import・route・hubIndexRoutes 追加 |
+| `frontend/scripts/check-design-system.mjs` | `OwnMasterPage.tsx` を allowlist 追加 |
+
+#### CI / マージ / デプロイ
+
+| PR | CI | mergedAt | Deploy to DEV |
+|----|----|-----------|----|
+| #776 | 4/4 pass | 2026-08-31T07:34:29Z | SHA: `ff548db` → success |
+
+#### ?preview 動作確認
+
+- 商品管理に「自社マスタ」が表示される ✓
+- 3タブ（大分類 / 作品 / メーカー）が切り替わる ✓
+- 新規追加ボタンで入力欄（名称（英語）/ 名称（日本語）/ 有効）が開く ✓
+- 保存・キャンセルボタン表示 ✓
+- 白画面なし、他ページ破損なし ✓
+
+#### getDeployedSha 確認
+
+```
+sha: 'ff548db340311e7ecad0c346c2110e30eb144512'（= origin/develop HEAD と一致）
+```
+
+#### runCoreSchemaConformanceAudit 結果
+
+総不一致: 2件（既存）
+
+| テーブル | 不一致内容 |
+|----------|-----------|
+| LEADS | ヘッダー列数: 定義51 / 実シート64（差:13列）既存問題 |
+| CUSTOMERS | ヘッダー列数: 定義14 / 実シート15（差:1列）既存問題 |
+
+今回追加の OWN_CATEGORIES / OWN_WORKS / OWN_MANUFACTURERS は全て 0件（正常） ✓  
+GAS は無変更のため今回の PR による新規不一致はなし。
+
+#### 影響範囲
+
+- フロントエンドのみ（`src/` 配下の GAS は無変更）
+- 既存ページへの影響なし（ナビゲーション追加の 3ファイル除く）
+
+#### 戻し方
+
+```bash
+git revert ff548db  # PR #776 squash commit
+```
