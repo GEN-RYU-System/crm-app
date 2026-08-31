@@ -145,14 +145,6 @@ const CORE_SCHEMA_V1_TABLES = {
         PAID: '支払済み'
       }
     },
-    headerAliasMap: {
-      'purchase_id': '仕入れID', 'order_id': 'オーダーID', 'purchase_assignee_id': '仕入れ担当ID',
-      'paid_by_id': '仕入れ支払者ID', 'ordered_at': '注文日', 'paid_at': '仕入れ支払日',
-      'transaction_number': '取引番号', 'supplier': '仕入元', 'supplier_url': '仕入元URL',
-      'quantity': '数量', 'unit_price': '単価', 'amount': '金額',
-      'shipping_or_agency_fee': '送料/代行費', 'carrier': '運送会社', 'tracking_number': '送り状番号',
-      'status': 'ステータス', 'note': '備考', 'registered_at': '登録日', 'updated_at': '更新日'
-    },
     referenceIds: [{ headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' }, { headerKey: 'PURCHASE_ASSIGNEE_ID', targetTableKey: 'STAFF' }, { headerKey: 'PAID_BY_ID', targetTableKey: 'STAFF' }]
   },
   FORM_TOKENS: {
@@ -455,20 +447,15 @@ function validateCoreSchemaV1TableForWrite(spreadsheet, tableKey) {
   if (new Set(nonEmptyHeaders).size !== nonEmptyHeaders.length) {
     throw new Error('CORE_SCHEMA_NON_EMPTY_HEADER_DUPLICATE');
   }
-  const aliasMap = table.headerAliasMap || {};
   const requiredHeaders = Object.keys(table.headers).map(headerKey => table.headers[headerKey]);
-  if (requiredHeaders.some(headerName =>
-    headers.indexOf(headerName) === -1 &&
-    (aliasMap[headerName] === undefined || headers.indexOf(aliasMap[headerName]) === -1)
-  )) {
+  if (requiredHeaders.some(headerName => headers.indexOf(headerName) === -1)) {
     throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING');
   }
   return {
     sheet: sheet,
     tableKey: resolveCoreSchemaV1TableKey(tableKey),
     headerIndexes: requiredHeaders.reduce((indexes, headerName) => {
-      var effectiveName = headers.indexOf(headerName) !== -1 ? headerName : (aliasMap[headerName] || headerName);
-      indexes[headerName] = headers.indexOf(effectiveName) + 1;
+      indexes[headerName] = headers.indexOf(headerName) + 1;
       return indexes;
     }, {})
   };

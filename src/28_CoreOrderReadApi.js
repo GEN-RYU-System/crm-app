@@ -576,17 +576,11 @@ function readDetailSheet_(ss, tableKey, fieldKeys) {
     if (key) headerToIdx[key] = i;
   });
 
-  var aliasMap = (getCoreSchemaV1Table(resolveCoreSchemaV1TableKey(tableKey)).headerAliasMap) || {};
   var fieldIdxMap = {};
   fieldKeys.forEach(function(fieldKey) {
     var physicalName = getCoreSchemaV1HeaderName(tableKey, fieldKey);
     if (headerToIdx[physicalName] !== undefined) {
       fieldIdxMap[fieldKey] = headerToIdx[physicalName];
-    } else {
-      var aliasName = aliasMap[physicalName];
-      if (aliasName !== undefined && headerToIdx[aliasName] !== undefined) {
-        fieldIdxMap[fieldKey] = headerToIdx[aliasName];
-      }
     }
   });
 
