@@ -392,3 +392,61 @@ function getCountryMasterCurrentHeaders() {
   if (lastCol < 1) return [];
   return sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
 }
+
+/**
+ * 国マスタシートのヘッダー行を旧列名から英語スネークケースへ一括変更する。
+ *
+ * 対象列:
+ *   国ID(ISO2)   → country_code
+ *   国名（表示） → display_name
+ *   国名（日本語）→ name_ja
+ *
+ * 前提条件:
+ *   - backupCountryMasterSheet() が実行済みであること
+ *   - DEV 環境であること
+ *
+ * @returns {{ status: string, renamed: number, details: Array<{col: number, before: string, after: string}> }}
+ */
+function renameCountryMasterHeaders() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('renameCountryMasterHeaders は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+
+  var backupName = '国マスタ_backup_20260831';
+  if (!ss.getSheetByName(backupName)) {
+    throw new Error('バックアップシートが存在しません。先に backupCountryMasterSheet() を実行してください: ' + backupName);
+  }
+
+  var jaToEn = {
+    '国ID(ISO2)':    'country_code',
+    '国名（表示）':  'display_name',
+    '国名（日本語）': 'name_ja'
+  };
+
+  var sheet = getCoreSchemaV1Sheet(ss, 'COUNTRIES');
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) throw new Error('国マスタシートに列がありません');
+
+  var headerRange = sheet.getRange(1, 1, 1, lastCol);
+  var currentHeaders = headerRange.getDisplayValues()[0];
+
+  var details = [];
+  var newHeaders = currentHeaders.map(function(h, i) {
+    var trimmed = String(h).trim();
+    var mapped = jaToEn[trimmed];
+    if (mapped !== undefined && mapped !== trimmed) {
+      details.push({ col: i + 1, before: trimmed, after: mapped });
+      return mapped;
+    }
+    return trimmed;
+  });
+
+  headerRange.setValues([newHeaders]);
+
+  return {
+    status: 'OK',
+    renamed: details.length,
+    details: details
+  };
+}

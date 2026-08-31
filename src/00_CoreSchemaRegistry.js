@@ -218,16 +218,16 @@ const CORE_SCHEMA_V1_TABLES = {
   COUNTRIES: {
     sheetName: '国マスタ', canonicalName: '国マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: false,
     headers: createCoreSchemaV1Headers([
-      ['COUNTRY_CODE',      '国ID(ISO2)'],
-      ['DISPLAY_NAME',      '国名（表示）'],
-      ['NAME_JA',           '国名（日本語）'],
+      ['COUNTRY_CODE',      'country_code'],
+      ['DISPLAY_NAME',      'display_name'],
+      ['NAME_JA',           'name_ja'],
       ['COUNTRY_NUMBER',    '国番号'],
       ['STRIP_TRUNK_ZERO',  'トランク0除去'],
       ['IS_ACTIVE',         '有効'],
       ['STATE_REQUIRED',    '州必須'],
       ['ZIP_REQUIRED',      '郵便番号必須']
     ]), primaryKey: 'COUNTRY_CODE',
-    headerAliasMap: { '国ID(ISO2)': 'country_code', '国名（表示）': 'display_name', '国名（日本語）': 'name_ja' },
+    headerAliasMap: { 'country_code': '国ID(ISO2)', 'display_name': '国名（表示）', 'name_ja': '国名（日本語）' },
     referenceIds: []
   },
   CURRENCIES: {
