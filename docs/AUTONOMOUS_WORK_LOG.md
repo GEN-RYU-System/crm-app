@@ -6216,3 +6216,42 @@ FedEx / DHL / UPS が地帯表で独立した配送先として区別してい�
 - バックアップ: 発行元マスタ_backup_20260901 / 支払先マスタ_backup_20260901 / 配送先マスタ_backup_20260901
 - 検証: 危険操作 grep 0件 / 3シートのヘッダー照合一致（renamed各18/16/17件 status:OK）/ 旧列名機能的参照残存0件 / PDF系参照確認済み（frontend/src/content/ja/issuer.ts:39-41 / features/documents/invoiceUtils.ts:21-23）
 - 復元: 3シートを各複製から書き戻し、コードは `git revert 46f604915` → `git revert 300acdfff` → `git revert f9f1d467e`（逆順）
+
+---
+
+### 2026-08-31 地帯・送料データ投入（PR #805 / PR-T2 改訂）
+
+**概要:**
+`importShippingRateData` に日本語名キーの上書き辞書（`ZONE_COUNTRY_OVERRIDE_MAP`）を追加し、
+DRY_RUN で報告されていた未マッチ16件をゼロにした上でデータを投入した。
+
+#### 変更ファイル
+
+- `src/99_DevShippingRateDataImport.js`
+  - `ZONE_COUNTRY_OVERRIDE_MAP`（17エントリー）をモジュールレベル定数として追加
+  - `_buildZonesRows` の照合順序を変更: **上書き辞書（日本語名キー）→ 英語名 → 日本語名**
+
+#### 上書き辞書の内訳
+
+| 分類 | 件数 | 代表例 |
+|------|------|--------|
+| 英語名衝突（St.Martin） | 2 | サン・マルタン→MF、シント・マールテン→SX |
+| 表記揺れ | 9 | 韓国→KR、バチカン→VA 等 |
+| 非ISO地域（PR #802 で国マスタ追加済み） | 5 | AC/IC/TA/WK/MI |
+| 中国南部 | 1 | CN-S（DHL対象外="-"、FedEx=K、UPS=10） |
+
+#### 事後確認
+
+- getDeployedSha: `f0020ce` = PR #805 squash SHA ✅
+- importShippingRateData("DRY_RUN"): 未マッチ=0件、配送会社=3件、地帯=717件、送料表=3649件 ✅
+- importShippingRateData("APPLY"): 配送会社=3件、地帯=717件、送料表=3649件 書き込み完了 ✅
+- verifyShippingRateImport (PR #806 / #808):
+  - (a) US / FedEx ゾーン: `F` ✅
+  - (b) CN / FedEx ゾーン: `W` ✅（期待値通り）
+  - (b) CN-S / FedEx ゾーン: `K` ✅（期待値通り）
+  - (c) 送料表総行数: `3649` ✅（DRY_RUNと一致）
+
+#### ロールバックについて
+
+APPLY は3マスタへの書き込みであり `git revert` では戻らない。
+ロールバックが必要な場合は 地帯マスタ・送料表マスタ・配送会社マスタ の各シートを手動クリアすること。
