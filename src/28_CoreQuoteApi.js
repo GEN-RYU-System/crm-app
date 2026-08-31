@@ -350,10 +350,12 @@ function coreQuoteReadTable(spreadsheet, tableKey, requiredHeaderKeys) {
     ? sheet.getRange(table.headerRowNumber, 1, 1, colCount).getDisplayValues()[0]
         .map(function(h) { return String(h).trim(); })
     : [];
+  const aliasMap = table.headerAliasMap || {};
   const indexes = {};
   requiredHeaderKeys.forEach(function(headerKey) {
     const headerName = getCoreSchemaV1HeaderName(tableKey, headerKey);
-    const idx = headers.indexOf(headerName);
+    let idx = headers.indexOf(headerName);
+    if (idx === -1 && aliasMap[headerName]) idx = headers.indexOf(aliasMap[headerName]);
     if (idx === -1) throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING: ' + headerKey);
     indexes[headerKey] = idx;
   });
