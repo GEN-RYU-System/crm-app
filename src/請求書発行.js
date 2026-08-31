@@ -414,7 +414,7 @@ function transferAndGeneratePDF() {
       // マスタ情報
       if (customerInfo) {
         const mstFields = [
-          { m: "FedEx ID",    d: "発送情報FedEx ID" },
+          { m: "fedex_id",    d: "発送情報FedEx ID" },
           { m: "顧客ID",      d: "発送情報顧客ID" },
           { m: "D Name",      d: "発送情報受取人氏名" },
           { m: "D Telephone", d: "発送情報電話番号" },
@@ -544,12 +544,9 @@ function setupTransferConfig() {
   config.mstCol = getCols(config.mstSheet, 1, [
     "B Name",
     "D Name", "D Telephone", "D Email", "D Tax ID", "D Address 1", "D Address 2", "D Address 3",
-    "D City", "D State", "D Zip", "D Country", "営業担当者", "顧客ID", "支払い名義"
+    "D City", "D State", "D Zip", "D Country", "営業担当者", "顧客ID", "支払い名義", "fedex_id"
   ]);
   if (!config.mstCol) return null;
-  // FedEx ID: 新列名 fedex_id → 旧列名 FedEx ID の順で検索（PR-1 新旧両対応）
-  var fedexOptional = getCols(config.mstSheet, 1, ["fedex_id", "FedEx ID"], true);
-  config.mstCol["FedEx ID"] = fedexOptional["fedex_id"] || fedexOptional["FedEx ID"] || 0;
 
   config.setCol = getCols(config.settingSheet, 1, ["状態", "内容品名", "単位", "通貨", "レート", "為替表記", "HTS"]);
   if (!config.setCol) return null;
