@@ -471,13 +471,13 @@ function addTestData() {
   // テストデータ（60列）
   const testData = [
     // インバウンドリード（新規）
-    createTestRow('インバウンド', '新規', 'Webサイト', 'John Smith', 'John', 'USA', 'john@abc.com', '+1-555-1234', 'Discord', '', '高', '大口', '信頼重視', '24h以内'),
+    createTestRow('インバウンド', '新規', 'Webサイト', 'John Smith', 'John', 'USA', 'john@example.com', '+1-555-1234', 'Discord', '', '高', '大口', '信頼重視', '24h以内'),
     // インバウンドリード（対応中）
-    createTestRow('インバウンド', '対応中', 'SNS', 'Jane Doe', 'Jane', 'Canada', 'jane@xyz.com', '', 'LINE', '', '中', '中規模', '価格重視', '48h以内'),
+    createTestRow('インバウンド', '対応中', 'SNS', 'Jane Doe', 'Jane', 'Canada', 'jane@example.com', '', 'LINE', '', '中', '中規模', '価格重視', '48h以内'),
     // アウトバウンドリード（アサイン確定）
-    createTestRow('アウトバウンド', 'アサイン確定', '展示会', 'Bob Wilson', 'Bob', 'UK', 'bob@def.com', '+44-20-1234', 'Email', '', '高', '大口', '信頼重視', '24h以内'),
+    createTestRow('アウトバウンド', 'アサイン確定', '展示会', 'Bob Wilson', 'Bob', 'UK', 'bob@example.com', '+44-20-1234', 'Email', '', '高', '大口', '信頼重視', '24h以内'),
     // 商談中
-    createTestRow('インバウンド', '商談中', '紹介', 'Alice Chen', 'Alice', 'Singapore', 'alice@ghi.com', '', 'WhatsApp', '', '高', '大口', '信頼重視', '24h以内'),
+    createTestRow('インバウンド', '商談中', '紹介', 'Alice Chen', 'Alice', 'Singapore', 'alice@example.com', '', 'WhatsApp', '', '高', '大口', '信頼重視', '24h以内'),
   ];
 
   testData.forEach(row => {
