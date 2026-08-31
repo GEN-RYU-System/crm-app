@@ -515,8 +515,8 @@ function fixAddressSplits(confirmArg) {
   var totalChanges = 0;
 
   var targets = [
-    { key: CONFIG.SHEETS.CRM_SHIPPING, addrCols: ['Address 1', 'Address 2', 'Address 3'] },
-    { key: CONFIG.SHEETS.CRM_PAYMENT,  addrCols: ['Address 1', 'Address 2', 'Address 3'] }
+    { key: CONFIG.SHEETS.CRM_SHIPPING, addrCols: ['address_line_1', 'address_line_2', 'address_line_3'] },
+    { key: CONFIG.SHEETS.CRM_PAYMENT,  addrCols: ['address_line_1', 'address_line_2', 'address_line_3'] }
   ];
 
   targets.forEach(function(t) {
@@ -524,8 +524,8 @@ function fixAddressSplits(confirmArg) {
     if (!sh) { lines.push('[' + t.key + '] ERROR: シートが存在しません'); return; }
     var data = sh.getDataRange().getValues();
     var h = data[0];
-    var cidIdx  = h.indexOf('顧客ID');
-    var cityIdx = h.indexOf('City');
+    var cidIdx  = h.indexOf('customer_id');
+    var cityIdx = h.indexOf('city');
     var colIdxs = t.addrCols.map(function(c) { return h.indexOf(c); });
 
     lines.push('[' + t.key + ']');
@@ -717,11 +717,11 @@ function auditAddressCharset() {
   var targets = [
     {
       name: CONFIG.SHEETS.CRM_SHIPPING,
-      cols: ['宛名', 'Address 1', 'Address 2', 'Address 3', 'City', 'State']
+      cols: ['recipient_name', 'address_line_1', 'address_line_2', 'address_line_3', 'city', 'state']
     },
     {
       name: CONFIG.SHEETS.CRM_PAYMENT,
-      cols: ['請求名義', 'Address 1', 'Address 2', 'City', 'State']
+      cols: ['billing_name', 'address_line_1', 'address_line_2', 'city', 'state']
     },
     {
       name: CONFIG.SHEETS.CRM_CUSTOMERS,
@@ -734,7 +734,7 @@ function auditAddressCharset() {
     if (!sh) { lines.push('[' + t.name + '] シートが存在しません'); return; }
     var data = sh.getDataRange().getValues();
     var h = data[0];
-    var cidIdx = h.indexOf('顧客ID');
+    var cidIdx = h.indexOf('customer_id');
 
     lines.push('[' + t.name + ']');
     var sheetFound = 0;
@@ -895,8 +895,8 @@ function auditAddressLength() {
   var total = 0;
 
   var targets = [
-    { name: CONFIG.SHEETS.CRM_SHIPPING, cols: ['Address 1', 'Address 2', 'Address 3'] },
-    { name: CONFIG.SHEETS.CRM_PAYMENT,  cols: ['Address 1', 'Address 2'] }
+    { name: CONFIG.SHEETS.CRM_SHIPPING, cols: ['address_line_1', 'address_line_2', 'address_line_3'] },
+    { name: CONFIG.SHEETS.CRM_PAYMENT,  cols: ['address_line_1', 'address_line_2'] }
   ];
 
   targets.forEach(function(t) {
@@ -904,7 +904,7 @@ function auditAddressLength() {
     if (!sh) { lines.push('[' + t.name + '] シートが存在しません'); return; }
     var data = sh.getDataRange().getValues();
     var h = data[0];
-    var cidIdx = h.indexOf('顧客ID');
+    var cidIdx = h.indexOf('customer_id');
     lines.push('[' + t.name + ']');
 
     var sheetFound = 0;

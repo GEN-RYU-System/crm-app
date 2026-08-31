@@ -483,17 +483,17 @@ function registerCustomerFromForm(payload) {
       addrId,                          // 配送先ID
       customerId,                      // 顧客ID
       sb.name,                         // 宛名
-      sb.addr1 || '',                  // Address 1
-      sb.addr2 || '',                  // Address 2
-      sb.addr3 || '',                  // Address 3
-      sb.city  || '',                  // City
-      sb.state || '',                  // State
-      sb.zip   || '',                  // Zip
-      sb.country || '',                // 国
+      sb.addr1 || '',                  // address_line_1
+      sb.addr2 || '',                  // address_line_2
+      sb.addr3 || '',                  // address_line_3
+      sb.city  || '',                  // city
+      sb.state || '',                  // state
+      sb.zip   || '',                  // zip
+      sb.country || '',                // country
       sPhone.national || sb.phone || '',// 電話: ナショナル番号
       sPhone.dialCode  || '',          // 国番号
-      sb.email || billing.email || '', // D Email
-      sb.taxId || '',                  // D Tax ID
+      sb.email || billing.email || '', // email
+      sb.taxId || '',                  // tax_id (shipping)
       defaultFlag,                     // 既定
       'TRUE'                           // 有効
     ];
@@ -515,16 +515,16 @@ function registerCustomerFromForm(payload) {
       payId,                          // 支払先ID
       customerId,                     // 顧客ID
       bb.name,                        // 請求名義
-      bb.addr1 || '',                 // Address 1
-      bb.addr2 || '',                 // Address 2
-      bb.addr3 || '',                 // Address 3
-      bb.city  || '',                 // City
-      bb.state || '',                 // State
-      bb.zip   || '',                 // Zip
-      bb.country || '',               // 国
-      '',                             // 支払方法
-      '',                             // 通貨
-      bb.taxId || '',                 // B Tax ID
+      bb.addr1 || '',                 // address_line_1
+      bb.addr2 || '',                 // address_line_2
+      bb.addr3 || '',                 // address_line_3
+      bb.city  || '',                 // city
+      bb.state || '',                 // state
+      bb.zip   || '',                 // zip
+      bb.country || '',               // country
+      '',                             // payment_method
+      '',                             // currency
+      bb.taxId || '',                 // tax_id (billing)
       defaultFlag,                    // 既定
       'TRUE'                          // 有効
     ];
@@ -615,14 +615,14 @@ function testRegisterCustomer() {
     var pySh2   = ss.getSheetByName(CONFIG.SHEETS.CRM_PAYMENT);
     var pyData2 = pySh2 ? pySh2.getDataRange().getValues() : [];
     var pyH2    = pyData2[0] || [];
-    var pyIdIdx = pyH2.indexOf('支払先ID');
+    var pyIdIdx = pyH2.indexOf('payment_destination_id');
     for (var pi = 1; pi < pyData2.length; pi++) {
       if (String(pyData2[pi][pyIdIdx]).trim() !== r1.payId) continue;
       var pr = pyData2[pi];
-      var a1   = pr[pyH2.indexOf('Address 1')];
-      var city = pr[pyH2.indexOf('City')];
-      var zip  = pr[pyH2.indexOf('Zip')];
-      var ctry = pr[pyH2.indexOf('国')];
+      var a1   = pr[pyH2.indexOf('address_line_1')];
+      var city = pr[pyH2.indexOf('city')];
+      var zip  = pr[pyH2.indexOf('zip')];
+      var ctry = pr[pyH2.indexOf('country')];
       addrOk = (a1 === p1.billing.addr1 && city === p1.billing.city &&
                 zip === p1.billing.zip   && ctry === p1.billing.country);
       lines.push('  PY住所: A1="' + a1 + '" City="' + city + '" Zip="' + zip +
