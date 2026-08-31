@@ -27,6 +27,11 @@
   独立した PR で扱うべきだった（PR #750 のスコープ外）
 - PO 判断: 変更は維持。将来 `請求書発行.js` を含む PR でのCI誤検出防止のため revert しない
 
+**補足（PR #756 マージ後の再確認）:**
+- PR #756（ベースライン 2件→18件改訂）マージ後、`runCoreSchemaConformanceAudit` を再実行
+- 結果: 総不一致 2件（SIZES: 0件、WEIGHTS: 0件）← 並行セッションがシートを整備し解消済み
+- `docs/schema-audit-baseline.md` を 18件→2件に戻す PR #758 を追加で作成・マージ
+
 ---
 
 ### 2026-08-31 顧客マスタ列名整形 — FedEx ID → fedex_id（PR-1 / PR-2 / PR-3）
