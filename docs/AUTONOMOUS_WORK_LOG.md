@@ -6022,3 +6022,66 @@ git revert c5434ee  # PR #779 squash commit（OWN_PRODUCTS API）
 git revert e6d8991  # PR #782 squash commit（DEV テスト）
 # DEV スプレッドシートに挿入したテストデータ（OWN-0001 / OWN-0002 / PPK-0004）は手動削除が必要
 ```
+
+---
+
+## 担当者マスタ 列名整形完了（2026-08-31）
+
+担当者マスタ（STAFF シート）の全 24 列を日本語から英語スネークケースへ変換。
+3-PR パターンで実施。
+
+### 作業サマリ
+
+| PR | 番号 | マージ日時 | squash SHA |
+|----|------|-----------|-----------|
+| PR-1 デュアルサポート追加 | #794 | 2026-08-31T17:14:17Z | `4fd884e` |
+| PR-2 CoreSchema 切り替え + シートリネーム | #795 | 2026-08-31T17:21:55Z | `f516f15` |
+| PR-3 フォールバック除去 | #796 | 2026-08-31T17:32:30Z | `2858dfa` |
+
+### 変換結果（24列）
+
+| 旧名 | 新名 |
+|------|------|
+| 担当者ID | staff_id |
+| 苗字（日本語） | last_name_ja |
+| 名前（日本語） | first_name_ja |
+| 氏名（日本語） | full_name_ja |
+| 苗字ふりがな | last_name_kana |
+| 名前ふりがな | first_name_kana |
+| 苗字（英語） | last_name_en |
+| 名前（英語） | first_name_en |
+| メール | email |
+| Discord ID | discord_id |
+| 役割 | staff_role |
+| ステータス | status |
+| 元候補者ID | source_candidate_id |
+| ダークモード | dark_mode |
+| チャットメニュー表示 | chat_menu_visible |
+| 営業メニュー表示 | sales_menu_visible |
+| 設定メニュー表示 | settings_menu_visible |
+| 管理者メニュー表示 | admin_menu_visible |
+| Buddyメンテナンスメニュー表示 | buddy_maintenance_menu_visible |
+| サイドバー表示 | sidebar_visible |
+| パスワードハッシュ | password_hash |
+| パスワードソルト | password_salt |
+| 連続失敗回数 | login_fail_count |
+| ロック解除時刻 | locked_until |
+
+### 事後確認（PR-3 後）
+
+- SHA: `2858dfa` = origin/develop HEAD ✅
+- runCoreSchemaConformanceAudit: STAFF 0件、ORDERS 0件、PURCHASES 0件 ✅
+- 総不一致: 2件（LEADS 1 / CUSTOMERS 1）= ベースラインと同一 ✅
+- dryRunOrderStatusRecalculation: 変更あり 0件 ✅
+- 認証系旧列名 indexOf 参照: 0件 ✅
+- バックアップシート `担当者マスタ_backup_20260831` 無傷 ✅
+
+### 戻し方
+
+```bash
+git revert 2858dfa  # PR #796 squash commit（フォールバック除去）
+git revert f516f15  # PR #795 squash commit（CoreSchema 切り替え + シートリネーム）
+git revert 4fd884e  # PR #794 squash commit（デュアルサポート追加）
+# DEV スプレッドシートのヘッダーを旧名（日本語）に戻す場合は手動で実施
+# バックアップシート「担当者マスタ_backup_20260831」のヘッダーを参照する
+```
