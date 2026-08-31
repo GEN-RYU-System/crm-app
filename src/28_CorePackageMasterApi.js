@@ -205,9 +205,9 @@ function upsertCoreSizeForFrontend(sessionId, payload) {
         if (targetRow < 0) throw new Error('SIZE_NOT_FOUND: ' + sizeId);
       } else {
         sizeId   = corePackageMasterGenerateNextId_(sheet, hi, 'SIZES', 'SIZE_ID', CORE_SIZE_ID_PREFIX, CORE_PACKAGE_ID_DIGITS);
+        targetRow = sheet.getLastRow() + 1;
         var maxCols = sheet.getLastColumn();
         sheet.appendRow(new Array(maxCols).fill(''));
-        targetRow = sheet.getLastRow();
         setCell('SIZE_ID',       sizeId);
         setCell('REGISTERED_AT', now);
       }
@@ -271,9 +271,9 @@ function upsertCoreWeightForFrontend(sessionId, payload) {
         if (targetRow < 0) throw new Error('WEIGHT_NOT_FOUND: ' + weightId);
       } else {
         weightId = corePackageMasterGenerateNextId_(sheet, hi, 'WEIGHTS', 'WEIGHT_ID', CORE_WEIGHT_ID_PREFIX, CORE_PACKAGE_ID_DIGITS);
+        targetRow = sheet.getLastRow() + 1;
         var maxCols = sheet.getLastColumn();
         sheet.appendRow(new Array(maxCols).fill(''));
-        targetRow = sheet.getLastRow();
         setCell('WEIGHT_ID',    weightId);
         setCell('REGISTERED_AT', now);
       }
@@ -374,9 +374,9 @@ function upsertCorePackageForFrontend(sessionId, payload) {
         if (targetRow < 0) throw new Error('PACKAGE_NOT_FOUND: ' + packageId);
       } else {
         packageId = corePackageMasterGenerateNextId_(sheet, hi, 'PACKAGES', 'PACKAGE_ID', CORE_PACKAGE_ID_PREFIX, CORE_PACKAGE_ID_DIGITS);
+        targetRow = sheet.getLastRow() + 1;
         var maxCols = sheet.getLastColumn();
         sheet.appendRow(new Array(maxCols).fill(''));
-        targetRow = sheet.getLastRow();
         setCell('PACKAGE_ID',   packageId);
         setCell('REGISTERED_AT', now);
       }
