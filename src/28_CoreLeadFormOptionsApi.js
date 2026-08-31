@@ -63,13 +63,12 @@ function getLeadFormOptions(sessionId) {
   if (countrySheet && countrySheet.getLastRow() > 1) {
     var cData     = countrySheet.getDataRange().getValues();
     var cH        = cData[0].map(String);
-    var nameIdx   = cH.indexOf('国名（表示）');
-    if (nameIdx < 0) nameIdx = cH.indexOf('display_name');
+    var nameIdx   = cH.indexOf('display_name');
     var codeIdx   = cH.indexOf('国番号');
     var stateIdx  = cH.indexOf('州必須');
     var postalIdx = cH.indexOf('郵便番号必須');
     var validIdx  = cH.indexOf('有効');
-    if (nameIdx < 0) throw new Error('国マスタヘッダー不足: 国名（表示）');
+    if (nameIdx < 0) throw new Error('国マスタヘッダー不足: display_name');
     for (var i = 1; i < cData.length; i++) {
       var name  = String(cData[i][nameIdx] != null ? cData[i][nameIdx] : '').trim();
       var valid = validIdx < 0 || String(cData[i][validIdx] || '').toUpperCase() !== 'FALSE';

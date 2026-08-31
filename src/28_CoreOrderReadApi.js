@@ -403,10 +403,8 @@ function buildCountryJaNameMap_(ss) {
   if (lastRow < 2 || lastCol < 1) return {};
 
   var rawHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-  var iso2Idx  = rawHeaders.indexOf('国ID(ISO2)');
-  if (iso2Idx === -1) iso2Idx = rawHeaders.indexOf('country_code');
-  var nameJaIdx = rawHeaders.indexOf('国名（日本語）');
-  if (nameJaIdx === -1) nameJaIdx = rawHeaders.indexOf('name_ja');
+  var iso2Idx  = rawHeaders.indexOf('country_code');
+  var nameJaIdx = rawHeaders.indexOf('name_ja');
   if (iso2Idx === -1 || nameJaIdx === -1) return {};
 
   var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();

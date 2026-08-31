@@ -227,7 +227,6 @@ const CORE_SCHEMA_V1_TABLES = {
       ['STATE_REQUIRED',    '州必須'],
       ['ZIP_REQUIRED',      '郵便番号必須']
     ]), primaryKey: 'COUNTRY_CODE',
-    headerAliasMap: { 'country_code': '国ID(ISO2)', 'display_name': '国名（表示）', 'name_ja': '国名（日本語）' },
     referenceIds: []
   },
   CURRENCIES: {
