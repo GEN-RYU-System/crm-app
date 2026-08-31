@@ -82,7 +82,8 @@ const DATA_MGMT_SUB_ITEMS: readonly NavigationItem[] = [
 ];
 
 const PRODUCT_MGMT_SUB_ITEMS: readonly NavigationItem[] = [
-  { id: 'productMaster', label: dataManagementCopy.productMaster, hash: '/product-master', icon: 'inventory', order: 2, state: 'planned', requiredPermission: 'staff_manage' }
+  { id: 'productMaster', label: dataManagementCopy.productMaster, hash: '/product-master', icon: 'inventory', order: 2, state: 'planned', requiredPermission: 'staff_manage' },
+  { id: 'packageMaster', label: dataManagementCopy.packageMaster, hash: '/package-master', icon: 'inventory', order: 3, state: 'preview', requiredPermission: 'admin_access' }
 ];
 
 const EXTERNAL_LINK_SUB_ITEMS: readonly NavigationItem[] = [
@@ -90,8 +91,7 @@ const EXTERNAL_LINK_SUB_ITEMS: readonly NavigationItem[] = [
 ];
 
 const SYSTEM_SETTINGS_SUB_ITEMS: readonly NavigationItem[] = [
-  { id: 'issuerMaster', label: dataManagementCopy.issuerMaster, hash: '/issuer-master', icon: 'settings', order: 1, state: 'preview', requiredPermission: 'issuer_manage' },
-  { id: 'packageMaster', label: dataManagementCopy.packageMaster, hash: '/package-master', icon: 'inventory', order: 2, state: 'preview', requiredPermission: 'admin_access' }
+  { id: 'issuerMaster', label: dataManagementCopy.issuerMaster, hash: '/issuer-master', icon: 'settings', order: 1, state: 'preview', requiredPermission: 'issuer_manage' }
 ];
 
 export const DATA_MANAGEMENT_ITEMS: readonly NavigationItem[] = [
