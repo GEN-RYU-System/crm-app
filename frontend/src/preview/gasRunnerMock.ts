@@ -670,6 +670,37 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     upsertCoreOwnManufacturerForFrontend(_s: string | null, _payload: unknown) {
       succeed({ success: true, manufacturerId: 'OWN-MFR-MOCK' });
     },
+    getCoreSharedProductsForFrontend(_s: string | null) {
+      succeed([
+        { productId: 'PRD-0001', englishTitle: 'Preview Product A', japaneseTitle: '', category: 'Category X', item: '', hsCode: '', material: '' },
+        { productId: 'PRD-0002', englishTitle: 'Preview Product B', japaneseTitle: '', category: 'Category Y', item: '', hsCode: '', material: '' },
+      ]);
+    },
+    getCoreProductPackagesForFrontend(_s: string | null) {
+      succeed([
+        {
+          productPackageId: 'PPK-0001',
+          sharedProductId: 'PRD-0001', sharedProductEnglishTitle: 'Preview Product A', sharedProductJapaneseTitle: '',
+          ownProductId: '', ownProductNameEn: '', ownProductNameJa: '',
+          casePackageId: 'PKG-0001', casePackageName: 'Package A',
+          boxPackageId: '', boxPackageName: '',
+          packPackageId: '', packPackageName: '',
+          itemId: '', itemNameEn: '', itemNameJa: '',
+          htsCodeId: '', htsCode: '', htsDescriptionEn: '',
+          materialId: '', materialNameEn: '', materialNameJa: '',
+          isActive: 'TRUE',
+        },
+      ]);
+    },
+    upsertCoreProductPackageForFrontend(_s: string | null, _payload: unknown) {
+      succeed({ success: true, productPackageId: 'PPK-MOCK' });
+    },
+    getCoreOwnProductsForFrontend(_s: string | null) {
+      succeed([]);
+    },
+    upsertCoreOwnProductWithPackageForFrontend(_s: string | null, _payload: unknown) {
+      succeed({ success: true, ownProductId: 'OWN-MOCK', productPackageId: null, failedStep: null });
+    },
     checkSyncSignals(_s: string | null) { succeed(mockSyncSignals); },
     getLeadsBatchForFrontend(_s: string | null, _force: boolean) {
       succeed({ leads: [], formOptions: { leadTypes: [], responseSpeeds: [], countries: [], leadSources: [] } });
