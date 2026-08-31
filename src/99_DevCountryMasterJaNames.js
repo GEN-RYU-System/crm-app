@@ -316,7 +316,9 @@ function seedCountryMasterJaNames(mode) {
 
   var headers = data[0].map(String);
   var isoIdx  = headers.indexOf('国ID(ISO2)');
+  if (isoIdx < 0) isoIdx = headers.indexOf('country_code');
   var jaIdx   = headers.indexOf('国名（日本語）');
+  if (jaIdx < 0) jaIdx = headers.indexOf('name_ja');
 
   if (isoIdx < 0) {
     var noIso = 'ERROR: 国マスタに「国ID(ISO2)」列が見つかりません。ヘッダー: ' + JSON.stringify(headers);

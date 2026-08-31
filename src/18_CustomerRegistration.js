@@ -121,6 +121,7 @@ function _lookupCountryInfo(countryName) {
   var data = sh.getDataRange().getValues();
   var h    = data[0];
   var nameIdx   = h.indexOf('国名（表示）');
+  if (nameIdx < 0) nameIdx = h.indexOf('display_name');
   var stateIdx  = h.indexOf('州必須');
   var postalIdx = h.indexOf('郵便番号必須');
   if (nameIdx < 0) return null;
@@ -968,6 +969,7 @@ function getCountriesForForm() {
   var data = sh.getDataRange().getValues();
   var h = data[0];
   var nameIdx   = h.indexOf('国名（表示）');
+  if (nameIdx < 0) nameIdx = h.indexOf('display_name');
   var codeIdx   = h.indexOf('国番号');
   var stateIdx  = h.indexOf('州必須');
   var postalIdx = h.indexOf('郵便番号必須');
