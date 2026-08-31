@@ -2,6 +2,93 @@
 
 ---
 
+## feat: 品目・HTSコード・素材マスタをRegistryに追加しDEVセットアップ関数を新設 — PR #720
+
+**日付:** 2026-08-31
+**PR:** [#720](https://github.com/GEN-RYU-System/crm-app/pull/720)
+**マージコミットSHA:** `0568c2dfc80207eec1dff5f1112d9516ff3509ed`
+**mergedAt:** `2026-08-31T00:34:02Z`
+
+### 変更内容
+
+#### 1. Registry 追加 (`src/00_CoreSchemaRegistry.js`)
+
+| テーブルキー | シート名 | 列構成 | primaryKey |
+|-------------|---------|--------|-----------|
+| ITEMS | 品目マスタ | 品目ID / 品目名（英語）/ 品目名（日本語）/ 有効 / 登録日 / 更新日（6列） | ITEM_ID |
+| HTS_CODES | HTSコードマスタ | HTSコードID / HTSコード / 説明（英語）/ 説明（日本語）/ 有効 / 登録日 / 更新日（7列） | HTS_CODE_ID |
+| MATERIALS | 素材マスタ | 素材ID / 素材名（英語）/ 素材名（日本語）/ 有効 / 登録日 / 更新日（6列） | MATERIAL_ID |
+
+いずれも `writeAllowed: true`, `sheetType: 'MASTER'`。
+
+#### 2. DEVセットアップ関数 (`src/99_DevShippingMasterSetup.js`)
+
+`setupShippingMasterSheets(mode)` を新設:
+- `DRY_RUN`: 作成予定シート名・列名を出力（書き込みなし）
+- `APPLY`: DEVスプレッドシートにヘッダー行のみ作成
+- DEV環境ガード付き、既存シートはスキップ（上書き・削除なし）
+- 列名は Registry から取得（直書きなし）
+
+### DRY_RUN 結果
+
+```json
+{
+  "mode": "DRY_RUN",
+  "toCreateCount": 3,
+  "conflictCount": 0,
+  "toCreate": [
+    { "sheetName": "品目マスタ", "headers": ["品目ID","品目名（英語）","品目名（日本語）","有効","登録日","更新日"] },
+    { "sheetName": "HTSコードマスタ", "headers": ["HTSコードID","HTSコード","説明（英語）","説明（日本語）","有効","登録日","更新日"] },
+    { "sheetName": "素材マスタ", "headers": ["素材ID","素材名（英語）","素材名（日本語）","有効","登録日","更新日"] }
+  ],
+  "conflicts": []
+}
+```
+
+### APPLY 結果
+
+```json
+{
+  "mode": "APPLY",
+  "createdCount": 3,
+  "skippedCount": 0,
+  "created": ["品目マスタ", "HTSコードマスタ", "素材マスタ"],
+  "skipped": []
+}
+```
+
+### runCoreSchemaConformanceAudit 結果
+
+| テーブル | 不一致件数 |
+|---------|----------|
+| ITEMS / 品目マスタ | **0件** ✓ |
+| HTS_CODES / HTSコードマスタ | **0件** ✓ |
+| MATERIALS / 素材マスタ | **0件** ✓ |
+| ORDERS / オーダー管理 | 0件 ✓（既存・変化なし） |
+| SHIPMENTS / 発送 | 0件 ✓（既存・変化なし） |
+| COUNTRIES / 国マスタ | 0件 ✓（既存・変化なし） |
+| LEADS / リード管理 | 1件（PR以前からの既存ズレ・合格条件外） |
+| CUSTOMERS / 顧客マスタ | 1件（PR以前からの既存ズレ・合格条件外） |
+
+### getDeployedSha 照合
+
+`0568c2dfc80207eec1dff5f1112d9516ff3509ed` = origin/develop HEAD ✓
+
+### Deploy to DEV conclusion
+
+success ✓
+
+### 戻し方
+
+```bash
+git revert 0568c2dfc80207eec1dff5f1112d9516ff3509ed
+```
+
+**注意: シート作成（品目マスタ・HTSコードマスタ・素材マスタ）は git revert では戻らない。**
+シートを削除する場合はスプレッドシートを手動操作すること。
+
+---
+
 ## docs: Buddyフィードバック/Buddyメンテナンスメニュー表示 Buddy専用判定に修正 — PR #716
 
 **日付:** 2026-08-31
