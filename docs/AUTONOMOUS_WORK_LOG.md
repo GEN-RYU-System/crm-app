@@ -2,6 +2,114 @@
 
 ---
 
+### 2026-09-01 配送会社・地帯・送料表マスタを新設（PR #791）
+
+**概要:**
+送料計算用の3マスタを `CoreSchemaRegistry` に追加し、DEVシートを新設した。
+既存の横持ちシート（地帯表 / FedEx送料 / DHL送料 / UPS送料）は変更・削除せず残存させた。
+SQL 移行しやすい縦持ち形式を採用。
+
+**変更ファイル:**
+
+| ファイル | 変更内容 |
+|----------|---------|
+| `src/00_CoreSchemaRegistry.js` | `CARRIERS` / `ZONES` / `SHIPPING_RATES` の3テーブルを追加 |
+| `src/99_DevShippingRateMasterSetup.js` | `setupShippingRateMasterSheets(mode)` を新設 |
+
+**テーブル定義:**
+
+| テーブルキー | シート名 | 列数 | 主キー | ID形式 |
+|------------|---------|------|--------|-------|
+| CARRIERS | 配送会社マスタ | 7列 | 配送会社ID | CAR-0001 |
+| ZONES | 地帯マスタ | 7列 | 地帯ID | ZON-0001 |
+| SHIPPING_RATES | 送料表マスタ | 9列 | 料金ID | RAT-0001 |
+
+ZONES の referenceIds: 配送会社ID→CARRIERS / 国コード→COUNTRIES  
+SHIPPING_RATES の referenceIds: 配送会社ID→CARRIERS
+
+**容積重量の計算方法（出典確認済み）:**
+
+| 社 | 容積重量除数 | 端数単位 | 複数箱の扱い |
+|----|------------|---------|------------|
+| FedEx | 5000 | 制限なし（小数kg） | 箱ごとに請求重量を計算して合算 |
+| DHL | 5000 | 0.5kg単位切り上げ | 箱ごとに請求重量を計算して合算 |
+| UPS | 5000 | 0.5kg単位切り上げ | 箱ごとに請求重量を計算して合算 |
+
+出典: FedEx公式サイト「How to Calculate Dimensional Weight」（除数5000、`L×W×H÷5000`）、
+DHL公式サイト「Volumetric Weight」（除数5000、0.5kg単位切り上げ）、
+UPS公式サイト「Dimensional Weight」（除数5000、0.5kg単位切り上げ）。
+3社とも複数箱は箱ごとに `max(実重量, 容積重量)` で請求重量を算出し合算する。
+FedEx のゾーンは A,D,E,F,G,H,I,J,K,M,N,O,Q,R,S,T,U,V,W,X,Y,Z（22ゾーン）、
+DHL は 1〜9（9ゾーン）、UPS は 1〜10（10ゾーン）。
+
+**CI / マージ / デプロイ:**
+
+| PR | CI | mergedAt | Deploy to DEV |
+|----|----|-----------|----|
+| #791 | 4/4 pass | 2026-08-31T16:41:52Z | SHA: `a100145` → success |
+
+**DRY_RUN 確認（手順6）:**
+
+```json
+{
+  "mode": "DRY_RUN",
+  "toCreateCount": 3,
+  "conflictCount": 0,
+  "conflicts": []
+}
+```
+合格: 3シート作成予定・衝突0件
+
+**APPLY 結果（手順7）:**
+
+```json
+{
+  "mode": "APPLY",
+  "createdCount": 3,
+  "skippedCount": 0,
+  "created": ["配送会社マスタ", "地帯マスタ", "送料表マスタ"]
+}
+```
+
+**getDeployedSha 確認:**
+
+```
+sha: 'a100145caa20ed6a0cb490f978a23ead1415daa1'（= origin/develop HEAD と一致）
+deployedAt: '2026-08-31T16:42:45.791Z'
+```
+
+**runCoreSchemaConformanceAudit 結果（手順8）:**
+
+総不一致: 2件（既存）
+
+| テーブル | 不一致内容 |
+|----------|-----------|
+| LEADS | ヘッダー列数: 定義51 / 実シート64（差:13列）既存問題 |
+| CUSTOMERS | ヘッダー列数: 定義14 / 実シート15（差:1列）既存問題 |
+
+新設3テーブルは全て0件（正常）✓
+
+```
+[CARRIERS / 配送会社マスタ] 小計不一致: 0件
+[ZONES / 地帯マスタ]        小計不一致: 0件
+[SHIPPING_RATES / 送料表マスタ] 小計不一致: 0件
+```
+
+**影響範囲:**
+
+- GAS ソース2ファイル（`00_CoreSchemaRegistry.js` / 新規 `99_DevShippingRateMasterSetup.js`）
+- フロントエンドは無変更
+- 既存横持ちシート（地帯表 / FedEx送料 / DHL送料 / UPS送料）は無変更
+
+**戻し方:**
+
+```bash
+git revert a100145  # PR #791 squash commit
+# DEV シートは手動削除（配送会社マスタ / 地帯マスタ / 送料表マスタ）
+```
+
+---
+
 ### 2026-08-31 選択肢マスタ PO決定を記録（PR #789）
 
 **概要:**
