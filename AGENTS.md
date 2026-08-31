@@ -9,7 +9,12 @@ gh-scope-guard など）にブロックされた場合、
 禁止される対処（例外なし）:
 - ! プレフィックスでのホスト直接実行
 - GH_SCOPE_OVERRIDE 等の環境変数による強制
-- permit スクリプトの実行
+- permit ファイルの自己作成
+  （~/.claude/permits/ 配下へのファイル書き込み。
+  permit-peek.sh / permit-danger.sh の実行を含む。
+  printf や echo による直接作成も同じ扱いとする）
+  permit の発行は PO のみが行う。
+  エージェントが自分で許可を発行してはならない。
 - フック本体や設定ファイル（agent-tokens.json 等）の編集
 - 他 worktree やリポジトリルートの .pr-number 書き換え
 
@@ -26,10 +31,23 @@ git rebase / git reset --hard / git push --force は
 
 ## PR 作成後の所有宣言
 
-gh pr create の直後に、その worktree 内で
-echo <PR番号> > .pr-number を実行する。
-これは gh-scope-guard の正規手順である。
-リポジトリルートには絶対に書かない。
+gh pr create の直後、`~/crm-app-current/.pr-number` に PR番号を書く:
+
+```
+echo <PR番号> > ~/crm-app-current/.pr-number
+```
+
+マージ完了後は削除する:
+
+```
+rm ~/crm-app-current/.pr-number
+```
+
+**根拠（実測）:** gh-scope-guard.sh は `git rev-parse --show-toplevel` で
+REPO_ROOT を取得する。フックは Bash ツール内の `cd` より前に走るため、
+cwd は Claude Code のプライマリ作業ディレクトリ（`~/crm-app-current`）になる。
+`git rev-parse --show-toplevel` の実測値は `/Users/tanizawashingo/crm-app-current`。
+worktree 内・`~/crm-app-canonical-20260830/` に置いても読まれない。
 
 ## Frontend smoke checks
 
