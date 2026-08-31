@@ -5501,3 +5501,77 @@ PR #754・#755 を `git revert` しても、
 スプレッドシートへの変更は GAS 経由の操作であり、git の管理外である。
 再度データが必要な場合は手動でデータを入力するか、
 シードスクリプトを新規に作成すること。
+
+---
+
+### 2026-08-31 PR-S2a: 自社大分類・自社作品・自社メーカーマスタ GAS API 新設
+
+**目的**: 自社商品マスタ管理画面（将来実装）向けの GAS API を先行整備する。
+
+#### 実施内容
+
+**PR #772** — `src/28_CoreOwnMasterApi.js` 新規作成（368行）
+
+3テーブル × (読み取り + 書き込み) の合計6関数を実装:
+
+| 関数名 | 種別 | テーブル | 権限 |
+|--------|------|----------|------|
+| `getCoreOwnCategoriesForFrontend(sessionId)` | 読み取り | OWN_CATEGORIES | lead_view |
+| `getCoreOwnWorksForFrontend(sessionId)` | 読み取り | OWN_WORKS | lead_view |
+| `getCoreOwnManufacturersForFrontend(sessionId)` | 読み取り | OWN_MANUFACTURERS | lead_view |
+| `upsertCoreOwnCategoryForFrontend(sessionId, payload)` | 書き込み | OWN_CATEGORIES | deal_edit |
+| `upsertCoreOwnWorkForFrontend(sessionId, payload)` | 書き込み | OWN_WORKS | deal_edit |
+| `upsertCoreOwnManufacturerForFrontend(sessionId, payload)` | 書き込み | OWN_MANUFACTURERS | deal_edit |
+
+ID 採番: `OWN-CAT-0001` / `OWN-WRK-0001` / `OWN-MFR-0001`
+
+設計方針:
+- `28_CorePackageMasterApi.js` の upsertCoreSizeForFrontend パターンに準拠
+- `targetRow = sheet.getLastRow() + 1` を `appendRow` より前に計算（PR #755 fix 適用）
+- `withSheetWrite_({ useLock: true, cacheTargets: [] })` でロック取得
+- 内部ヘルパー: `coreOwnMasterGenerateNextId_` / `coreOwnMasterFindRow_` / `coreOwnMasterFlag_`
+
+**PR #774** — `src/99_DevOwnMasterApiTest.js` 新規作成（DEV専用テスト）
+
+`clasp run runOwnMasterApiTest` で実行。
+
+#### CI / マージ / デプロイ
+
+| PR | CI | mergedAt | Deploy to DEV |
+|----|----|-----------|----|
+| #772 | 4/4 pass | 2026-08-31T07:14:21Z | SHA: `894dd2c` → success |
+| #774 | 4/4 pass | 2026-08-31T07:19:54Z | SHA: `e8060d4` → success |
+
+#### DEV 動作確認（clasp run runOwnMasterApiTest）
+
+```json
+{
+  "sessionOk": true,
+  "getCategories": { "count": 0 },
+  "upsertCategory": { "success": true, "categoryId": "OWN-CAT-0001" },
+  "categoryAfterUpsert": { "categoryId": "OWN-CAT-0001", "nameEn": "DEV Test Category EN", "nameJa": "DEVテスト大分類", "isActive": "true" },
+  "getWorks": { "count": 0 },
+  "upsertWork": { "workId": "OWN-WRK-0001", "success": true },
+  "workAfterUpsert": { "workId": "OWN-WRK-0001", "nameEn": "DEV Test Work EN", "nameJa": "DEVテスト作品", "isActive": "true" },
+  "getManufacturers": { "count": 0 },
+  "upsertManufacturer": { "success": true, "manufacturerId": "OWN-MFR-0001" },
+  "manufacturerAfterUpsert": { "manufacturerId": "OWN-MFR-0001", "nameEn": "DEV Test Manufacturer EN", "nameJa": "DEVテストメーカー", "isActive": "true" },
+  "errorNotFound": "OWN_CATEGORY_NOT_FOUND",
+  "schemaAudit": { "totalMismatches": 0 }
+}
+```
+
+全項目 ✓（3テーブル各1件登録・読み取り確認・異常系・スキーマ監査 0件）
+
+#### 影響範囲
+
+- GAS 新規ファイル `src/28_CoreOwnMasterApi.js` のみ
+- 既存ファイルへの変更なし
+- フロントエンド実装は別途 PR
+
+#### 戻し方
+
+```bash
+git revert 894dd2c  # PR #772 squash commit
+# DEV スプレッドシートに挿入したテストデータ（OWN-CAT-0001 等）は手動削除が必要
+```
