@@ -551,7 +551,7 @@ const HEADERS = {
     '登録日',            // 9
     '営業担当者',        // 10: 35_SalesDataSyncService.js 参照中
     '連絡ツール',        // 11
-    'FedEx ID',          // 12
+    'fedex_id',          // 12
     '発送時メモ'         // 13
   ],
 

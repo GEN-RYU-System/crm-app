@@ -252,3 +252,49 @@ function getCustomerSheetCurrentHeaders() {
   if (lastCol < 1) return [];
   return sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
 }
+
+/**
+ * 顧客マスタシートの 'FedEx ID' 列を 'fedex_id' へ改名する。
+ *
+ * 前提条件:
+ *   - backupCustomerSheet() が実行済みであること（バックアップが存在すること）
+ *   - DEV 環境であること
+ *
+ * @returns {{ status: string, renamed: number, details: Array<{col: number, before: string, after: string}> }}
+ */
+function renameCustomerFedexIdHeader() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('renameCustomerFedexIdHeader は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+
+  var backupName = '顧客マスタ_backup_20260831';
+  if (!ss.getSheetByName(backupName)) {
+    throw new Error('バックアップシートが存在しません。先に backupCustomerSheet() を実行してください: ' + backupName);
+  }
+
+  var sheet = getCoreSchemaV1Sheet(ss, 'CUSTOMERS');
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) throw new Error('顧客マスタシートに列がありません');
+
+  var headerRange = sheet.getRange(1, 1, 1, lastCol);
+  var currentHeaders = headerRange.getDisplayValues()[0];
+
+  var targetIndex = currentHeaders.indexOf('FedEx ID');
+  if (targetIndex === -1) {
+    if (currentHeaders.indexOf('fedex_id') !== -1) {
+      return { status: 'ALREADY_DONE', renamed: 0, details: [], message: '既に fedex_id に変更済みです' };
+    }
+    throw new Error('FedEx ID 列が顧客マスタシートに見つかりません');
+  }
+
+  var newHeaders = currentHeaders.slice();
+  newHeaders[targetIndex] = 'fedex_id';
+  headerRange.setValues([newHeaders]);
+
+  return {
+    status: 'OK',
+    renamed: 1,
+    details: [{ col: targetIndex + 1, before: 'FedEx ID', after: 'fedex_id' }]
+  };
+}
