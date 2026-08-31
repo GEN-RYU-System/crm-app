@@ -5643,3 +5643,116 @@ GAS は無変更のため今回の PR による新規不一致はなし。
 ```bash
 git revert ff548db  # PR #776 squash commit
 ```
+
+---
+
+### 2026-08-31 PR-S3a: 自社商品 GAS API 新設
+
+**目的**: 自社商品マスタ（OWN_PRODUCTS）と荷姿割り当て（PRODUCT_PACKAGES）を操作するフロントエンド向け GAS API を追加する。
+
+#### 実施内容
+
+**PR #779** — `src/28_CoreOwnMasterApi.js` に2関数・1ヘルパーを追加
+
+| 追加 | 内容 |
+|------|------|
+| `getCoreOwnProductsForFrontend(sessionId)` | OWN_PRODUCTS 全行 + 参照先名称結合 |
+| `upsertCoreOwnProductWithPackageForFrontend(sessionId, payload)` | OWN_PRODUCTS / PRODUCT_PACKAGES 同時書き込み（LockService） |
+| `coreOwnProductCheckRefId_(ss, tableKey, idFieldKey, targetId)` | writeAllowed:false テーブルにも使える参照ID存在確認ヘルパー |
+
+設計上のポイント:
+- 全参照ID（ownCategoryId / ownWorkId / ownManufacturerId / sharedProductId / PACKAGES 等）を事前検証し、1件でも不正なら書き込みを一切行わない
+- `targetRow = sheet.getLastRow() + 1` を `appendRow` より前に確定（PR #755 fix 適用）
+- JSDoc に「SQL 移行時は BEGIN〜COMMIT のトランザクションに置き換えること」を明記
+
+**PR #782** — DEV 動作確認テスト `src/99_DevOwnProductApiTest.js` を追加
+
+#### CI / マージ / デプロイ
+
+| PR | CI | mergedAt | Deploy to DEV |
+|----|----|----------|---------------|
+| #779 | 4/4 pass | 2026-08-31T07:58:58Z | 初回 Deploy to DEV run #33370770908 は GitHub API 遅延で失敗 → workflow_dispatch 再トリガー Deploy to DEV run #33371058666 で success |
+| #782 | 4/4 pass | 2026-08-31T08:09:35Z | Deploy to DEV run #33371579584: success (50s) |
+
+#### getDeployedSha 確認
+
+```
+{ deployedAt: '2026-08-31T08:04:57.620Z', sha: 'c918e4a2afc7dd49a4ec3e5ea5efb99575cf272e' }
+```
+（= origin/develop HEAD `c918e4a` と一致 ✓）
+
+#### DEV 書き込みテスト結果（clasp run runOwnProductApiTest）
+
+```json
+{
+  "sessionOk": true,
+  "refIds": {
+    "ownCategoryId": "OWN-CAT-0001",
+    "ownWorkId": "OWN-WRK-0001",
+    "ownManufacturerId": "OWN-MFR-0001",
+    "casePackageId": "PKG-0001"
+  },
+  "countBefore": 0,
+  "upsertA": { "success": true, "ownProductId": "OWN-0001", "productPackageId": null, "failedStep": null },
+  "auditAfterA": { "mismatches": 0 },
+  "readBackA": {
+    "ownProductId": "OWN-0001", "nameEn": "DEV Test Own Product EN-A",
+    "categoryNameEn": "DEV Test Category EN", "workNameEn": "DEV Test Work EN",
+    "manufacturerNameEn": "DEV Test Manufacturer EN", "isActive": "true"
+  },
+  "countAfterA": 1,
+  "pkgCountAfterA": 4,
+  "upsertB": { "success": true, "ownProductId": "OWN-0002", "productPackageId": "PPK-0004", "failedStep": null },
+  "auditAfterB": { "mismatches": 0 },
+  "readBackB": { "ownProductId": "OWN-0002", "productPackageId": "PPK-0004" },
+  "countAfterB": 2,
+  "pkgCountAfterB": 5,
+  "upsertC": { "success": true, "ownProductId": "OWN-0001", "failedStep": null },
+  "auditAfterC": { "mismatches": 0 },
+  "readBackC": { "ownProductId": "OWN-0001", "nameJa": "DEVテスト自社商品A（更新済み）" },
+  "errorD_badCategoryId": { "result": "REJECTED_OK", "rowsUnchanged": true },
+  "errorE_badPackageId": { "result": "REJECTED_OK", "prodRowsUnchanged": true, "pkgRowsUnchanged": true },
+  "finalAudit": { "mismatches": 0 }
+}
+```
+
+全項目 ✓
+
+| ケース | 結果 |
+|--------|------|
+| (a) 商品のみ登録 | OWN-0001 採番、PRODUCT_PACKAGES 行数不変（4→4）✓ |
+| (b) 商品＋荷姿まとめ登録 | OWN-0002 採番、PPK-0004 採番（4→5）✓ |
+| (c) 商品更新 | OWN-0001 の nameJa が「更新済み」に変化、行数不変 ✓ |
+| (d) 無効 ownCategoryId | OWN_CATEGORY_NOT_FOUND で拒否、OWN_PRODUCTS 行数不変 ✓ |
+| (e) 無効 casePackageId | PACKAGE_NOT_FOUND で拒否、両テーブル行数不変 ✓ |
+
+#### runCoreSchemaConformanceAudit 結果
+
+```
+[OWN_PRODUCTS / 自社商品マスタ]
+  1. シート取得: OK  2. 定義→実シート 欠落ヘッダー: なし
+[PRODUCT_PACKAGES / 商品荷姿マスタ]
+  1. シート取得: OK  2. 定義→実シート 欠落ヘッダー: なし
+```
+
+OWN_PRODUCTS / PRODUCT_PACKAGES ともに 0件 mismatches ✓
+
+#### 既知の留意点
+
+- GAS の LockService では商品書き込み後にパッケージ書き込みが失敗すると商品行だけ残る（部分書き込み）。
+  戻り値の `failedStep` で検出可能。SQL 移行時はトランザクション化すること。
+- Deploy to DEV の push トリガー後の GitHub API 反映遅延（約数秒）により、PR.base=develop の確認ステップが失敗することがある。workflow_dispatch で再トリガーすれば解消。
+
+#### 影響範囲
+
+- GAS `src/28_CoreOwnMasterApi.js`（PR #779 追加分のみ）
+- DEV テスト `src/99_DevOwnProductApiTest.js`（PR #782）
+- フロントエンド実装は別途 PR（PR-S3b）
+
+#### 戻し方
+
+```bash
+git revert c5434ee  # PR #779 squash commit（OWN_PRODUCTS API）
+git revert e6d8991  # PR #782 squash commit（DEV テスト）
+# DEV スプレッドシートに挿入したテストデータ（OWN-0001 / OWN-0002 / PPK-0004）は手動削除が必要
+```
