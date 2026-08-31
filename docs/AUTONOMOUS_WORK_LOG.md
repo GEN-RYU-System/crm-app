@@ -2,6 +2,48 @@
 
 ---
 
+### 2026-08-31 共用商品・商品荷姿 GAS API 新設（PR #767 / #769）
+
+**概要:**
+`src/28_CorePackageMasterApi.js` に3関数を追加した。
+DEVテストスクリプト `src/99_DevProductPackageApiTest.js` も別途追加（PR #769）。
+
+**実装内容:**
+
+| 関数 | 概要 |
+|------|------|
+| `getCoreSharedProductsForFrontend(sessionId)` | 共用商品マスタ全行（267件）を読み取り |
+| `getCoreProductPackagesForFrontend(sessionId)` | 商品荷姿マスタを6テーブル結合して返す |
+| `upsertCoreProductPackageForFrontend(sessionId, payload)` | 商品荷姿を1件追加/更新（PPK-0001〜） |
+
+**設計ポイント:**
+- ID採番: PPK-0001（4桁連番）
+- sharedProductId / ownProductId 排他バリデーション
+- 荷姿ID・品目ID・HTSコードID・素材IDの存在確認
+- targetRow は appendRow の前に確定（PR #755 パターン準拠）
+- PRODUCTS は writeAllowed: false のため読み取り専用
+
+**テスト結果（手順6〜9）:**
+
+| テスト | 結果 |
+|--------|------|
+| getCoreSharedProductsForFrontend — 件数 | 267件 ✓ |
+| getCoreSharedProductsForFrontend — 先頭1件 | PM0001 / "Monster ball Miror duplicate bulk set" ✓ |
+| upsertCoreProductPackageForFrontend — 新規登録 | PPK-0001 success ✓ |
+| getCoreProductPackagesForFrontend — 結合確認 | sharedProductEnglishTitle / boxPackageName 正常結合 ✓ |
+| 異常系(a) sharedProductId + ownProductId 同時指定 | REJECTED_OK ✓ |
+| 異常系(b) 存在しない荷姿ID | REJECTED_OK ✓ |
+| 書き込み後 監査（auditAfterUpsert.mismatches） | 0件 ✓ |
+| runCoreSchemaConformanceAudit — PRODUCT_PACKAGES | 0件不一致 ✓ |
+
+**CI / デプロイ:**
+- PR #767（GAS API）: CI 4/4 pass → squash merge → `mergedAt: 2026-08-31T06:42:52Z`
+- PR #769（テストスクリプト）: CI 4/4 pass → squash merge → `mergedAt: 2026-08-31T06:48:29Z`
+- Deploy to DEV: deploy-dev.yml success（SHA: `5377dd35487e782c08ce1bcac980de27600187e8` → `3f7ad71...`）
+- 最終 SHA 一致確認 ✓
+
+---
+
 ### 2026-08-31 国マスタ 列リネーム 完了（PR #760 / #762 / #764 / #766）
 
 **概要:**
