@@ -2,6 +2,33 @@
 
 ---
 
+### 2026-08-31 選択肢マスタ PO決定を記録（PR #789）
+
+**概要:**
+選択肢マスタを列名整形（英語スネークケース化）の対象から除外するPO決定を記録。
+`docs/option-master-audit.md` に「PO 決定（2026-08-31）」節を追加し、
+`docs/column-rename-plan.md` §7 除外対象表に選択肢マスタ行を追加した。
+
+**変更ファイル:**
+- `docs/option-master-audit.md` — PO決定節追加（除外理由・C分類内訳・SSOT違反扱い・再設計時判断列・バグ非修正判断）
+- `docs/column-rename-plan.md` — §7 除外対象表に1行追加
+
+**PR / CI / デプロイ:**
+
+| PR | CI | mergedAt | Deploy to DEV |
+|----|----|----------|---------------|
+| #789 | 4/4 pass | 2026-08-31T10:25:04Z | SHA: `2db9043` → success |
+
+**監査（マージ後）:**
+- 総不一致: 2件（LEADS 1 / CUSTOMERS 1）= baseline ✅
+
+**戻し方:**
+```bash
+git revert 2db9043  # PR #789 squash commit
+```
+
+---
+
 ### 2026-08-31 選択肢マスタ 36列 使用箇所調査完了（PR #787 / PR #788）
 
 **概要:**
