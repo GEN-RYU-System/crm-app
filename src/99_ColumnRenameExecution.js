@@ -634,6 +634,108 @@ function backupStaffMasterSheet() {
 }
 
 /**
+ * 担当者マスタシートのヘッダー行を旧列名（日本語）から英語スネークケースへ一括変更する。
+ *
+ * 対象列（24列）:
+ *   担当者ID            → staff_id
+ *   苗字（日本語）      → last_name_ja
+ *   名前（日本語）      → first_name_ja
+ *   氏名（日本語）      → full_name_ja
+ *   苗字ふりがな        → last_name_kana
+ *   名前ふりがな        → first_name_kana
+ *   苗字（英語）        → last_name_en
+ *   名前（英語）        → first_name_en
+ *   メール              → email
+ *   Discord ID          → discord_id
+ *   役割                → staff_role
+ *   ステータス          → status
+ *   元候補者ID          → source_candidate_id
+ *   ダークモード        → dark_mode
+ *   チャットメニュー表示 → chat_menu_visible
+ *   営業メニュー表示    → sales_menu_visible
+ *   設定メニュー表示    → settings_menu_visible
+ *   管理者メニュー表示  → admin_menu_visible
+ *   Buddyメンテナンスメニュー表示 → buddy_maintenance_menu_visible
+ *   サイドバー表示      → sidebar_visible
+ *   パスワードハッシュ  → password_hash
+ *   パスワードソルト    → password_salt
+ *   連続失敗回数        → login_fail_count
+ *   ロック解除時刻      → locked_until
+ *
+ * 前提条件:
+ *   - backupStaffMasterSheet() が実行済みであること（バックアップが存在すること）
+ *   - DEV 環境であること
+ *
+ * @returns {{ status: string, renamed: number, details: Array<{col: number, before: string, after: string}> }}
+ */
+function renameStaffMasterHeaders() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('renameStaffMasterHeaders は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+
+  // バックアップが存在しない場合は停止
+  var backupName = '担当者マスタ_backup_20260831';
+  if (!ss.getSheetByName(backupName)) {
+    throw new Error('バックアップシートが存在しません。先に backupStaffMasterSheet() を実行してください: ' + backupName);
+  }
+
+  var oldToNew = {
+    '担当者ID': 'staff_id',
+    '苗字（日本語）': 'last_name_ja',
+    '名前（日本語）': 'first_name_ja',
+    '氏名（日本語）': 'full_name_ja',
+    '苗字ふりがな': 'last_name_kana',
+    '名前ふりがな': 'first_name_kana',
+    '苗字（英語）': 'last_name_en',
+    '名前（英語）': 'first_name_en',
+    'メール': 'email',
+    'Discord ID': 'discord_id',
+    '役割': 'staff_role',
+    'ステータス': 'status',
+    '元候補者ID': 'source_candidate_id',
+    'ダークモード': 'dark_mode',
+    'チャットメニュー表示': 'chat_menu_visible',
+    '営業メニュー表示': 'sales_menu_visible',
+    '設定メニュー表示': 'settings_menu_visible',
+    '管理者メニュー表示': 'admin_menu_visible',
+    'Buddyメンテナンスメニュー表示': 'buddy_maintenance_menu_visible',
+    'サイドバー表示': 'sidebar_visible',
+    'パスワードハッシュ': 'password_hash',
+    'パスワードソルト': 'password_salt',
+    '連続失敗回数': 'login_fail_count',
+    'ロック解除時刻': 'locked_until'
+  };
+
+  var sheet = getCoreSchemaV1Sheet(ss, 'STAFF');
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) throw new Error('担当者マスタシートに列がありません');
+
+  var headerRange = sheet.getRange(1, 1, 1, lastCol);
+  var currentHeaders = headerRange.getDisplayValues()[0];
+
+  var details = [];
+  var newHeaders = currentHeaders.map(function(h, i) {
+    var trimmed = String(h).trim();
+    var mapped = oldToNew[trimmed];
+    if (mapped !== undefined && mapped !== trimmed) {
+      details.push({ col: i + 1, before: trimmed, after: mapped });
+      return mapped;
+    }
+    return trimmed;
+  });
+
+  // 一括で書き込む
+  headerRange.setValues([newHeaders]);
+
+  return {
+    status: 'OK',
+    renamed: details.length,
+    details: details
+  };
+}
+
+/**
  * バックアップシートと元シートの行数・列数・ヘッダーが完全一致するか検証する。
  * 合格条件: status === 'OK' かつ headersMatch === true
  */
