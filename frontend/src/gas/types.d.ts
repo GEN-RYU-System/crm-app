@@ -54,6 +54,13 @@ interface GoogleScriptRun {
   getInboxBulkInitialLoad(sessionId: string | null, maxConversations: number, maxMessages: number): void;
   getInboxMoreMessages(sessionId: string | null, conversationId: string, offsetIndex: number, maxMessages: number): void;
   pingForLatencyCheck(): void;
+  getCoreSizesForFrontend(sessionId: string | null): void;
+  getCoreWeightsForFrontend(sessionId: string | null): void;
+  getCorePackagesForFrontend(sessionId: string | null): void;
+  getCorePackageUnitOptionsForFrontend(): void;
+  upsertCoreSizeForFrontend(sessionId: string | null, payload: unknown): void;
+  upsertCoreWeightForFrontend(sessionId: string | null, payload: unknown): void;
+  upsertCorePackageForFrontend(sessionId: string | null, payload: unknown): void;
 }
 
 interface Window {
