@@ -35,7 +35,7 @@ function devInvestigateProductPackageSetup() {
   // ── PRODUCT_PACKAGES からすべての行を読む ──
   var ppData = coreCustomerFrontendReadTable(ss, 'PRODUCT_PACKAGES', [
     'PRODUCT_PACKAGE_ID', 'SHARED_PRODUCT_ID', 'OWN_PRODUCT_ID',
-    'CASE_PACKAGE_ID', 'BOX_PACKAGE_ID', 'PACK_PACKAGE_ID', 'IS_ACTIVE'
+    'CASE_PACKAGE_ID', 'BOX_PACKAGE_ID', 'PACK_PACKAGE_ID', 'ACTIVE'
   ]);
 
   var ppk0001 = null;
@@ -49,7 +49,7 @@ function devInvestigateProductPackageSetup() {
         casePackageId:    coreCustomerFrontendValue(r[ppData.indexes.CASE_PACKAGE_ID]),
         boxPackageId:     coreCustomerFrontendValue(r[ppData.indexes.BOX_PACKAGE_ID]),
         packPackageId:    coreCustomerFrontendValue(r[ppData.indexes.PACK_PACKAGE_ID]),
-        isActive:         coreCustomerFrontendValue(r[ppData.indexes.IS_ACTIVE])
+        active:           coreCustomerFrontendValue(r[ppData.indexes.ACTIVE])
       };
     }
   });
@@ -72,14 +72,14 @@ function devInvestigateProductPackageSetup() {
     }
   });
 
-  // ── ORDER_LINES 全行の ORDER_ID + LINE_ID + PRODUCT_ID を一覧 ──
+  // ── ORDER_LINES 全行の ORDER_ID + ORDER_LINE_ID + PRODUCT_ID を一覧 ──
   var linesData = coreCustomerFrontendReadTable(ss, 'ORDER_LINES', [
-    'LINE_ID', 'ORDER_ID', 'PRODUCT_ID', 'CONDITION'
+    'ORDER_LINE_ID', 'ORDER_ID', 'PRODUCT_ID', 'CONDITION'
   ]);
 
   var lines = linesData.rows.map(function(r) {
     return {
-      lineId:    coreCustomerFrontendValue(r[linesData.indexes.LINE_ID]),
+      lineId:    coreCustomerFrontendValue(r[linesData.indexes.ORDER_LINE_ID]),
       orderId:   coreCustomerFrontendValue(r[linesData.indexes.ORDER_ID]),
       productId: coreCustomerFrontendValue(r[linesData.indexes.PRODUCT_ID]),
       condition: coreCustomerFrontendValue(r[linesData.indexes.CONDITION])
@@ -105,7 +105,7 @@ function devInvestigateProductPackageSetup() {
  * ORDER_LINES の指定明細1行のコンディション列にのみ書き込む。
  *
  * @param {string} mode        'DRY_RUN' または 'APPLY'
- * @param {string} orderLineId 対象明細 ID（LINE_ID 列の値）
+ * @param {string} orderLineId 対象明細 ID（ORDER_LINE_ID 列の値）
  * @param {string} conditionValue 書き込むコンディション値
  * @returns {string} JSON
  */
@@ -142,20 +142,20 @@ function devSetOrderLineCondition(mode, orderLineId, conditionValue) {
   // ヘッダー行からインデックスを特定（列番号ハードコード禁止）
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 
-  var lineIdColName    = getCoreSchemaV1HeaderName('ORDER_LINES', 'LINE_ID');
+  var lineIdColName    = getCoreSchemaV1HeaderName('ORDER_LINES', 'ORDER_LINE_ID');
   var conditionColName = getCoreSchemaV1HeaderName('ORDER_LINES', 'CONDITION');
 
   var lineIdCol    = headers.indexOf(lineIdColName);
   var conditionCol = headers.indexOf(conditionColName);
 
   if (lineIdCol === -1) {
-    throw new Error('LINE_ID 列が見つかりません: ' + lineIdColName);
+    throw new Error('ORDER_LINE_ID 列が見つかりません: ' + lineIdColName);
   }
   if (conditionCol === -1) {
     throw new Error('CONDITION 列が見つかりません: ' + conditionColName);
   }
 
-  // 対象行を LINE_ID で特定（targetRow は appendRow の前に確定）
+  // 対象行を ORDER_LINE_ID で特定（targetRow は appendRow の前に確定）
   var dataValues = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   var targetRow  = -1;
   var beforeValue = '';
@@ -172,7 +172,7 @@ function devSetOrderLineCondition(mode, orderLineId, conditionValue) {
   if (targetRow === -1) {
     return JSON.stringify({
       success:     false,
-      reason:      'LINE_ID が見つかりません',
+      reason:      'ORDER_LINE_ID が見つかりません',
       orderLineId: orderLineId
     });
   }
