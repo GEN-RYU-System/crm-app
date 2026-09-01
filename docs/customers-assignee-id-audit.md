@@ -191,3 +191,84 @@ GAS 実行結果より:
 1. `exportCustomerMasterSampleCSV`（27_WebApp.js の CSV エクスポート関数）が生成する CSV に `担当者ID` 列を含むかどうか。含む場合は `importCustomerMasterCSV` 経由でこの列に値が書き込まれる経路が存在する。
 2. `担当者ID` 列がいつ追加されたか（git log による追跡は本調査スコープ外）。
 3. 将来的に CUSTOMERS テーブルにスタッフ紐付けを実装する計画があるかどうか（設計意図としての存在理由）。
+
+---
+
+## 担当者ID 割り当て前確認（2026-09-01）
+
+### 1. タニザワシンゴの staff_id
+
+`getStaffMasterList` 実行結果（2026-09-01T07:35:48.544Z）— 担当者マスタ全件:
+
+| rowNum | staff_id | last_name_ja | first_name_ja | full_name_ja | status |
+|--------|----------|-------------|---------------|-------------|--------|
+| 2 | EMP-00001 | 谷澤 | 伸吾 | 谷澤 伸吾 | 有効 |
+| 3 | EMP-00002 | 営業 | 太郎 | 営業 太郎 | 有効 |
+| 4 | EMP-00003 | 谷澤 | 美佳 | 谷澤 美佳 | 有効 |
+| 5 | EMP-00004 | 森本 | 均 | 森本 均 | 無効 |
+| 6 | EMP-00005 | 森本 | 均 | 森本 均 | 無効 |
+| 7 | EMP-00006 | 森本 | 均 | 森本 均 | 無効 |
+| 8 | EMP-00007 | 阿部 | 竜馬 | （空） | 無効 |
+| 9 | EMP-00008 | テスト | 次郎 | （空） | 有効 |
+
+**「谷澤」「伸吾」に該当する行**:
+
+- rowNum 2: `staff_id = EMP-00001`, last_name_ja = 谷澤, first_name_ja = 伸吾, full_name_ja = 谷澤 伸吾, status = 有効
+
+タニザワシンゴの `staff_id` = **EMP-00001**。
+
+### 2. 顧客マスタ 営業担当者列の現状（全6行）
+
+`getCustomerSalesAssigneeList` 実行結果（2026-09-01T07:35:59.971Z）:
+
+| rowNum | 顧客ID | 顧客名 | 営業担当者(col10) | 担当者ID(col11) |
+|--------|--------|-------|-----------------|----------------|
+| 2 | CT-0001 | Alex Thompson | Demo Staff | （空） |
+| 3 | CT-0002 | Maria Garcia | Demo Staff | （空） |
+| 4 | CT-0003 | James Wilson | Demo Staff | （空） |
+| 5 | CT-0004 | Sophie Martin | Demo Staff | （空） |
+| 6 | CT-0005 | Hiroshi Tanaka | Demo Staff | （空） |
+| 7 | CT-0006 | Emma Davis | Demo Staff | （空） |
+
+**担当者マスタとの対応**:
+
+全6行の「営業担当者」値は `Demo Staff`。担当者マスタの `full_name_ja` に `Demo Staff` は存在しない（担当者マスタ全件で照合済み）。「担当者ID」列は全6行空値（既報の通り）。
+
+### 3. Registry 命名案
+
+既存の命名規則（他テーブルの担当者ID外部キー列）:
+
+| テーブル | 論理キー名(headerKey) | 物理列名(physical) | 意味 |
+|---------|---------------------|------------------|------|
+| LEADS | ASSIGNEE_ID | assignee_id | 担当営業（汎用・単一担当者） |
+| ORDERS | ORDER_ASSIGNEE_ID | 受注担当ID | 受注担当者 |
+| ORDERS | SALES_ASSIGNEE_ID | 営業担当ID | 営業担当者 |
+| ORDERS | SHIPPING_ASSIGNEE_ID | 発送担当ID | 発送担当者 |
+| ORDERS | PAYMENT_CONFIRMED_BY_ID | 入金確認者ID | 入金確認者 |
+| SHIPMENTS | SHIPPING_ASSIGNEE_ID | 発送担当ID | 発送担当者 |
+| PURCHASES | PURCHASE_ASSIGNEE_ID | purchase_assignee_id | 仕入れ担当者 |
+| PURCHASES | PAID_BY_ID | paid_by_id | 支払実施者 |
+| QUOTES | STAFF_ID | 担当者ID | 担当者（汎用） |
+| LOGIN_SESSIONS | STAFF_ID | 担当者ID | セッション所有者（STAFF直接） |
+
+命名パターンの整理:
+
+1. **役割固有型**（ORDERS/SHIPMENTS/PURCHASES）: `{ROLE}_ASSIGNEE_ID` / `{role}_assignee_id` — 役割名を接頭辞にする
+2. **汎用型**（LEADS）: `ASSIGNEE_ID` / `assignee_id` — 単一の「担当」
+3. **直接参照型**（QUOTES/LOGIN_SESSIONS）: `STAFF_ID` / `担当者ID` または `staff_id` — STAFF テーブルの PK をそのまま使用
+
+CUSTOMERS への追加案（Registry に追加する場合 — PO 判断待ち）:
+
+| 案 | 論理キー名 | 物理列名 | 根拠 |
+|----|----------|---------|------|
+| 案A | SALES_ASSIGNEE_ID | 担当者ID | ORDERS.SALES_ASSIGNEE_ID（`営業担当ID`）と役割が同義。物理列名は既存「担当者ID」をそのまま維持。referenceId: STAFF |
+| 案B | ASSIGNEE_ID | 担当者ID | LEADS.ASSIGNEE_ID（`assignee_id`）と同パターン（汎用担当者）。物理列名は既存維持。referenceId: STAFF |
+
+案A と案B の差異は論理キー名のみ。役割を明示するなら案A（SALES_ASSIGNEE_ID）、汎用担当者として扱うなら案B（ASSIGNEE_ID）。
+
+決定は PO が行う。
+
+### 4. 【未確認】項目
+
+1. 顧客マスタの「営業担当者」（col10）= `Demo Staff` は DEV シードデータ（フィクション）であり、実運用時の値との対応は未確認。
+2. Registry に追加する場合の物理列名を英字（`sales_assignee_id` / `assignee_id`）に変更するか、現行の日本語「担当者ID」を維持するかは PO 判断が必要（他 CUSTOMERS 列は日本語物理名を使用しているため日本語維持が整合的だが、ORDERS の同種列は英語）。
