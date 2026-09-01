@@ -480,7 +480,15 @@ const CORE_SCHEMA_V1_TABLES = {
       ['DIM_ROUNDING',        '寸法端数処理'],
       ['WEIGHT_STEP_SMALL',   '重量刻み小'],
       ['WEIGHT_STEP_LARGE',   '重量刻み大'],
-      ['MAX_WEIGHT',          '最大対応重量']
+      ['MAX_WEIGHT',          '最大対応重量'],
+      // API接続設定（将来の API 切り替え用）
+      // ★ API_AUTH_KEY_NAME は認証キーそのものではなく、
+      //    GAS Script Properties に登録したキー名（文字列）のみを保持する。
+      //    認証キーの実値はシート・コード・ログに書いてはならない。
+      //    SQL 移行後は環境変数に置き換える。
+      ['API_ENABLED',         'API有効'],
+      ['API_ENDPOINT',        'APIエンドポイント'],
+      ['API_AUTH_KEY_NAME',   'API認証キー名']
     ]), primaryKey: 'CARRIER_ID',
     referenceIds: []
   },
@@ -515,6 +523,55 @@ const CORE_SCHEMA_V1_TABLES = {
     ]), primaryKey: 'RATE_ID',
     referenceIds: [
       { headerKey: 'CARRIER_ID', targetTableKey: 'CARRIERS' }
+    ]
+  },
+  // ============================================================
+  // 送料見積履歴
+  // ============================================================
+  // 設計メモ（SQL 移行観点）:
+  //   - 見積ID / 請求書ID / 発送ID を3列に分けているのは、
+  //     SQL で外部キーを個別に宣言できる形にするため。
+  //     1列にまとめるポリモーフィック関連では外部キー宣言が不可能。
+  //   - 実運用では3列のうち1つのみに値が入る（バリデーションは API 層で実施）。
+  //   - CALC_SOURCE / FEE_TYPE は SQL 移行後 ENUM または参照テーブルになる。
+  SHIPPING_FEE_ESTIMATES: {
+    sheetName: '送料見積履歴', canonicalName: '送料見積履歴', aliases: [], headerRowNumber: 1, sheetType: 'TRANSACTION', writeAllowed: true,
+    // ID 接頭辞: SFE-0001（4桁連番）
+    headers: createCoreSchemaV1Headers([
+      ['SHIPPING_FEE_ESTIMATE_ID', '送料見積ID'],
+      ['QUOTE_ID',                 '見積ID'],
+      ['INVOICE_ID',               '請求書ID'],
+      ['SHIPMENT_ID',              '発送ID'],
+      ['CARRIER_ID',               '配送会社ID'],
+      ['ZONE',                     'ゾーン'],
+      ['TOTAL_CHARGEABLE_WEIGHT',  '総請求重量'],
+      ['BOX_COUNT',                '箱数'],
+      ['SHIPPING_FEE',             '送料'],
+      ['CALC_SOURCE',              '計算元'],
+      ['FEE_TYPE',                 '見積区分'],
+      ['CALCULATED_AT',            '計算日時'],
+      ['ACTIVE',                   '有効'],
+      ['REGISTERED_AT',            '登録日'],
+      ['UPDATED_AT',               '更新日']
+    ]),
+    primaryKey: 'SHIPPING_FEE_ESTIMATE_ID',
+    values: {
+      // 計算元: API 呼び出しによる計算 / マスタ参照による計算
+      CALC_SOURCE: {
+        API:    'API',
+        MASTER: 'MASTER'
+      },
+      // 見積区分: 概算（見積もり・請求書段階） / 実額（発送確定後）
+      FEE_TYPE: {
+        ESTIMATE: 'ESTIMATE',
+        ACTUAL:   'ACTUAL'
+      }
+    },
+    referenceIds: [
+      { headerKey: 'QUOTE_ID',    targetTableKey: 'QUOTES' },
+      { headerKey: 'INVOICE_ID',  targetTableKey: 'INVOICES' },
+      { headerKey: 'SHIPMENT_ID', targetTableKey: 'SHIPMENTS' },
+      { headerKey: 'CARRIER_ID',  targetTableKey: 'CARRIERS' }
     ]
   }
 };
