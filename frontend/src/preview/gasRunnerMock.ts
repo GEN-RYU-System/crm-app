@@ -831,6 +831,36 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
         ],
       });
     },
+    estimateShippingFeeForOrderForFrontend(_s: string | null, _orderId: string) {
+      succeed({
+        success: true,
+        skipped: [
+          { productId: 'PM0001', condition: 'MINT', reason: 'CONDITION_NOT_SHIPPING_TARGET' },
+        ],
+        results: [
+          {
+            carrierId: 'CAR-PREVIEW-01',
+            carrierName: 'Preview Carrier A',
+            zone: 'F',
+            totalFee: 8800,
+            boxes: [{ chargeableWeight: 1.2, fee: 8800 }],
+            error: null,
+            calcSource: 'MASTER',
+            feeType: 'ACTUAL',
+          },
+          {
+            carrierId: 'CAR-PREVIEW-02',
+            carrierName: 'Preview Carrier B',
+            zone: null,
+            totalFee: null,
+            boxes: [],
+            error: 'ZONE_NOT_FOUND',
+            calcSource: 'MASTER',
+            feeType: 'ACTUAL',
+          },
+        ],
+      });
+    },
   };
 
   return new Proxy(chain, {

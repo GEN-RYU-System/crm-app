@@ -11,6 +11,7 @@ import { salesOrdersCopy } from '../../content/ja';
 import {
   confirmCoreOrderPayment,
   estimateShippingFee,
+  estimateShippingFeeForOrder,
   getCorePurchaseStatusOptions,
   upsertCorePurchase,
   upsertCoreShipment,
@@ -18,6 +19,7 @@ import {
   type OrderDetailRecord,
   type PurchaseStatusOption,
   type ShippingFeeCarrierResult,
+  type ShippingFeeEstimateResult,
   type UpsertPurchasePayload,
   type UpsertShipmentPayload,
 } from '../../gas/client';
@@ -174,13 +176,18 @@ export function SalesOrderDetailPage() {
   const [uploadingFileType, setUploadingFileType] = useState<'label' | 'invoice' | null>(null);
   const [uploadError, setUploadError] = useState<string | undefined>(undefined);
 
-  // shipping fee calculation state
+  // shipping fee calculation state (shipment tab — actual boxes)
   const [shippingFeeLoading, setShippingFeeLoading] = useState(false);
   const [shippingFeeResult, setShippingFeeResult] = useState<{
     hasIncompleteRows: boolean;
     results: ShippingFeeCarrierResult[];
   } | null>(null);
   const [shippingFeeError, setShippingFeeError] = useState<string | undefined>(undefined);
+
+  // billing tab shipping fee (estimate from order lines)
+  const [billingShippingFeeLoading, setBillingShippingFeeLoading] = useState(false);
+  const [billingShippingFeeResult, setBillingShippingFeeResult] = useState<ShippingFeeEstimateResult | null>(null);
+  const [billingShippingFeeError, setBillingShippingFeeError] = useState<string | undefined>(undefined);
 
   // tab state: initialise from ?tab= query param; invalid/missing → 'billing'
   const [activeTab, setActiveTab] = useState<DetailTab>(() => resolveInitialTab(searchParams.get('tab')));
@@ -213,6 +220,36 @@ export function SalesOrderDetailPage() {
       UNSUPPORTED_DIM_ROUNDING: copy.shippingFeeErrorUnsupportedDimRounding,
     };
     return errorMap[code] ?? copy.shippingFeeErrorUnknown;
+  };
+
+  const translateBillingSkipReason = (reason: string): string => {
+    const map: Record<string, string> = {
+      CONDITION_NOT_FOUND:           copy.billingShippingFeeSkipReasonConditionNotFound,
+      CONDITION_NOT_SHIPPING_TARGET: copy.billingShippingFeeSkipReasonConditionNotTarget,
+      CONDITION_UNIT_NOT_APPLICABLE: copy.billingShippingFeeSkipReasonConditionUnitNotApplicable,
+      PRODUCT_PACKAGE_NOT_FOUND:     copy.billingShippingFeeSkipReasonProductPackageNotFound,
+      PACKAGE_ID_NOT_SET:            copy.billingShippingFeeSkipReasonPackageIdNotSet,
+      PACKAGE_NOT_FOUND:             copy.billingShippingFeeSkipReasonPackageNotFound,
+      SIZE_NOT_FOUND:                copy.billingShippingFeeSkipReasonSizeNotFound,
+      WEIGHT_NOT_FOUND:              copy.billingShippingFeeSkipReasonWeightNotFound,
+    };
+    return map[reason] ?? copy.billingShippingFeeSkipReasonUnknown;
+  };
+
+  const translateBillingCarrierError = (error: string): string => {
+    const map: Record<string, string> = {
+      ZONE_NOT_FOUND:           copy.billingShippingFeeCarrierErrorZoneNotFound,
+      WEIGHT_EXCEEDS_MAX:       copy.billingShippingFeeCarrierErrorWeightExceedsMax,
+      RATE_NOT_FOUND:           copy.billingShippingFeeCarrierErrorRateNotFound,
+      INVALID_BOX_DIMENSIONS:   copy.billingShippingFeeCarrierErrorInvalidBoxDimensions,
+      UNSUPPORTED_DIM_ROUNDING: copy.billingShippingFeeCarrierErrorUnsupportedDimRounding,
+    };
+    return map[error] ?? copy.billingShippingFeeCarrierErrorUnknown;
+  };
+
+  const getLineProductName = (productId: string): string => {
+    const line = detail?.lines.find((l) => l.PRODUCT_ID === productId);
+    return line ? line.PRODUCT_NAME : productId;
   };
 
   const DETAIL_TABS: ReadonlyArray<TabItem<DetailTab>> = [
@@ -435,6 +472,21 @@ export function SalesOrderDetailPage() {
     }
   };
 
+  const handleCalculateBillingShippingFee = async () => {
+    if (!orderId) return;
+    setBillingShippingFeeLoading(true);
+    setBillingShippingFeeError(undefined);
+    setBillingShippingFeeResult(null);
+    try {
+      const res = await estimateShippingFeeForOrder(orderId);
+      setBillingShippingFeeResult(res);
+    } catch (e: unknown) {
+      setBillingShippingFeeError(e instanceof Error ? e.message : copy.billingShippingFeeErrorUnknown);
+    } finally {
+      setBillingShippingFeeLoading(false);
+    }
+  };
+
   return (
     <div className="sales-order-detail-page">
       {/* back link */}
@@ -586,6 +638,89 @@ export function SalesOrderDetailPage() {
                         rowKey={(r) => String(r.ORDER_LINE_ID)}
                         surface="embedded"
                       />
+                    )}
+                  </div>
+
+                  {/* billing tab shipping fee estimate (from order lines) */}
+                  <div className="sales-order-detail-page__section">
+                    <div className="sales-order-detail-page__section-header">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={billingShippingFeeLoading}
+                        onClick={() => void handleCalculateBillingShippingFee()}
+                      >
+                        {billingShippingFeeLoading ? copy.billingShippingFeeCalculating : copy.billingShippingFeeBtn}
+                      </Button>
+                    </div>
+                    <p className="sales-order-detail-page__billing-shipping-fee-note">{copy.billingShippingFeeNote}</p>
+                    {billingShippingFeeError && !billingShippingFeeLoading && (
+                      <StatusMessage variant="error">{billingShippingFeeError}</StatusMessage>
+                    )}
+                    {billingShippingFeeResult && !billingShippingFeeLoading && (
+                      <>
+                        {!billingShippingFeeResult.success && (
+                          <StatusMessage variant="empty">{copy.billingShippingFeeNoBoxes}</StatusMessage>
+                        )}
+                        {billingShippingFeeResult.success && (
+                          <>
+                            <h3 className="sales-order-detail-page__section-title">{copy.billingShippingFeeResultTitle}</h3>
+                            <table className="sales-order-detail-page__shipping-fee-table">
+                              <thead>
+                                <tr>
+                                  <th>{copy.billingShippingFeeColCarrier}</th>
+                                  <th>{copy.billingShippingFeeColZone}</th>
+                                  <th>{copy.billingShippingFeeColWeight}</th>
+                                  <th>{copy.billingShippingFeeColBoxCount}</th>
+                                  <th>{copy.billingShippingFeeColFee}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {billingShippingFeeResult.results.map((r) => {
+                                  const totalChargeableWeight = r.boxes.reduce(
+                                    (sum, b) => sum + b.chargeableWeight, 0
+                                  );
+                                  return (
+                                    <tr key={r.carrierId}>
+                                      <td>{r.carrierName}</td>
+                                      <td>{r.zone ?? '-'}</td>
+                                      <td>{r.error ? '-' : totalChargeableWeight.toFixed(2)}</td>
+                                      <td>{r.error ? '-' : r.boxes.length}</td>
+                                      <td>
+                                        {r.error
+                                          ? <span className="sales-order-detail-page__shipping-fee-error">{translateBillingCarrierError(r.error)}</span>
+                                          : formatNumber(r.totalFee)
+                                        }
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                            {billingShippingFeeResult.skipped.length > 0 && (
+                              <>
+                                <h3 className="sales-order-detail-page__section-title">{copy.billingShippingFeeSkippedTitle}</h3>
+                                <table className="sales-order-detail-page__shipping-fee-table">
+                                  <thead>
+                                    <tr>
+                                      <th>{copy.billingShippingFeeSkippedColProduct}</th>
+                                      <th>{copy.billingShippingFeeSkippedColReason}</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {billingShippingFeeResult.skipped.map((s, i) => (
+                                      <tr key={i}>
+                                        <td>{getLineProductName(s.productId)}</td>
+                                        <td>{translateBillingSkipReason(s.reason)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </>
                     )}
                   </div>
 
