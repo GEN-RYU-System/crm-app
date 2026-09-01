@@ -61,6 +61,17 @@ worktree 内・`~/crm-app-canonical-20260830/` に置いても読まれない。
 
 - AUTONOMOUS_WORK_LOG.mdへの追記は必ずファイル末尾に日付見出し付きセクションで行う。中間挿入・既存行編集は禁止。
 
+## CI チェックルールの変更は PO 承認必須
+
+`scripts/` 配下の検査スクリプト（`check-design-system.mjs` 等）を
+変更・緩和する場合は、必ず事前に PO の承認を得ること。
+
+CI が失敗したとき、検査の方を緩める（除外追加・条件を甘くするなど）対処は禁止。
+正しい対応:
+1. 失敗内容を報告する
+2. 「コード側を直す」か「検査ルールを変更する必要がある」かを説明して PO の判断を仰ぐ
+3. PO の承認を得てから `scripts/` を変更する
+
 ## Git pre-commit hook（develop/main への直接コミット禁止）
 
 `.githooks/pre-commit` に develop / main への直接コミットを拒否するフックを設置済み。
