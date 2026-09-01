@@ -1,7 +1,7 @@
 /**
  * 99_DevZoneSheetReader.js
  *
- * 目的: 地帯表シートの特定行を読み取る（DEV 専用 / 読み取り専用）
+ * 目的: 地帯表・料金表シートの行を読み取る（DEV 専用 / 読み取り専用）
  *
  * 禁止事項:
  *   - シートへの書き込み（setValue / setValues / appendRow 等）
@@ -11,7 +11,16 @@
  * 使い方:
  *   clasp run readZoneSheetRows --params '["Martin"]'
  *   clasp run readZoneSheetRows --params '["China"]'
+ *   clasp run readRateSheetWeightBands --params '["FEDEX"]'
+ *   clasp run readRateSheetWeightBands --params '["DHL"]'
+ *   clasp run readRateSheetWeightBands --params '["UPS"]'
  */
+
+/** 料金表シートの重量列ヘッダー名（実シートの1行目と合わせる） */
+var RATE_SHEET_WEIGHT_COL = {
+  MIN: 'Min_Weight',
+  MAX: 'Max_Weight'
+};
 
 /** 地帯表の列ヘッダー名（実シートの1行目と合わせる） */
 var ZONE_SHEET_COL = {
@@ -109,6 +118,96 @@ function readZoneSheetRows(keyword) {
   } else {
     result.rows = matched;
   }
+
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
+/**
+ * 料金表シート（FedEx送料 / DHL送料 / UPS送料）から
+ * 重量帯（Min_Weight / Max_Weight）のみを返す。
+ * 料金の値は返さない（契約料金のため）。
+ *
+ * @param {string} sheetKey - 'FEDEX' / 'DHL' / 'UPS' のいずれか（必須）
+ * @returns {Object} { sheetName, sheetKey, rowCount, bands }
+ *                   bands は { minWeight, maxWeight } の配列
+ */
+function readRateSheetWeightBands(sheetKey) {
+  if (!sheetKey || String(sheetKey).trim() === '') {
+    throw new Error(
+      'sheetKey は必須です。引数なしでは実行できません。\n' +
+      '例: clasp run readRateSheetWeightBands --params \'["FEDEX"]\''
+    );
+  }
+
+  var key = String(sheetKey).trim().toUpperCase();
+  if (key !== 'FEDEX' && key !== 'DHL' && key !== 'UPS') {
+    throw new Error(
+      'sheetKey は "FEDEX" / "DHL" / "UPS" のいずれかを指定してください。' +
+      '受け取った値: ' + sheetKey
+    );
+  }
+
+  if (getEnvironment() !== 'development') {
+    throw new Error('readRateSheetWeightBands は development 環境でのみ実行できます。');
+  }
+
+  // シート名は既存コードと同じ方法で取得（直書き禁止）
+  var sheetName = IMPORT_SOURCE_SHEET_NAMES[key];
+  var ss        = getSpreadsheet();
+  var sheet     = ss.getSheetByName(sheetName);
+
+  if (!sheet) {
+    throw new Error('シートが見つかりません: ' + sheetName + ' (sheetKey=' + key + ')');
+  }
+
+  var allData = sheet.getDataRange().getValues();
+  if (allData.length < 2) {
+    var empty = { sheetName: sheetName, sheetKey: key, rowCount: 0, bands: [] };
+    Logger.log(JSON.stringify(empty, null, 2));
+    return empty;
+  }
+
+  var headerRow = allData[0];
+
+  // 列位置を indexOf で特定（列番号の直書き禁止）
+  var minIdx = headerRow.indexOf(RATE_SHEET_WEIGHT_COL.MIN);
+  var maxIdx = headerRow.indexOf(RATE_SHEET_WEIGHT_COL.MAX);
+
+  if (minIdx < 0 || maxIdx < 0) {
+    throw new Error(
+      '料金表のヘッダーが見つかりません。\n' +
+      '"' + RATE_SHEET_WEIGHT_COL.MIN + '" 列: ' + (minIdx < 0 ? '不在' : 'col' + (minIdx + 1)) + '\n' +
+      '"' + RATE_SHEET_WEIGHT_COL.MAX + '" 列: ' + (maxIdx < 0 ? '不在' : 'col' + (maxIdx + 1)) + '\n' +
+      'ヘッダー実値: ' + JSON.stringify(headerRow)
+    );
+  }
+
+  var dataRows = allData.slice(1);
+  var bands    = [];
+
+  dataRows.forEach(function(row) {
+    var rawMin = row[minIdx];
+    var rawMax = row[maxIdx];
+
+    // 最小重量が空の行はスキップ（送料シートの末尾空行対策）
+    if (rawMin === '' || rawMin === null || rawMin === undefined) return;
+
+    var minWeight = Number(rawMin);
+    if (isNaN(minWeight)) return;
+
+    bands.push({
+      minWeight: minWeight,
+      maxWeight: Number(rawMax)
+    });
+  });
+
+  var result = {
+    sheetName: sheetName,
+    sheetKey:  key,
+    rowCount:  bands.length,
+    bands:     bands
+  };
 
   Logger.log(JSON.stringify(result, null, 2));
   return result;
