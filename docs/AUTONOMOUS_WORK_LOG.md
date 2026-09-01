@@ -2,6 +2,41 @@
 
 ---
 
+### 2026-09-01 見積もり明細 CONDITION 列読み取り DEV 関数を追加（PR #840）
+
+**概要:**
+見積もり明細（QUOTE_LINES）の CONDITION 列に存在する値の一覧・件数を返す
+読み取り専用 DEV 関数 `readQuoteLineConditions()` を追加した。
+
+**変更ファイル:**
+
+- `src/99_DevQuoteLineConditionReader.js`（新規）
+  - `readQuoteLineConditions()` を追加
+  - DEV 環境ガード付き・読み取り専用
+  - CONDITION 列のみ取得（商品名・金額・顧客情報は一切出力しない）
+
+**実行結果（readQuoteLineConditions）:**
+
+```json
+{
+  "sheetName": "見積もり明細",
+  "totalDataRows": 3,
+  "conditionCounts": [],
+  "emptyCount": 3
+}
+```
+
+データ行3件のうち、CONDITION 列に値が入っているものは0件（全行空）。
+
+**事後確認:**
+
+- PR #840 squash merge: mergedAt=2026-09-01T06:29:05Z ✅
+- Deploy to DEV: success ✅
+- getDeployedSha: `f940aefc561c619e752ce943726acd111a0bd9f8` = origin/develop HEAD ✅
+- runCoreSchemaConformanceAudit: 不一致1件（CUSTOMERS）= 従来通り、新規増加なし ✅
+
+---
+
 ### 2026-09-01 発送タブに送料計算ボタンと結果表示を追加（PR #832）
 
 **概要:**
