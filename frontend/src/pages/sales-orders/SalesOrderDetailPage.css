@@ -393,3 +393,9 @@
   color: var(--color-text-muted);
   font-style: italic;
 }
+
+.sales-order-detail-page__billing-shipping-fee-note {
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+  margin: var(--space-xs) 0 var(--space-sm);
+}

@@ -46,6 +46,7 @@ interface GoogleScriptRun {
   advanceCoreShipmentStageForFrontend(_s: string | null, _orderId: string): void;
   estimateShippingFeeForFrontend(_s: string | null, _payload: unknown): void;
   estimateShippingFeeForQuoteForFrontend(_s: string | null, _quoteId: string): void;
+  estimateShippingFeeForOrderForFrontend(_s: string | null, _orderId: string): void;
   uploadCoreShipmentFileForFrontend(_s: string | null, _payload: unknown): void;
   checkSyncSignals(sessionId: string | null): void;
   getLeadFormOptions(sessionId: string | null): void;
