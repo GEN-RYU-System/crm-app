@@ -3,6 +3,16 @@
  * @param {Object} lead - リードデータ
  * @returns {string} 見込度ランク（A/B+/B/B-/仮C/確定C）
  */
+
+/**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
 function calculateProspectRank(lead) {
   // C条件カウント
   let cConditions = 0;
@@ -103,7 +113,7 @@ function updateProspectRankOnEdit(e) {
     });
     
     const newRank = calculateProspectRank(lead);
-    const rankColIndex = headers.indexOf('見込度');
+    const rankColIndex = _leadsHeaderIdx(headers, 'prospect_score', '見込度');
     
     if (rankColIndex !== -1) {
       sheet.getRange(editedRow, rankColIndex + 1).setValue(newRank);
@@ -124,7 +134,7 @@ function recalculateProspectRank(sheet, rowNum) {
   });
   
   const newRank = calculateProspectRank(lead);
-  const rankColIndex = headers.indexOf('見込度');
+  const rankColIndex = _leadsHeaderIdx(headers, 'prospect_score', '見込度');
   
   if (rankColIndex !== -1) {
     sheet.getRange(rowNum, rankColIndex + 1).setValue(newRank);

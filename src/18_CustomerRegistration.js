@@ -20,6 +20,16 @@
  * }
  */
 
+/**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
 var FORM_TOKEN_SHEET       = 'フォームトークン';
 var FORM_TOKEN_HEADERS     = ['トークン', 'リードID', '発行日', '使用日'];
 var FORM_TOKEN_EXPIRY_DAYS = 7;
@@ -571,7 +581,7 @@ function testRegisterCustomer() {
   if (!leadSh) return '=== testRegisterCustomer ===\nERROR: リード管理シートが存在しません';
   var leadData = leadSh.getDataRange().getValues();
   var lh       = leadData[0];
-  var lidIdx   = lh.indexOf('リードID');
+  var lidIdx   = _leadsHeaderIdx(lh, 'lead_id', 'リードID');
   var testLeadId = null;
   for (var li = 1; li < leadData.length; li++) {
     var lid = String(leadData[li][lidIdx] || '').trim();
@@ -860,7 +870,7 @@ function verifyCustomerByLeadId(leadId) {
   var tokSh   = ss.getSheetByName(FORM_TOKEN_SHEET);
   var tokData = tokSh ? tokSh.getDataRange().getValues() : [];
   var tokH    = tokData[0] || [];
-  var tokLeadIdx = tokH.indexOf('リードID');
+  var tokLeadIdx = _leadsHeaderIdx(tokH, 'lead_id', 'リードID');
   var tokUseIdx  = tokH.indexOf('使用日');
   var tokRows = tokData.slice(1).filter(function(r) {
     return String(r[tokLeadIdx] || '').trim() === leadId;
@@ -1021,10 +1031,10 @@ function createTestFormLead() {
 
   var data = sh.getDataRange().getValues();
   var h    = data[0];
-  var idIdx   = h.indexOf('リードID');
+  var idIdx   = _leadsHeaderIdx(h, 'lead_id', 'リードID');
   var dateIdx = h.indexOf('登録日');
   var nameIdx = h.indexOf('顧客名');
-  var typeIdx = h.indexOf('リード種別');
+  var typeIdx = _leadsHeaderIdx(h, 'lead_type', 'リード種別');
   if (idIdx < 0) return 'ERROR: リードID列が見つかりません';
 
   // 次のLDI-IDを採番
@@ -1074,7 +1084,7 @@ function testOrderFormFlow() {
   var data = sh.getDataRange().getValues();
   var h    = data[0];
   var tokIdx  = h.indexOf('トークン');
-  var leadIdx = h.indexOf('リードID');
+  var leadIdx = _leadsHeaderIdx(h, 'lead_id', 'リードID');
   var useIdx  = h.indexOf('使用日');
   var tokenRow = -1;
   for (var i = 1; i < data.length; i++) {

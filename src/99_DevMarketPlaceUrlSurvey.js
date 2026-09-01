@@ -10,6 +10,16 @@
  *   clasp run surveyLeadSourceUrls
  */
 
+/**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
 function surveyLeadSourceUrls() {
   var ss    = getSpreadsheet();
   var sheet = ss.getSheetByName('リード管理');
@@ -38,7 +48,7 @@ function surveyLeadSourceUrls() {
   Logger.log('');
 
   // 流入経路列のインデックス
-  var sourceIdx = headers.indexOf('流入経路');
+  var sourceIdx = _leadsHeaderIdx(headers, 'lead_source', '流入経路');
   if (sourceIdx === -1) throw new Error('流入経路列が見つかりません');
 
   // ── データ読み込み ────────────────────────────────────────────────────────

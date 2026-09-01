@@ -9,6 +9,16 @@
  * - 対話履歴の管理
  */
 
+/**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
 // ============================================================
 // シートヘッダー定義
 // ============================================================
@@ -192,13 +202,13 @@ function getLeadContextForBuddy(leadId) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  const leadIdIdx = headers.indexOf('リードID');
+  const leadIdIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
   const customerIdx = headers.indexOf('顧客名');
   const statusIdx = headers.indexOf('進捗ステータス');
   const platformIdx = headers.indexOf('流入元');
   const noteIdx = headers.indexOf('メモ');
   const lastContactIdx = headers.indexOf('最終コンタクト日');
-  const actionIdx = headers.indexOf('次回アクション');
+  const actionIdx = _leadsHeaderIdx(headers, 'next_action', '次回アクション');
 
   for (let i = 1; i < data.length; i++) {
     if (data[i][leadIdIdx] === leadId) {
@@ -276,7 +286,7 @@ function getCoachingDialogHistory(staffId, limit) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  const staffIdIdx = headers.indexOf('担当者ID');
+  const staffIdIdx = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
 
   const dialogs = [];
   for (let i = data.length - 1; i >= 1 && dialogs.length < limit; i--) {
@@ -314,7 +324,7 @@ function getBuddyDialogsByLead(leadId) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  const leadIdIdx = headers.indexOf('リードID');
+  const leadIdIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
 
   const dialogs = [];
   for (let i = 1; i < data.length; i++) {
@@ -399,7 +409,7 @@ function getQuickAdvice(leadId, staffId) {
   const sheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const leadIdIdx = headers.indexOf('リードID');
+  const leadIdIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
   const statusIdx = headers.indexOf('進捗ステータス');
 
   let status = '';

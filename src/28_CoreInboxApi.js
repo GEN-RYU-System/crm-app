@@ -13,6 +13,16 @@
  *   会話一覧のみキャッシュ（TTL 600秒）。詳細はキャッシュしない（頻繁更新のため）。
  */
 
+/**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
 var CORE_INBOX_CONVERSATIONS_CACHE_INDEX  = 'CORE_INBOX_CONVERSATIONS_CACHE_INDEX_V1';
 var CORE_INBOX_CONVERSATIONS_CACHE_PREFIX = 'CORE_INBOX_CONVERSATIONS_CACHE_V1_';
 var CORE_INBOX_CONVERSATIONS_CACHE_CHUNK  = 90000;
@@ -204,7 +214,7 @@ function buildInboxConversations_(spreadsheet) {
   if (convSheet) {
     var convData    = convSheet.getDataRange().getValues();
     var convHeaders = convData[0];
-    var leadIdIdx   = convHeaders.indexOf('リードID');
+    var leadIdIdx   = _leadsHeaderIdx(convHeaders, 'lead_id', 'リードID');
     var datetimeIdx = convHeaders.indexOf('日時');
     var bodyIdx     = convHeaders.indexOf('原文');
     var dirIdx      = convHeaders.indexOf('送受信');
@@ -300,7 +310,7 @@ function readInboxMessages_(spreadsheet, leadId) {
 
   var convData    = convSheet.getDataRange().getValues();
   var convHeaders = convData[0];
-  var leadIdIdx   = convHeaders.indexOf('リードID');
+  var leadIdIdx   = _leadsHeaderIdx(convHeaders, 'lead_id', 'リードID');
   if (leadIdIdx === -1) return [];
 
   var logIdIdx    = convHeaders.indexOf('ログID');
@@ -397,7 +407,7 @@ function getInboxBulkInitialLoad(sessionId, maxConversations, maxMessagesPerConv
   if (convSheet) {
     var convData    = convSheet.getDataRange().getValues();
     var convHeaders = convData[0];
-    var leadIdIdx   = convHeaders.indexOf('リードID');
+    var leadIdIdx   = _leadsHeaderIdx(convHeaders, 'lead_id', 'リードID');
     var logIdIdx    = convHeaders.indexOf('ログID');
     var datetimeIdx = convHeaders.indexOf('日時');
     var bodyIdx     = convHeaders.indexOf('原文');
@@ -603,7 +613,7 @@ function measureInboxScale() {
   if (convSheet) {
     var convData  = convSheet.getDataRange().getValues();
     var headers   = convData[0];
-    var leadIdIdx = headers.indexOf('リードID');
+    var leadIdIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
     var bodyIdx   = headers.indexOf('原文');
 
     if (leadIdIdx !== -1) {
@@ -689,7 +699,7 @@ function measureInboxBulkTiming() {
       if (convSheet) {
         var convData    = convSheet.getDataRange().getValues();
         var convHeaders = convData[0];
-        var leadIdIdx   = convHeaders.indexOf('リードID');
+        var leadIdIdx   = _leadsHeaderIdx(convHeaders, 'lead_id', 'リードID');
         var logIdIdx    = convHeaders.indexOf('ログID');
         var datetimeIdx = convHeaders.indexOf('日時');
         var bodyIdx     = convHeaders.indexOf('原文');
@@ -775,7 +785,7 @@ function dryRunVerifyInboxPhase1(sampleLeadId) {
   if (convSheet) {
     var convData  = convSheet.getDataRange().getValues();
     var headers   = convData[0];
-    var leadIdIdx = headers.indexOf('リードID');
+    var leadIdIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
     if (leadIdIdx !== -1) {
       for (var r = 1; r < convData.length; r++) {
         var lid = String(convData[r][leadIdIdx] || '').trim();
@@ -945,7 +955,7 @@ function dryRunInboxBulkLoad() {
   if (convSheet) {
     var convData    = convSheet.getDataRange().getValues();
     var convHeaders = convData[0];
-    var leadIdIdx   = convHeaders.indexOf('リードID');
+    var leadIdIdx   = _leadsHeaderIdx(convHeaders, 'lead_id', 'リードID');
     var logIdIdx    = convHeaders.indexOf('ログID');
     var datetimeIdx = convHeaders.indexOf('日時');
     var bodyIdx     = convHeaders.indexOf('原文');

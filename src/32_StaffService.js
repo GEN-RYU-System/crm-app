@@ -4,6 +4,16 @@
  */
 
 /**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
+/**
  * スタッフ管理の全データを取得
  * @returns {Object} { success: boolean, data: Array, headers: Array }
  */
@@ -109,7 +119,7 @@ function updateStaff(staffId, updates) {
 
     const data = staffSheet.getDataRange().getValues();
     const headers = data[0];
-    const staffIdIdx = headers.indexOf('担当者ID');
+    const staffIdIdx = _webAppStaffHeaderIdx(headers, 'staff_id', '担当者ID');
 
     if (staffIdIdx === -1) {
       return {
@@ -253,7 +263,7 @@ function addStaff(staffData) {
     const headers = data[0];
 
     // 担当者IDを自動生成（既存の最大値+1）
-    const staffIdIdx = headers.indexOf('担当者ID');
+    const staffIdIdx = _webAppStaffHeaderIdx(headers, 'staff_id', '担当者ID');
     let maxId = 0;
 
     if (staffIdIdx !== -1) {

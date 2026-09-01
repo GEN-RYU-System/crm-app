@@ -26,6 +26,16 @@
  */
 
 /**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
+/**
  * リード管理シートに「作品ID」列を追加する（冪等）。
  *
  * - 既存の「取り扱いタイトル」列の直後に挿入する。
@@ -42,12 +52,12 @@ function addLeadIpIdsColumn() {
   var lastCol = sheet.getLastColumn();
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(String);
 
-  if (headers.indexOf('作品ID') !== -1) {
+  if (_leadsHeaderIdx(headers, 'ip_ids', '作品ID') !== -1) {
     Logger.log('列既存: 作品ID（スキップ）');
     return '列既存: 作品ID';
   }
 
-  var titleIdx = headers.indexOf('取り扱いタイトル');
+  var titleIdx = _leadsHeaderIdx(headers, 'handled_title', '取り扱いタイトル');
   if (titleIdx === -1) throw new Error('「取り扱いタイトル」列が見つかりません');
 
   // insertColumnAfter は 1-based インデックスを取る
@@ -56,7 +66,7 @@ function addLeadIpIdsColumn() {
 
   var newLastCol     = sheet.getLastColumn();
   var updatedHeaders = sheet.getRange(1, 1, 1, newLastCol).getValues()[0].map(String);
-  var newIdx         = updatedHeaders.indexOf('作品ID');
+  var newIdx         = _leadsHeaderIdx(updatedHeaders, 'ip_ids', '作品ID');
 
   Logger.log('列追加完了: 作品ID（列' + (newIdx + 1) + '、取り扱いタイトル の直後）');
   Logger.log('総列数: ' + newLastCol);
@@ -121,8 +131,8 @@ function dryRunIpIdsMigration() {
   if (leadLastRow < 2) throw new Error('リード管理にデータがありません');
 
   var leadHeaders  = leadSheet.getRange(1, 1, 1, leadLastCol).getValues()[0].map(String);
-  var titleColIdx  = leadHeaders.indexOf('取り扱いタイトル');
-  var leadIdColIdx = leadHeaders.indexOf('リードID');
+  var titleColIdx  = _leadsHeaderIdx(leadHeaders, 'handled_title', '取り扱いタイトル');
+  var leadIdColIdx = _leadsHeaderIdx(leadHeaders, 'lead_id', 'リードID');
   if (titleColIdx  < 0) throw new Error('リード管理に「取り扱いタイトル」列がありません');
   if (leadIdColIdx < 0) throw new Error('リード管理に「リードID」列がありません');
 
@@ -254,8 +264,8 @@ function applyIpIdsMigration() {
   if (leadLastRow < 2) throw new Error('リード管理にデータがありません');
 
   var leadHeaders   = leadSheet.getRange(1, 1, 1, leadLastCol).getValues()[0].map(String);
-  var titleColIdx   = leadHeaders.indexOf('取り扱いタイトル');
-  var ipIdsColIdx   = leadHeaders.indexOf('作品ID');
+  var titleColIdx   = _leadsHeaderIdx(leadHeaders, 'handled_title', '取り扱いタイトル');
+  var ipIdsColIdx   = _leadsHeaderIdx(leadHeaders, 'ip_ids', '作品ID');
   if (titleColIdx < 0) throw new Error('リード管理に「取り扱いタイトル」列がありません');
   if (ipIdsColIdx < 0) throw new Error('リード管理に「作品ID」列がありません');
 
@@ -319,9 +329,9 @@ function surveyIpIdsMigration() {
   if (leadLastRow < 2) throw new Error('リード管理にデータがありません');
 
   var leadHeaders  = leadSheet.getRange(1, 1, 1, leadLastCol).getValues()[0].map(String);
-  var titleColIdx  = leadHeaders.indexOf('取り扱いタイトル');
-  var ipIdsColIdx  = leadHeaders.indexOf('作品ID');
-  var leadIdColIdx = leadHeaders.indexOf('リードID');
+  var titleColIdx  = _leadsHeaderIdx(leadHeaders, 'handled_title', '取り扱いタイトル');
+  var ipIdsColIdx  = _leadsHeaderIdx(leadHeaders, 'ip_ids', '作品ID');
+  var leadIdColIdx = _leadsHeaderIdx(leadHeaders, 'lead_id', 'リードID');
   if (titleColIdx  < 0) throw new Error('「取り扱いタイトル」列がありません');
   if (ipIdsColIdx  < 0) throw new Error('「作品ID」列がありません');
   if (leadIdColIdx < 0) throw new Error('「リードID」列がありません');

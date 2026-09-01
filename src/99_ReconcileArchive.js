@@ -4,6 +4,16 @@
  * - 購入頻度→購入頻度(月次) の列名読み替えを含む61列マッピングを適用
  * - 先頭3行のプレビューと 商談進捗 の値集計を返す
  */
+
+/**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
 function rescueDryRun() {
   const ss = getSpreadsheet();
   const leads = ss.getSheetByName(CONFIG.SHEETS.LEADS);
@@ -19,7 +29,7 @@ function rescueDryRun() {
   }
 
   // アーカイブ行をリード管理の列順に変換（61列）
-  const updateDateArchIdx = ah.indexOf('シート更新日');
+  const updateDateArchIdx = _leadsHeaderIdx(ah, 'sheet_updated_at', 'シート更新日');
   function toLeadsRow(archRow) {
     return lh.map(leadsHeader => {
       let archIdx;
@@ -77,7 +87,7 @@ function rescueDryRun() {
   });
 
   // 先頭3行プレビュー（非空フィールドのみ）
-  const leadIdIdx = lh.indexOf('リードID');
+  const leadIdIdx = _leadsHeaderIdx(lh, 'lead_id', 'リードID');
   const preview = mappedRows.slice(0, 3).map(row => {
     const obj = {};
     lh.forEach((h, i) => {
@@ -129,7 +139,7 @@ function rescueWrite(limit) {
   }
 
   // IDでグループ化 → 重複解決
-  const updateDateArchIdx = ah.indexOf('シート更新日');
+  const updateDateArchIdx = _leadsHeaderIdx(ah, 'sheet_updated_at', 'シート更新日');
   const groups = {};
   av.slice(1).forEach(row => {
     const id = String(row[0]);
@@ -152,7 +162,7 @@ function rescueWrite(limit) {
   });
 
   // 未存在IDのみ、limit件まで書き込む
-  const leadIdArchIdx = ah.indexOf('リードID');
+  const leadIdArchIdx = _leadsHeaderIdx(ah, 'lead_id', 'リードID');
   const statusIdx = lh.indexOf('商談進捗');
   const writtenIds = [];
   const skippedIds = [];
@@ -391,7 +401,7 @@ function surveyStatusColumns() {
   const ss = getSpreadsheet();
   const v = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
   const h = v[0];
-  const li = h.indexOf('リード進捗'), di = h.indexOf('商談進捗'), ri = h.indexOf('商談結果');
+  const li = h.indexOf('リード進捗'), di = h.indexOf('商談進捗'), ri = _leadsHeaderIdx(h, 'deal_result', '商談結果');
   const combos = {};
   v.slice(1).forEach(r => {
     const key = [r[li]||'(空)', r[di]||'(空)', r[ri]||'(空)'].join(' | ');
@@ -463,8 +473,8 @@ function migrateStatusDryRunV2() {
 
   const v = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
   const h = v[0];
-  const idIdx = h.indexOf('リードID'), li = h.indexOf('リード進捗'),
-        di = h.indexOf('商談進捗'), ri = h.indexOf('商談結果');
+  const idIdx = _leadsHeaderIdx(h, 'lead_id', 'リードID'), li = h.indexOf('リード進捗'),
+        di = h.indexOf('商談進捗'), ri = _leadsHeaderIdx(h, 'deal_result', '商談結果');
   const out = { counts: {}, deleteRows: 0, unmapped: [] };
 
   v.slice(1).forEach((r, i) => {
@@ -486,8 +496,8 @@ function migrateStatusDryRun() {
   const ss = getSpreadsheet();
   const v = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
   const h = v[0];
-  const id = h.indexOf('リードID'), li = h.indexOf('リード進捗'),
-        di = h.indexOf('商談進捗'), ri = h.indexOf('商談結果');
+  const id = _leadsHeaderIdx(h, 'lead_id', 'リードID'), li = h.indexOf('リード進捗'),
+        di = h.indexOf('商談進捗'), ri = _leadsHeaderIdx(h, 'deal_result', '商談結果');
   const out = { counts: {}, deleteRows: 0, unmapped: [] };
   v.slice(1).forEach((r, i) => {
     const L = r[li]||'', D = r[di]||'', R = r[ri]||'', ID = String(r[id]||'');
@@ -678,10 +688,10 @@ function migrateStatusWrite() {
 
   const allData = leadsSheet.getDataRange().getValues();
   const h = allData[0];
-  const idIdx = h.indexOf('リードID');
+  const idIdx = _leadsHeaderIdx(h, 'lead_id', 'リードID');
   const li = h.indexOf('リード進捗');
   const di = h.indexOf('商談進捗');
-  const ri = h.indexOf('商談結果');
+  const ri = _leadsHeaderIdx(h, 'deal_result', '商談結果');
   if ([idIdx, li, di, ri].some(i => i < 0)) {
     throw new Error('必須列が見つかりません: リードID/' + [idIdx,li,di,ri].join('/'));
   }

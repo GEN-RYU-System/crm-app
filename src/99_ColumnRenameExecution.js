@@ -1098,3 +1098,76 @@ function _renameSheetHeaders_(ss, sheet, oldToNew) {
     details: details
   };
 }
+
+// ===================================================================
+// リード管理 列名整形 補助関数
+// Step 2: バックアップ関数（PR-1 に含める / PR-2 マージ前に実行）
+// ===================================================================
+
+/**
+ * リード管理シートを複製してバックアップを作成する。
+ * バックアップ名: 'リード管理_backup_20260901'
+ */
+function backupLeadMasterSheet() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('backupLeadMasterSheet は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+  var sourceSheet = getCoreSchemaV1Sheet(ss, 'LEADS');
+  var backupName = 'リード管理_backup_20260901';
+
+  var existing = ss.getSheetByName(backupName);
+  if (existing) {
+    throw new Error('バックアップシートが既に存在します: ' + backupName);
+  }
+
+  var copy = sourceSheet.copyTo(ss);
+  copy.setName(backupName);
+  return {
+    status: 'OK',
+    backupName: backupName,
+    sourceRows: sourceSheet.getLastRow(),
+    sourceCols: sourceSheet.getLastColumn()
+  };
+}
+
+/**
+ * バックアップシートと元シートの行数・列数・ヘッダーが完全一致するか検証する。
+ * 合格条件: status === 'OK' かつ headersMatch === true かつ sourceCols === 64
+ */
+function verifyLeadMasterSheetBackup() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('verifyLeadMasterSheetBackup は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+  var sourceSheet = getCoreSchemaV1Sheet(ss, 'LEADS');
+  var backupName = 'リード管理_backup_20260901';
+  var backupSheet = ss.getSheetByName(backupName);
+
+  if (!backupSheet) {
+    throw new Error('バックアップシートが存在しません: ' + backupName);
+  }
+
+  var sourceCols = sourceSheet.getLastColumn();
+  var sourceRows = sourceSheet.getLastRow();
+  var backupCols = backupSheet.getLastColumn();
+  var backupRows = backupSheet.getLastRow();
+
+  var sourceHeaders = sourceCols > 0
+    ? sourceSheet.getRange(1, 1, 1, sourceCols).getValues()[0]
+    : [];
+  var backupHeaders = backupCols > 0
+    ? backupSheet.getRange(1, 1, 1, backupCols).getValues()[0]
+    : [];
+
+  var headersMatch = JSON.stringify(sourceHeaders) === JSON.stringify(backupHeaders);
+
+  return {
+    status: headersMatch && sourceCols === backupCols && sourceRows === backupRows ? 'OK' : 'MISMATCH',
+    headersMatch: headersMatch,
+    sourceCols: sourceCols,
+    backupCols: backupCols,
+    sourceRows: sourceRows,
+    backupRows: backupRows
+  };
+}

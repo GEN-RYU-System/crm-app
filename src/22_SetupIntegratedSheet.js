@@ -8,6 +8,16 @@
  */
 
 /**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
+/**
  * リード管理シートの60列ヘッダー定義
  * Config.gs の HEADERS.LEADS と同期必須
  * CLAUDE.md Section 2.2 準拠
@@ -1035,7 +1045,7 @@ function migrateStaffMasterData() {
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    const staffId = row[headers.indexOf('担当者ID')];
+    const staffId = row[_webAppStaffHeaderIdx(headers, 'staff_id', '担当者ID')];
 
     if (!staffId) continue; // 空行スキップ
 

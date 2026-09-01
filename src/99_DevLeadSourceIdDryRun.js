@@ -16,6 +16,16 @@
  */
 
 /**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
+/**
  * @returns {Object} DRY RUN 結果サマリー
  */
 function dryRunLeadSourceIdMigration() {
@@ -53,7 +63,7 @@ function dryRunLeadSourceIdMigration() {
   if (leadLastRow < 2) throw new Error('リード管理にデータがありません');
 
   var leadHeaders = leadSheet.getRange(1, 1, 1, leadLastCol).getValues()[0].map(String);
-  var sourceColIdx = leadHeaders.indexOf('流入経路');
+  var sourceColIdx = _leadsHeaderIdx(leadHeaders, 'lead_source', '流入経路');
   if (sourceColIdx < 0) throw new Error('リード管理に「流入経路」列がありません');
 
   var sourceData = leadSheet.getRange(2, sourceColIdx + 1, leadLastRow - 1, 1).getValues();

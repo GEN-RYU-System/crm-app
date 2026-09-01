@@ -3,6 +3,16 @@
  */
 
 /**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
+/**
  * 営業担当者の成約率を分析
  * @param {string} staffId - 担当者ID
  * @param {number} weeks - 過去何週間分を分析するか（デフォルト4週間）
@@ -38,9 +48,9 @@ function analyzeConversionRate(staffId, weeks = 4) {
 
   const headers = data[0];
 
-  const staffIdCol = headers.indexOf('担当者ID');
+  const staffIdCol = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
   const statusCol = headers.indexOf('進捗ステータス');
-  const assignDateCol = headers.indexOf('アサイン日');
+  const assignDateCol = _leadsHeaderIdx(headers, 'assigned_at', 'アサイン日');
 
   if (staffIdCol === -1 || statusCol === -1 || assignDateCol === -1) {
     throw new Error('必要な列が見つかりません');
@@ -135,7 +145,7 @@ function generateStaffAnalyticsReport() {
   const data = staffSheet.getDataRange().getValues();
   const headers = data[0];
 
-  const staffIdCol = headers.indexOf('担当者ID');
+  const staffIdCol = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
   const staffNameCol = headers.indexOf('担当者名');
   const roleCol = headers.indexOf('役職') !== -1 ? headers.indexOf('役職') : headers.indexOf('役割（権限）');
 
@@ -182,7 +192,7 @@ function getAssignmentRecommendations() {
   const staffData = staffSheet.getDataRange().getValues();
   const headers = staffData[0];
 
-  const staffIdCol = headers.indexOf('担当者ID');
+  const staffIdCol = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
   const staffNameCol = headers.indexOf('担当者名');
   const roleCol = headers.indexOf('役職') !== -1 ? headers.indexOf('役職') : headers.indexOf('役割（権限）');
 
@@ -238,7 +248,7 @@ function getTargetDealsFromKPI(staffId, kpiData) {
   if (!kpiData || kpiData.length <= 1) return 0;
 
   const headers = kpiData[0];
-  const staffIdCol = headers.indexOf('担当者ID');
+  const staffIdCol = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
   const periodTypeCol = headers.indexOf('期間種別');
   const targetDealsCol = headers.indexOf('目標商談数');
   const startDateCol = headers.indexOf('対象期間開始日');
