@@ -173,3 +173,17 @@ function getSettingValue(key) {
 | 列6〜13（空列） | 全行空値。参照コードなし | 削除可否・存在理由が不明 |
 
 **本レポートは事実の記録のみ。列名の付与・削除の判断は行わない。**
+
+---
+
+## 実施結果（2026-09-01）
+
+PO決定により、列6〜14（9列）を削除した。
+
+- 実行PR: #837
+- バックアップ: システム設定_backup_predelete_20260901 / SETTINGS_deleted_columns_20260901
+- dry-run: 9列一致（colNumber 6〜14, totalCols 26, 全 headerValue 空文字）
+- 削除後: 26列 → 17列（-9列）
+- データ行数: 4行（変化なし）
+- 空ヘッダー: 0件
+- Conformance Audit: 総不一致1件（CUSTOMERS、ベースライン維持）
