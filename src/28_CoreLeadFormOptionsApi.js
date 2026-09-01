@@ -8,7 +8,7 @@ var LEAD_FORM_OPTIONS_CACHE_CHUNK  = 90000;
 /**
  * リード登録フォームで使う選択肢を一括返却する。
  *
- * - 選択肢マスタ（CONFIG.SHEETS.SETTINGS）から「リード種別」「返信速度」を読む
+ * - 選択肢マスタV2（選択肢マスタV2 シート）から「リード種別」「返信速度」を読む
  * - 国マスタ（国名（表示）列）から有効行のみ表示順で返す
  * - getDropdownOptions / getCountriesForForm には一切手を付けない（旧SPA互換）
  *
@@ -33,14 +33,9 @@ function getLeadFormOptions(sessionId) {
   var ss = getSpreadsheet();
 
   // ── 選択肢マスタV2（リード種別 / 返信速度）──────────────────────────────
-  // 新シート（選択肢マスタV2）から一括取得し、フォールバックは DEFAULT に委ねる
   var allOpts        = getAllOptionsGroupedFromV2_();
-  var leadTypes      = allOpts['lead_type']      && allOpts['lead_type'].length      > 0
-    ? allOpts['lead_type']
-    : [CONFIG.LEAD_TYPES.INBOUND, CONFIG.LEAD_TYPES.OUTBOUND];
-  var responseSpeeds = allOpts['response_speed'] && allOpts['response_speed'].length > 0
-    ? allOpts['response_speed']
-    : (DEFAULT_DROPDOWN_OPTIONS['返信速度'] || []);
+  var leadTypes      = allOpts['lead_type']      || [];
+  var responseSpeeds = allOpts['response_speed'] || [];
 
   // ── 国マスタ（有効行のみ・シート表示順）────────────────────────────────
   var countries = [];
