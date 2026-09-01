@@ -2920,7 +2920,7 @@ function getSalesMetrics(staffId) {
   const nextActionDateCol = headers.indexOf('next_action_date');
   const customerCol = headers.indexOf('customer_name');
   const leadIdCol = headers.indexOf('lead_id');
-  const messageUrlCol = headers.indexOf('メッセージURL');
+  const messageUrlCol = headers.indexOf('message_url');
 
   let totalDeals = 0, wonDeals = 0, lostDeals = 0, pendingDeals = 0, totalSales = 0;
   const todayActions = [];
