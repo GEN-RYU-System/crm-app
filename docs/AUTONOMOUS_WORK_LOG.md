@@ -7137,3 +7137,52 @@ CoreSchemaRegistry の LEADS 定義 (51列) に存在しない13列を DEV ス�
   - LEADS.SALES_ASSIGNEE_NAME の削除（Registry + シート）
   - CUSTOMERS.SALES_ASSIGNEE_NAME の削除（Registry + シート、参照書き換え後）
   - CUSTOMERS.SALES_ASSIGNEE_NAME の削除（Registry + シート、参照書き換え後）
+
+---
+
+### 2026-09-01 実データ1件で送料計算の連鎖を検証（PR-V3b）
+
+**概要:**
+`buildBoxesFromLines_` → `estimateShippingFeeForFrontend` の連鎖を
+実際の DEV スプレッドシートデータ1件で end-to-end 検証した。
+その過程で SHIPPING_TARGET のブール値比較バグを発見・修正した。
+
+**実施内容:**
+
+1. **DEV テスト関数の追加（PR #872 / PR #875 / PR #876）**
+   - `devInvestigateProductPackageSetup()` — PPK-0001 / PKG-0001 / ORDER_LINES データ調査
+   - `devSetOrderLineCondition(mode, orderLineId, conditionValue)` — CONDITION 列書き込み
+   - `devListOrderLinesForOrder(orderId)` — オーダー配下の明細一覧
+   - `devSetOrderLineProductAndCondition(mode, orderLineId, productId, conditionValue)` — PRODUCT_ID + CONDITION 書き込み
+   - `devTestShippingFeeForOrderDev(orderId)` — 送料計算連鎖テストラッパー
+   - ファイル: `src/99_DevBoxBuilderDataTest.js`
+
+2. **OL-0001 へのデータ書き込み（DEV シートのみ）**
+   - 書き込み前: PRODUCT_ID='', CONDITION=''
+   - 書き込み後: PRODUCT_ID='PM0001'（PPK-0001 の sharedProductId と一致）、CONDITION='Sealed box'
+   - 復元方法: `devSetOrderLineProductAndCondition("APPLY","OL-0001","","")` で空に戻す
+
+3. **SHIPPING_TARGET ブール値比較バグの修正（PR #878）**
+   - ファイル: `src/29_ShippingBoxBuilder.js`
+   - 根本原因: `coreCustomerFrontendValue(true)` が `'true'`（小文字）を返すが、
+     比較が `!== 'TRUE' && !== true` だったため常に条件スキップ（CONDITION_NOT_SHIPPING_TARGET）
+   - 修正: `String(condEntry.shippingTarget).toUpperCase() !== 'TRUE'` に変更し大小文字非依存に
+   - SHA: 822dae7
+
+**検証結果:**
+
+| ステップ | 関数 / コマンド | 結果 |
+|---------|--------------|------|
+| 7 | `devTestBuildBoxesFromOrderLines("ORD-0001")` | boxCount=2, skipped=2件（CONDITION_NOT_FOUND） |
+| 8 | `devTestShippingFeeForOrderDev("ORD-0001")` | success=true, carriersCount=3 |
+| 9 | `runCoreSchemaConformanceAudit` | 総不一致 0 → PASS |
+
+**判明した課題:**
+- `99_DemoSeed_OrderLines.js` は PRODUCT_NAME のみ書き込んでおり PRODUCT_ID を書かない。
+  本番 seed では PRODUCT_ID の設定が必要（別フェーズ対応）。
+
+**PRs:**
+- #872 — `feat: DEV用 BoxBuilder データ検証関数を追加（devInvestigateProductPackageSetup / devSetOrderLineCondition）`
+- #875 — `fix: devBoxBuilderDataTest のヘッダーキー誤り修正（IS_ACTIVE → ACTIVE, LINE_ID → ORDER_LINE_ID）`
+- #876 — `feat: DEV BoxBuilder 検証関数3種を追加（明細一覧・商品ID書き込み・送料計算テスト）`
+- #878 — `fix: buildBoxesFromLines_ の SHIPPING_TARGET 判定を大小文字非依存に修正`
