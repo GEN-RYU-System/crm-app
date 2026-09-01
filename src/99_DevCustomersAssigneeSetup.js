@@ -200,3 +200,39 @@ function setCustomersAssigneeId() {
     })
   });
 }
+
+/**
+ * DEV専用: 顧客マスタの sales_assignee_id 列の現在値を確認する（読み取り専用）。
+ * @returns {string} JSON
+ */
+function readCustomersAssigneeIdCurrent() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('DEV環境でのみ実行可能');
+  }
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(getCoreSchemaV1TableName('CUSTOMERS'));
+  if (!sheet) return JSON.stringify({ error: '顧客マスタが見つかりません' });
+
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var targetIdx = headers.indexOf('sales_assignee_id');
+
+  if (targetIdx === -1) {
+    return JSON.stringify({ success: false, reason: 'sales_assignee_id 列が見つかりません', headers: headers });
+  }
+
+  var dataRows = lastRow - 1;
+  var currentValues = sheet.getRange(2, targetIdx + 1, dataRows, 1).getValues();
+
+  var allEmp00001 = currentValues.every(function(r) { return r[0] === 'EMP-00001'; });
+
+  return JSON.stringify({
+    success: true,
+    colPosition: targetIdx + 1,
+    headers: headers,
+    dataRows: dataRows,
+    allEmp00001: allEmp00001,
+    currentValues: currentValues.map(function(r, i) { return { rowNum: i + 2, value: r[0] }; })
+  });
+}
