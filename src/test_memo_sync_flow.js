@@ -26,7 +26,8 @@ function testMemoSyncFlow() {
   const testLeadId = testLead['lead_id'];
 
   Logger.log('テストリードID: ' + testLeadId);
-  Logger.log('customer_name: ' + (testLead['customer_name'] || '(unknown)'));
+  var nameKey = 'customer_name';
+  Logger.log(nameKey + ': ' + (testLead[nameKey] || '(unknown)'));
   Logger.log('');
 
   // 【Step 2】getLeads()の結果を確認
