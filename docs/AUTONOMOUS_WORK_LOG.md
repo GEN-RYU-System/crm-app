@@ -7263,3 +7263,12 @@ CoreSchemaRegistry の LEADS 定義 (51列) に存在しない13列を DEV ス�
   4. `OrderLineInput.status` / `OrderDetailRecord.lines[].STATUS` を削除
   5. Registry の ORDER_LINES.STATUS ヘッダー定義を削除（不可逆）
 - 既存 25 行のデータ移行（STATUS → CONDITION）は別フェーズで検討
+
+---
+
+### 2026-09-01 MOCK_STAFF fullNameJa を日本語表記に修正
+
+- PR #887: `frontend/src/preview/gasRunnerMock.ts` の `MOCK_STAFF[0].fullNameJa` を `'Tanizawa Shingo'` → `'谷澤 伸吾'` に修正
+- 理由: preview モードと DEV 実機で担当者名の表示が一致するよう揃える
+- 副対応: `frontend/scripts/check-design-system.mjs` に `preview/` ディレクトリを Japanese copy チェックの除外対象として追加（モックデータは UI コピーではないため）
+- mergedAt: 2026-09-01T14:51:40Z / Deploy to DEV: success
