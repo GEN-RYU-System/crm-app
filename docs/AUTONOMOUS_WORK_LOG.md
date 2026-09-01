@@ -2,6 +2,46 @@
 
 ---
 
+### 2026-09-01 発送タブに送料計算ボタンと結果表示を追加（PR #832）
+
+**概要:**
+受注詳細ページの発送タブに「送料を計算」ボタンを追加した。
+クリック時に `estimateShippingFeeForFrontend` GAS 関数を呼び出し、
+配送会社ごとの送料見積結果をテーブル形式で表示する。
+寸法/重量が未入力の発送行はスキップしてwarning表示。エラーコードはi18n翻訳済み。
+
+**変更ファイル（frontend のみ。src/ 変更なし）:**
+
+- `frontend/src/gas/client.ts`
+  - `EstimateShippingFeePayload` / `ShippingFeeCarrierResult` 等の型定義を追加
+  - `estimateShippingFee(payload)` 関数を追加
+- `frontend/src/gas/types.d.ts`
+  - `GoogleScriptRun` インターフェースに `estimateShippingFeeForFrontend` を追加
+- `frontend/src/content/ja/salesOrders.ts`
+  - 送料計算関連の17個のコピーキーを追加（`btnCalculateShippingFee` 等）
+- `frontend/src/preview/gasRunnerMock.ts`
+  - `estimateShippingFeeForFrontend` のプレビューモックを追加
+- `frontend/src/pages/sales-orders/SalesOrderDetailPage.tsx`
+  - 発送タブヘッダーに「送料を計算」ボタンを追加
+  - `handleCalculateShippingFee` ハンドラ追加（不完全行スキップ・全行不足エラー対応）
+  - 結果表示パネル（送料見積結果テーブル）を追加
+- `frontend/src/pages/sales-orders/SalesOrderDetailPage.css`
+  - `__section-header-actions` / `__shipping-fee-result` / `__shipping-fee-table` 等のクラスを追加
+
+**事後確認:**
+
+- PR #832 squash merge: mergedAt=2026-09-01T05:32:41Z ✅
+- Deploy to DEV (run 33474008873): success ✅
+- getDeployedSha: `1ddf65cd4e9fcae9fb1a7ef585aca8de52d215e9` = origin/develop HEAD ✅
+- runCoreSchemaConformanceAudit: 不一致 1件（CUSTOMERS 14列 vs 実15列）は本作業前から存在、新規増加なし ✅
+- ?preview 発送タブ動作確認:
+  - 「送料を計算」ボタン表示 ✅
+  - ボタンクリックで「送料見積結果」テーブル表示 ✅
+  - エラー行（ZONE_NOT_FOUND）の日本語翻訳表示 ✅
+  - 白画面なし・他タブ正常 ✅
+
+---
+
 ### 2026-09-01 システム設定シート 空列調査（PR #830, PR #831）
 
 **概要:**
