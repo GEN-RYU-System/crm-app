@@ -236,3 +236,101 @@ function readCustomersAssigneeIdCurrent() {
     currentValues: currentValues.map(function(r, i) { return { rowNum: i + 2, value: r[0] }; })
   });
 }
+
+/**
+ * DEV専用: 顧客マスタと顧客マスタ_backup_20260901 を全セル照合する。
+ * 日付は toISOString() で文字列化して比較する。
+ * sales_assignee_id 列のみ差分が許容される。
+ * @returns {string} JSON
+ */
+function compareCustomersVsBackup() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('DEV環境でのみ実行可能');
+  }
+  var ss = getSpreadsheet();
+
+  var currentSheet = ss.getSheetByName(CONFIG.SHEETS.CUSTOMERS);
+  var backupSheet  = ss.getSheetByName('顧客マスタ_backup_20260901');
+
+  if (!currentSheet) return JSON.stringify({ error: '顧客マスタが見つかりません' });
+  if (!backupSheet)  return JSON.stringify({ error: 'バックアップシートが見つかりません' });
+
+  var curLastRow = currentSheet.getLastRow();
+  var curLastCol = currentSheet.getLastColumn();
+  var bkLastRow  = backupSheet.getLastRow();
+  var bkLastCol  = backupSheet.getLastColumn();
+
+  if (curLastRow !== bkLastRow || curLastCol !== bkLastCol) {
+    return JSON.stringify({
+      match: false,
+      reason: '行数または列数が異なります',
+      current:  { rows: curLastRow, cols: curLastCol },
+      backup:   { rows: bkLastRow,  cols: bkLastCol }
+    });
+  }
+
+  var curHeaders = currentSheet.getRange(1, 1, 1, curLastCol).getValues()[0];
+  var bkHeaders  = backupSheet.getRange(1, 1, 1, bkLastCol).getValues()[0];
+
+  // 許容差分列: sales_assignee_id（旧ヘッダー: 担当者ID）
+  // バックアップは変更前なので '担当者ID' で探す
+  var skipColIdxCurrent = curHeaders.indexOf('sales_assignee_id');
+  var skipColIdxBackup  = bkHeaders.indexOf('担当者ID');
+
+  // バックアップヘッダーが sales_assignee_id になっている場合にも対応
+  if (skipColIdxBackup === -1) skipColIdxBackup = bkHeaders.indexOf('sales_assignee_id');
+
+  /**
+   * セルの値を型非依存な文字列に正規化する
+   */
+  function normalize(v) {
+    if (v === null || v === undefined || v === '') return '';
+    if (v instanceof Date) return v.toISOString();
+    return String(v);
+  }
+
+  var diffs = [];
+
+  // ヘッダー行の照合（スキップ列以外）
+  for (var c = 0; c < curLastCol; c++) {
+    if (c === skipColIdxCurrent) continue;
+    var cur = normalize(curHeaders[c]);
+    var bk  = normalize(bkHeaders[c]);
+    if (cur !== bk) {
+      diffs.push({ row: 1, col: c + 1, currentVal: cur, backupVal: bk });
+    }
+  }
+
+  // データ行の照合（行2〜lastRow）
+  if (curLastRow >= 2) {
+    var curData = currentSheet.getRange(2, 1, curLastRow - 1, curLastCol).getValues();
+    var bkData  = backupSheet.getRange(2, 1, bkLastRow - 1, bkLastCol).getValues();
+
+    for (var r = 0; r < curData.length; r++) {
+      for (var c2 = 0; c2 < curLastCol; c2++) {
+        if (c2 === skipColIdxCurrent) continue;
+        var curV = normalize(curData[r][c2]);
+        var bkV  = normalize(bkData[r][c2]);
+        if (curV !== bkV) {
+          diffs.push({
+            row: r + 2,
+            col: c2 + 1,
+            colName: curHeaders[c2],
+            currentVal: curV,
+            backupVal: bkV
+          });
+        }
+      }
+    }
+  }
+
+  return JSON.stringify({
+    match: diffs.length === 0,
+    totalRows: curLastRow,
+    totalCols: curLastCol,
+    skippedColCurrent: skipColIdxCurrent + 1,
+    skippedColBackup:  skipColIdxBackup + 1,
+    diffs: diffs,
+    auditedAt: new Date().toISOString()
+  });
+}
