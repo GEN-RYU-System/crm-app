@@ -7464,4 +7464,40 @@ CoreSchemaRegistry の LEADS 定義 (51列) に存在しない13列を DEV ス�
 **補足:** GAS V2シートの contact_method 8値は Stage 3 で確認済み
 （Whatsapp / Instagram / Facebook / Market Place / Telegram / メール / Discord / その他）
 
+---
+
+### 2026-09-02 PR-W4: 見積もり保存前でも送料を計算できるようにする（PR #903）
+
+**PR:** #903
+**マージSHA:** 0c61d260d791c38185e2afe3252810b00ec31de0
+
+**変更内容:**
+- `src/29_ShippingBoxBuilder.js`: `estimateShippingFeeForLinesForFrontend(sessionId, payload)` を追加
+  - `buildBoxesFromLines_` で箱を組み立て、`_sfeProcess_` を直接呼ぶ（履歴保存なし）
+  - `payload.lines`（必須）・`countryCode`（必須）・`postalCode`（任意）を受け取る
+  - 既存の `estimateShippingFeeForQuoteForFrontend` は変更なし
+- `src/27_WebApp.js`: `getLeadOptionsForFrontend` を修正
+  - CUSTOMERS シートから SOURCE_LEAD_ID → COUNTRY マップを構築し、`countryCode` を返す
+  - CUSTOMERS 読み込み失敗時は `countryCode: ''` で継続（致命的でない）
+- `frontend/src/gas/client.ts`: `LeadOption` に `countryCode` 追加、`estimateShippingFeeForLines` 追加
+- `frontend/src/gas/types.d.ts`: `estimateShippingFeeForLinesForFrontend` を追加
+- `frontend/src/pages/quotes/QuoteEditorPage.tsx`:
+  - `disabled={!quoteId || shippingFeeLoading}` → `disabled={shippingFeeLoading}` に変更（保存前でも押せる）
+  - 「保存してから計算してください」ヒント削除
+  - `estimateShippingFeeForQuote` → `estimateShippingFeeForLines` に切り替え
+  - `countryCode` は `leads.find(l => l.leadId === values.leadId)?.countryCode ?? ''` から取得
+
+**手順2: 国コード取得経路の確認結果:**
+- `getLeadOptionsForFrontend` が CUSTOMERS.SOURCE_LEAD_ID → COUNTRY を引いて `countryCode` を返す ✅
+- フロントでは `leads.find(l => l.leadId === values.leadId)?.countryCode` で取得 ✅
+- DEV では荷姿未登録商品が多いため、スキップ行（PRODUCT_PACKAGE_NOT_FOUND 等）が出る想定
+
+**検証結果:**
+| 手順 | 結果 |
+|------|------|
+| build:gas（typecheck + build） | ✅ 通過 |
+| getDeployedSha | ✅ `0c61d26...`（origin/develop HEAD と一致） |
+| runCoreSchemaConformanceAudit | ✅ 総不一致 0 → PASS |
+| CI（frontend-check / Gitleaks / gas-global-namespace / Sensitive Content） | ✅ 全件 success |
+
 **段階6:** フロントエンドの連絡手段未確認のため保留中 → PO確認待ち
