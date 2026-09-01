@@ -309,6 +309,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
             productName: line.productName,
             category: line.category,
             status: line.condition,
+            condition: line.condition,
             quantity: toHalfwidthDigits(line.quantity),
             unitPrice: toHalfwidthDigits(line.unitPrice),
           })),
@@ -359,6 +360,7 @@ export function OrderEditorPage({ mode, repository, customerRepository }: Props)
             productName: line.productName,
             category: line.category,
             status: line.condition,
+            condition: line.condition,
             quantity: toHalfwidthDigits(line.quantity),
             unitPrice: toHalfwidthDigits(line.unitPrice),
           }));

@@ -336,7 +336,7 @@ function getCoreOrderDetailForFrontend(sessionId, orderId) {
   // ── ORDER_LINES ─────────────────────────────────────────────────────────────
   var lineFields = [
     'ORDER_LINE_ID', 'ORDER_ID', 'LINE_NUMBER', 'CATEGORY',
-    'PRODUCT_NAME', 'STATUS', 'SKU', 'QUANTITY', 'UNIT_PRICE', 'SUBTOTAL', 'PRODUCT_ID'
+    'PRODUCT_NAME', 'STATUS', 'SKU', 'QUANTITY', 'UNIT_PRICE', 'SUBTOTAL', 'PRODUCT_ID', 'CONDITION'
   ];
   var allLines = readDetailSheet_(ss, 'ORDER_LINES', lineFields);
   var lines = allLines.filter(function(row) {

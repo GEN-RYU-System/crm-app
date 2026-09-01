@@ -174,6 +174,7 @@ export function OrderDetailPage({ repository }: Props) {
           productName: line.productName,
           category: line.category,
           status: line.condition,
+          condition: line.condition,
           quantity: toHalfwidthDigits(line.quantity),
           unitPrice: toHalfwidthDigits(line.unitPrice),
         })),
@@ -390,7 +391,7 @@ export function OrderDetailPage({ repository }: Props) {
                 {detail.lines.map((line) => (
                   <tr key={line.ORDER_LINE_ID} className="order-detail-page__lines-tr">
                     <td className="order-detail-page__lines-td">{line.PRODUCT_NAME || NA}</td>
-                    <td className="order-detail-page__lines-td">{line.STATUS || NA}</td>
+                    <td className="order-detail-page__lines-td">{line.CONDITION || line.STATUS || NA}</td>
                     <td className="order-detail-page__lines-td order-detail-page__lines-td--num">{formatNumber(line.QUANTITY)}</td>
                     <td className="order-detail-page__lines-td order-detail-page__lines-td--num">{formatNumber(line.UNIT_PRICE)}</td>
                     <td className="order-detail-page__lines-td order-detail-page__lines-td--num">{formatNumber(line.SUBTOTAL)}</td>

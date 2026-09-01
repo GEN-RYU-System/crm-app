@@ -6,7 +6,9 @@ export type OrderLineInput = {
   productId: string;
   productName: string;
   category: string;
+  /** @deprecated Legacy column. Prefer condition for new implementations. */
   status: string;
+  condition: string;
   quantity: string;
   unitPrice: string;
 };
