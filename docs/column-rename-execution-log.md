@@ -387,3 +387,129 @@
   - dryRun: 変更あり 0件 ✅
 
 **Address 共有3シート 列リネーム 完了 ✅**
+
+---
+
+## リード管理（LEADS）
+
+**変換対象列 51本（定義外13列は除く）:**
+
+| # | 旧名 | 新名 |
+|---|------|------|
+| 1 | リードID | lead_id |
+| 2 | 登録日 | registered_at |
+| 3 | 顧客名 | customer_name |
+| 4 | 商談結果 | deal_result |
+| 5 | 呼び方（英語） | nickname_en |
+| 6 | 国 | country |
+| 7 | シート更新日 | sheet_updated_at |
+| 8 | リード担当者 | lead_assignee_name |
+| 9 | リード種別 | lead_type |
+| 10 | 流入経路 | lead_source_name |
+| 11 | 流入元ID | lead_source_id |
+| 12 | メッセージURL | message_url |
+| 13 | 取り扱いタイトル | handled_title |
+| 14 | 作品ID（リード） | item_id |
+| 15 | CSメモ | cs_memo |
+| 16 | メール | email |
+| 17 | 電話番号 | phone |
+| 18 | 連絡手段 | contact_method |
+| 19 | 温度感 | lead_temperature |
+| 20 | 想定規模 | expected_scale |
+| 21 | 返信速度 | reply_speed |
+| 22 | 問い合わせ回数 | inquiry_count |
+| 23 | アーカイブ日 | archived_at |
+| 24 | アーカイブ理由 | archive_reason |
+| 25 | アサイン日 | assigned_at |
+| 26 | 営業担当者（旧） | sales_assignee_name |
+| 27 | 担当者ID（旧） | assignee_id |
+| 28 | 顧客タイプ | customer_type |
+| 29 | 最終対応者ID | last_responder_id |
+| 30 | 見込度 | prospect_rank |
+| 31 | 次回アクション | next_action |
+| 32 | 次回アクション日 | next_action_date |
+| 33 | 商談メモ | deal_note |
+| 34 | 相手の課題 | client_challenge |
+| 35 | 販売形態 | sales_channel |
+| 36 | 月間見込み金額 | monthly_expected_amount |
+| 37 | 競合比較中 | competitor_comparison |
+| 38 | アラート確認日 | alert_checked_at |
+| 39 | 対象外理由 | exclusion_reason |
+| 40 | 失注理由 | lost_reason |
+| 41 | 初回取引日 | first_deal_at |
+| 42 | 初回取引金額 | first_deal_amount |
+| 43 | 累計取引金額 | total_deal_amount |
+| 44 | 会話要約 | conversation_summary |
+| 45 | 最終会話日時 | last_conversation_at |
+| 46 | 会話数 | conversation_count |
+| 47 | 重複フラグ | duplicate_flag |
+| 48 | 重複元リードID | duplicate_source_id |
+| 49 | 重複確認日 | duplicate_checked_at |
+| 50 | 重複確認者 | duplicate_checker |
+| 51 | リードステータス | lead_status |
+
+**定義外13列（変換しない）:**
+
+| 列名 | 分類 |
+|------|------|
+| Good Point | Buddy専用 |
+| More Point | Buddy専用 |
+| レポート提出日 | Buddy専用 |
+| レポート確認者 | Buddy専用 |
+| レポート確認日 | Buddy専用 |
+| レポートコメント | Buddy専用 |
+| Buddyフィードバック | Buddy専用 |
+| 1回の発注金額 | 要PO確定 |
+| 商談の手応え | 要PO確定 |
+| 反省と今後の抱負 | 要PO確定 |
+| リード進捗 | 未確認 |
+| 商談進捗 | 未確認 |
+| 購入頻度(月次) | 未確認 |
+
+### PR-1 — デュアルサポート追加
+
+- PR: #813
+- マージ: 2026-09-01T00:39:44Z
+- squash commit SHA: `2179385481a6031ef4e582910755ffe7b9751903`
+- 変更ファイル: 43ファイル
+  - `src/00_CoreSchemaRegistry.js` — LEADS headers を英語スネークケース新名に切替 + headerAliasMap（新名→旧名）追加 + validateCoreSchemaV1TableForWrite に aliasMap フォールバック追加
+  - `src/27_WebApp.js` 他42ファイル — `_webAppLeadsHeaderIdx` / `_leadsHeaderIdx` ヘルパー経由のフォールバック追加
+  - `src/99_ColumnRenameExecution.js` — backupLeadMasterSheet / verifyLeadMasterSheetBackup 追加
+
+### PR-2 — CoreSchema 切り替え + シートリネーム実行
+
+- PR: #814
+- マージ: 2026-09-01T00:44:43Z
+- squash commit SHA: `0126f12b097704523a50e9bccc093fc7dafc4e3b`
+- 変更ファイル: 2ファイル
+  - `src/00_CoreSchemaRegistry.js` — headerAliasMap を反転（旧名→新名）に変更（シートリネーム後は新名が実シートに存在するため）
+  - `src/99_ColumnRenameExecution.js` — renameLeadMasterHeaders 追加
+- シートリネーム実行結果: `renamed: 51, skipped: 13`（total 64列中51列変換）
+
+### PR-3 — フォールバック除去
+
+- PR: #818
+- マージ: 2026-09-01T01:24:11Z
+- squash commit SHA: `345d5dfbf32486b8a9a4a48a0d077f7fcd4eb301`
+- 変更ファイル: 56ファイル
+  - `src/00_CoreSchemaRegistry.js` — headerAliasMap (51エントリ) と reverseAliasMap フォールバックロジックを完全削除
+  - `src/00_HeaderMappingHelper.js` — `_leadsHeaderIdx` / `_webAppLeadsHeaderIdx` ヘルパー関数を削除
+  - `src/27_WebApp.js` 他54ファイル — indexOf('旧日本語名') → indexOf('new_english_name') に統一
+  - `frontend/src/content/ja/leads.ts` — leadsCopy.fields を英語シート列名に切り替え
+
+### PR-3-fix — 残存1箇所修正
+
+- PR: #819
+- マージ: 2026-09-01T01:29:20Z
+- squash commit SHA: `0d233bf4d3d2f2dbad178ba5b9bb811524f8d42a`
+- 変更ファイル: 1ファイル
+  - `src/27_WebApp.js` — `getSalesMetrics` の `indexOf('メッセージURL')` → `indexOf('message_url')` に修正
+
+### 事後確認（全PR完了後）
+
+- deployedAt: `2026-09-01T01:30:20Z`
+- 監査: 2件（LEADS 1 / CUSTOMERS 1）= baseline ✅、ORDERS 0件 ✅、PURCHASES 0件 ✅
+- dryRun: 変更あり 0件 ✅
+- 旧列名 indexOf 残存: 変換51列分 0件 ✅
+
+**リード管理（LEADS）列リネーム 完了 ✅**
