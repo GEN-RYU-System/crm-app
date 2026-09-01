@@ -4,6 +4,7 @@ export type CustomerSummaryDto = {
   country: string;
   salesChannel: string;
   handledTitle: string;
+  salesAssigneeId: string;
   salesAssigneeName: string;
   transactionCount: number;
   transactionAmounts: readonly { currency: string; amount: number }[];
@@ -19,6 +20,7 @@ export type CustomerProfileDto = {
   countryCode: string;
   firstTransactionDate: string;
   registeredAt: string;
+  salesAssigneeId: string;
   salesAssigneeName: string;
   contactTool: string;
   shippingNote: string;
