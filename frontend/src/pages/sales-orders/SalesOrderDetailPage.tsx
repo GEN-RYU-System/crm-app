@@ -10,12 +10,14 @@ import type { DataTableColumn } from '../../components/ui';
 import { salesOrdersCopy } from '../../content/ja';
 import {
   confirmCoreOrderPayment,
+  estimateShippingFee,
   getCorePurchaseStatusOptions,
   upsertCorePurchase,
   upsertCoreShipment,
   uploadCoreShipmentFile,
   type OrderDetailRecord,
   type PurchaseStatusOption,
+  type ShippingFeeCarrierResult,
   type UpsertPurchasePayload,
   type UpsertShipmentPayload,
 } from '../../gas/client';
@@ -172,6 +174,14 @@ export function SalesOrderDetailPage() {
   const [uploadingFileType, setUploadingFileType] = useState<'label' | 'invoice' | null>(null);
   const [uploadError, setUploadError] = useState<string | undefined>(undefined);
 
+  // shipping fee calculation state
+  const [shippingFeeLoading, setShippingFeeLoading] = useState(false);
+  const [shippingFeeResult, setShippingFeeResult] = useState<{
+    hasIncompleteRows: boolean;
+    results: ShippingFeeCarrierResult[];
+  } | null>(null);
+  const [shippingFeeError, setShippingFeeError] = useState<string | undefined>(undefined);
+
   // tab state: initialise from ?tab= query param; invalid/missing → 'billing'
   const [activeTab, setActiveTab] = useState<DetailTab>(() => resolveInitialTab(searchParams.get('tab')));
 
@@ -193,6 +203,17 @@ export function SalesOrderDetailPage() {
   }, []);
 
   const copy = salesOrdersCopy.detail;
+
+  const translateShippingFeeError = (code: string): string => {
+    const errorMap: Record<string, string> = {
+      ZONE_NOT_FOUND:           copy.shippingFeeErrorZoneNotFound,
+      WEIGHT_EXCEEDS_MAX:       copy.shippingFeeErrorWeightExceedsMax,
+      RATE_NOT_FOUND:           copy.shippingFeeErrorRateNotFound,
+      INVALID_BOX_DIMENSIONS:   copy.shippingFeeErrorInvalidBoxDimensions,
+      UNSUPPORTED_DIM_ROUNDING: copy.shippingFeeErrorUnsupportedDimRounding,
+    };
+    return errorMap[code] ?? copy.shippingFeeErrorUnknown;
+  };
 
   const DETAIL_TABS: ReadonlyArray<TabItem<DetailTab>> = [
     { key: 'billing',   label: copy.tabBilling },
@@ -354,6 +375,63 @@ export function SalesOrderDetailPage() {
       setConfirmError(e instanceof Error ? e.message : copy.confirmPaymentErrorGeneric);
     } finally {
       setConfirming(false);
+    }
+  };
+
+  const handleCalculateShippingFee = async () => {
+    if (!detail) return;
+    const shipments = detail.shipments;
+    const countryCode = detail.order.shippingCountry;
+    const postalCode  = detail.order.shippingZip;
+
+    if (shipments.length === 0) {
+      setShippingFeeError(copy.shippingFeeNoShipments);
+      setShippingFeeResult(null);
+      return;
+    }
+
+    const validShipments = shipments.filter((s) => {
+      const l  = Number(s.LENGTH);
+      const w  = Number(s.WIDTH);
+      const h  = Number(s.HEIGHT);
+      const wt = Number(s.WEIGHT);
+      return s.LENGTH !== '' && s.WIDTH !== '' && s.HEIGHT !== '' && s.WEIGHT !== ''
+        && !isNaN(l) && !isNaN(w) && !isNaN(h) && !isNaN(wt)
+        && l > 0 && w > 0 && h > 0 && wt > 0;
+    });
+
+    if (validShipments.length === 0) {
+      setShippingFeeError(copy.shippingFeeAllRowsIncomplete);
+      setShippingFeeResult(null);
+      return;
+    }
+
+    const hasIncompleteRows = validShipments.length < shipments.length;
+    const boxes = validShipments.map((s) => ({
+      length:       Number(s.LENGTH),
+      width:        Number(s.WIDTH),
+      height:       Number(s.HEIGHT),
+      actualWeight: Number(s.WEIGHT),
+    }));
+    const linkId = shipments[0].SHIPMENT_ID;
+
+    setShippingFeeLoading(true);
+    setShippingFeeError(undefined);
+    setShippingFeeResult(null);
+    try {
+      const res = await estimateShippingFee({
+        countryCode,
+        postalCode: postalCode || undefined,
+        boxes,
+        linkType: 'SHIPMENT',
+        linkId,
+        save: true,
+      });
+      setShippingFeeResult({ hasIncompleteRows, results: res.results });
+    } catch (e: unknown) {
+      setShippingFeeError(e instanceof Error ? e.message : copy.shippingFeeErrorUnknown);
+    } finally {
+      setShippingFeeLoading(false);
     }
   };
 
@@ -571,9 +649,19 @@ export function SalesOrderDetailPage() {
                 <div className="sales-order-detail-page__section">
                   <div className="sales-order-detail-page__section-header">
                     <h2 className="sales-order-detail-page__section-title">{copy.sectionShipments}</h2>
-                    <Button variant="secondary" size="sm" onClick={() => openShipmentForm()}>
-                      {copy.btnAddShipment}
-                    </Button>
+                    <div className="sales-order-detail-page__section-header-actions">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={shippingFeeLoading}
+                        onClick={() => void handleCalculateShippingFee()}
+                      >
+                        {shippingFeeLoading ? copy.shippingFeeCalculating : copy.btnCalculateShippingFee}
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => openShipmentForm()}>
+                        {copy.btnAddShipment}
+                      </Button>
+                    </div>
                   </div>
                   {detail.shipments.length === 0 ? (
                     <p className="sales-order-detail-page__empty-note">{copy.noShipments}</p>
@@ -769,6 +857,62 @@ export function SalesOrderDetailPage() {
                       </div>
                     );
                   })()}
+
+                  {/* shipping fee calculation results */}
+                  {(shippingFeeLoading || shippingFeeError || shippingFeeResult) && (
+                    <div className="sales-order-detail-page__shipping-fee-result">
+                      {shippingFeeLoading && (
+                        <StatusMessage variant="loading">{copy.shippingFeeCalculating}</StatusMessage>
+                      )}
+                      {shippingFeeError && !shippingFeeLoading && (
+                        <StatusMessage variant="error">{shippingFeeError}</StatusMessage>
+                      )}
+                      {shippingFeeResult && !shippingFeeLoading && (
+                        <>
+                          {shippingFeeResult.hasIncompleteRows && (
+                            <StatusMessage variant="empty">{copy.shippingFeeIncompleteRows}</StatusMessage>
+                          )}
+                          <h3 className="sales-order-detail-page__section-title">{copy.shippingFeeResultTitle}</h3>
+                          <table className="sales-order-detail-page__shipping-fee-table">
+                            <thead>
+                              <tr>
+                                <th>{copy.shippingFeeColCarrier}</th>
+                                <th>{copy.shippingFeeColZone}</th>
+                                <th>{copy.shippingFeeColWeight}</th>
+                                <th>{copy.shippingFeeColBoxCount}</th>
+                                <th>{copy.shippingFeeColFee}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {shippingFeeResult.results.map((r) => {
+                                const totalChargeableWeight = r.boxes.reduce(
+                                  (sum, b) => sum + b.chargeableWeight, 0
+                                );
+                                const errorMsg = r.error ? translateShippingFeeError(r.error) : null;
+                                return (
+                                  <tr key={r.carrierId}>
+                                    <td>{r.carrierName}</td>
+                                    {errorMsg ? (
+                                      <td colSpan={4} className="sales-order-detail-page__shipping-fee-error">
+                                        {errorMsg}
+                                      </td>
+                                    ) : (
+                                      <>
+                                        <td>{r.zone ?? '-'}</td>
+                                        <td>{totalChargeableWeight.toFixed(1)}</td>
+                                        <td>{r.boxes.length}</td>
+                                        <td>{r.totalFee !== null ? r.totalFee.toLocaleString('ja-JP') : '-'}</td>
+                                      </>
+                                    )}
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
