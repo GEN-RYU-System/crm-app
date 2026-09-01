@@ -7115,4 +7115,25 @@ CoreSchemaRegistry の LEADS 定義 (51列) に存在しない13列を DEV ス�
   - フロント側実装: getCoreStaffForFrontend を使った ID→名前変換（staffId + fullNameJa が返るため新API不要）
   - 新方式への書き換え（sales_assignee_name 参照箇所）
   - LEADS.SALES_ASSIGNEE_NAME の削除（Registry + シート）
+
+---
+
+### 2026-09-01 担当者名の ID 経由表示への切り替え（フロント実装）
+
+- PO決定: 担当者は ID で持ち、getCoreStaffForFrontend で名前変換して表示
+- 実施内容: sales_assignee_name 直読みから sales_assignee_id + staffMap 経由に変更
+  フォールバック: salesAssigneeId 空 / staffMap ヒットなし → salesAssigneeName → ''
+- 変更ファイル:
+  - frontend/src/features/customers/contracts.ts（型定義追加）
+  - frontend/src/pages/customers/customerConfig.ts（resolveAssigneeName関数追加）
+  - frontend/src/pages/customers/CustomerListPage.tsx（staffMap適用）
+  - frontend/src/pages/customers/CustomerDetailPage.tsx（staffMap適用）
+  - frontend/src/preview/gasRunnerMock.ts（モックデータ更新）
+- PR: #874 / 5afa1cf13f59773ed0097ffb5be14758eac2d82f
+- Evaluator: 顧客一覧・顧客詳細で担当者名「Preview User」表示確認。白画面・エラーなし
+- 復元: git revert 5afa1cf13f59773ed0097ffb5be14758eac2d82f
+- 次フェーズの課題:
+  - フォールバック（salesAssigneeName への退避）の除去
+  - LEADS.SALES_ASSIGNEE_NAME の削除（Registry + シート）
+  - CUSTOMERS.SALES_ASSIGNEE_NAME の削除（Registry + シート、参照書き換え後）
   - CUSTOMERS.SALES_ASSIGNEE_NAME の削除（Registry + シート、参照書き換え後）
