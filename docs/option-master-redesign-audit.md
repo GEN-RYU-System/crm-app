@@ -489,3 +489,72 @@ clasp run getDropdownOptions        → 全列の実値取得
 | `src/27_WebApp.js` | getArchiveReasons()（英語キー確認・ヘッダー名不一致バグ確認） |
 | GAS: `getOptionMasterFullDump` | 全36ヘッダー名と値数の実測（2026-09-02） |
 | GAS: `getDropdownOptions` | 全36列の実値取得（2026-09-02） |
+| GAS: `devLeadsOptionValuesAudit` | リード管理8列の実データ値集計（2026-09-01） |
+| `docs/column-rename-plan.md §3-8` | 選択肢マスタ36列のcategory英語名確認（2026-09-02） |
+
+---
+
+## 13. 段階1: 移行選択肢確定（2026-09-02）
+
+### 13.1 移行する選択肢一覧（13 category / 67値）
+
+値の出典: 「値が不一致の8件はシートの値を正とする（PO決定 2026-09-01）」
+category 名: `docs/column-rename-plan.md §3-8` の変換案を使用。
+
+| # | category（英語） | 元の日本語列名 | 値数 | 値（確定）|
+|---|---------------|-------------|------|---------|
+| 1 | `lead_type` | リード種別 | 2 | インバウンド / アウトバウンド |
+| 2 | `response_speed` | 返信速度 | 5 | 即レス(30分以内) / 24h以内 / 48h以内 / 3日以上 / 未返信 |
+| 3 | `archive_reason` | アーカイブ理由 | 5 | 未返信 / 競合ネック / 価格ネック / 対象外 / その他 |
+| 4 | `lead_status` | リードステータス | 10 | 新規リード / リード対応中 / アサイン確定 / リード対象外 / 商談中 / 商談対象外 / 追客(短期) / 追客(長期) / 成約 / 失注 |
+| 5 | `contact_method` | 連絡手段 | 8 | Whatsapp / Instagram / Facebook / Market Place / Telegram / メール / Discord / その他 **（PO確定 2026-09-02: Discord追加・LINE除外・メール統一）** |
+| 6 | `handled_merchandise` | 取り扱い商材 | 6 | Pokemon / One Piece / Yu-Gi-Oh / Dragon Ball / Weiss Schwarz / Union Arena |
+| 7 | `lead_temperature` | 温度感 | 3 | 高 / 中 / 低 |
+| 8 | `expected_scale` | 想定規模 | 4 | 大口 / 中規模 / 小口 / 不明 |
+| 9 | `deal_result` | 商談結果 | 5 | 成約 / 失注 / 追客 / 見送り / 対象外 |
+| 10 | `customer_type` | 顧客タイプ | 3 | 信頼重視 / 価格重視 / 不明 |
+| 11 | `sales_channel` | 販売形態 | 6 | 実店舗 / EC / ライブ配信 / 卸売 / 複合 / その他 |
+| 12 | `competitor_comparison` | 競合比較中 | 3 | 競合あり / 競合なし / 不明 |
+| 13 | `next_action_date` | 次回アクション日 | 7 | 相手の返信後 / 不明点を確認後 / 本日中 / 明日までに / 3日以内 / 1週間以内 / 日付入力 |
+
+合計: 67行（OPT-00001〜OPT-00067）
+
+### 13.2 移行しない列と理由
+
+| col | 日本語列名 | 移行しない理由 |
+|-----|---------|-------------|
+| 2 | リードID | IDフォーマット例（仕様で除外決定） |
+| 3 | 流入経路 | LEAD_SOURCESマスタで管理（仕様で除外決定） |
+| 4 | 流入経路（IN） | LEAD_SOURCESマスタと重複管理 |
+| 5 | 流入経路（OUT） | LEAD_SOURCESマスタと重複管理 |
+| 13 | 商談ステータス | コード参照なし（区分D）、dead code扱い |
+| 18 | 役割 | Registry.STAFF.ROLEが正本、setup専用冗長定義 |
+| 19 | ステータス | Registry.STAFF.STATUSが正本、setup専用冗長定義 |
+| 20 | カテゴリ | コード参照なし（区分D）、文脈不明 |
+| 21 | 購入頻度(月次) | dead service（getDealReportDropdownOptions未登録）、コード参照なし |
+| 22 | 見込度 | setup専用（initializeGoalsSheet）、画面には出ない |
+| 23 | 支払い方法 | コード参照なし（区分D）、free-text入力 |
+| 24 | 発送方法 | コード参照なし（区分D）、free-text入力 |
+| 25 | 商品ステータス | コード参照なし（区分D）、別マスタと概念重複 |
+| 26 | 為替 | CURRENCIESマスタで管理（仕様で除外決定） |
+| 27 | 為替レート | GOOGLEFINANCE数式列（仕様で除外決定） |
+| 29 | ページ | コード参照なし（仕様で除外決定） |
+| 30 | リードシーン | コード参照なし・値ゼロ（仕様で除外決定） |
+| 31 | 仕入元 | 44件の固有名詞、別フェーズで独立マスタ化 |
+| 32 | eLogiCSV格納フォルダ | 設定値（Drive URL）、コード参照なし（仕様で除外決定） |
+| 33 | ラベルPDF格納フォルダ | 設定値（Drive URL）、コード参照なし（仕様で除外決定） |
+| 34 | FAQ_カテゴリ | dead code（仕様で除外決定） |
+| 35 | 支払サイト | コード参照なし（区分D）、free-text入力 |
+| 36 | キャンセル理由 | free-text入力（コードで値を制限していない） |
+
+### 13.3 【要PO確定】件数
+
+**0件**（category名はすべて column-rename-plan.md §3-8 に変換案あり）。停止条件（5件超）に非該当。
+
+### 13.4 実データ移行が必要な列
+
+| LEADS列 | 対象値 | 移行後の値 | 件数 |
+|---------|--------|---------|-----|
+| contact_method | Email | メール | 8件 |
+
+（§12 の影響調査結果より）
