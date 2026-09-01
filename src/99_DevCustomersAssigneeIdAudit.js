@@ -9,7 +9,7 @@ function auditCustomersAssigneeId() {
   }
 
   var ss = getSpreadsheet();
-  var sheet = ss.getSheetByName(CONFIG.SHEETS.CUSTOMERS);
+  var sheet = ss.getSheetByName(CONFIG.SHEETS.CRM_CUSTOMERS);
   if (!sheet) {
     return JSON.stringify({ error: '顧客マスタシートが見つかりません' });
   }
