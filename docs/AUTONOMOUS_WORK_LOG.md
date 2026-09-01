@@ -7539,6 +7539,46 @@ CoreSchemaRegistry の LEADS 定義 (51列) に存在しない13列を DEV ス�
 
 ---
 
+### 2026-09-02 PR-W5: 送料計算エラーコードを日本語化・saveFirst デッドコード削除（PR #907）
+
+**PR:** #907
+**マージSHA:** 55af69e2f1c7f14c8fde1ecac599bec258db2364
+
+**背景:**
+PR #903 Reviewer指摘（MEDIUM）:「リードに紐付く顧客が未登録の場合、`MISSING_COUNTRY_CODE` という内部エラーコードが画面に表示される」
+
+**変更内容:**
+- `frontend/src/content/ja/quotes.ts`:
+  - `saveFirst` キー削除（`disabled={!quoteId}` 廃止に伴うデッドコード）
+  - `errorMissingCountryCode` 追加: 「配送先の国が登録されていません。顧客情報を確認してください。」
+- `frontend/src/content/ja/salesOrders.ts`:
+  - `shippingFeeErrorMissingCountryCode` 追加: 「配送先の国が登録されていません。受注の配送先を確認してください。」（発送タブ用）
+  - `billingShippingFeeErrorOrderCountryNotResolvable` 追加: 「顧客の配送先国が取得できませんでした。顧客情報を確認してください。」（請求タブ用）
+- `frontend/src/pages/quotes/QuoteEditorPage.tsx`:
+  - catch ブロックで `MISSING_COUNTRY_CODE` → `sfc.errorMissingCountryCode` に変換
+- `frontend/src/pages/sales-orders/SalesOrderDetailPage.tsx`:
+  - 発送タブ catch: `MISSING_COUNTRY_CODE` → `copy.shippingFeeErrorMissingCountryCode` に変換
+  - 請求タブ catch: `ORDER_COUNTRY_NOT_RESOLVABLE` → `copy.billingShippingFeeErrorOrderCountryNotResolvable` に変換
+
+**GAS エラーコード網羅確認:**
+| コード | 出どころ | 種別 | 対応 |
+|--------|----------|------|------|
+| `MISSING_COUNTRY_CODE` | `estimateShippingFeeForLinesForFrontend` | ユーザー起因 | ✅ 日本語化 |
+| `MISSING_COUNTRY_CODE` | `estimateShippingFeeForFrontend`（発送タブ） | ユーザー起因 | ✅ 日本語化 |
+| `ORDER_COUNTRY_NOT_RESOLVABLE` | `estimateShippingFeeForOrderForFrontend`（請求タブ） | ユーザー起因 | ✅ 日本語化 |
+| その他（`ORDER_NOT_FOUND` 等） | 各関数 | 内部バグ | 汎用エラーメッセージで継続 |
+
+**検証結果:**
+| 手順 | 結果 |
+|------|------|
+| build:gas（typecheck + build） | ✅ 通過 |
+| getDeployedSha | ✅ `55af69e...`（origin/develop HEAD と一致） |
+| runCoreSchemaConformanceAudit | ✅ 総不一致 0 → PASS |
+| dryRunOrderStatusRecalculation | ✅ 変更あり 0件 |
+| CI（4件） | ✅ 全件 success |
+
+---
+
 ## 次フェーズ課題
 
 **【PO判断待ち】連絡手段（contact_method）のフロントエンド未実装**
