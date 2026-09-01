@@ -186,3 +186,54 @@
 4. **バックアップ・旧シートの扱い**: Copy of リード管理（357行の非空データあり）、顧客マスタ_旧等のシートは現行スキーマ外。廃止作業の対象範囲に含めるかどうか判断が必要。
 
 5. **19_ReminderService.js の既存バグ**: staffName が常に空になっているバグ（[未確認] 項目5参照）を廃止前に修正するかどうか判断が必要。
+
+---
+
+## getCoreStaffForFrontend の確認（2026-09-01）
+
+### 戻り値フィールド
+
+[実績] src/28_CoreStaffReadApi.js 行 31-42:
+
+| フィールド名 | 物理列 | 内容 |
+|------------|-------|------|
+| `staffId` | STAFF_ID | スタッフID |
+| `fullNameJa` | LAST_NAME_JA + FIRST_NAME_JA | 氏名（スペース結合） |
+| `role` | ROLE | 役割 |
+| `status` | STATUS | ステータス |
+| `email` | EMAIL | メールアドレス |
+
+### ID と名前の両方の有無
+
+あり。`staffId`（ID）と `fullNameJa`（名前）の両方が返る。
+**フロントでのID→名前変換が可能。新API不要。**
+
+有効フィルタ: `status === activeStatus（有効）` のスタッフのみ返す（行 28-29）。
+ページング: なし（全件1回の呼び出しで返す）。
+
+### 使用状況（frontend/src/）
+
+[実績] grep 結果:
+
+- `frontend/src/gas/client.ts` 行 245: 呼び出し
+- `frontend/src/gas/types.d.ts` 行 20: 型定義
+- `frontend/src/preview/gasRunnerMock.ts` 行 297: モック（`succeed([])` を返す）
+
+---
+
+## LEADS への sales_assignee_id 追加（2026-09-01）
+
+- 実施PRs: #869 / #870
+- 列追加: sales_assignee_name（col26）の直後に sales_assignee_id（col27）を挿入
+- Registry: LEADS.SALES_ASSIGNEE_ID を追加（SALES_ASSIGNEE_NAME の直後）
+- バックアップ: リード管理_backup_20260901_assigneeid（rows:11, cols:51）
+- 検証: Conformance Audit 0件（LEADS 定義52 / 実シート52）
+
+---
+
+## 次フェーズの課題
+
+1. フロント実装: getCoreStaffForFrontend を使った ID→名前変換（新API不要）
+2. 新方式への書き換え（sales_assignee_name 参照箇所の削除）
+3. LEADS.SALES_ASSIGNEE_NAME の削除（値が全行空のため削除可能）
+4. CUSTOMERS.SALES_ASSIGNEE_NAME の削除（参照書き換え後）
