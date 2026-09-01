@@ -2,6 +2,54 @@
 
 ---
 
+### 2026-09-01 共用在庫 CONDITION 列読み取り DEV 関数を追加（PR #844）
+
+**概要:**
+共用在庫（SHARED_INVENTORY）の CONDITION 列に存在する値の一覧・件数を返す
+読み取り専用 DEV 関数 `readSharedInventoryConditions()` を追加した。
+
+**変更ファイル:**
+
+- `src/99_DevSharedInventoryConditionReader.js`（新規）
+  - `readSharedInventoryConditions()` を追加
+  - DEV 環境ガード付き・読み取り専用
+  - CONDITION 列のみ取得（商品名・単価・提供者は一切出力しない）
+
+**実行結果（readSharedInventoryConditions）:**
+
+```json
+{
+  "sheetName": "共用在庫",
+  "totalDataRows": 1086,
+  "conditionCounts": [
+    { "value": "FLAG_SINGLE",        "count": 444 },
+    { "value": "Sealed box",         "count": 338 },
+    { "value": "Case",               "count": 116 },
+    { "value": "Damaged sealed box", "count":  91 },
+    { "value": "No shrink box",      "count":  46 },
+    { "value": "Searched pack",      "count":  35 },
+    { "value": "Damaged case",       "count":  12 },
+    { "value": "Unsearched pack",    "count":   4 }
+  ],
+  "emptyCount": 0
+}
+```
+
+全8種。Registry に定義された CONDITION values（8種）と完全一致。空値なし。
+
+**コンディション専用マスタシートの有無:**
+auditDevSpreadsheetStructure の全シート一覧を確認。
+「コンディション」「Condition」「状態」を含むシート名は存在しない。
+
+**事後確認:**
+
+- PR #844 squash merge: mergedAt=2026-09-01T06:45:47Z ✅
+- Deploy to DEV: 初回 failure（merge 2秒後起動・タイミング問題）→ re-run success ✅
+- getDeployedSha: `f84a617e6fd17c6e70179ab1aa64492e9f590ca2` = origin/develop HEAD ✅
+- runCoreSchemaConformanceAudit: 不一致1件（CUSTOMERS）= 従来通り、新規増加なし ✅
+
+---
+
 ### 2026-09-01 見積もり明細 CONDITION 列読み取り DEV 関数を追加（PR #840）
 
 **概要:**
