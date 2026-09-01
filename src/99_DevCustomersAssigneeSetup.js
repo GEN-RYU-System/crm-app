@@ -249,7 +249,7 @@ function compareCustomersVsBackup() {
   }
   var ss = getSpreadsheet();
 
-  var currentSheet = ss.getSheetByName(CONFIG.SHEETS.CUSTOMERS);
+  var currentSheet = ss.getSheetByName(getCoreSchemaV1TableName('CUSTOMERS'));
   var backupSheet  = ss.getSheetByName('顧客マスタ_backup_20260901');
 
   if (!currentSheet) return JSON.stringify({ error: '顧客マスタが見つかりません' });
