@@ -66,11 +66,11 @@ function evacuateSettingsDeleteTargetColumns() {
   }
 
   var lastRow = sheet.getLastRow();
-  var lastCol = sheet.getLastColumn();
+  var totalCols = sheet.getMaxColumns();
 
-  // 列6〜14のデータを取得（列14が lastCol を超える場合は存在する列まで）
+  // 列6〜14のデータを取得（構造上の最終列で判定）
   var startCol = 6;
-  var endCol = Math.min(14, lastCol);
+  var endCol = Math.min(14, totalCols);
   var numCols = endCol - startCol + 1;
 
   var data = sheet.getRange(1, startCol, lastRow, numCols).getValues();
@@ -121,12 +121,12 @@ function settingsDeleteColsDryRun() {
   var sheet = ss.getSheetByName('システム設定');
   if (!sheet) return JSON.stringify({ error: 'シートが見つかりません' });
 
-  var lastCol = sheet.getLastColumn();
-  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var totalCols = sheet.getMaxColumns();
+  var headers = sheet.getRange(1, 1, 1, totalCols).getValues()[0];
 
   var targets = [];
   for (var c = 6; c <= 14; c++) {
-    if (c <= lastCol) {
+    if (c <= totalCols) {
       targets.push({
         colNumber: c,
         headerValue: headers[c - 1] !== undefined ? headers[c - 1] : ''
@@ -137,7 +137,7 @@ function settingsDeleteColsDryRun() {
   }
 
   return JSON.stringify({
-    totalCols: lastCol,
+    totalCols: totalCols,
     targetCount: targets.length,
     targets: targets
   });
@@ -155,11 +155,11 @@ function settingsDeleteColsExecute() {
   var sheet = ss.getSheetByName('システム設定');
   if (!sheet) return JSON.stringify({ error: 'シートが見つかりません' });
 
-  var beforeCols = sheet.getLastColumn();
+  var beforeCols = sheet.getMaxColumns();
   var beforeRows = sheet.getLastRow();
   var headers = sheet.getRange(1, 1, 1, beforeCols).getValues()[0];
 
-  Logger.log('削除前 列数: ' + beforeCols + ', 行数: ' + beforeRows);
+  Logger.log('削除前 列数(getMaxColumns): ' + beforeCols + ', 行数: ' + beforeRows);
 
   // 右端(14)から左(6)へ削除
   for (var c = 14; c >= 6; c--) {
@@ -169,9 +169,10 @@ function settingsDeleteColsExecute() {
     }
   }
 
-  var afterCols = sheet.getLastColumn();
+  var afterCols = sheet.getMaxColumns();
   var afterRows = sheet.getLastRow();
-  var afterHeaders = afterCols > 0 ? sheet.getRange(1, 1, 1, afterCols).getValues()[0] : [];
+  var afterLastDataCol = sheet.getLastColumn();
+  var afterHeaders = afterLastDataCol > 0 ? sheet.getRange(1, 1, 1, afterLastDataCol).getValues()[0] : [];
 
   var emptyHeaderCols = [];
   afterHeaders.forEach(function(h, i) {
