@@ -2,6 +2,43 @@
 
 ---
 
+### 2026-09-01 料金表の重量帯読み取り関数を追加（PR #810）
+
+**概要:**
+`src/99_DevZoneSheetReader.js` に `readRateSheetWeightBands(sheetKey)` を追加した。
+FedEx送料・DHL送料・UPS送料シートから Min_Weight / Max_Weight のみを読み取る（料金値は返さない）。
+DEV 環境ガード・引数必須・読み取り専用。
+
+#### 変更ファイル
+
+- `src/99_DevZoneSheetReader.js`
+  - `RATE_SHEET_WEIGHT_COL` 定数（MIN / MAX）を追加
+  - `readRateSheetWeightBands(sheetKey)` 関数を追加
+    - sheetKey: 'FEDEX' / 'DHL' / 'UPS' のいずれか（引数なし不可）
+    - シート名は `IMPORT_SOURCE_SHEET_NAMES[key]` で取得（直書きなし）
+    - `indexOf` で列位置を特定（列番号の直書きなし）
+    - DEV 環境でのみ実行可能
+
+#### 実測結果（重量帯のみ。料金値は記録しない）
+
+- 対象シート: FedEx送料 / DHL送料 / UPS送料
+- 3社共通: rowCount = 89
+- 最小重量: 0 kg / 最大重量: 68 kg
+- 刻みパターン（3社とも同一）:
+  - 0 kg 〜 21 kg: 0.5 kg 刻み（42行）
+  - 21 kg 〜 68 kg: 1 kg 刻み（47行）
+  - 境界: minWeight = 21 の行から刻みが変わる
+
+#### 事後確認
+
+- getDeployedSha: origin/develop HEAD と一致 ✅
+- readRateSheetWeightBands("FEDEX"): rowCount=89、0〜68 kg ✅
+- readRateSheetWeightBands("DHL"): rowCount=89、0〜68 kg ✅
+- readRateSheetWeightBands("UPS"): rowCount=89、0〜68 kg ✅
+- runCoreSchemaConformanceAudit: 不一致 2件（LEADS/CUSTOMERS）は本作業前から存在、新規増加なし ✅
+
+---
+
 ### 2026-09-01 配送会社・地帯・送料表マスタを新設（PR #791）
 
 **概要:**
