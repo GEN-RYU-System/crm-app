@@ -319,7 +319,10 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     getInventoryBatchForFrontend(_s: string | null, _force: boolean) { succeed({ inventory: MOCK_SHARED_INVENTORY, productOptions: MOCK_PRODUCTS }); },
     getSharedInventoryForFrontend(_s: string | null, _force: boolean) { succeed(MOCK_SHARED_INVENTORY); },
     getCoreQuotesForFrontend(_s: string | null, _force: boolean) { succeed(MOCK_QUOTES); },
-    getCoreQuoteForFrontend(_s: string | null, _quoteId: string) { succeed(null); },
+    getCoreQuoteForFrontend(_s: string | null, quoteId: string) {
+      const found = MOCK_QUOTES.find((q) => q.quoteId === quoteId);
+      succeed(found ? { quote: found, lines: [] } : null);
+    },
     getCoreOrdersForFrontend(_s: string | null, _force: boolean) {
       succeed([
         {
@@ -783,6 +786,34 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
             zone: 'F',
             totalFee: 12345,
             boxes: [{ chargeableWeight: 2.0, fee: 12345 }],
+            error: null,
+            calcSource: 'MASTER',
+            feeType: 'ACTUAL',
+          },
+          {
+            carrierId: 'CAR-PREVIEW-02',
+            carrierName: 'Preview Carrier B',
+            zone: null,
+            totalFee: null,
+            boxes: [],
+            error: 'ZONE_NOT_FOUND',
+            calcSource: 'MASTER',
+            feeType: 'ACTUAL',
+          },
+        ],
+      });
+    },
+    estimateShippingFeeForQuoteForFrontend(_s: string | null, _quoteId: string) {
+      succeed({
+        success: true,
+        skipped: [],
+        results: [
+          {
+            carrierId: 'CAR-PREVIEW-01',
+            carrierName: 'Preview Carrier A',
+            zone: 'F',
+            totalFee: 9800,
+            boxes: [{ chargeableWeight: 1.5, fee: 9800 }],
             error: null,
             calcSource: 'MASTER',
             feeType: 'ACTUAL',

@@ -1457,3 +1457,24 @@ export function estimateShippingFee(payload: EstimateShippingFeePayload): Promis
       .estimateShippingFeeForFrontend(getStoredSessionId(), payload);
   });
 }
+
+export type QuoteShippingFeeSkippedLine = {
+  productId: string;
+  condition: string;
+  reason: string;
+};
+
+export type QuoteShippingFeeResult =
+  | { success: true; results: ShippingFeeCarrierResult[]; skipped: QuoteShippingFeeSkippedLine[] }
+  | { success: false; reason: string; skipped: QuoteShippingFeeSkippedLine[] };
+
+export function estimateShippingFeeForQuote(quoteId: string): Promise<QuoteShippingFeeResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as QuoteShippingFeeResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .estimateShippingFeeForQuoteForFrontend(getStoredSessionId(), quoteId);
+  });
+}

@@ -6,7 +6,7 @@ import { quotesCopy } from '../../content/ja';
 import { ISSUER_HEADER } from '../../content/ja/issuer';
 import { QuoteDocument } from '../../features/documents/QuoteDocument';
 import { formatDate } from '../shared/dateFormat';
-import { createCoreQuote, getCoreQuoteDetail, getLeadOptionsForFrontend, updateCoreQuote, type IssuerRecord, type LeadOption } from '../../gas/client';
+import { createCoreQuote, estimateShippingFeeForQuote, getCoreQuoteDetail, getLeadOptionsForFrontend, updateCoreQuote, type IssuerRecord, type LeadOption, type QuoteShippingFeeResult, type ShippingFeeCarrierResult } from '../../gas/client';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
 import { useInventoryProductOptionsCache } from '../inventory/InventoryProductOptionsCacheContext';
 import { useCurrencyMasterCache } from '../currency/CurrencyMasterCacheContext';
@@ -81,6 +81,9 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
     customerName: string;
   } | null>(null);
   const [showPrint, setShowPrint] = useState(false);
+  const [shippingFeeLoading, setShippingFeeLoading] = useState(false);
+  const [shippingFeeResult, setShippingFeeResult] = useState<QuoteShippingFeeResult | null>(null);
+  const [shippingFeeError, setShippingFeeError] = useState<string | undefined>();
 
   // Derive conditions from the prefetched inventory cache (no GAS call needed).
   const conditionsMap = useInventoryConditionsMap();
@@ -230,6 +233,58 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
       ...prev,
       lines: prev.lines.map((l, i) => i === index ? { ...l, quantity: half } : l)
     }));
+  };
+
+  const sfc = quotesCopy.editor.shippingFeeCalc;
+
+  const translateSkipReason = (reason: string): string => {
+    const map: Record<string, string> = {
+      CONDITION_NOT_FOUND:           sfc.skipReasonConditionNotFound,
+      CONDITION_NOT_SHIPPING_TARGET: sfc.skipReasonConditionNotTarget,
+      CONDITION_UNIT_NOT_APPLICABLE: sfc.skipReasonConditionUnitNotApplicable,
+      PRODUCT_PACKAGE_NOT_FOUND:     sfc.skipReasonProductPackageNotFound,
+      PACKAGE_ID_NOT_SET:            sfc.skipReasonPackageIdNotSet,
+      PACKAGE_NOT_FOUND:             sfc.skipReasonPackageNotFound,
+      SIZE_NOT_FOUND:                sfc.skipReasonSizeNotFound,
+      WEIGHT_NOT_FOUND:              sfc.skipReasonWeightNotFound,
+    };
+    return map[reason] ?? sfc.skipReasonUnknown;
+  };
+
+  const translateCarrierError = (error: string): string => {
+    const map: Record<string, string> = {
+      ZONE_NOT_FOUND:           sfc.carrierErrorZoneNotFound,
+      WEIGHT_EXCEEDS_MAX:       sfc.carrierErrorWeightExceedsMax,
+      RATE_NOT_FOUND:           sfc.carrierErrorRateNotFound,
+      INVALID_BOX_DIMENSIONS:   sfc.carrierErrorInvalidBoxDimensions,
+      UNSUPPORTED_DIM_ROUNDING: sfc.carrierErrorUnsupportedDimRounding,
+    };
+    return map[error] ?? sfc.carrierErrorUnknown;
+  };
+
+  const getProductNameById = (productId: string): string => {
+    const line = values.lines.find((l) => l.productId === productId);
+    return line ? line.productName : productId;
+  };
+
+  const handleCalculateShippingFee = async () => {
+    if (!quoteId) return;
+    setShippingFeeLoading(true);
+    setShippingFeeError(undefined);
+    setShippingFeeResult(null);
+    try {
+      const res = await estimateShippingFeeForQuote(quoteId);
+      if (!res.success) {
+        setShippingFeeError(sfc.errorNoBoxes);
+        setShippingFeeResult(res);
+      } else {
+        setShippingFeeResult(res);
+      }
+    } catch (e: unknown) {
+      setShippingFeeError(e instanceof Error ? e.message : sfc.errorUnknown);
+    } finally {
+      setShippingFeeLoading(false);
+    }
   };
 
   const validate = (): boolean => {
@@ -382,6 +437,89 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
             disabled={!editable}
           />
         </div>
+      </div>
+
+      <hr className="quote-editor-page__divider" />
+
+      {/* Shipping fee calculation */}
+      <div className="quote-editor-page__right-section">
+        <Button
+          variant="outline"
+          onClick={() => void handleCalculateShippingFee()}
+          loading={shippingFeeLoading}
+          loadingText={sfc.calculating}
+          disabled={!quoteId || shippingFeeLoading}
+        >
+          {sfc.button}
+        </Button>
+        {!quoteId && (
+          <p className="quote-editor-page__shipping-fee-hint">{sfc.saveFirst}</p>
+        )}
+        {(shippingFeeError || shippingFeeResult) && !shippingFeeLoading && (
+          <div className="quote-editor-page__shipping-fee-result">
+            {shippingFeeError && (
+              <StatusMessage variant="error">{shippingFeeError}</StatusMessage>
+            )}
+            {shippingFeeResult?.success && (
+              <>
+                <h3 className="quote-editor-page__shipping-fee-result-title">{sfc.resultTitle}</h3>
+                <table className="quote-editor-page__shipping-fee-table">
+                  <thead>
+                    <tr>
+                      <th>{sfc.colCarrier}</th>
+                      <th>{sfc.colZone}</th>
+                      <th>{sfc.colWeight}</th>
+                      <th>{sfc.colBoxCount}</th>
+                      <th>{sfc.colFee}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(shippingFeeResult as { success: true; results: ShippingFeeCarrierResult[]; skipped: { productId: string; condition: string; reason: string }[] }).results.map((r) => {
+                      const totalChargeableWeight = r.boxes.reduce((sum, b) => sum + b.chargeableWeight, 0);
+                      const errorMsg = r.error ? translateCarrierError(r.error) : null;
+                      return (
+                        <tr key={r.carrierId}>
+                          <td>{r.carrierName}</td>
+                          {errorMsg ? (
+                            <td colSpan={4} className="quote-editor-page__shipping-fee-error">{errorMsg}</td>
+                          ) : (
+                            <>
+                              <td>{r.zone ?? '-'}</td>
+                              <td>{totalChargeableWeight.toFixed(1)}</td>
+                              <td>{r.boxes.length}</td>
+                              <td>{r.totalFee !== null ? r.totalFee.toLocaleString('ja-JP') : '-'}</td>
+                            </>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {shippingFeeResult.skipped.length > 0 && (
+                  <>
+                    <h4 className="quote-editor-page__shipping-fee-skipped-title">{sfc.skippedTitle}</h4>
+                    <table className="quote-editor-page__shipping-fee-table">
+                      <thead>
+                        <tr>
+                          <th>{sfc.skippedColProduct}</th>
+                          <th>{sfc.skippedColReason}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {shippingFeeResult.skipped.map((s, i) => (
+                          <tr key={i}>
+                            <td>{getProductNameById(s.productId)}</td>
+                            <td>{translateSkipReason(s.reason)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
