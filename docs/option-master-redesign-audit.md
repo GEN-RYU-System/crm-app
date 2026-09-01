@@ -478,6 +478,53 @@ clasp run getDropdownOptions        → 全列の実値取得
 
 ---
 
+## 12. 選択肢変更による既存データへの影響確認
+
+### 12.1 調査条件
+
+| 項目 | 内容 |
+|------|------|
+| 実行関数 | `devLeadsOptionValuesAudit`（DEV専用・読み取り専用） |
+| 実行日時 | 2026-09-01T15:47:09Z |
+| 対象シート | リード管理 |
+| 総データ行数 | 10行 |
+| validValues の根拠 | 選択肢マスタ（シートの値が正・PO決定 2026-09-01） |
+
+背景: §9.3 で確認した通り、ヘッダー名不一致バグにより選択肢マスタは現在クライアントに0列も届いていない。画面では DEFAULT_DROPDOWN_OPTIONS がフォールバック表示されていた。
+
+### 12.2 各列の集計結果と影響判定
+
+| headerKey | 日本語ラベル | 実データ件数 | 空件数 | 実値（件数） | マスタ外の値 | 影響判定 |
+|-----------|-------------|------------|--------|-------------|------------|---------|
+| response_speed | 返信速度（col 21） | 0 | 10 | ー | なし | **影響なし**（データなし） |
+| archive_reason | アーカイブ理由（col 24） | 0 | 10 | ー | なし | **影響なし**（データなし） |
+| deal_result | 商談結果（col 4） | 7 | 3 | 成約×6, 失注×1 | なし | **影響なし**（全件validValues内） |
+| next_action_date | 次回アクション日（col 32） | 0 | 10 | ー | なし | **影響なし**（データなし） |
+| sales_channel | 販売形態（col 35） | 0 | 10 | ー | なし | **影響なし**（データなし） |
+| contact_method | 連絡手段（col 18） | 10 | 0 | Email×8, Discord×1, LINE×1 | Email×8, Discord×1, LINE×1（10/10件） | **要移行**（全件がvalidSet外） |
+| competitor_comparison | 競合比較中（col 37） | 0 | 10 | ー | なし | **影響なし**（データなし） |
+| handled_title | 取り扱い商材（col 13） | 0 | 10 | ー | なし | **影響なし**（データなし） |
+
+### 12.3 要移行の値一覧（contact_method）
+
+| 実データ値 | 件数 | 選択肢マスタ（正）の値 |
+|-----------|------|--------------------|
+| Email | 8 | Whatsapp, Instagram, Facebook, Market Place, Telegram, メール, その他 |
+| Discord | 1 | （同上） |
+| LINE | 1 | （同上） |
+
+計10件が contact_method（連絡手段）の選択肢マスタ外の値。
+
+### 12.4 サマリ
+
+| 判定 | 列数 | 対象列 |
+|------|------|-------|
+| 影響なし（データなし） | 6 | response_speed, archive_reason, next_action_date, sales_channel, competitor_comparison, handled_title |
+| 影響なし（全件validValues内） | 1 | deal_result |
+| **要移行** | 1 | contact_method（全10件がマスタ外: Email/Discord/LINE） |
+
+---
+
 ## 11. 調査済みファイル一覧
 
 | ファイル | 調査内容 |
@@ -489,3 +536,4 @@ clasp run getDropdownOptions        → 全列の実値取得
 | `src/27_WebApp.js` | getArchiveReasons()（英語キー確認・ヘッダー名不一致バグ確認） |
 | GAS: `getOptionMasterFullDump` | 全36ヘッダー名と値数の実測（2026-09-02） |
 | GAS: `getDropdownOptions` | 全36列の実値取得（2026-09-02） |
+| GAS: `devLeadsOptionValuesAudit` | リード管理8列の実データ値集計（2026-09-01） |
