@@ -260,3 +260,14 @@ name も空の場合は空文字 '' を表示（「未割当」等の固定文�
 1. フォールバック（salesAssigneeName への退避）の除去（name 列削除フェーズ）
 2. LEADS.SALES_ASSIGNEE_NAME の削除（Registry + シート、値0件）
 3. CUSTOMERS.SALES_ASSIGNEE_NAME の削除（Registry + シート、参照書き換え後）
+
+## 廃止完了（2026-09-01）
+
+- 段階1 PR: #880 — LEADS sales_assignee_id に EMP-00001 全行書き込み
+- 段階2: ID充足確認 LEADS emptyCount:0 / CUSTOMERS emptyCount:0
+- 段階3 PR: #881 — フォールバック除去（ID空・staffMap無し→''）
+- 段階4: Evaluator APPROVE 待ち（Playwright Layer 1）
+- 段階5 PR: #883 — sales_assignee_name 列削除 / Registry 削除
+- Conformance Audit: 全段階で 0件維持（段階5: Registry+シート削除完了後 0件）
+
+**廃止完了。sales_assignee_name は全シート・Registry から削除済み。**

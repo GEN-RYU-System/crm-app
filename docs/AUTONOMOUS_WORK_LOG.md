@@ -7186,3 +7186,27 @@ CoreSchemaRegistry の LEADS 定義 (51列) に存在しない13列を DEV ス�
 - #875 — `fix: devBoxBuilderDataTest のヘッダーキー誤り修正（IS_ACTIVE → ACTIVE, LINE_ID → ORDER_LINE_ID）`
 - #876 — `feat: DEV BoxBuilder 検証関数3種を追加（明細一覧・商品ID書き込み・送料計算テスト）`
 - #878 — `fix: buildBoxesFromLines_ の SHIPPING_TARGET 判定を大小文字非依存に修正`
+
+---
+
+### 2026-09-01 sales_assignee_name 廃止完了
+
+- PO決定: 全リードに EMP-00001 割り当て / フォールバック除去 / name列を削除
+- 段階1: LEADS sales_assignee_id に EMP-00001 を全行書き込み（PR #880）
+- 段階2: ID充足確認 LEADS emptyCount:0 / CUSTOMERS emptyCount:0
+- 段階3: フォールバック除去（PR #881）ID空・staffMap無し→''
+- 段階4: Evaluator 確認（Playwright Layer 1）
+- 段階5: sales_assignee_name 列を削除（LEADS / CUSTOMERS）/ Registry 削除（PR #883）
+- バックアップ:
+  - リード管理_backup_20260901_assign
+  - リード管理_backup_predelete_name_20260901
+  - 顧客マスタ_backup_predelete_name_20260901
+  - LEADS_sales_assignee_name_20260901（退避）
+  - CUSTOMERS_sales_assignee_name_20260901（退避）
+- 復元手順:
+  1. リード管理_backup_predelete_name_20260901 から書き戻し
+  2. 顧客マスタ_backup_predelete_name_20260901 から書き戻し
+  3. 退避シートからデータ復旧
+  4. git revert <PR3 SHA> （Registry 復元）
+  5. git revert <PR2 SHA> （フォールバック復元）
+  注意: 列削除は git で戻せない
