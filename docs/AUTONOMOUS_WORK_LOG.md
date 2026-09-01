@@ -7295,3 +7295,35 @@ CoreSchemaRegistry の LEADS 定義 (51列) に存在しない13列を DEV ス�
   今回のより詳細な記述に統合・削除
 
 **mergedAt:** 2026-09-01T15:22:38Z / Deploy to DEV: success
+
+---
+
+### 2026-09-01 PR-W2: 見積もり画面に送料計算ボタンを追加（表示のみ）
+
+**PR:** #893
+
+**変更内容:**
+- `QuoteEditorPage.tsx`: 右カラム下部に「送料を計算」ボタンを追加
+  - 未保存（create モード）では disabled + 「保存してから計算してください」を表示
+  - 保存済み見積もりでは `estimateShippingFeeForQuoteForFrontend` を呼ぶ
+  - 結果テーブルに配送会社 / ゾーン / 総請求重量 / 箱数 / 送料を表示
+  - スキップされた明細は商品名とスキップ理由を日本語で表示
+  - エラーコードは `content/ja/quotes.ts` で日本語変換（GAS から日本語を返さない）
+- `gas/client.ts`: `estimateShippingFeeForQuote` 関数・`QuoteShippingFeeResult` 型を追加
+- `gas/types.d.ts`: `estimateShippingFeeForQuoteForFrontend` を GoogleScriptRun に追加
+- `content/ja/quotes.ts`: `shippingFeeCalc` ラベル群を追加
+- `gasRunnerMock.ts`:
+  - `estimateShippingFeeForQuoteForFrontend` のモックを追加
+  - `getCoreQuoteForFrontend` が常に null を返すバグを修正（MOCK_QUOTES から検索に変更）
+- GAS 側 (`src/`) の変更なし / QUOTES.SHIPPING_FEE への書き込みなし
+
+**検証結果:**
+| 手順 | 結果 |
+|------|------|
+| ?preview 動作確認（Evaluator） | APPROVE（ボタン disabled/enabled・結果表示確認済み） |
+| SHA 一致 | 56730fa130ebe19b69120ed4859d8ac99e82a9a5（PR #893 マージ時点で一致） |
+| Conformance Audit | 総不一致 0 → PASS |
+
+**将来の課題:**
+- 計算した送料を見積もりに反映する機能（QUOTES.SHIPPING_FEE への書き込み）は今回対象外。
+  必要に応じて別 PR で判断・実装する
