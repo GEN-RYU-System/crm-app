@@ -75,8 +75,10 @@ const CORE_SCHEMA_V1_TABLES = {
   },
   ORDER_LINES: {
     sheetName: 'オーダー明細', canonicalName: 'オーダー明細', aliases: [], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
-    headers: createCoreSchemaV1Headers([['ORDER_LINE_ID', '明細ID'], ['ORDER_ID', 'オーダーID'], ['LINE_NUMBER', '行番号'], ['CATEGORY', 'カテゴリ'], ['PRODUCT_NAME', '商品名'], ['STATUS', '状態'], ['SKU', 'SKU'], ['QUANTITY', '数量'], ['UNIT_PRICE', '単価'], ['SUBTOTAL', '小計'], ['PRODUCT_ID', '商品ID']]), primaryKey: 'ORDER_LINE_ID',
-    referenceIds: [{ headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' }, { headerKey: 'PRODUCT_ID', targetTableKey: 'PRODUCTS' }]
+    headers: createCoreSchemaV1Headers([['ORDER_LINE_ID', '明細ID'], ['ORDER_ID', 'オーダーID'], ['LINE_NUMBER', '行番号'], ['CATEGORY', 'カテゴリ'], ['PRODUCT_NAME', '商品名'], ['STATUS', '状態'], ['SKU', 'SKU'], ['QUANTITY', '数量'], ['UNIT_PRICE', '単価'], ['SUBTOTAL', '小計'], ['PRODUCT_ID', '商品ID'], ['CONDITION', 'コンディション']]), primaryKey: 'ORDER_LINE_ID',
+    // CONDITION 表示名が '状態'（STATUS）と重複するため 'コンディション' を採用。
+    // 見積もり明細（QUOTE_LINES）の CONDITION は '状態' のまま。
+    referenceIds: [{ headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' }, { headerKey: 'PRODUCT_ID', targetTableKey: 'PRODUCTS' }, { headerKey: 'CONDITION', targetTableKey: 'CONDITIONS' }]
   },
   QUOTES: {
     sheetName: '見積もり管理', canonicalName: '見積もり管理', aliases: [], headerRowNumber: 1, sheetType: 'TRANSACTION', writeAllowed: true,
@@ -130,7 +132,8 @@ const CORE_SCHEMA_V1_TABLES = {
       ['QUANTITY', '数量'], ['UNIT_PRICE', '単価'], ['AMOUNT', '金額'], ['NOTE', '備考']
     ]), primaryKey: 'QUOTE_LINE_ID',
     referenceIds: [
-      { headerKey: 'QUOTE_ID', targetTableKey: 'QUOTES' }
+      { headerKey: 'QUOTE_ID',   targetTableKey: 'QUOTES' },
+      { headerKey: 'CONDITION',  targetTableKey: 'CONDITIONS' }
     ]
   },
   SHIPMENTS: {
