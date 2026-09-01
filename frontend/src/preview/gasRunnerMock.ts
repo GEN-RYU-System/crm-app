@@ -760,6 +760,33 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
         { key: 'PAID',        label: 'preview-paid' },
       ]);
     },
+    estimateShippingFeeForFrontend(_s: string | null, _payload: unknown) {
+      succeed({
+        success: true,
+        results: [
+          {
+            carrierId: 'CAR-PREVIEW-01',
+            carrierName: 'Preview Carrier A',
+            zone: 'F',
+            totalFee: 12345,
+            boxes: [{ chargeableWeight: 2.0, fee: 12345 }],
+            error: null,
+            calcSource: 'MASTER',
+            feeType: 'ACTUAL',
+          },
+          {
+            carrierId: 'CAR-PREVIEW-02',
+            carrierName: 'Preview Carrier B',
+            zone: null,
+            totalFee: null,
+            boxes: [],
+            error: 'ZONE_NOT_FOUND',
+            calcSource: 'MASTER',
+            feeType: 'ACTUAL',
+          },
+        ],
+      });
+    },
   };
 
   return new Proxy(chain, {

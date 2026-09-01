@@ -1415,3 +1415,43 @@ export function advanceCoreShipmentStage(orderId: string): Promise<AdvanceShipme
       .advanceCoreShipmentStageForFrontend(getStoredSessionId(), orderId);
   });
 }
+
+export type ShippingFeeBox = {
+  length: number;
+  width: number;
+  height: number;
+  actualWeight: number;
+};
+
+export type ShippingFeeCarrierResult = {
+  carrierId: string;
+  carrierName: string;
+  zone: string | null;
+  totalFee: number | null;
+  boxes: Array<{ chargeableWeight: number; fee: number }>;
+  error: string | null;
+  calcSource: string;
+  feeType: string;
+};
+
+export type EstimateShippingFeePayload = {
+  countryCode: string;
+  postalCode?: string;
+  boxes: ShippingFeeBox[];
+  linkType: 'QUOTE' | 'INVOICE' | 'SHIPMENT';
+  linkId: string;
+  save?: boolean;
+};
+
+export type EstimateShippingFeeResult = { success: true; results: ShippingFeeCarrierResult[] };
+
+export function estimateShippingFee(payload: EstimateShippingFeePayload): Promise<EstimateShippingFeeResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as EstimateShippingFeeResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .estimateShippingFeeForFrontend(getStoredSessionId(), payload);
+  });
+}
