@@ -94,28 +94,30 @@ CoreSchemaRegistry の LEADS 定義は 51 列だが、実シートには 64 列�
 
 ### 13列一覧
 
-| # | 列名 | 分類 | 参照ファイル（活性） | データ有無 |
-|---|------|------|---------------------|------------|
-| 1 | リード進捗 | **レガシー専用** | なし（99_* devのみ） | [未確認] |
-| 2 | 商談進捗 | **レガシー専用** | なし（99_* devのみ） | [未確認] |
-| 3 | 商談の手応え | **レガシー専用** | `23_SheetService.js` で空初期化のみ | [未確認] |
-| 4 | 1回の発注金額 | **Buddy複合** | `06_BuddyFeedbackService.js` (Buddy/商談FB)・`13_DealReportService.js` (商談レポートシート列) | [未確認] |
-| 5 | 購入頻度(月次) | **Buddy複合** | 同上 + `99_ReconcileArchive.js` (dev) | [未確認] |
-| 6 | Good Point | **Buddy専用** | `22_SetupIntegratedSheet.js`・`23_SheetService.js` で空初期化のみ | [未確認] |
-| 7 | More Point | **Buddy専用** | 同上 | [未確認] |
-| 8 | 反省と今後の抱負 | **Buddy専用** | 同上 | [未確認] |
-| 9 | レポート提出日 | **Buddy専用** | 同上 | [未確認] |
-| 10 | レポート確認者 | **Buddy専用** | 同上 | [未確認] |
-| 11 | レポート確認日 | **Buddy専用** | 同上 | [未確認] |
-| 12 | レポートコメント | **Buddy専用** | 同上 | [未確認] |
-| 13 | Buddyフィードバック | **要PO確定** | `22_SetupIntegratedSheet.js`・`23_SheetService.js` で空初期化のみ | [未確認] |
+| # | 列名 | 分類 | 参照ファイル（活性） | データ有無（DEV実測） |
+|---|------|------|---------------------|---------------------|
+| 1 | リード進捗 | **レガシー専用** | なし（99_* devのみ） | 10/10 行（シード由来 ※1） |
+| 2 | 商談進捗 | **レガシー専用** | なし（99_* devのみ） | 10/10 行（シード由来 ※1） |
+| 3 | 商談の手応え | **レガシー専用** | `23_SheetService.js` で空初期化のみ | **0/10 行** |
+| 4 | 1回の発注金額 | **Buddy複合** | `06_BuddyFeedbackService.js` (Buddy/商談FB)・`13_DealReportService.js` (商談レポートシート列) | **0/10 行** |
+| 5 | 購入頻度(月次) | **Buddy複合** | 同上 + `99_ReconcileArchive.js` (dev) | **0/10 行** |
+| 6 | Good Point | **Buddy専用** | `22_SetupIntegratedSheet.js`・`23_SheetService.js` で空初期化のみ | **0/10 行** |
+| 7 | More Point | **Buddy専用** | 同上 | **0/10 行** |
+| 8 | 反省と今後の抱負 | **Buddy専用** | 同上 | **0/10 行** |
+| 9 | レポート提出日 | **Buddy専用** | 同上 | **0/10 行** |
+| 10 | レポート確認者 | **Buddy専用** | 同上 | **0/10 行** |
+| 11 | レポート確認日 | **Buddy専用** | 同上 | **0/10 行** |
+| 12 | レポートコメント | **Buddy専用** | 同上 | **0/10 行** |
+| 13 | Buddyフィードバック | **要PO確定** | `22_SetupIntegratedSheet.js`・`23_SheetService.js` で空初期化のみ | **0/10 行** |
+
+> ※1 `リード進捗`・`商談進捗` の DEV データは `99_DevDemoSeed20260826.js`（L278–332）によるシード値のみ。活性サービスコードからの書き込みはなし。PROD 実データの確認が必要。
 
 ### 各分類の詳細
 
 #### レガシー専用（3列）
 
-- **リード進捗 / 商談進捗**: 旧システムのステータス列。現行は `lead_progress_status` / `deal_result` に相当する Registry 列が存在し、役割が重複している。活性コードからの参照なし。
-- **商談の手応え（LEADS列）**: `23_SheetService.js` で新規リード作成時に空文字を書くのみ。`06_BuddyFeedbackService.js` が参照する `reportData.dealFeeling` はフォーム入力値であり、この LEADS 列を読むコードは存在しない。
+- **リード進捗 / 商談進捗**: 旧システムのステータス列。現行は `lead_status`・`deal_result` に相当する Registry 列が存在し役割が重複。活性サービスコードからの書き込みなし。DEV では `99_DevDemoSeed20260826.js` が '成約'/'商談中' 等を書き込んでいるため 10/10 に見えるが、PROD ではシードが走らないため実データ確認が必要。
+- **商談の手応え（LEADS列）**: `23_SheetService.js` で新規リード作成時に空文字を書くのみ。`06_BuddyFeedbackService.js` が参照する `reportData.dealFeeling` はフォーム入力値であり、この LEADS 列を読むコードは存在しない。DEV 実測 0/10 行。
 
 #### Buddy複合（2列）
 
@@ -155,23 +157,34 @@ grep -n "setValue\|setValues\|appendRow\|deleteRow\|clearContent" \
 # → 0件（読み取り専用を確認済み）
 ```
 
-### 実行結果
+### 実行結果（DEV実測: 2026-09-01T02:16:05Z）
 
-> **[未確認]**: DEV 環境へのデプロイ後に実行が必要。  
-> 下記の JSON 形式で結果が返る予定。
+```bash
+clasp run auditLeadUndefinedColumns
+```
 
 ```json
-{
-  "sheetName": "リード管理",
-  "totalRows": <データ行数>,
-  "auditedAt": "<ISO日時>",
-  "columns": [
-    { "columnName": "リード進捗",       "exists": true/false, "nonEmptyCount": 0, "totalRows": N },
-    { "columnName": "商談進捗",         "exists": true/false, "nonEmptyCount": 0, "totalRows": N },
-    ...
-  ]
-}
+{"sheetName":"リード管理","totalRows":10,"totalCols":64,"auditedAt":"2026-09-01T02:16:05.696Z","columns":[
+  {"columnName":"リード進捗",     "exists":true,"colPosition":4, "nonEmptyCount":10,"totalRows":10},
+  {"columnName":"商談進捗",       "exists":true,"colPosition":5, "nonEmptyCount":10,"totalRows":10},
+  {"columnName":"1回の発注金額",  "exists":true,"colPosition":39,"nonEmptyCount":0, "totalRows":10},
+  {"columnName":"購入頻度(月次)", "exists":true,"colPosition":40,"nonEmptyCount":0, "totalRows":10},
+  {"columnName":"商談の手応え",   "exists":true,"colPosition":42,"nonEmptyCount":0, "totalRows":10},
+  {"columnName":"Good Point",     "exists":true,"colPosition":49,"nonEmptyCount":0, "totalRows":10},
+  {"columnName":"More Point",     "exists":true,"colPosition":50,"nonEmptyCount":0, "totalRows":10},
+  {"columnName":"反省と今後の抱負","exists":true,"colPosition":51,"nonEmptyCount":0,"totalRows":10},
+  {"columnName":"レポート提出日", "exists":true,"colPosition":52,"nonEmptyCount":0, "totalRows":10},
+  {"columnName":"レポート確認者", "exists":true,"colPosition":53,"nonEmptyCount":0, "totalRows":10},
+  {"columnName":"レポート確認日", "exists":true,"colPosition":54,"nonEmptyCount":0, "totalRows":10},
+  {"columnName":"レポートコメント","exists":true,"colPosition":55,"nonEmptyCount":0,"totalRows":10},
+  {"columnName":"Buddyフィードバック","exists":true,"colPosition":56,"nonEmptyCount":0,"totalRows":10}
+]}
 ```
+
+**判定**:
+- 全13列が実シートに存在する
+- `リード進捗`・`商談進捗`: DEV では 10/10 行に値あり → ただし全件がシードスクリプト由来（`99_DevDemoSeed20260826.js:278–332`）。PROD での実データ確認が必要。
+- 残り11列: 全て 0/10 行 → 安全に削除可能（PROD 確認後）
 
 ---
 
