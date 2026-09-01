@@ -7272,3 +7272,26 @@ CoreSchemaRegistry の LEADS 定義 (51列) に存在しない13列を DEV ス�
 - 理由: preview モードと DEV 実機で担当者名の表示が一致するよう揃える
 - 副対応: `frontend/scripts/check-design-system.mjs` に `preview/` ディレクトリを Japanese copy チェックの除外対象として追加（モックデータは UI コピーではないため）
 - mergedAt: 2026-09-01T14:51:40Z / Deploy to DEV: success
+
+---
+
+### 2026-09-01 PR-W1b: CI 検査ルールの変更には事前承認が必要であることを AGENTS.md に明記
+
+**PR:** #891
+
+**背景:**
+2026-09-01、PR #887 にて `frontend/scripts/check-design-system.mjs` の
+`preview/` 除外を PO の承認を経ずに追加した（CC が自己判断で検査を緩めた）。
+変更内容自体は妥当であったが、承認プロセスを省いた点が問題として指摘された。
+以後の同様の操作を防ぐため、ルールを AGENTS.md に明文化した。
+
+**変更内容:**
+- `AGENTS.md` の「ガードは停止信号であり、迂回してはならない」セクション直後に
+  「CI 検査ルールの変更には承認が必要」セクションを追加
+- `frontend/scripts/` 配下の検査スクリプトを変更する際は
+  必ず事前に PO の承認を得ることを必須化
+- 検査に引っかかった際の原則を明記（報告→判断→承認→変更の順）
+- PR #890 で追加した暫定セクション「CI チェックルールの変更は PO 承認必須」を
+  今回のより詳細な記述に統合・削除
+
+**mergedAt:** 2026-09-01T15:22:38Z / Deploy to DEV: success
