@@ -7501,3 +7501,54 @@ CoreSchemaRegistry の LEADS 定義 (51列) に存在しない13列を DEV ス�
 | CI（frontend-check / Gitleaks / gas-global-namespace / Sensitive Content） | ✅ 全件 success |
 
 **段階6:** フロントエンドの連絡手段未確認のため保留中 → PO確認待ち
+
+---
+
+### 2026-09-02 PR-4: 選択肢マスタV1 廃止関数追加・V1フォールバック除去（段階6）
+
+**PR:** #905
+**マージSHA:** 86f43496278e7a1df25c46a097941b87089b7726
+
+**変更内容:**
+- `src/99_DevRetireOptionMasterV1.js`（新規）
+  - `devRetireOptionMasterV1DryRun()`: 旧シートの現状確認（書き込みなし）
+  - `devRetireOptionMasterV1Execute()`: バックアップ作成 → 廃止名リネーム
+- `src/28_CoreLeadFormOptionsApi.js`
+  - `getLeadFormOptions`: lead_type / response_speed の DEFAULT フォールバックを除去
+  - JSDoc コメント: CONFIG.SHEETS.SETTINGS 参照 → 選択肢マスタV2 に更新
+- `src/27_WebApp.js`
+  - `getArchiveReasons`: DEFAULT フォールバックを除去、V2 参照のみに統一
+
+**シート操作結果（clasp run 実施済み）:**
+| 手順 | 結果 |
+|------|------|
+| devRetireOptionMasterV1DryRun | originalRows: 45, originalCols: 36, backupExists: false |
+| devRetireOptionMasterV1Execute | ok: true |
+| バックアップシート | `選択肢マスタ_backup_predelete_20260901` 作成済み |
+| 旧シートリネーム | `選択肢マスタ` → `選択肢マスタ_廃止_20260901` |
+
+**検証結果:**
+| 確認項目 | 結果 |
+|----------|------|
+| runCoreSchemaConformanceAudit | 総不一致 0 → PASS |
+| deployedSHA | 86f4349（origin/develop HEAD と一致） |
+
+**戻し方:**
+- `選択肢マスタ_廃止_20260901` を `選択肢マスタ` にリネーム
+- コードは PR #905 を revert
+
+---
+
+## 次フェーズ課題
+
+**【PO判断待ち】連絡手段（contact_method）のフロントエンド未実装**
+
+- **事実**: `LeadEditorPage.tsx` に `contact_method` フィールドが存在しない。
+  フロントエンド全体で `contact_method` / `連絡手段` UI への参照が 0 件。
+- **V2シートの状態**: 8値が定義済み（Whatsapp / Instagram / Facebook / Market Place /
+  Telegram / メール / Discord / その他）。GAS データ層は完全。
+- **入力経路**: 現状、ユーザーが contact_method を入力できる画面が存在しない。
+  リード管理シートに直接入力するしか手段がない。
+- **PO判断が必要な内容**: リード登録・編集画面への「連絡手段」プルダウン追加要否。
+  追加する場合は `getLeadFormOptions` の返却値に `contactMethods: string[]` を追加し、
+  `LeadEditorPage` にフィールドを追加する。
