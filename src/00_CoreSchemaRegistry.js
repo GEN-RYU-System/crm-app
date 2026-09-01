@@ -501,7 +501,11 @@ const CORE_SCHEMA_V1_TABLES = {
       ['ROUNDING_UNIT',       '端数単位'],
       ['ACTIVE',              '有効'],
       ['REGISTERED_AT',       '登録日'],
-      ['UPDATED_AT',          '更新日']
+      ['UPDATED_AT',          '更新日'],
+      ['DIM_ROUNDING',        '寸法端数処理'],
+      ['WEIGHT_STEP_SMALL',   '重量刻み小'],
+      ['WEIGHT_STEP_LARGE',   '重量刻み大'],
+      ['MAX_WEIGHT',          '最大対応重量']
     ]), primaryKey: 'CARRIER_ID',
     referenceIds: []
   },
