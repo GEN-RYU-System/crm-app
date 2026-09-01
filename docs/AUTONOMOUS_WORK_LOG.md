@@ -2,6 +2,74 @@
 
 ---
 
+### 2026-09-01 ORDER_LINES に CONDITION 列を追加し QUOTE_LINES に referenceId を追加（PR #862）
+
+**概要:**
+オーダー明細（ORDER_LINES）に CONDITION 列（コンディション）を追加し、
+見積もり明細（QUOTE_LINES）に CONDITION → CONDITIONS の referenceId を追加した。
+
+**設計意図:**
+- 見積もりなしで直接受注する経路があるため、ORDER_LINES にも CONDITION が必要
+- CONDITION はコンディションマスタ（CONDITIONS）を参照し、
+  対応単位（ケース/ボックス/パック）を引く
+- SQL 移行時は CONDITIONS への外部キーになる
+
+**列名設計の判断:**
+- ORDER_LINES の CONDITION 表示名は `'コンディション'` を採用
+- QUOTE_LINES の CONDITION 表示名は `'状態'` であるが、
+  ORDER_LINES には既存の STATUS 列（表示名 `'状態'`）があるため、
+  同じ表示名を使うと同一シート内での重複になる
+  （`CORE_SCHEMA_NON_EMPTY_HEADER_DUPLICATE` エラー）
+- このため ORDER_LINES と QUOTE_LINES で CONDITION の表示名が異なる状態は意図的
+
+**変更ファイル:**
+
+- `src/00_CoreSchemaRegistry.js`
+  - ORDER_LINES: 末尾に `['CONDITION', 'コンディション']` を追加（11→12列）
+  - ORDER_LINES: referenceIds に `{ headerKey: 'CONDITION', targetTableKey: 'CONDITIONS' }` を追加
+  - QUOTE_LINES: referenceIds に `{ headerKey: 'CONDITION', targetTableKey: 'CONDITIONS' }` を追加
+
+- `src/99_DevOrderLineConditionColumn.js`（新規）
+  - `addOrderLineConditionColumn(mode)` を追加
+  - DEV 環境ガード付き・既存列スキップ・既存データ行は空のまま
+
+**実行結果:**
+
+```
+// DRY_RUN
+{ mode: 'DRY_RUN', toAddCount: 1, dataRowCount: 25, newHeaderName: 'コンディション', currentColumns: 11, skipCount: 0 }
+
+// APPLY
+{ mode: 'APPLY', addedCount: 1, skipCount: 0, addedColumn: 12, added: ['コンディション'] }
+
+// dryRunOrderStatusRecalculation
+総件数: 12件 / 変更なし: 12件 / 変更あり: 0件
+```
+
+**コンフォーマンス監査結果（runCoreSchemaConformanceAudit）:**
+
+```
+[ORDER_LINES / オーダー明細]
+  ヘッダー列数: 定義 12 / 実シート 12 → OK
+  小計不一致: 0件
+
+[QUOTE_LINES / 見積もり明細]
+  ヘッダー列数: 定義 12 / 実シート 12 → OK
+  小計不一致: 0件
+
+=== 総不一致: 0 → PASS ===
+```
+
+**事後確認:**
+
+- PR #862 squash merge: mergedAt=2026-09-01T10:13:05Z ✅
+- Deploy to DEV (run 33496266815): success ✅
+- getDeployedSha: `5ab40815871b029707d751499ed40eebe287990b` = origin/develop HEAD ✅
+- runCoreSchemaConformanceAudit: 総不一致0件 ✅
+- dryRunOrderStatusRecalculation: 変更あり0件 ✅
+
+---
+
 ### 2026-09-01 コンディションマスタ（CONDITIONS）を新設し初期9件を登録（PR #856）
 
 **概要:**
