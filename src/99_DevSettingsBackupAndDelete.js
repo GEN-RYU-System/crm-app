@@ -194,3 +194,25 @@ function settingsDeleteColsExecute() {
     emptyHeaderCols: emptyHeaderCols
   });
 }
+
+/**
+ * システム設定シートの getLastColumn / getMaxColumns を確認する（DEV専用）
+ * 目的: getLastColumn() = 5 の原因特定
+ *   - getMaxColumns() > getLastColumn() → 列構造は存在するが空データ（削除必要）
+ *   - getMaxColumns() == getLastColumn() → 列が既に存在しない（完了済みの可能性）
+ */
+function checkSettingsSheetDimensions() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('DEV環境でのみ実行可能');
+  }
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('システム設定');
+  if (!sheet) return JSON.stringify({ error: 'シートが見つかりません' });
+
+  return JSON.stringify({
+    getLastColumn: sheet.getLastColumn(),
+    getMaxColumns: sheet.getMaxColumns(),
+    getLastRow: sheet.getLastRow(),
+    getMaxRows: sheet.getMaxRows()
+  });
+}
