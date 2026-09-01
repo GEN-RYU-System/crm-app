@@ -7360,3 +7360,108 @@ CoreSchemaRegistry の LEADS 定義 (51列) に存在しない13列を DEV ス�
 | SHA 一致 | f96fdcfc1f063ecebf1bf48eff5006660f1606f8（origin/develop HEAD と一致） |
 | Conformance Audit | 総不一致 0 → PASS |
 | dryRunOrderStatusRecalculation | 変更あり 0件 |
+
+---
+
+### 2026-09-02 PR-1: 選択肢マスタV2 Registry定義・シート作成関数を追加（段階2）
+
+**PR:** #897
+**マージSHA:** 1c576ca004659ea0871499b1bf39f3835523a1e1
+
+**変更内容:**
+- `src/00_CoreSchemaRegistry.js`: `CORE_SCHEMA_V1_TABLES` に `OPTION_MASTER` エントリを追加
+  - `sheetName: '選択肢マスタV2'`, `headerRowNumber: 1`, `writeAllowed: true`
+  - headers: option_id / category / value / sort_order / is_active (5列)
+  - `primaryKey: 'OPTION_ID'`, `referenceIds: []`
+- `src/99_DevSetupOptionMasterV2Sheet.js`: `devSetupOptionMasterV2Sheet()` を追加
+  - `選択肢マスタV2` シートを作成してヘッダーを書き込む（冪等）
+  - 作成後にヘッダー5列を検証して `ok: true/false` を返す
+
+**検証結果:**
+| 手順 | 結果 |
+|------|------|
+| devSetupOptionMasterV2Sheet | ok: true（シート作成・ヘッダー5列検証 PASS） |
+| runCoreSchemaConformanceAudit | 総不一致 0 → PASS |
+
+**戻し方:** `選択肢マスタV2` シートを削除し、Registry エントリを削除する
+
+---
+
+### 2026-09-02 PR-2: 選択肢マスタV2 データ投入関数を追加（段階3）
+
+**PR:** #898
+**マージSHA:** 328066ec9701cc961f3626685871b613d798d394
+
+**変更内容:**
+- `src/99_DevSeedOptionMasterV2.js`: 67行 × 13カテゴリの投入関数を追加
+  - `devSeedOptionMasterV2DryRun()`: 投入予定行を報告（書き込みなし）
+  - `devSeedOptionMasterV2Execute()`: `setValues` で67行一括書き込み・重複チェック付き
+  - カテゴリ: lead_type(2) / response_speed(5) / archive_reason(5) / lead_status(10) /
+    contact_method(8) / handled_merchandise(6) / lead_temperature(3) / expected_scale(4) /
+    deal_result(5) / customer_type(3) / sales_channel(6) / competitor_comparison(3) /
+    next_action_date(7)
+
+**検証結果:**
+| 手順 | 結果 |
+|------|------|
+| devSeedOptionMasterV2DryRun | totalRows: 67, totalCategories: 13 |
+| devSeedOptionMasterV2Execute | rowsInserted: 67, verificationPassed: true, uniquenessOk: true |
+
+**戻し方:** `選択肢マスタV2` シートのデータ行（2行目以降）を全削除する
+
+---
+
+### 2026-09-02 PR-3: 選択肢マスタV2 参照切り替え・データ移行（段階4）
+
+**PR:** #899
+**マージSHA:** 1c78fee18fb825cbafb2cdb903d036cd0b0a1e5f
+
+**変更内容:**
+- `src/29_OptionMasterV2Api.js`（新規）: 内部APIモジュールを追加
+  - `getAllOptionsGroupedFromV2_()`: 選択肢マスタV2を1回読み取りでカテゴリ別に返す
+  - `getOptionsByCategory_(cat)`: 指定カテゴリの文字列配列を返す
+- `src/28_CoreLeadFormOptionsApi.js`: V2シート参照に切り替え
+  - キャッシュキーを `LEAD_FORM_OPTIONS_V2_CACHE_INDEX` に更新（V1キャッシュ無効化）
+  - `lead_type` / `response_speed` を `getAllOptionsGroupedFromV2_()` から取得
+- `src/27_WebApp.js`: `getArchiveReasons()` を V2 参照に切り替え
+  - `getOptionsByCategory_('archive_reason')` → フォールバックは `DEFAULT_DROPDOWN_OPTIONS`
+- `src/99_DevContactMethodMigration.js`（新規）: 実データ移行関数を追加
+  - `devContactMethodMigrationDryRun()`: Email 8件を特定（書き込みなし）
+  - `devContactMethodMigrationExecute()`: バックアップ作成 → Email→メール 8件更新 → 検証
+
+**検証結果:**
+| 手順 | 結果 |
+|------|------|
+| devContactMethodMigrationDryRun | targetCount: 8（Email 全件特定） |
+| devContactMethodMigrationExecute | updated: 8, verificationPassed: true, ok: true |
+| runCoreSchemaConformanceAudit | 総不一致 0 → PASS |
+| バックアップシート | `リード管理_backup_20260901_contact` 作成済み |
+
+**戻し方:** `リード管理_backup_20260901_contact` の内容で `contact_method` 列を上書きする
+
+---
+
+### 2026-09-02 PR-mock: getLeadFormOptions モック実値設定（段階5）
+
+**PR:** #901
+**マージSHA:** f96e3a4f6a517216d3cb792cf4ca02d486cd60cd
+
+**変更内容:**
+- `frontend/src/preview/gasRunnerMock.ts`: `getLeadsBatchForFrontend` / `getLeadFormOptions` の
+  `leadTypes` / `responseSpeeds` を空配列から実値に変更
+  - `leadTypes: ['インバウンド', 'アウトバウンド']`
+  - `responseSpeeds: ['即レス(30分以内)', '24h以内', '48h以内', '3日以上', '未返信']`
+
+**段階5 検証結果（?preview）:**
+| 確認項目 | 結果 |
+|----------|------|
+| リード種別プルダウン | ✅ インバウンド / アウトバウンド 表示 |
+| 返信速度プルダウン | ✅ 5選択肢 正常表示 |
+| 白画面 | ✅ なし |
+| コンソールエラー | ✅ 0件 |
+| 連絡手段プルダウン8種類 | 【未確認】フロントエンドに contact_method フィールドが未実装 |
+
+**補足:** GAS V2シートの contact_method 8値は Stage 3 で確認済み
+（Whatsapp / Instagram / Facebook / Market Place / Telegram / メール / Discord / その他）
+
+**段階6:** フロントエンドの連絡手段未確認のため保留中 → PO確認待ち
