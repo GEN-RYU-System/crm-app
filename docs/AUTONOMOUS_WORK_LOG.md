@@ -7098,3 +7098,21 @@ CoreSchemaRegistry の LEADS 定義 (51列) に存在しない13列を DEV ス�
 - 復元: 顧客マスタ_backup_20260901 から書き戻し。コードは git revert <各PR SHA>
 - 次フェーズの課題: 営業担当者（sales_assignee_name）は ID採用前の旧定義であり廃止予定。
   参照86件の書き換えが必要なため別フェーズで実施する（PO決定 2026-09-01）
+
+---
+
+### 2026-09-01 LEADS への sales_assignee_id 列追加
+
+- PO決定: 担当者は ID で持ちフロントで名前変換する方式を採用
+- 実施内容:
+  - LEADS シートに sales_assignee_id 列を追加（sales_assignee_name の直後、col27）
+  - CoreSchemaRegistry に LEADS.SALES_ASSIGNEE_ID を追加
+- PRs: #869 / #870
+- バックアップ: リード管理_backup_20260901_assigneeid（rows:11, cols:51）
+- 検証: dry-run 一致（sales_assignee_name col26 直後に挿入） / 列数 51→52 / データ行数不変 / バックアップ照合 match:true / Conformance Audit 0件
+- 復元: リード管理_backup_20260901_assigneeid から書き戻し。コードは git revert <各PR SHA>
+- 次フェーズの課題:
+  - フロント側実装: getCoreStaffForFrontend を使った ID→名前変換（staffId + fullNameJa が返るため新API不要）
+  - 新方式への書き換え（sales_assignee_name 参照箇所）
+  - LEADS.SALES_ASSIGNEE_NAME の削除（Registry + シート）
+  - CUSTOMERS.SALES_ASSIGNEE_NAME の削除（Registry + シート、参照書き換え後）
