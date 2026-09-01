@@ -119,9 +119,13 @@ function _sfcResolveCountryCode(countryCode, postalCode) {
 /**
  * CARRIERS テーブルから配送会社情報を読み込む。
  * 4列（寸法端数処理/重量刻み小/重量刻み大/最大対応重量）が必須。
+ * API接続設定3列（API有効/APIエンドポイント/API認証キー名）は省略可能（なければ無効扱い）。
  *
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
- * @returns {Array<{ id, name, divisor, dimRounding, stepSmall, stepLarge, maxWeight }>}
+ * @returns {Array<{
+ *   id, name, divisor, dimRounding, stepSmall, stepLarge, maxWeight,
+ *   apiEnabled, apiEndpoint, apiAuthKeyName
+ * }>}
  */
 function _sfcLoadCarriers(ss) {
   var tableKey = 'CARRIERS';
@@ -150,6 +154,11 @@ function _sfcLoadCarriers(ss) {
   var iMaxWeight   = hIdx('MAX_WEIGHT');
   var iActive      = hIdx('ACTIVE');
 
+  // API接続設定列（オプション。列が存在しない場合は -1 → デフォルト値を使用）
+  var iApiEnabled     = headers.indexOf(table.headers['API_ENABLED']      || '');
+  var iApiEndpoint    = headers.indexOf(table.headers['API_ENDPOINT']     || '');
+  var iApiAuthKeyName = headers.indexOf(table.headers['API_AUTH_KEY_NAME'] || '');
+
   var lastRow      = sheet.getLastRow();
   var dataRowCount = Math.max(0, lastRow - table.headerRowNumber);
   if (dataRowCount === 0) return [];
@@ -162,13 +171,16 @@ function _sfcLoadCarriers(ss) {
     })
     .map(function(row) {
       return {
-        id:          String(row[iId]          || '').trim(),
-        name:        String(row[iName]        || '').trim(),
-        divisor:     Number(row[iDivisor]),
-        dimRounding: String(row[iDimRounding] || '').trim().toUpperCase(),
-        stepSmall:   Number(row[iStepSmall]),
-        stepLarge:   Number(row[iStepLarge]),
-        maxWeight:   Number(row[iMaxWeight])
+        id:            String(row[iId]          || '').trim(),
+        name:          String(row[iName]        || '').trim(),
+        divisor:       Number(row[iDivisor]),
+        dimRounding:   String(row[iDimRounding] || '').trim().toUpperCase(),
+        stepSmall:     Number(row[iStepSmall]),
+        stepLarge:     Number(row[iStepLarge]),
+        maxWeight:     Number(row[iMaxWeight]),
+        apiEnabled:    iApiEnabled     >= 0 ? _sfcIsActive(row[iApiEnabled])              : false,
+        apiEndpoint:   iApiEndpoint    >= 0 ? String(row[iApiEndpoint]    || '').trim()  : '',
+        apiAuthKeyName: iApiAuthKeyName >= 0 ? String(row[iApiAuthKeyName] || '').trim() : ''
       };
     });
 }
@@ -427,4 +439,320 @@ function _sfcRoundUpToStep(weight, step) {
 function _sfcIsActive(value) {
   if (typeof value === 'boolean') return value;
   return String(value).trim().toUpperCase() === 'TRUE';
+}
+
+// ============================================================
+// 送料見積履歴 API  (SHIPPING_FEE_ESTIMATES)
+// ============================================================
+
+var SFE_ID_PREFIX = 'SFE-';
+var SFE_ID_DIGITS = 4;
+
+/**
+ * 配送先・荷姿から全キャリアの送料を見積もり、結果を保存して返す。
+ *
+ * payload:
+ *   countryCode {string}  必須
+ *   postalCode  {string}  省略可
+ *   boxes       {Array}   必須  [{ length, width, height, actualWeight }]
+ *   linkType    {string}  必須  'QUOTE' | 'INVOICE' | 'SHIPMENT'
+ *   linkId      {string}  必須
+ *   save        {boolean} 省略可（デフォルト true）
+ *
+ * @param {string} sessionId
+ * @param {Object} payload
+ * @returns {{ success: true, results: Array }}
+ */
+function estimateShippingFeeForFrontend(sessionId, payload) {
+  setEmailFromSession(sessionId);
+  checkPermission('deal_edit');
+
+  if (!payload || typeof payload !== 'object') throw new Error('MISSING_PAYLOAD');
+
+  var countryCode = String(payload.countryCode || '').trim().toUpperCase();
+  if (!countryCode) throw new Error('MISSING_COUNTRY_CODE');
+
+  if (!Array.isArray(payload.boxes) || payload.boxes.length === 0) {
+    throw new Error('MISSING_BOXES');
+  }
+  var boxes = payload.boxes;
+
+  var linkType = String(payload.linkType || '').trim().toUpperCase();
+  if (['QUOTE', 'INVOICE', 'SHIPMENT'].indexOf(linkType) < 0) {
+    throw new Error('INVALID_LINK_TYPE: must be QUOTE, INVOICE, or SHIPMENT');
+  }
+
+  var linkId = String(payload.linkId || '').trim();
+  if (!linkId) throw new Error('MISSING_LINK_ID');
+
+  var postalCode = String(payload.postalCode || '').trim();
+  var doSave = payload.save !== false; // default true
+
+  var ss = getSpreadsheet();
+
+  // linkId の存在確認（INVOICE は CoreSchemaRegistry 未登録のためスキップ）
+  _sfeValidateLinkId_(ss, linkType, linkId);
+
+  // マスタデータ読み込み
+  var carriers = _sfcLoadCarriers(ss);
+  var zonesMap = _sfcBuildZonesMap(ss);
+  var ratesMap = _sfcBuildRatesMap(ss);
+
+  // 見積計算
+  var estimates = _sfeProcess_(ss, carriers, zonesMap, ratesMap, {
+    countryCode: countryCode,
+    postalCode:  postalCode,
+    boxes:       boxes,
+    linkType:    linkType,
+    linkId:      linkId
+  });
+
+  // 保存
+  if (doSave) {
+    var now = new Date();
+    estimates.forEach(function(r) {
+      if (!r.error) {
+        var totalChargeableWeight = r.boxes.reduce(function(sum, b) {
+          return sum + b.chargeableWeight;
+        }, 0);
+        var linkCols = _sfeBuildLinkColumns_(linkType, linkId);
+        saveShippingFeeEstimate_({
+          quoteId:               linkCols.quoteId,
+          invoiceId:             linkCols.invoiceId,
+          shipmentId:            linkCols.shipmentId,
+          carrierId:             r.carrierId,
+          zone:                  r.zone,
+          totalChargeableWeight: totalChargeableWeight,
+          boxCount:              r.boxes.length,
+          shippingFee:           r.totalFee,
+          calcSource:            r.calcSource,
+          feeType:               r.feeType,
+          calculatedAt:          now
+        });
+      }
+    });
+  }
+
+  return { success: true, results: estimates };
+}
+
+/**
+ * セッションなしで見積計算を実行する（DEV テスト・内部呼び出し用）。
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss   未使用（将来の拡張用）
+ * @param {Array}  carriers
+ * @param {Object} zonesMap
+ * @param {Object} ratesMap
+ * @param {{
+ *   countryCode: string,
+ *   postalCode:  string,
+ *   boxes:       Array,
+ *   linkType:    string
+ * }} payload
+ * @returns {Array} 各キャリアの計算結果（calcSource / feeType を追加済み）
+ */
+function _sfeProcess_(ss, carriers, zonesMap, ratesMap, payload) { // eslint-disable-line no-unused-vars
+  var effectiveCode = _sfcResolveCountryCode(
+    payload.countryCode.toUpperCase(),
+    payload.postalCode || ''
+  );
+
+  var feeTypeValues = CORE_SCHEMA_V1_TABLES.SHIPPING_FEE_ESTIMATES.values.FEE_TYPE;
+  var calcSourceValues = CORE_SCHEMA_V1_TABLES.SHIPPING_FEE_ESTIMATES.values.CALC_SOURCE;
+  var feeType = payload.linkType === 'SHIPMENT'
+    ? feeTypeValues.ACTUAL
+    : feeTypeValues.ESTIMATE;
+
+  return carriers.map(function(carrier) {
+    var calcSource = calcSourceValues.MASTER;
+    var res;
+
+    if (carrier.apiEnabled) {
+      var apiResult = callCarrierRateApi_(carrier, {
+        countryCode: payload.countryCode,
+        postalCode:  payload.postalCode || '',
+        boxes:       payload.boxes
+      });
+      if (apiResult && apiResult.supported) {
+        res = apiResult;
+        calcSource = calcSourceValues.API;
+      }
+    }
+
+    if (!res) {
+      res = _sfcCalculateForCarrier(carrier, effectiveCode, payload.boxes, zonesMap, ratesMap);
+      calcSource = calcSourceValues.MASTER;
+    }
+
+    res.calcSource = calcSource;
+    res.feeType    = feeType;
+    return res;
+  });
+}
+
+/**
+ * キャリア API を呼び出して送料を取得する。
+ * ★ 現時点では実装の骨格のみ。常に { supported: false } を返す。
+ *
+ * @param {{ id: string, name: string, apiEndpoint: string, apiAuthKeyName: string }} carrier
+ * @param {{ countryCode: string, postalCode: string, boxes: Array }} apiPayload
+ * @returns {{ supported: false }}
+ */
+function callCarrierRateApi_(carrier, apiPayload) { // eslint-disable-line no-unused-vars
+  // TODO: 実際の API 接続を実装する
+  return { supported: false };
+}
+
+/**
+ * 送料見積結果を SHIPPING_FEE_ESTIMATES シートに保存する。
+ * - LockService で排他制御する
+ * - ID は SFE-0001 形式（4桁連番）で採番する
+ * - quoteId / invoiceId / shipmentId のうち2つ以上が非空なら拒否する
+ * - 日本語列名の直書き禁止（getCoreSchemaV1HeaderName を使う）
+ *
+ * @param {{
+ *   quoteId:               string,
+ *   invoiceId:             string,
+ *   shipmentId:            string,
+ *   carrierId:             string,
+ *   zone:                  string,
+ *   totalChargeableWeight: number,
+ *   boxCount:              number,
+ *   shippingFee:           number,
+ *   calcSource:            string,
+ *   feeType:               string,
+ *   calculatedAt:          Date
+ * }} record
+ * @returns {{ sfeId: string }}
+ */
+function saveShippingFeeEstimate_(record) {
+  // 3つのID列のうち2列以上に値があれば拒否
+  var filledLinkIds = [record.quoteId, record.invoiceId, record.shipmentId]
+    .filter(function(v) { return v && String(v).trim() !== ''; });
+  if (filledLinkIds.length > 1) {
+    throw new Error('MULTIPLE_LINK_IDS: quoteId / invoiceId / shipmentId は1つだけ指定してください。');
+  }
+
+  return withSheetWrite_(
+    { useLock: true, cacheTargets: [] },
+    function() {
+      var ss = getSpreadsheet();
+      var validated = validateCoreSchemaV1TableForWrite(ss, 'SHIPPING_FEE_ESTIMATES');
+      var sheet = validated.sheet;
+      var hi    = validated.headerIndexes; // 1-indexed
+
+      function h(fieldKey) {
+        return getCoreSchemaV1HeaderName('SHIPPING_FEE_ESTIMATES', fieldKey);
+      }
+      function setCell(fieldKey, value) {
+        var colIdx = hi[h(fieldKey)];
+        if (colIdx) sheet.getRange(targetRow, colIdx).setValue(value);
+      }
+
+      // ID 採番（ロック内で行う）
+      var sfeId = _sfeGenerateNextId_(sheet, hi);
+
+      // targetRow を appendRow の前に確定する
+      var targetRow = sheet.getLastRow() + 1;
+      var maxCols   = sheet.getLastColumn();
+      sheet.appendRow(new Array(maxCols).fill(''));
+
+      var now = new Date();
+      setCell('SHIPPING_FEE_ESTIMATE_ID', sfeId);
+      setCell('QUOTE_ID',                 record.quoteId    || '');
+      setCell('INVOICE_ID',               record.invoiceId  || '');
+      setCell('SHIPMENT_ID',              record.shipmentId || '');
+      setCell('CARRIER_ID',               record.carrierId);
+      setCell('ZONE',                     record.zone);
+      setCell('TOTAL_CHARGEABLE_WEIGHT',  record.totalChargeableWeight);
+      setCell('BOX_COUNT',                record.boxCount);
+      setCell('SHIPPING_FEE',             record.shippingFee);
+      setCell('CALC_SOURCE',              record.calcSource);
+      setCell('FEE_TYPE',                 record.feeType);
+      setCell('CALCULATED_AT',            record.calculatedAt || now);
+      setCell('ACTIVE',                   true);
+      setCell('REGISTERED_AT',            now);
+      setCell('UPDATED_AT',               now);
+
+      return { sfeId: sfeId };
+    }
+  );
+}
+
+/**
+ * linkId が対象シートに存在するか確認する。
+ * INVOICE は CoreSchemaRegistry 未登録のためスキップする。
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
+ * @param {string} linkType  'QUOTE' | 'INVOICE' | 'SHIPMENT'
+ * @param {string} linkId
+ * @throws {Error} LINK_ID_NOT_FOUND
+ */
+function _sfeValidateLinkId_(ss, linkType, linkId) {
+  if (linkType === 'INVOICE') {
+    // INVOICES は CoreSchemaRegistry 未登録。バリデーションをスキップする。
+    return;
+  }
+
+  var tableKey = linkType === 'QUOTE' ? 'QUOTES' : 'SHIPMENTS';
+  var pkKey    = linkType === 'QUOTE' ? 'QUOTE_ID' : 'SHIPMENT_ID';
+
+  var pkPhysical = getCoreSchemaV1HeaderName(tableKey, pkKey);
+  var sheet = ss.getSheets().filter(function(s) {
+    return s.getName() === CORE_SCHEMA_V1_TABLES[tableKey].sheetName;
+  })[0];
+  if (!sheet) throw new Error('SHEET_NOT_FOUND: ' + CORE_SCHEMA_V1_TABLES[tableKey].sheetName);
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) throw new Error('LINK_ID_NOT_FOUND: ' + linkId);
+
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var colIdx  = headers.indexOf(pkPhysical);
+  if (colIdx < 0) throw new Error('PK_COLUMN_NOT_FOUND: ' + pkPhysical);
+
+  var ids = sheet.getRange(2, colIdx + 1, lastRow - 1, 1).getValues();
+  for (var i = 0; i < ids.length; i++) {
+    if (String(ids[i][0] || '').trim() === linkId) return;
+  }
+  throw new Error('LINK_ID_NOT_FOUND: ' + linkId);
+}
+
+/**
+ * linkType に応じた3列（QUOTE_ID / INVOICE_ID / SHIPMENT_ID）の値を返す。
+ *
+ * @param {string} linkType  'QUOTE' | 'INVOICE' | 'SHIPMENT'
+ * @param {string} linkId
+ * @returns {{ quoteId: string, invoiceId: string, shipmentId: string }}
+ */
+function _sfeBuildLinkColumns_(linkType, linkId) {
+  return {
+    quoteId:    linkType === 'QUOTE'    ? linkId : '',
+    invoiceId:  linkType === 'INVOICE'  ? linkId : '',
+    shipmentId: linkType === 'SHIPMENT' ? linkId : ''
+  };
+}
+
+/**
+ * SHIPPING_FEE_ESTIMATES シートの最大連番を読み取り、次の SFE-NNNN を返す。
+ * ロック内で呼び出すこと。
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @param {Object} headerIndexes  validateCoreSchemaV1TableForWrite が返す hi（1-indexed）
+ * @returns {string}  例: 'SFE-0001'
+ */
+function _sfeGenerateNextId_(sheet, headerIndexes) {
+  var pkPhysical = getCoreSchemaV1HeaderName('SHIPPING_FEE_ESTIMATES', 'SHIPPING_FEE_ESTIMATE_ID');
+  var colIdx = headerIndexes[pkPhysical];
+  var maxNum = 0;
+  var lastRow = sheet.getLastRow();
+  if (lastRow >= 2 && colIdx) {
+    sheet.getRange(2, colIdx, lastRow - 1, 1).getValues().forEach(function(row) {
+      var id = String(row[0] || '').trim();
+      if (id.indexOf(SFE_ID_PREFIX) === 0) {
+        var num = parseInt(id.slice(SFE_ID_PREFIX.length), 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
+      }
+    });
+  }
+  return SFE_ID_PREFIX + String(maxNum + 1).padStart(SFE_ID_DIGITS, '0');
 }
