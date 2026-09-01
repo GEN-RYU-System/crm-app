@@ -664,7 +664,7 @@ export type CurrencyRecord = {
   rateToJpy: number | null;
 };
 
-export type LeadOption = { leadId: string; customerName: string };
+export type LeadOption = { leadId: string; customerName: string; countryCode: string };
 
 export function getLeadOptionsForFrontend(): Promise<readonly LeadOption[]> {
   const runner = window.google?.script?.run;
@@ -1492,5 +1492,22 @@ export function estimateShippingFeeForOrder(orderId: string): Promise<ShippingFe
       .withSuccessHandler((value: unknown) => resolve(value as ShippingFeeEstimateResult))
       .withFailureHandler((error: unknown) => reject(toError(error)))
       .estimateShippingFeeForOrderForFrontend(getStoredSessionId(), orderId);
+  });
+}
+
+export type EstimateShippingFeeForLinesPayload = {
+  lines: { productId: string; condition: string; quantity: number }[];
+  countryCode: string;
+  postalCode?: string;
+};
+
+export function estimateShippingFeeForLines(payload: EstimateShippingFeeForLinesPayload): Promise<ShippingFeeEstimateResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as ShippingFeeEstimateResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .estimateShippingFeeForLinesForFrontend(getStoredSessionId(), payload);
   });
 }

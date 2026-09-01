@@ -507,3 +507,58 @@ function estimateShippingFeeForOrderForFrontend(sessionId, orderId) {
 
   return { success: true, skipped: built.skipped, results: result.results };
 }
+
+// ============================================================
+// 公開関数4: 明細配列から送料を見積もる（保存前の計算用）
+// ============================================================
+
+/**
+ * フロントエンドの明細配列から箱を組み立て、送料を見積もる。
+ * 保存前（quoteId がない状態）でも呼び出せる。
+ * 見積履歴への保存は行わない。
+ *
+ * 既存の estimateShippingFeeForQuoteForFrontend（保存済みの見積もりから計算）は残す。
+ *
+ * payload:
+ *   lines       {Array}   必須  [{ productId, condition, quantity }]
+ *   countryCode {string}  必須
+ *   postalCode  {string}  省略可
+ *
+ * @param {string} sessionId
+ * @param {Object} payload
+ * @returns {{ success: boolean, skipped: Array, results?: Array }}
+ */
+function estimateShippingFeeForLinesForFrontend(sessionId, payload) {
+  setEmailFromSession(sessionId);
+  checkPermission('deal_edit');
+
+  var lines       = Array.isArray(payload && payload.lines) ? payload.lines : [];
+  var countryCode = String((payload && payload.countryCode) || '').trim().toUpperCase();
+  var postalCode  = String((payload && payload.postalCode)  || '').trim();
+
+  if (!countryCode) throw new Error('MISSING_COUNTRY_CODE');
+
+  var ss = getSpreadsheet();
+
+  // 箱を組み立てる
+  var built = buildBoxesFromLines_(lines, ss);
+
+  if (built.boxes.length === 0) {
+    return { success: false, reason: 'NO_BOXES', skipped: built.skipped };
+  }
+
+  // マスタ読み込み
+  var carriers = _sfcLoadCarriers(ss);
+  var zonesMap = _sfcBuildZonesMap(ss);
+  var ratesMap = _sfcBuildRatesMap(ss);
+
+  // 見積計算（保存なし・feeType は ESTIMATE）
+  var results = _sfeProcess_(ss, carriers, zonesMap, ratesMap, {
+    countryCode: countryCode,
+    postalCode:  postalCode,
+    boxes:       built.boxes,
+    linkType:    'QUOTE'
+  });
+
+  return { success: true, skipped: built.skipped, results: results };
+}

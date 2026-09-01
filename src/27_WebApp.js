@@ -732,11 +732,42 @@ function getLeadOptionsForFrontend(sessionId) {
   const leadIdValues  = leadsSheet.getRange(dataStart, leadIdColIdx + 1, rowCount, 1).getDisplayValues();
   const nameValues    = leadsSheet.getRange(dataStart, customerNameColIdx + 1, rowCount, 1).getDisplayValues();
 
+  // CUSTOMERS シートから SOURCE_LEAD_ID → COUNTRY マップを構築
+  var leadCountryMap = {};
+  try {
+    const custSheet   = getCoreSchemaV1Sheet(ss, 'CUSTOMERS');
+    const custTable   = getCoreSchemaV1Table('CUSTOMERS');
+    const custLastRow = custSheet.getLastRow();
+    const custDataStart = custTable.headerRowNumber + 1;
+    if (custLastRow >= custDataStart) {
+      const custHeaders = custSheet
+        .getRange(custTable.headerRowNumber, 1, 1, custSheet.getLastColumn())
+        .getDisplayValues()[0]
+        .map(function(h) { return String(h).trim(); });
+      const srcLeadColName = getCoreSchemaV1HeaderName('CUSTOMERS', 'SOURCE_LEAD_ID');
+      const countryColName = getCoreSchemaV1HeaderName('CUSTOMERS', 'COUNTRY');
+      const srcLeadColIdx  = custHeaders.indexOf(srcLeadColName);
+      const countryColIdx  = custHeaders.indexOf(countryColName);
+      if (srcLeadColIdx >= 0 && countryColIdx >= 0) {
+        const custRowCount = custLastRow - custTable.headerRowNumber;
+        const srcLeadVals  = custSheet.getRange(custDataStart, srcLeadColIdx + 1, custRowCount, 1).getDisplayValues();
+        const countryVals  = custSheet.getRange(custDataStart, countryColIdx + 1, custRowCount, 1).getDisplayValues();
+        for (var ci = 0; ci < srcLeadVals.length; ci++) {
+          const srcLead = String(srcLeadVals[ci][0] || '').trim();
+          const country = String(countryVals[ci][0] || '').trim();
+          if (srcLead) leadCountryMap[srcLead] = country;
+        }
+      }
+    }
+  } catch (e) {
+    // CUSTOMERS 読み込み失敗は致命的でない（countryCode は空文字で返す）
+  }
+
   var results = [];
   for (var i = 0; i < leadIdValues.length; i++) {
     var leadId       = String(leadIdValues[i][0] || '').trim();
     var customerName = String(nameValues[i][0] || '').trim();
-    if (leadId) results.push({ leadId: leadId, customerName: customerName });
+    if (leadId) results.push({ leadId: leadId, customerName: customerName, countryCode: leadCountryMap[leadId] || '' });
   }
   return results;
 }

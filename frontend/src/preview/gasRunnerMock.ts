@@ -240,8 +240,8 @@ const MOCK_QUOTES = [
 ];
 
 const MOCK_LEAD_OPTIONS = [
-  { leadId: 'LDI-0001', customerName: 'Preview Lead A' },
-  { leadId: 'LDI-0002', customerName: 'Preview Lead B' },
+  { leadId: 'LDI-0001', customerName: 'Preview Lead A', countryCode: 'US' },
+  { leadId: 'LDI-0002', customerName: 'Preview Lead B', countryCode: 'JP' },
 ];
 
 const MOCK_LEAD_DETAILS: Record<string, Record<string, unknown>> = {
@@ -857,6 +857,38 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
             error: 'ZONE_NOT_FOUND',
             calcSource: 'MASTER',
             feeType: 'ACTUAL',
+          },
+        ],
+      });
+    },
+    estimateShippingFeeForLinesForFrontend(_s: string | null, _payload: unknown) {
+      // DEV には荷姿が未登録の商品が多いため、スキップ行が多くなる想定のモック
+      succeed({
+        success: true,
+        skipped: [
+          { productId: 'PM0001', condition: 'MINT', reason: 'PRODUCT_PACKAGE_NOT_FOUND' },
+          { productId: 'PM0002', condition: 'NEAR_MINT', reason: 'CONDITION_NOT_SHIPPING_TARGET' },
+        ],
+        results: [
+          {
+            carrierId: 'CAR-PREVIEW-01',
+            carrierName: 'Preview Carrier A',
+            zone: 'F',
+            totalFee: 7500,
+            boxes: [{ chargeableWeight: 0.8, fee: 7500 }],
+            error: null,
+            calcSource: 'MASTER',
+            feeType: 'ESTIMATE',
+          },
+          {
+            carrierId: 'CAR-PREVIEW-02',
+            carrierName: 'Preview Carrier B',
+            zone: null,
+            totalFee: null,
+            boxes: [],
+            error: 'ZONE_NOT_FOUND',
+            calcSource: 'MASTER',
+            feeType: 'ESTIMATE',
           },
         ],
       });
