@@ -6332,3 +6332,88 @@ FedEx送料・DHL送料・UPS送料シートから重量帯（Min_Weight / Max_W
 - readRateSheetWeightBands("DHL"): rowCount=89、min=0、max=68 ✅
 - readRateSheetWeightBands("UPS"): rowCount=89、min=0、max=68 ✅
 - runCoreSchemaConformanceAudit: 総不一致 2件 = ベースライン ✅
+
+---
+
+### 2026-09-01 配送会社マスタ列追加と送料計算API実装（PR #815 / PR #816 / PR-T4）
+
+**概要:**
+配送会社マスタ（CARRIERS シート）に計算用4列を追加し、
+送料計算API `calculateShippingFeeForFrontend` を新設した。
+また DEV 専用テストラッパー `devTestShippingFeeCalc` で5ケースを検証した。
+
+#### 変更ファイル（PR #815）
+
+- `src/00_CoreSchemaRegistry.js`
+  - CARRIERS 定義に4列を追加（末尾）:
+    `DIM_ROUNDING`（寸法端数処理）/ `WEIGHT_STEP_SMALL`（重量刻み小）/ `WEIGHT_STEP_LARGE`（重量刻み大）/ `MAX_WEIGHT`（最大対応重量）
+
+- `src/99_DevShippingRateMasterSetup.js`
+  - `CARRIER_NEW_COLUMN_KEYS`・`CARRIER_COLUMN_DEFAULTS` 定数を追加
+  - `addCarrierColumns(mode)` を追加（DRY_RUN / APPLY）
+    - 既存ヘッダーを `getDisplayValues()` で取得し `indexOf` で照合（列番号直書きなし）
+    - 4列がすでに部分的に存在する場合は `PARTIAL_COLUMNS_DETECTED` エラーで停止
+    - APPLY: ヘッダー追加後、データ行に一括書き込み
+
+- `src/29_ShippingFeeCalculator.js`（新規）
+  - `calculateShippingFeeForFrontend(sessionId, payload)` — エントリポイント
+    - セッション認証 (`setEmailFromSession` / `checkPermission('lead_view')`)
+    - ペイロード検証（countryCode 必須 / boxes 配列必須）
+    - 国コード解決 → マスタ読み込み → 3社計算 → 結果返却
+  - `_sfcResolveCountryCode(countryCode, postalCode)` — CN南部判定
+    - 国コードが CN かつ郵便番号が CN南部範囲（出典: FedEx公式料金表）に該当する場合 `CN-S` を返す
+    - 範囲は整数定数配列 `SFC_CN_SOUTH_POSTAL_RANGES` で管理（コメントに数値列記なし）
+  - `_sfcLoadCarriers(ss)` — CARRIERS テーブル読み込み
+  - `_sfcBuildZonesMap(ss)` — ZONES テーブルを `carrierId|countryCode → zone` マップに変換
+  - `_sfcBuildRatesMap(ss)` — SHIPPING_RATES テーブルを `carrierId|zone → [{minWeight,maxWeight,rate}]` に変換（rate はログに出力しない）
+  - `_sfcCalculateForCarrier(carrier, countryCode, boxes, zonesMap, ratesMap)` — 1社分の計算
+  - `_sfcCalculateBox(carrier, zone, box, ratesMap)` — 1箱の請求重量と料金を計算
+    - 寸法は CEIL 処理（各社 `DIM_ROUNDING='CEIL'` を使用）
+    - 容積重量 = ⌈L⌉×⌈W⌉×⌈H⌉ ÷ 除数（出典: 各社公式料金表）
+    - 課金重量 = max(実重量, 容積重量) を重量刻みで切り上げ
+    - 刻みは PR-T3a の実測値で確定: 0〜21kg → `WEIGHT_STEP_SMALL`（0.5kg）/ 21kg超 → `WEIGHT_STEP_LARGE`（1.0kg）
+    - 68kg 超過で `WEIGHT_EXCEEDS_MAX` エラー（自動分割なし。出典: 各社公式上限）
+    - 料金帯照合: `minWeight < chargeableWeight <= maxWeight`（0kg起点との整合のため開区間）
+  - `_sfcRoundUpToStep(weight, step)` — ステップ単位切り上げ
+  - `_sfcIsActive(value)` — ACTIVE 列の boolean / 文字列統一変換
+  - エラーコード: `ZONE_NOT_FOUND` / `WEIGHT_EXCEEDS_MAX` / `RATE_NOT_FOUND` / `INVALID_BOX_DIMENSIONS` / `UNSUPPORTED_DIM_ROUNDING`
+  - 禁止事項: 料金値のログ出力なし / シート書き込みなし / 日本語エラーメッセージなし
+
+#### 変更ファイル（PR #816）
+
+- `src/99_DevShippingFeeCalcTest.js`（新規・DEV専用）
+  - `devTestShippingFeeCalc()` — セッション認証なしでロジックを直接呼び出すテストラッパー
+  - `_devRunCalc(carriers, countryCode, postalCode, boxes, zonesMap, ratesMap)` — 料金値を除いたサマリーを返す
+    - 返却項目: carrierId / carrierName / effectiveCountry / zone / error / errorDetail / boxCount / chargeableWeights / feeObtained
+    - totalFee / fee の数値は返さない
+
+#### addCarrierColumns APPLY 結果
+
+- added=4（寸法端数処理 / 重量刻み小 / 重量刻み大 / 最大対応重量）
+- updated=3（既存データ行 FedEx / DHL / UPS）
+- 書き込み値: DIM_ROUNDING=CEIL / WEIGHT_STEP_SMALL=0.5 / WEIGHT_STEP_LARGE=1.0 / MAX_WEIGHT=68
+
+#### テストケース結果（料金値は記録しない）
+
+| ケース | 入力 | effectiveCountry | FedEx結果 | DHL結果 | UPS結果 |
+|--------|------|-----------------|-----------|---------|---------|
+| (a) | US / 1箱 30×20×15cm / 1.2kg | US | zone=F / chargeableWeight=2.0kg / feeObtained=true ✅ | zone='-' / RATE_NOT_FOUND ✅ | zone='-' / RATE_NOT_FOUND ✅ |
+| (b) | US / 2箱（同サイズ×2） | US | zone=F / boxCount=2 / feeObtained=true ✅ | RATE_NOT_FOUND ✅ | RATE_NOT_FOUND ✅ |
+| (c) | CN / 中国南部 / 1箱 同寸法 | CN-S ✅ | zone=K / feeObtained=true ✅ | RATE_NOT_FOUND ✅ | zone='10' / feeObtained=true ✅ |
+| (d) | CN / 北京 / 1箱 同寸法 | CN ✅ | zone=W / feeObtained=true ✅ | zone='2' / feeObtained=true ✅ | zone='1' / feeObtained=true ✅ |
+| (e) | US / 1箱 100×100×100cm / 5kg | US | WEIGHT_EXCEEDS_MAX ✅ | WEIGHT_EXCEEDS_MAX ✅ | WEIGHT_EXCEEDS_MAX ✅ |
+
+- (a) 課金重量の計算根拠: 容積重量=30×20×15÷5000=1.8kg > 実重量1.2kg → rawChargeable=1.8kg → ⌈1.8÷0.5⌉×0.5=2.0kg
+- (c)(d) DHL の US ゾーン '-' は地帯表にそのまま格納されており、DHL が当該ルートを非対応としているためのデータ
+- (e) 容積重量=100×100×100÷5000=200kg → maxWeight=68kg 超過 → WEIGHT_EXCEEDS_MAX（分割せずエラー）
+
+#### スキーマ適合性監査（ベースライン）
+
+- runCoreSchemaConformanceAudit: CARRIERS 不一致 0件 / 総不一致 2件 = ベースライン ✅
+
+#### 事後確認
+
+- PR #815 squash mergedAt: `2026-09-01T00:45:03Z` ✅
+- PR #816 squash mergedAt: `2026-09-01T00:49:56Z` ✅
+- addCarrierColumns("APPLY"): added=4 / updated=3 ✅
+- devTestShippingFeeCalc: テストケース(a)〜(e) 全件 期待値通り ✅
