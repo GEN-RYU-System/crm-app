@@ -6576,3 +6576,94 @@ FedEx送料・DHL送料・UPS送料シートから重量帯（Min_Weight / Max_W
 - PR #826 mergedAt: `2026-09-01T03:58:38Z` ✅
 - Deploy to DEV: `bed240f` / success ✅
 - devTestShippingFeeEstimate: ケース(a)-(d) 全件 期待値通り ✅
+
+---
+
+### 2026-09-01 LEADS 定義外13列 実削除（PO決定: 2026-09-01）
+
+**概要:**
+CoreSchemaRegistry の LEADS 定義 (51列) に存在しない13列を DEV スプレッドシートから実際に削除した。
+削除前に退避シート (`LEADS_deleted_columns_20260901`) とバックアップシート (`リード管理_backup_predelete_20260901`) を作成済み（前作業: PR #822–828 系）。
+
+**PO 決定内容:**
+- `リード進捗` / `商談進捗` の 10/10 行データは `99_DevDemoSeed20260826.js` によるシードデータのみ（活性コードからの書き込みなし）
+- `evacuateLeadDeleteTargetColumns` で `rowsMatch: true` — 全10行が退避シートに保存済み
+- 13列全列を削除する
+
+**実施手順と結果:**
+
+#### 1. leadsDeleteColsExecute（実削除）
+
+```json
+{"dryRun":false,"executedAt":"2026-09-01T04:09:03.778Z","sheetName":"リード管理",
+"deletedCount":13,"errorCount":0,
+"deleted":[
+  {"columnName":"Buddyフィードバック","deletedColNumber":56},
+  {"columnName":"レポートコメント","deletedColNumber":55},
+  {"columnName":"レポート確認日","deletedColNumber":54},
+  {"columnName":"レポート確認者","deletedColNumber":53},
+  {"columnName":"レポート提出日","deletedColNumber":52},
+  {"columnName":"反省と今後の抱負","deletedColNumber":51},
+  {"columnName":"More Point","deletedColNumber":50},
+  {"columnName":"Good Point","deletedColNumber":49},
+  {"columnName":"商談の手応え","deletedColNumber":42},
+  {"columnName":"購入頻度(月次)","deletedColNumber":40},
+  {"columnName":"1回の発注金額","deletedColNumber":39},
+  {"columnName":"商談進捗","deletedColNumber":5},
+  {"columnName":"リード進捗","deletedColNumber":4}
+],
+"errors":[],"remainingColsAfterDelete":51}
+```
+
+合格: `deletedCount:13, errorCount:0, remainingColsAfterDelete:51`
+
+#### 2. verifyLeadHeadersAfterDelete（削除後検証）
+
+```json
+{"currentColCount":51,"currentRowCount":11,
+"currentHeaders":["lead_id","registered_at","customer_name","deal_result",
+  "english_call_name","country","sheet_updated_at","lead_assignee_name","lead_type",
+  "lead_source","lead_source_id","message_url","handled_title","ip_ids","cs_note",
+  "email","phone","contact_method","temperature","expected_scale","response_speed",
+  "inquiry_count","archived_at","archive_reason","assigned_at","sales_assignee_name",
+  "assignee_id","customer_type","last_responder_id","prospect_score","next_action",
+  "next_action_date","deal_note","customer_issue","sales_channel",
+  "monthly_expected_amount","competitor_comparison","alert_confirmed_at",
+  "exclusion_reason","loss_reason","first_transaction_date","first_transaction_amount",
+  "cumulative_transaction_amount","conversation_summary","last_conversation_at",
+  "conversation_count","duplicate_flag","duplicate_source_lead_id",
+  "duplicate_confirmed_at","duplicate_confirmed_by","lead_status"],
+"backupColCount":64,"backupRowCount":11,
+"evacuateColCount":13,"evacuateRowCount":11}
+```
+
+合格: `currentColCount:51, backupColCount:64（無傷）, evacuateColCount:13（無傷）`
+
+#### 3. runCoreSchemaConformanceAudit（監査確認）
+
+```
+[LEADS / リード管理]
+  3. ヘッダー列数: 定義 51 / 実シート 51 → OK
+  小計不一致: 0件
+=== 総不一致: 1 → ★FAIL ===  ← CUSTOMERS の差1列（担当者ID）のみ。ベースライン更新済み
+```
+
+合格: LEADS 小計 0件（定義 51 / 実シート 51 で一致）
+
+#### 4. dryRunOrderStatusRecalculation（副作用確認）
+
+```
+=== dryRunOrderStatusRecalculation ===
+総件数: 12件  変更なし: 12件  変更あり: 0件
+--- DRY RUN 完了（書き込みなし）---
+```
+
+合格: 変更あり 0件
+
+**スキーマ状態（削除後）:**
+
+| テーブル | 削除前 | 削除後 | 変化 |
+|---------|--------|--------|------|
+| LEADS / リード管理 | 64列（差13） | 51列（差0） | 解消 |
+| CUSTOMERS / 顧客マスタ | 15列（差1） | 15列（差1） | 変化なし |
+| 総不一致 | 2件 | 1件 | LEADS 解消 |

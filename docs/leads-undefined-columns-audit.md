@@ -224,3 +224,84 @@ clasp run auditLeadUndefinedColumns
 | `src/22_SetupIntegratedSheet.js` | 旧統合シート設計（Buddy列含む） |
 | `src/23_SheetService.js` | リード作成時の空初期化（Buddy列含む） |
 | `src/99_DevLeadUndefinedColumnAudit.js` | 本調査の GAS 確認関数（本 PR で追加） |
+
+---
+
+## 8. 実施結果（2026-09-01 実削除完了）
+
+### 実施日時
+
+`2026-09-01T04:09:03.778Z`（JST: 2026-09-01 13:09）
+
+### PO 決定の最終確認
+
+- `リード進捗`・`商談進捗` の 10/10 行データは `99_DevDemoSeed20260826.js` によるシードデータ（活性コードからの書き込みなし）
+- `evacuateLeadDeleteTargetColumns` で `rowsMatch: true` — 10行全件が退避シートに保存済み
+- PO 決定（2026-09-01）: 13列全て削除
+
+### 実行結果（全4コマンド）
+
+#### leadsDeleteColsExecute
+
+```json
+{"dryRun":false,"executedAt":"2026-09-01T04:09:03.778Z","sheetName":"リード管理",
+"deletedCount":13,"errorCount":0,
+"deleted":[
+  {"columnName":"Buddyフィードバック","deletedColNumber":56},
+  {"columnName":"レポートコメント","deletedColNumber":55},
+  {"columnName":"レポート確認日","deletedColNumber":54},
+  {"columnName":"レポート確認者","deletedColNumber":53},
+  {"columnName":"レポート提出日","deletedColNumber":52},
+  {"columnName":"反省と今後の抱負","deletedColNumber":51},
+  {"columnName":"More Point","deletedColNumber":50},
+  {"columnName":"Good Point","deletedColNumber":49},
+  {"columnName":"商談の手応え","deletedColNumber":42},
+  {"columnName":"購入頻度(月次)","deletedColNumber":40},
+  {"columnName":"1回の発注金額","deletedColNumber":39},
+  {"columnName":"商談進捗","deletedColNumber":5},
+  {"columnName":"リード進捗","deletedColNumber":4}
+],
+"errors":[],"remainingColsAfterDelete":51}
+```
+
+判定: **合格**（deletedCount:13, errorCount:0, remainingColsAfterDelete:51）
+
+#### verifyLeadHeadersAfterDelete
+
+```json
+{"currentColCount":51,"currentRowCount":11,
+"backupColCount":64,"backupRowCount":11,
+"evacuateColCount":13,"evacuateRowCount":11}
+```
+
+判定: **合格**（currentColCount:51, backupColCount:64, evacuateColCount:13 — 全て無傷）
+
+#### runCoreSchemaConformanceAudit
+
+```
+[LEADS / リード管理]
+  3. ヘッダー列数: 定義 51 / 実シート 51 → OK
+  小計不一致: 0件
+=== 総不一致: 1 → ★FAIL ===  （CUSTOMERS の担当者ID差1列のみ残存 — ベースライン更新済み）
+```
+
+判定: **合格**（LEADS 小計 0件）
+
+#### dryRunOrderStatusRecalculation
+
+```
+=== dryRunOrderStatusRecalculation ===
+総件数: 12件  変更なし: 12件  変更あり: 0件
+--- DRY RUN 完了（書き込みなし）---
+```
+
+判定: **合格**（変更あり 0件）
+
+### 削除後のシート状態
+
+| 項目 | 値 |
+|-----|-----|
+| リード管理 列数 | 51（CoreSchemaRegistry 定義と一致） |
+| バックアップシート | `リード管理_backup_predelete_20260901`（64列・11行・無傷） |
+| 退避シート | `LEADS_deleted_columns_20260901`（13列・11行・無傷） |
+| スキーマ適合性 | LEADS 0件不一致（初めて解消） |
