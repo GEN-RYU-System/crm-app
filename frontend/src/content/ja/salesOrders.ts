@@ -247,6 +247,7 @@ export const salesOrdersCopy = {
     billingShippingFeeSkippedColReason: 'スキップ理由',
     billingShippingFeeNoBoxes: '計算に使用できる明細がありません（商品・コンディション・荷姿のマスタを確認してください）',
     billingShippingFeeErrorUnknown: '送料の計算に失敗しました',
+    billingShippingFeeErrorOrderCountryNotResolvable: '顧客の配送先国が取得できませんでした。顧客情報を確認してください。',
     billingShippingFeeSkipReasonConditionNotFound: '商品とコンディションの組み合わせが見つかりません',
     billingShippingFeeSkipReasonConditionNotTarget: '送料計算の対象外コンディションです',
     billingShippingFeeSkipReasonConditionUnitNotApplicable: 'コンディションの単位が適用外です',
@@ -279,6 +280,7 @@ export const salesOrdersCopy = {
     shippingFeeErrorRateNotFound: '該当する重量帯の料金が見つかりません',
     shippingFeeErrorInvalidBoxDimensions: '寸法の値が無効です',
     shippingFeeErrorUnsupportedDimRounding: '未対応の寸法丸め方式です',
+    shippingFeeErrorMissingCountryCode: '配送先の国が登録されていません。受注の配送先を確認してください。',
     shippingFeeErrorUnknown: '計算に失敗しました',
   },
 } as const;

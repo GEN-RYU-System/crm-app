@@ -129,7 +129,6 @@ export const quotesCopy = {
     shippingFeeCalc: {
       button: '送料を計算',
       calculating: '計算中...',
-      saveFirst: '保存してから計算してください',
       resultTitle: '送料見積結果',
       colCarrier: '配送会社',
       colZone: 'ゾーン',
@@ -139,6 +138,7 @@ export const quotesCopy = {
       skippedTitle: 'スキップされた明細',
       skippedColProduct: '商品',
       skippedColReason: 'スキップ理由',
+      errorMissingCountryCode: '配送先の国が登録されていません。顧客情報を確認してください。',
       errorNoBoxes: '計算に使用できる明細がありません（商品・コンディション・荷姿のマスタを確認してください）',
       skipReasonConditionNotFound: '商品とコンディションの組み合わせが見つかりません',
       skipReasonConditionNotTarget: '送料計算の対象外コンディションです',
