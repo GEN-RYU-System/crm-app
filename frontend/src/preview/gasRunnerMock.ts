@@ -719,10 +719,20 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     },
     checkSyncSignals(_s: string | null) { succeed(mockSyncSignals); },
     getLeadsBatchForFrontend(_s: string | null, _force: boolean) {
-      succeed({ leads: [], formOptions: { leadTypes: [], responseSpeeds: [], countries: [], leadSources: [] } });
+      succeed({ leads: [], formOptions: {
+        leadTypes: ['インバウンド', 'アウトバウンド'],
+        responseSpeeds: ['即レス(30分以内)', '24h以内', '48h以内', '3日以上', '未返信'],
+        countries: [],
+        leadSources: [],
+      } });
     },
     getLeadFormOptions(_s: string | null) {
-      succeed({ leadTypes: [], responseSpeeds: [], countries: [], leadSources: [] });
+      succeed({
+        leadTypes: ['インバウンド', 'アウトバウンド'],
+        responseSpeeds: ['即レス(30分以内)', '24h以内', '48h以内', '3日以上', '未返信'],
+        countries: [],
+        leadSources: [],
+      });
     },
     getCoreIssuerForFrontend(_s: string | null) {
       succeed({
