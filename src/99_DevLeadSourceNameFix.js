@@ -1,27 +1,3 @@
-/**
- * 流入経路「Market Place」→「Facebook Marketplace」名称変換
- *
- * dryRunMarketPlaceRename()
- *   - 変換対象件数・既存「Facebook Marketplace」件数・表記ゆれを確認（書き込みなし）
- *
- * execMarketPlaceRename()
- *   - ★承認後のみ実行。withSheetWrite_ でロック＋キャッシュ削除
- *
- * 実行方法:
- *   clasp run dryRunMarketPlaceRename
- *   （承認後）
- *   clasp run execMarketPlaceRename
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 var MARKET_PLACE_OLD = 'Market Place';
 var MARKET_PLACE_NEW = 'Facebook Marketplace';
@@ -40,7 +16,7 @@ function dryRunMarketPlaceRename() {
   var lastRow = sheet.getLastRow();
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(String);
 
-  var sourceIdx = _leadsHeaderIdx(headers, 'lead_source', '流入経路');
+  var sourceIdx = headers.indexOf('lead_source');
   if (sourceIdx === -1) throw new Error('流入経路列が見つかりません');
 
   var colData = sheet.getRange(2, sourceIdx + 1, lastRow - 1, 1).getValues();
@@ -110,7 +86,7 @@ function execMarketPlaceRename() {
   var lastCol = sheet.getLastColumn();
   var lastRow = sheet.getLastRow();
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(String);
-  var sourceIdx = _leadsHeaderIdx(headers, 'lead_source', '流入経路');
+  var sourceIdx = headers.indexOf('lead_source');
   if (sourceIdx === -1) throw new Error('流入経路列が見つかりません');
 
   return withSheetWrite_({

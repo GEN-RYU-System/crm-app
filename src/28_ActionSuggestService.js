@@ -1,23 +1,3 @@
-/**
- * ActionSuggestService.gs
- * 次回アクションサジェスト機能を提供するサービス
- * 2026-01-22追加
- *
- * 機能:
- * - 過去の入力履歴からサジェスト候補を取得
- * - 進捗ステータス別の推奨アクション
- * - アクション記入日の自動記録
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 // ============================================================
 // 次回アクションサジェスト
@@ -85,7 +65,7 @@ function getActionSuggestions(staffId, progressStatus) {
     recommended: [],  // 進捗ステータス別推奨アクション
     common: COMMON_ACTIONS,  // 共通アクション
     history: [],  // 過去の入力履歴
-    dateOptions: DEFAULT_DROPDOWN_OPTIONS['次回アクション日'] || []
+    dateOptions: DEFAULT_DROPDOWN_OPTIONS['next_action_date'] || []
   };
 
   // 進捗ステータス別推奨アクション
@@ -116,8 +96,8 @@ function getStaffActionHistory(staffId) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const staffIdIdx = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
-  const actionIdx = _leadsHeaderIdx(headers, 'next_action', '次回アクション');
+  const staffIdIdx = headers.indexOf('assignee_id');
+  const actionIdx = headers.indexOf('next_action');
   const staffNameIdx = headers.indexOf('担当者');
 
   if (actionIdx === -1) {
@@ -215,9 +195,9 @@ function setNextAction(leadId, action, dateOption) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const leadIdIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
-  const actionIdx = _leadsHeaderIdx(headers, 'next_action', '次回アクション');
-  const actionDateIdx = _leadsHeaderIdx(headers, 'next_action_date', '次回アクション日');
+  const leadIdIdx = headers.indexOf('lead_id');
+  const actionIdx = headers.indexOf('next_action');
+  const actionDateIdx = headers.indexOf('next_action_date');
   // アクション記入日列を追加する場合（現在のヘッダーにない場合は作成）
   let actionRecordDateIdx = headers.indexOf('アクション記入日');
 
@@ -260,7 +240,7 @@ function setNextAction(leadId, action, dateOption) {
   }
 
   // シート更新日も更新
-  const updateDateIdx = _leadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
+  const updateDateIdx = headers.indexOf('sheet_updated_at');
   if (updateDateIdx !== -1) {
     sheet.getRange(targetRow, updateDateIdx + 1).setValue(now);
   }
@@ -292,12 +272,12 @@ function getActionReminders(daysAhead) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  const leadIdIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
-  const customerIdx = headers.indexOf('顧客名');
-  const actionIdx = _leadsHeaderIdx(headers, 'next_action', '次回アクション');
-  const actionDateIdx = _leadsHeaderIdx(headers, 'next_action_date', '次回アクション日');
+  const leadIdIdx = headers.indexOf('lead_id');
+  const customerIdx = headers.indexOf('customer_name');
+  const actionIdx = headers.indexOf('next_action');
+  const actionDateIdx = headers.indexOf('next_action_date');
   const staffIdx = headers.indexOf('担当者');
-  const staffIdIdx = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
+  const staffIdIdx = headers.indexOf('assignee_id');
   const statusIdx = headers.indexOf('進捗ステータス');
 
   if (actionDateIdx === -1) {

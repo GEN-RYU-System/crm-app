@@ -230,9 +230,9 @@ function generateBuddyChatResponse(userMessage, staffId, context) {
     if (dealData) {
       contextInfo = `
 【現在の商談情報】
-- 顧客名: ${dealData['顧客名']}
+- 顧客名: ${dealData['customer_name']}
 - ステータス: ${dealData['進捗ステータス']}
-- 取り扱い: ${dealData['取り扱いタイトル']}
+- 取り扱い: ${dealData['handled_title']}
 `;
     }
   }

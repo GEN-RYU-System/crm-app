@@ -1,18 +1,3 @@
-/**
- * ShiftService.gs
- * シフト管理機能を提供するサービス
- * Phase 4: シフト管理
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 // ==================== 時間帯定義 ====================
 const SHIFT_TIME_SLOTS = [
@@ -45,7 +30,7 @@ function getMyShift(staffId, targetWeek) {
 
   // 担当者ID + 対象週でフィルタ
   const myShifts = data.filter(row =>
-    row['担当者ID'] === staffId && row['対象週'] === targetWeek
+    row['assignee_id'] === staffId && row['対象週'] === targetWeek
   );
 
   return {
@@ -80,7 +65,7 @@ function getWeeklyShifts(targetWeek) {
   // スタッフごとに整理
   const shiftsByStaff = {};
   activeStaff.forEach(staff => {
-    const staffId = staff['担当者ID'];
+    const staffId = staff['assignee_id'];
     const staffName = getStaffFullName(staff);
 
     shiftsByStaff[staffId] = {
@@ -97,7 +82,7 @@ function getWeeklyShifts(targetWeek) {
 
   // シフトデータをマッピング
   weekShifts.forEach(shift => {
-    const staffId = shift['担当者ID'];
+    const staffId = shift['assignee_id'];
     const day = shift['曜日'];
 
     if (shiftsByStaff[staffId] && day) {
@@ -115,7 +100,7 @@ function getWeeklyShifts(targetWeek) {
   return {
     shifts: Object.values(shiftsByStaff),
     staffList: activeStaff.map(s => ({
-      担当者ID: s['担当者ID'],
+      担当者ID: s['assignee_id'],
       担当者名: getStaffFullName(s),
       役割: s['役割']
     })),
@@ -147,7 +132,7 @@ function saveShift(staffId, targetWeek, day, shiftData) {
   let staffName = '';
   if (staffSheet) {
     const staffData = getSheetDataAsObjects(staffSheet);
-    const staff = staffData.find(s => s['担当者ID'] === staffId);
+    const staff = staffData.find(s => s['assignee_id'] === staffId);
     if (staff) {
       staffName = getStaffFullName(staff);
     }
@@ -159,7 +144,7 @@ function saveShift(staffId, targetWeek, day, shiftData) {
   // 既存のシフトを検索
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const staffIdIdx = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
+  const staffIdIdx = headers.indexOf('assignee_id');
   const weekIdx = headers.indexOf('対象週');
   const dayIdx = headers.indexOf('曜日');
 
@@ -377,19 +362,19 @@ function getShiftSubmissionStatus(targetWeek) {
   const submittedStaffIds = new Set();
   shiftData
     .filter(s => s['対象週'] === targetWeek)
-    .forEach(s => submittedStaffIds.add(s['担当者ID']));
+    .forEach(s => submittedStaffIds.add(s['assignee_id']));
 
   const submitted = [];
   const notSubmitted = [];
 
   activeStaff.forEach(staff => {
     const staffInfo = {
-      担当者ID: staff['担当者ID'],
+      担当者ID: staff['assignee_id'],
       担当者名: getStaffFullName(staff),
       役割: staff['役割']
     };
 
-    if (submittedStaffIds.has(staff['担当者ID'])) {
+    if (submittedStaffIds.has(staff['assignee_id'])) {
       submitted.push(staffInfo);
     } else {
       notSubmitted.push(staffInfo);

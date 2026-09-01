@@ -1,17 +1,3 @@
-/**
- * アーカイブサービス - 統合シート版
- * リード管理シート内でアーカイブ日を設定して管理
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 /**
  * リードステータスが成約/失注の場合に商談結果列を同期する（共通ユーティリティ）
@@ -23,7 +9,7 @@ function _leadsHeaderIdx(headers, newName, oldName) {
  */
 function syncDealResultByStatus_(sheet, headers, targetRow, leadStatus) {
   if (leadStatus !== '成約' && leadStatus !== '失注') return;
-  const dealResultIdx = _leadsHeaderIdx(headers, 'deal_result', '商談結果');
+  const dealResultIdx = headers.indexOf('deal_result');
   if (dealResultIdx !== -1) {
     sheet.getRange(targetRow, dealResultIdx + 1).setValue(leadStatus);
   }
@@ -43,7 +29,7 @@ function archiveOnStatusChange(e) {
   if (editedRow === 1) return;
 
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const statusColIndex = _leadsHeaderIdx(headers, 'lead_status', 'リードステータス');
+  const statusColIndex = headers.indexOf('lead_status');
   if (statusColIndex < 0) throw new Error('列が見つかりません: リードステータス');
 
   // リードステータス列が編集された場合のみ
@@ -53,8 +39,8 @@ function archiveOnStatusChange(e) {
 
   // 完了ステータスの場合はアーカイブ日を設定
   if (CONFIG.CLOSED_STATUSES && CONFIG.CLOSED_STATUSES.includes(newStatus)) {
-    const archiveDateColIndex = _leadsHeaderIdx(headers, 'archived_at', 'アーカイブ日');
-    const archiveReasonColIndex = _leadsHeaderIdx(headers, 'archive_reason', 'アーカイブ理由');
+    const archiveDateColIndex = headers.indexOf('archived_at');
+    const archiveReasonColIndex = headers.indexOf('archive_reason');
 
     if (archiveDateColIndex !== -1) {
       sheet.getRange(editedRow, archiveDateColIndex + 1).setValue(new Date());
@@ -67,7 +53,7 @@ function archiveOnStatusChange(e) {
     syncDealResultByStatus_(sheet, headers, editedRow, newStatus);
 
     // 顧客名を取得して通知
-    const customerNameIndex = headers.indexOf('顧客名');
+    const customerNameIndex = headers.indexOf('customer_name');
     const rowData = sheet.getRange(editedRow, 1, 1, sheet.getLastColumn()).getValues()[0];
     const customerName = customerNameIndex !== -1 ? rowData[customerNameIndex] : '不明';
 
@@ -130,9 +116,9 @@ function manualArchive() {
   if (response !== ui.Button.YES) return;
 
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const archiveDateColIndex = _leadsHeaderIdx(headers, 'archived_at', 'アーカイブ日');
-  const archiveReasonColIndex = _leadsHeaderIdx(headers, 'archive_reason', 'アーカイブ理由');
-  const updateDateColIndex = _leadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
+  const archiveDateColIndex = headers.indexOf('archived_at');
+  const archiveReasonColIndex = headers.indexOf('archive_reason');
+  const updateDateColIndex = headers.indexOf('sheet_updated_at');
 
   const now = new Date();
 
@@ -207,11 +193,11 @@ function restoreFromArchive() {
   if (response !== ui.Button.YES) return;
 
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const archiveDateColIndex = _leadsHeaderIdx(headers, 'archived_at', 'アーカイブ日');
-  const archiveReasonColIndex = _leadsHeaderIdx(headers, 'archive_reason', 'アーカイブ理由');
-  const leadStatusColIndex = _leadsHeaderIdx(headers, 'lead_status', 'リードステータス');
-  const reapproachDateColIndex = _leadsHeaderIdx(headers, 'next_action_date', '次回アクション日');
-  const updateDateColIndex = _leadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
+  const archiveDateColIndex = headers.indexOf('archived_at');
+  const archiveReasonColIndex = headers.indexOf('archive_reason');
+  const leadStatusColIndex = headers.indexOf('lead_status');
+  const reapproachDateColIndex = headers.indexOf('next_action_date');
+  const updateDateColIndex = headers.indexOf('sheet_updated_at');
 
   const now = new Date();
 
@@ -263,12 +249,12 @@ function archiveToDroppedLead(leadId, archiveReason, csMemo) {
   const data = leadsSheet.getDataRange().getValues();
   const headers = data[0];
 
-  const idIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
-  const archiveDateIdx = _leadsHeaderIdx(headers, 'archived_at', 'アーカイブ日');
-  const archiveReasonIdx = _leadsHeaderIdx(headers, 'archive_reason', 'アーカイブ理由');
-  const lastHandlerIdx = _leadsHeaderIdx(headers, 'last_responder_id', '最終対応者ID');
-  const csMemoIdx = _leadsHeaderIdx(headers, 'cs_note', 'CSメモ');
-  const updateDateIdx = _leadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
+  const idIdx = headers.indexOf('lead_id');
+  const archiveDateIdx = headers.indexOf('archived_at');
+  const archiveReasonIdx = headers.indexOf('archive_reason');
+  const lastHandlerIdx = headers.indexOf('last_responder_id');
+  const csMemoIdx = headers.indexOf('cs_note');
+  const updateDateIdx = headers.indexOf('sheet_updated_at');
 
   // リードを検索
   let targetRowIndex = -1;
@@ -330,7 +316,7 @@ function getArchivedLeadsList() {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const archiveDateIdx = _leadsHeaderIdx(headers, 'archived_at', 'アーカイブ日');
+  const archiveDateIdx = headers.indexOf('archived_at');
   if (archiveDateIdx < 0) return [];
   const leads = [];
 

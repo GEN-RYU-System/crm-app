@@ -1,24 +1,3 @@
-/**
- * PermissionService.gs
- * 権限制御サービス
- * 2026-01-22追加
- *
- * 機能:
- * - ユーザー認証・権限取得
- * - 役割別アクセス制御
- * - データフィルタリング（全体/チーム/個人）
- * - リソース別アクセス権チェック
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 // ============================================================
 // ユーザー認証・権限取得
@@ -286,7 +265,7 @@ function getViewableLeads(staffId) {
   const data = leadSheet.getDataRange().getValues();
   const headers = data[0];
 
-  const staffIdIdx = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
+  const staffIdIdx = headers.indexOf('assignee_id');
 
   let filteredLeads = [];
 
@@ -347,7 +326,7 @@ function getViewableDeals(staffId) {
   const data = leadSheet.getDataRange().getValues();
   const headers = data[0];
 
-  const staffIdIdx = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
+  const staffIdIdx = headers.indexOf('assignee_id');
   const statusIdx = headers.indexOf('進捗ステータス');
 
   // 商談ステータスのみ抽出
@@ -458,8 +437,8 @@ function canEditLead(staffId, leadId) {
   const data = leadSheet.getDataRange().getValues();
   const headers = data[0];
 
-  const leadIdIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
-  const leadStaffIdIdx = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
+  const leadIdIdx = headers.indexOf('lead_id');
+  const leadStaffIdIdx = headers.indexOf('assignee_id');
 
   for (let i = 1; i < data.length; i++) {
     if (data[i][leadIdIdx] === leadId) {
@@ -519,8 +498,8 @@ function canEditDeal(staffId, leadId) {
   const data = leadSheet.getDataRange().getValues();
   const headers = data[0];
 
-  const leadIdIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
-  const leadStaffIdIdx = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
+  const leadIdIdx = headers.indexOf('lead_id');
+  const leadStaffIdIdx = headers.indexOf('assignee_id');
   const statusIdx = headers.indexOf('進捗ステータス');
 
   for (let i = 1; i < data.length; i++) {

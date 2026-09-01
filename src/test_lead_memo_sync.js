@@ -1,16 +1,3 @@
-/**
- * リード管理の商談メモ同期テスト
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 function testLeadMemoSync() {
   const ss = getSpreadsheet();
@@ -24,7 +11,7 @@ function testLeadMemoSync() {
   // 1. ヘッダー確認
   Logger.log('【Step 1: ヘッダー確認】');
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const memoIndex = _leadsHeaderIdx(headers, 'deal_note', '商談メモ');
+  const memoIndex = headers.indexOf('deal_note');
 
   Logger.log('ヘッダー数: ' + headers.length);
   Logger.log('商談メモ列番号: ' + (memoIndex + 1) + ' (0-indexed: ' + memoIndex + ')');
@@ -54,8 +41,8 @@ function testLeadMemoSync() {
 
   dataRange.forEach((row, index) => {
     const actualRow = startRow + index;
-    const leadId = row[_leadsHeaderIdx(headers, 'lead_id', 'リードID')];
-    const customerName = row[headers.indexOf('顧客名')];
+    const leadId = row[headers.indexOf('lead_id')];
+    const customerName = row[headers.indexOf('customer_name')];
     const memoValue = row[memoIndex];
 
     Logger.log(`行${actualRow}:`);
@@ -81,13 +68,13 @@ function testLeadMemoSync() {
 
   testLeads.forEach((lead, index) => {
     Logger.log(`Lead ${index + 1}:`);
-    Logger.log(`  リードID: ${lead['リードID']}`);
-    Logger.log(`  顧客名: ${lead['顧客名']}`);
+    Logger.log(`  リードID: ${lead['lead_id']}`);
+    Logger.log(`  顧客名: ${lead['customer_name']}`);
 
     // 商談メモの存在確認
     if ('商談メモ' in lead) {
       Logger.log(`  ✅ 商談メモキー: 存在する`);
-      Logger.log(`  商談メモ値: ${lead['商談メモ'] === '' ? '(空)' : lead['商談メモ']}`);
+      Logger.log(`  商談メモ値: ${lead['deal_note'] === '' ? '(空)' : lead['deal_note']}`);
     } else {
       Logger.log(`  ❌ 商談メモキー: 存在しない`);
     }
@@ -104,7 +91,7 @@ function testLeadMemoSync() {
   // 4. 特定のリードで詳細テスト（最初のリード）
   if (leads.length > 0) {
     const testLead = leads[0];
-    const testLeadId = testLead['リードID'];
+    const testLeadId = testLead['lead_id'];
 
     Logger.log('【Step 4: 特定リードの詳細テスト】');
     Logger.log('テストリードID: ' + testLeadId);
@@ -115,12 +102,12 @@ function testLeadMemoSync() {
 
     if (leadDetail) {
       Logger.log('getLeadDetail() 結果:');
-      Logger.log(`  リードID: ${leadDetail['リードID']}`);
-      Logger.log(`  顧客名: ${leadDetail['顧客名']}`);
+      Logger.log(`  リードID: ${leadDetail['lead_id']}`);
+      Logger.log(`  顧客名: ${leadDetail['customer_name']}`);
 
       if ('商談メモ' in leadDetail) {
         Logger.log(`  ✅ 商談メモ: 存在する`);
-        Logger.log(`  値: ${leadDetail['商談メモ'] === '' ? '(空)' : leadDetail['商談メモ']}`);
+        Logger.log(`  値: ${leadDetail['deal_note'] === '' ? '(空)' : leadDetail['deal_note']}`);
       } else {
         Logger.log(`  ❌ 商談メモ: 存在しない`);
       }
@@ -134,9 +121,9 @@ function testLeadMemoSync() {
   // 5. updateLead() のテスト（書き込みせずに確認のみ）
   Logger.log('【Step 5: ヘッダーマッピング確認】');
   Logger.log('商談メモのヘッダー位置: ' + (memoIndex + 1) + '列目');
-  Logger.log('HEADERS.LEADSでの位置: ' + (HEADERS._leadsHeaderIdx(LEADS, 'deal_note', '商談メモ') + 1) + '列目');
+  Logger.log('HEADERS.LEADSでの位置: ' + (HEADERS.LEADS.indexOf('deal_note') + 1) + '列目');
 
-  const configIndex = HEADERS._leadsHeaderIdx(LEADS, 'deal_note', '商談メモ');
+  const configIndex = HEADERS.LEADS.indexOf('deal_note');
   if (configIndex === memoIndex) {
     Logger.log('✅ 一致: HEADERSとシートで列位置が一致');
   } else {
@@ -178,7 +165,7 @@ function testUpdateLeadMemo(leadId, newMemoValue) {
   }
 
   Logger.log('【更新前】');
-  Logger.log('商談メモ: ' + (beforeLead['商談メモ'] || '(空)'));
+  Logger.log('商談メモ: ' + (beforeLead['deal_note'] || '(空)'));
   Logger.log('');
 
   // 更新実行
@@ -196,17 +183,17 @@ function testUpdateLeadMemo(leadId, newMemoValue) {
 
   Logger.log('');
   Logger.log('【更新後】');
-  Logger.log('商談メモ: ' + (afterLead['商談メモ'] || '(空)'));
+  Logger.log('商談メモ: ' + (afterLead['deal_note'] || '(空)'));
   Logger.log('');
 
   // 検証
-  if (afterLead['商談メモ'] === newMemoValue) {
+  if (afterLead['deal_note'] === newMemoValue) {
     Logger.log('✅ 正しく更新されました');
     return { success: true };
   } else {
     Logger.log('❌ 更新が反映されていません');
     Logger.log('期待値: ' + newMemoValue);
-    Logger.log('実際の値: ' + afterLead['商談メモ']);
+    Logger.log('実際の値: ' + afterLead['deal_note']);
     return { success: false, error: '更新が反映されない' };
   }
 }

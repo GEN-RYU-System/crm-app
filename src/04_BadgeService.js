@@ -172,7 +172,7 @@ function getStaffWinStreak(staffId) {
   if (!leadSheet || !staffSheet) return 0;
 
   const staff = getSheetDataAsObjects(staffSheet);
-  const staffMember = staff.find(s => s['担当者ID'] === staffId);
+  const staffMember = staff.find(s => s['assignee_id'] === staffId);
   if (!staffMember) return 0;
 
   const staffName = getStaffFullName(staffMember);
@@ -200,7 +200,7 @@ function checkBadgeConditions(staffId) {
   const goals = goalsSheet ? getSheetDataAsObjects(goalsSheet) : [];
 
   // 担当者名を取得
-  const staffMember = staff.find(s => s['担当者ID'] === staffId);
+  const staffMember = staff.find(s => s['assignee_id'] === staffId);
   if (!staffMember) return [];
 
   const staffName = getStaffFullName(staffMember);
@@ -218,24 +218,24 @@ function checkBadgeConditions(staffId) {
 
   // 今月の統計
   const thisMonthWon = wonDeals.filter(l => {
-    const date = new Date(l['初回取引日'] || l['シート更新日']);
+    const date = new Date(l['first_transaction_date'] || l['sheet_updated_at']);
     return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
   });
   const thisMonthLost = myDeals.filter(l => {
     if (l['進捗ステータス'] !== '失注') return false;
-    const date = new Date(l['シート更新日']);
+    const date = new Date(l['sheet_updated_at']);
     return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
   });
   const thisMonthClosed = thisMonthWon.length + thisMonthLost.length;
   const thisMonthWinRate = thisMonthClosed > 0 ? Math.round((thisMonthWon.length / thisMonthClosed) * 100) : 0;
-  const thisMonthSales = thisMonthWon.reduce((sum, l) => sum + (parseFloat(l['初回取引金額']) || 0), 0);
+  const thisMonthSales = thisMonthWon.reduce((sum, l) => sum + (parseFloat(l['first_transaction_amount']) || 0), 0);
 
   // 連勝数を計算
   const winStreak = calculateWinStreak(myDeals);
 
   // 目標達成率を計算
   const myGoal = goals.find(g =>
-    g['担当者ID'] === staffId &&
+    g['assignee_id'] === staffId &&
     g['期間タイプ'] === '月次' &&
     g['期間'] === `${thisYear}/${String(thisMonth + 1).padStart(2, '0')}`
   );
@@ -243,13 +243,13 @@ function checkBadgeConditions(staffId) {
     Math.round((thisMonthSales / parseFloat(myGoal['売上目標'])) * 100) : 0;
 
   // 最大単一取引額
-  const maxSingleDeal = Math.max(...wonDeals.map(l => parseFloat(l['初回取引金額']) || 0), 0);
+  const maxSingleDeal = Math.max(...wonDeals.map(l => parseFloat(l['first_transaction_amount']) || 0), 0);
 
   // クイッククローズをチェック
   const hasQuickClose = wonDeals.some(l => {
-    if (!l['アサイン日'] || !l['初回取引日']) return false;
-    const assignDate = new Date(l['アサイン日']);
-    const closeDate = new Date(l['初回取引日']);
+    if (!l['assigned_at'] || !l['first_transaction_date']) return false;
+    const assignDate = new Date(l['assigned_at']);
+    const closeDate = new Date(l['first_transaction_date']);
     const days = Math.floor((closeDate - assignDate) / (1000 * 60 * 60 * 24));
     return days <= 3;
   });
@@ -305,8 +305,8 @@ function calculateWinStreak(deals) {
   const closedDeals = deals
     .filter(l => l['進捗ステータス'] === '成約' || l['進捗ステータス'] === '失注')
     .sort((a, b) => {
-      const dateA = new Date(a['シート更新日'] || 0);
-      const dateB = new Date(b['シート更新日'] || 0);
+      const dateA = new Date(a['sheet_updated_at'] || 0);
+      const dateB = new Date(b['sheet_updated_at'] || 0);
       return dateB - dateA; // 新しい順
     });
 
@@ -438,7 +438,7 @@ function getBuddyCelebration(staffId, dealData) {
   const ss = getSpreadsheet();
   const leadSheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
   const staffSheet = ss.getSheetByName(CONFIG.SHEETS.STAFF);
-  const staffMember = staffSheet ? getSheetDataAsObjects(staffSheet).find(s => s['担当者ID'] === staffId) : null;
+  const staffMember = staffSheet ? getSheetDataAsObjects(staffSheet).find(s => s['assignee_id'] === staffId) : null;
 
   if (staffMember && leadSheet) {
     const staffName = getStaffFullName(staffMember);

@@ -1,17 +1,3 @@
-/**
- * 開発環境サービス
- * 開発環境の作成・管理・クリーンアップを行う
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 // ============================================================
 // 開発環境作成
@@ -359,12 +345,12 @@ function addLeadSourceIdColumn() {
   var lastCol  = sheet.getLastColumn();
   var headers  = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(String);
 
-  if (_leadsHeaderIdx(headers, 'lead_source_id', '流入元ID') !== -1) {
+  if (headers.indexOf('lead_source_id') !== -1) {
     Logger.log('列既存: 流入元ID（スキップ）');
     return '列既存: 流入元ID';
   }
 
-  var sourceIdx = _leadsHeaderIdx(headers, 'lead_source', '流入経路');
+  var sourceIdx = headers.indexOf('lead_source');
   if (sourceIdx === -1) throw new Error('「流入経路」列が見つかりません');
 
   // insertColumnAfter は 1-based

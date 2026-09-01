@@ -1,19 +1,4 @@
-/**
- * 救出 DRY-RUN（一時検証用・書き込みなし）
- * - 重複30ペアを比較し、新しい行を選択
- * - 購入頻度→購入頻度(月次) の列名読み替えを含む61列マッピングを適用
- * - 先頭3行のプレビューと 商談進捗 の値集計を返す
- */
 
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 function rescueDryRun() {
   const ss = getSpreadsheet();
   const leads = ss.getSheetByName(CONFIG.SHEETS.LEADS);
@@ -29,7 +14,7 @@ function rescueDryRun() {
   }
 
   // アーカイブ行をリード管理の列順に変換（61列）
-  const updateDateArchIdx = _leadsHeaderIdx(ah, 'sheet_updated_at', 'シート更新日');
+  const updateDateArchIdx = ah.indexOf('sheet_updated_at');
   function toLeadsRow(archRow) {
     return lh.map(leadsHeader => {
       let archIdx;
@@ -87,7 +72,7 @@ function rescueDryRun() {
   });
 
   // 先頭3行プレビュー（非空フィールドのみ）
-  const leadIdIdx = _leadsHeaderIdx(lh, 'lead_id', 'リードID');
+  const leadIdIdx = lh.indexOf('lead_id');
   const preview = mappedRows.slice(0, 3).map(row => {
     const obj = {};
     lh.forEach((h, i) => {
@@ -122,7 +107,7 @@ function rescueWrite(limit) {
 
   // 既存リードIDを収集（重複書き込み防止）
   const existingData = leads.getDataRange().getValues();
-  const existingIdIdx = existingData[0].indexOf('リードID');
+  const existingIdIdx = existingData[0].indexOf('lead_id');
   const existingIds = new Set(existingData.slice(1).map(r => String(r[existingIdIdx])).filter(String));
 
   // アーカイブ行をリード管理の列順に変換
@@ -139,7 +124,7 @@ function rescueWrite(limit) {
   }
 
   // IDでグループ化 → 重複解決
-  const updateDateArchIdx = _leadsHeaderIdx(ah, 'sheet_updated_at', 'シート更新日');
+  const updateDateArchIdx = ah.indexOf('sheet_updated_at');
   const groups = {};
   av.slice(1).forEach(row => {
     const id = String(row[0]);
@@ -162,7 +147,7 @@ function rescueWrite(limit) {
   });
 
   // 未存在IDのみ、limit件まで書き込む
-  const leadIdArchIdx = _leadsHeaderIdx(ah, 'lead_id', 'リードID');
+  const leadIdArchIdx = ah.indexOf('lead_id');
   const statusIdx = lh.indexOf('商談進捗');
   const writtenIds = [];
   const skippedIds = [];
@@ -197,7 +182,7 @@ function verifyRescuedRows() {
   // WebApp一覧への混入チェック
   const outbound = getLeads(null, 'アウトバウンド') || [];
   const leaked = outbound.filter(l =>
-    ['LDO-00002','LDO-00003','LDO-00004'].indexOf(l['リードID']) >= 0);
+    ['LDO-00002','LDO-00003','LDO-00004'].indexOf(l['lead_id']) >= 0);
   return { last3: last3, outboundCount: outbound.length, leakedIntoList: leaked.length };
 }
 
@@ -209,7 +194,7 @@ function checkExistingArchiveLeak() {
   const outbound = getLeads(null, 'アウトバウンド') || [];
   const rescued = ['LDO-00002','LDO-00003','LDO-00004'];
   const count = list => list.filter(l =>
-    l['商談進捗'] === 'アーカイブ' && rescued.indexOf(l['リードID']) < 0).length;
+    l['商談進捗'] === 'アーカイブ' && rescued.indexOf(l['lead_id']) < 0).length;
   return { inboundArchived: count(inbound), outboundArchivedExclRescued: count(outbound) };
 }
 
@@ -387,7 +372,7 @@ function backupLeadSheet() {
 function checkLeadDuplicates() {
   const ss = getSpreadsheet();
   const v = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
-  const i = v[0].indexOf('リードID');
+  const i = v[0].indexOf('lead_id');
   const counts = {};
   v.slice(1).forEach(r => { const id = String(r[i]); if (id) counts[id] = (counts[id]||0)+1; });
   const dups = Object.entries(counts).filter(([,c]) => c > 1).map(([id,c]) => id + ' x' + c);
@@ -401,7 +386,7 @@ function surveyStatusColumns() {
   const ss = getSpreadsheet();
   const v = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
   const h = v[0];
-  const li = h.indexOf('リード進捗'), di = h.indexOf('商談進捗'), ri = _leadsHeaderIdx(h, 'deal_result', '商談結果');
+  const li = h.indexOf('リード進捗'), di = h.indexOf('商談進捗'), ri = h.indexOf('deal_result');
   const combos = {};
   v.slice(1).forEach(r => {
     const key = [r[li]||'(空)', r[di]||'(空)', r[ri]||'(空)'].join(' | ');
@@ -473,8 +458,8 @@ function migrateStatusDryRunV2() {
 
   const v = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
   const h = v[0];
-  const idIdx = _leadsHeaderIdx(h, 'lead_id', 'リードID'), li = h.indexOf('リード進捗'),
-        di = h.indexOf('商談進捗'), ri = _leadsHeaderIdx(h, 'deal_result', '商談結果');
+  const idIdx = h.indexOf('lead_id'), li = h.indexOf('リード進捗'),
+        di = h.indexOf('商談進捗'), ri = h.indexOf('deal_result');
   const out = { counts: {}, deleteRows: 0, unmapped: [] };
 
   v.slice(1).forEach((r, i) => {
@@ -496,8 +481,8 @@ function migrateStatusDryRun() {
   const ss = getSpreadsheet();
   const v = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
   const h = v[0];
-  const id = _leadsHeaderIdx(h, 'lead_id', 'リードID'), li = h.indexOf('リード進捗'),
-        di = h.indexOf('商談進捗'), ri = _leadsHeaderIdx(h, 'deal_result', '商談結果');
+  const id = h.indexOf('lead_id'), li = h.indexOf('リード進捗'),
+        di = h.indexOf('商談進捗'), ri = h.indexOf('deal_result');
   const out = { counts: {}, deleteRows: 0, unmapped: [] };
   v.slice(1).forEach((r, i) => {
     const L = r[li]||'', D = r[di]||'', R = r[ri]||'', ID = String(r[id]||'');
@@ -570,8 +555,8 @@ function checkArchiveContainment() {
   var main = ss.getSheetByName('リード管理');
   if (!main) { Logger.log('[NOT FOUND] リード管理'); return '[NOT FOUND] リード管理'; }
   var mv = main.getDataRange().getValues();
-  var mi = mv[0].indexOf('リードID');
-  if (mi < 0) { Logger.log('[ERROR] リード管理にリードID列なし'); return '[ERROR]'; }
+  var mi = mv[0].indexOf('lead_id');
+  if (mi < 0) { Logger.log('[ERROR] リード管理にlead_id列なし'); return '[ERROR]'; }
 
   var mainIds = {};
   mv.slice(1).forEach(function(r) {
@@ -645,8 +630,9 @@ function reconcileArchiveTab() {
   if (!leads || !arch) throw new Error('シートが見つかりません: ' + (!leads ? CONFIG.SHEETS.LEADS : 'リード_アーカイブ'));
   const pick = sh => {
     const v = sh.getDataRange().getValues();
-    const i = v[0].indexOf('リードID');
-    if (i < 0) throw new Error('リードID列なし: ' + sh.getName());
+    let i = v[0].indexOf('lead_id');
+    if (i < 0) i = v[0].indexOf('リードID'); // archive sheets not yet renamed
+    if (i < 0) throw new Error('lead_id/リードID列なし: ' + sh.getName());
     return new Set(v.slice(1).map(r => r[i]).filter(String));
   };
   const L = pick(leads), A = pick(arch);
@@ -688,10 +674,10 @@ function migrateStatusWrite() {
 
   const allData = leadsSheet.getDataRange().getValues();
   const h = allData[0];
-  const idIdx = _leadsHeaderIdx(h, 'lead_id', 'リードID');
+  const idIdx = h.indexOf('lead_id');
   const li = h.indexOf('リード進捗');
   const di = h.indexOf('商談進捗');
-  const ri = _leadsHeaderIdx(h, 'deal_result', '商談結果');
+  const ri = h.indexOf('deal_result');
   if ([idIdx, li, di, ri].some(i => i < 0)) {
     throw new Error('必須列が見つかりません: リードID/' + [idIdx,li,di,ri].join('/'));
   }

@@ -1,27 +1,4 @@
-/**
- * 【読み取り専用 / 計測用】シート getValues() の所要時間を計測する
- * 認証なし・書き込みなし・checkPermission なし
- * 各シートを RUNS 回 getDataRange().getValues() し、平均ミリ秒を返す
- *
- * 計測グループ:
- *   1. 共用在庫グループ（getSharedInventoryForFrontend の読み取り順）
- *      - 共用在庫 / 商品マスタ同期 / 作品マスタ_共用在庫
- *   2. 顧客グループ
- *      - 顧客マスタ / 配送先マスタ / 支払先マスタ
- *   3. リード管理
- *
- * 使い方: clasp run benchSheetReadMs
- */
 
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 function benchSheetReadMs() {
   var ss   = getSpreadsheet();
   var RUNS = 3;
@@ -115,7 +92,7 @@ function benchCacheService() {
     var pidIdx = pH.indexOf('product_id');
     var jaIdx  = pH.indexOf('Japanese Title');
     var rdIdx  = pH.indexOf('Release Date');
-    var ipIdx  = _leadsHeaderIdx(pH, 'ip_ids', '作品ID');
+    var ipIdx  = pH.indexOf('ip_ids');
     if (pidIdx !== -1) {
       for (var pi = 1; pi < pData.length; pi++) {
         var pr  = pData[pi];
@@ -480,7 +457,7 @@ function benchCacheMultiKey() {
     var pidIdx = pH.indexOf('product_id');
     var jaIdx  = pH.indexOf('Japanese Title');
     var rdIdx  = pH.indexOf('Release Date');
-    var ipIdx  = _leadsHeaderIdx(pH, 'ip_ids', '作品ID');
+    var ipIdx  = pH.indexOf('ip_ids');
     if (pidIdx !== -1) {
       for (var pi = 1; pi < pData.length; pi++) {
         var pr  = pData[pi];
@@ -909,8 +886,8 @@ function benchLeadsByType() {
 
   // ヘッダー列インデックスを事前確認（タイミング外）
   var sampleData = leadsSheet.getRange(1, 1, 1, leadsSheet.getLastColumn()).getValues()[0];
-  var typeIdx    = _leadsHeaderIdx(sampleData, 'lead_type', 'リード種別');
-  var statIdx    = _leadsHeaderIdx(sampleData, 'lead_status', 'リードステータス');
+  var typeIdx    = sampleData.indexOf('lead_type');
+  var statIdx    = sampleData.indexOf('lead_status');
   out.push('ヘッダー確認: リード種別列=' + typeIdx + ' / リードステータス列=' + statIdx);
   out.push('総行数: ' + (leadsSheet.getLastRow() - 1) + '行');
 
@@ -945,8 +922,8 @@ function benchLeadsByType() {
       // ★ シート読み出しも計測対象に含める（getLeads() の実際のコストを再現）
       var data    = leadsSheet.getDataRange().getValues();
       var headers = data[0];
-      var ti      = _leadsHeaderIdx(headers, 'lead_type', 'リード種別');
-      var si      = _leadsHeaderIdx(headers, 'lead_status', 'リードステータス');
+      var ti      = headers.indexOf('lead_type');
+      var si      = headers.indexOf('lead_status');
 
       var rows = [];
       for (var i = 1; i < data.length; i++) {
@@ -1029,8 +1006,8 @@ function benchLeadsCache() {
     const leadsSheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
     const allData    = leadsSheet.getDataRange().getValues();
     const headers    = allData[0];
-    const typeIdx    = _leadsHeaderIdx(headers, 'lead_type', 'リード種別');
-    const statIdx    = _leadsHeaderIdx(headers, 'lead_status', 'リードステータス');
+    const typeIdx    = headers.indexOf('lead_type');
+    const statIdx    = headers.indexOf('lead_status');
 
     const rows = [];
     for (let i = 1; i < allData.length; i++) {
@@ -1944,7 +1921,7 @@ function surveyLeadSourceColumn() {
   if (lastRow < 2) return JSON.stringify({ error: 'データ行がありません' });
 
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-  var colIdx = _leadsHeaderIdx(headers, 'lead_source', '流入経路');
+  var colIdx = headers.indexOf('lead_source');
   if (colIdx < 0) return JSON.stringify({ error: '流入経路 列が見つかりません' });
 
   var dataRows = lastRow - 1;
@@ -2001,10 +1978,10 @@ function listLeadSourceIssueRows() {
   if (lastRow < 2) return JSON.stringify({ error: 'データ行がありません' });
 
   var headers    = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-  var colIdx     = _leadsHeaderIdx(headers, 'lead_source', '流入経路');
-  var leadIdIdx  = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
-  var nameIdx    = headers.indexOf('顧客名');
-  var regDateIdx = headers.indexOf('登録日');
+  var colIdx     = headers.indexOf('lead_source');
+  var leadIdIdx  = headers.indexOf('lead_id');
+  var nameIdx    = headers.indexOf('customer_name');
+  var regDateIdx = headers.indexOf('registered_at');
 
   if (colIdx < 0) return JSON.stringify({ error: '流入経路 列が見つかりません' });
 
@@ -2083,7 +2060,7 @@ function dryRunNormalizeCardMarket() {
   if (lastRow < 2) return JSON.stringify({ error: 'データ行がありません' });
 
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-  var colIdx  = _leadsHeaderIdx(headers, 'lead_source', '流入経路');
+  var colIdx  = headers.indexOf('lead_source');
   if (colIdx < 0) return JSON.stringify({ error: '流入経路 列が見つかりません' });
 
   var dataRows = lastRow - 1;
@@ -2146,7 +2123,7 @@ function applyNormalizeCardMarket() {
   if (lastRow < 2) return JSON.stringify({ error: 'データ行がありません' });
 
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-  var colIdx  = _leadsHeaderIdx(headers, 'lead_source', '流入経路');
+  var colIdx  = headers.indexOf('lead_source');
   if (colIdx < 0) return JSON.stringify({ error: '流入経路 列が見つかりません' });
 
   var result = withSheetWrite_(
@@ -2209,9 +2186,9 @@ function benchLeadSourceIdConversion() {
 
   // ── ヘッダー確認（タイミング外） ─────────────────────────────
   var leadsHeaders = leadsSheet.getRange(1, 1, 1, leadsSheet.getLastColumn()).getValues()[0];
-  var typeIdx      = _leadsHeaderIdx(leadsHeaders, 'lead_type', 'リード種別');
-  var statIdx      = _leadsHeaderIdx(leadsHeaders, 'lead_status', 'リードステータス');
-  var srcIdx       = _leadsHeaderIdx(leadsHeaders, 'lead_source', '流入経路');
+  var typeIdx      = leadsHeaders.indexOf('lead_type');
+  var statIdx      = leadsHeaders.indexOf('lead_status');
+  var srcIdx       = leadsHeaders.indexOf('lead_source');
   out.push('リード管理 ヘッダー確認: リード種別=' + typeIdx + ' / リードステータス=' + statIdx + ' / 流入経路=' + srcIdx);
   out.push('リード管理 総行数: ' + (leadsSheet.getLastRow() - 1) + '行');
 
@@ -2247,8 +2224,8 @@ function benchLeadSourceIdConversion() {
     var t0 = Date.now();
     var data    = leadsSheet.getDataRange().getValues();
     var headers = data[0];
-    var ti      = _leadsHeaderIdx(headers, 'lead_type', 'リード種別');
-    var si      = _leadsHeaderIdx(headers, 'lead_status', 'リードステータス');
+    var ti      = headers.indexOf('lead_type');
+    var si      = headers.indexOf('lead_status');
     var rows    = [];
     for (var i = 1; i < data.length; i++) {
       var row    = data[i];
@@ -2302,7 +2279,7 @@ function benchLeadSourceIdConversion() {
     //    ここでは最後に取得した data を再利用）
     var data    = leadsSheet.getDataRange().getValues();
     var headers = data[0];
-    var srcColIdx = _leadsHeaderIdx(headers, 'lead_source', '流入経路');
+    var srcColIdx = headers.indexOf('lead_source');
     var matched = 0, unmatched = 0;
     for (var i = 1; i < data.length; i++) {
       var srcVal = srcColIdx >= 0 && data[i][srcColIdx] ? data[i][srcColIdx].toString().trim() : '';
@@ -2367,9 +2344,9 @@ function benchLeadSourceDisplay() {
     var r = out.join('\n'); Logger.log(r); return r;
   }
   var sampleHdr  = leadsSheet.getRange(1, 1, 1, leadsSheet.getLastColumn()).getValues()[0];
-  var typeIdx    = _leadsHeaderIdx(sampleHdr, 'lead_type', 'リード種別');
-  var statIdx    = _leadsHeaderIdx(sampleHdr, 'lead_status', 'リードステータス');
-  var sourceIdIdx = _leadsHeaderIdx(sampleHdr, 'lead_source_id', '流入元ID');
+  var typeIdx    = sampleHdr.indexOf('lead_type');
+  var statIdx    = sampleHdr.indexOf('lead_status');
+  var sourceIdIdx = sampleHdr.indexOf('lead_source_id');
   out.push('ヘッダー確認: リード種別=' + typeIdx + ' / リードステータス=' + statIdx + ' / 流入元ID=' + sourceIdIdx);
   out.push('総行数: ' + (leadsSheet.getLastRow() - 1) + '行');
   out.push('');
@@ -2399,9 +2376,9 @@ function benchLeadSourceDisplay() {
       // ① シート全読み出し
       var data    = leadsSheet.getDataRange().getValues();
       var headers = data[0];
-      var ti      = _leadsHeaderIdx(headers, 'lead_type', 'リード種別');
-      var si      = _leadsHeaderIdx(headers, 'lead_status', 'リードステータス');
-      var srcId   = _leadsHeaderIdx(headers, 'lead_source_id', '流入元ID');
+      var ti      = headers.indexOf('lead_type');
+      var si      = headers.indexOf('lead_status');
+      var srcId   = headers.indexOf('lead_source_id');
 
       // ② getLeadSourceIdMap_()（実装と同一関数を呼ぶ）
       var idMap = srcId >= 0 ? getLeadSourceIdMap_() : {};
@@ -2424,9 +2401,9 @@ function benchLeadSourceDisplay() {
 
         // 変換処理（getLeads と同一ロジック）
         if (srcId >= 0) {
-          var rawId = String(lead['流入元ID'] || '').trim();
+          var rawId = String(lead['lead_source_id'] || '').trim();
           if (rawId && idMap[rawId]) {
-            lead['流入経路'] = idMap[rawId];
+            lead['lead_source'] = idMap[rawId];
           }
         }
         rows.push(lead);
@@ -2768,7 +2745,7 @@ function surveyProductTitleColumn() {
 
   var data    = sheet.getDataRange().getValues();
   var headers = data[0];
-  var colIdx  = _leadsHeaderIdx(headers, 'handled_title', '取り扱いタイトル');
+  var colIdx  = headers.indexOf('handled_title');
   if (colIdx < 0) return '[ERROR] 取り扱いタイトル列が見つかりません (col index=-1)';
 
   var valueCounts = {};
@@ -2812,7 +2789,7 @@ function surveyResponseSpeedColumn() {
   if (optSheet && optSheet.getLastRow() > 1) {
     var optData = optSheet.getDataRange().getValues();
     var optH    = optData[0];
-    var rsIdx   = _leadsHeaderIdx(optH, 'response_speed', '返信速度');
+    var rsIdx   = optH.indexOf('response_speed');
     if (rsIdx >= 0) {
       for (var r = 1; r < optData.length; r++) {
         var v = String(optData[r][rsIdx] != null ? optData[r][rsIdx] : '').trim();
@@ -2826,7 +2803,7 @@ function surveyResponseSpeedColumn() {
   // リード管理シートの「返信速度」列を集計
   var leadsData = leadsSheet.getDataRange().getValues();
   var leadsH    = leadsData[0];
-  var colIdx    = _leadsHeaderIdx(leadsH, 'response_speed', '返信速度');
+  var colIdx    = leadsH.indexOf('response_speed');
   if (colIdx < 0) return '[ERROR] 返信速度列が見つかりません';
 
   var valueCounts  = {};
@@ -2928,8 +2905,8 @@ function benchLeadFormOptionsJson() {
   if (optSheet && optSheet.getLastRow() > 1) {
     var optData = optSheet.getDataRange().getValues();
     var optH    = optData[0];
-    var ltIdx   = _leadsHeaderIdx(optH, 'lead_type', 'リード種別');
-    var rsIdx   = _leadsHeaderIdx(optH, 'response_speed', '返信速度');
+    var ltIdx   = optH.indexOf('lead_type');
+    var rsIdx   = optH.indexOf('response_speed');
     for (var r = 1; r < optData.length; r++) {
       if (ltIdx >= 0) {
         var lt = String(optData[r][ltIdx] != null ? optData[r][ltIdx] : '').trim();
@@ -3015,8 +2992,8 @@ function benchLeadsByTypeConversionCost() {
   // ヘッダー確認（タイミング外）
   var sampleHdr = leadsSheet.getRange(1, 1, 1, leadsSheet.getLastColumn()).getValues()[0];
   out.push('総行数: ' + (leadsSheet.getLastRow() - 1) + '行');
-  out.push('流入元ID列: ' + _leadsHeaderIdx(sampleHdr, 'lead_source_id', '流入元ID'));
-  out.push('作品ID列: '   + _leadsHeaderIdx(sampleHdr, 'ip_ids', '作品ID'));
+  out.push('流入元ID列: ' + sampleHdr.indexOf('lead_source_id'));
+  out.push('作品ID列: '   + sampleHdr.indexOf('ip_ids'));
   out.push('');
 
   var tabs = [
@@ -3038,10 +3015,10 @@ function benchLeadsByTypeConversionCost() {
 
     var data    = leadsSheet.getDataRange().getValues();
     var headers = data[0];
-    var ti      = _leadsHeaderIdx(headers, 'lead_type', 'リード種別');
-    var si      = _leadsHeaderIdx(headers, 'lead_status', 'リードステータス');
-    var srcId   = _leadsHeaderIdx(headers, 'lead_source_id', '流入元ID');
-    var ipIdx   = _leadsHeaderIdx(headers, 'ip_ids', '作品ID');
+    var ti      = headers.indexOf('lead_type');
+    var si      = headers.indexOf('lead_status');
+    var srcId   = headers.indexOf('lead_source_id');
+    var ipIdx   = headers.indexOf('ip_ids');
 
     var idMap    = srcId >= 0 ? getLeadSourceIdMap_() : {};
     var ipMap    = ipIdx  >= 0 ? getIpMasterMap_()     : {};
@@ -3061,19 +3038,19 @@ function benchLeadsByTypeConversionCost() {
         lead[headers[h]] = (v instanceof Date) ? v.toISOString() : v;
       }
       if (srcId >= 0) {
-        var rawId = String(lead['流入元ID'] || '').trim();
+        var rawId = String(lead['lead_source_id'] || '').trim();
         if (rawId && idMap[rawId]) {
-          lead['流入経路'] = idMap[rawId];
+          lead['lead_source'] = idMap[rawId];
         }
       }
       if (ipIdx >= 0) {
-        var rawIds = String(lead['作品ID'] || '').trim();
+        var rawIds = String(lead['ip_ids'] || '').trim();
         if (rawIds) {
           var names = rawIds.split(',').map(function(id) {
             var tid = id.trim();
             return ipMap[tid] || tid;
           });
-          lead['取り扱いタイトル'] = names.join(', ');
+          lead['handled_title'] = names.join(', ');
         }
       }
       rows.push(lead);
@@ -3186,8 +3163,8 @@ function verifyLeadSourceWrite() {
   out.push('--- [2] createLead 相当（テスト行追加・読み返し・削除）---');
   var leadsSheet    = ss.getSheetByName(CONFIG.SHEETS.LEADS);
   var headers       = leadsSheet.getRange(1, 1, 1, leadsSheet.getLastColumn()).getValues()[0];
-  var srcIdColIdx   = _leadsHeaderIdx(headers, 'lead_source_id', '流入元ID');
-  var srcNameColIdx = _leadsHeaderIdx(headers, 'lead_source', '流入経路');
+  var srcIdColIdx   = headers.indexOf('lead_source_id');
+  var srcNameColIdx = headers.indexOf('lead_source');
   if (srcIdColIdx < 0 || srcNameColIdx < 0) {
     out.push('  【停止】列が見つかりません: 流入元ID=' + srcIdColIdx + ' / 流入経路=' + srcNameColIdx);
     var r0 = out.join('\n'); Logger.log(r0); return r0;

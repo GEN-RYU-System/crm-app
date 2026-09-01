@@ -1,17 +1,3 @@
-/**
- * 商談レポートサービス
- * 商談レポートの保存、取得、ID生成を担当
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 // シート名定数
 const DEAL_REPORT_SHEETS = {
@@ -49,8 +35,8 @@ function saveDealReport(data) {
       data.submitDate || now,             // 提出日
       data.dealStartDate || '',           // 商談開始日
       data.dealResult || '',              // 商談結果
-      dealData ? dealData['顧客名'] : (data.customerName || ''), // 顧客名
-      dealData ? dealData['国'] : (data.customerCountry || ''),  // 顧客の国
+      dealData ? dealData['customer_name'] : (data.customerName || ''), // 顧客名
+      dealData ? dealData['country'] : (data.customerCountry || ''),  // 顧客の国
       Array.isArray(data.products) ? data.products.join(', ') : (data.products || ''), // 取り扱い商材
       Array.isArray(data.salesChannels) ? data.salesChannels.join(', ') : (data.salesChannels || ''), // 販売先
       data.customerType || '',            // 信頼重視/価格重視
@@ -77,7 +63,7 @@ function saveDealReport(data) {
     // 会話ログがある場合は保存
     let conversationLogId = '';
     if (data.conversationLog) {
-      conversationLogId = saveConversationLog(data.dealId, data.conversationLog, data.staffId, dealData ? dealData['顧客名'] : '');
+      conversationLogId = saveConversationLog(data.dealId, data.conversationLog, data.staffId, dealData ? dealData['customer_name'] : '');
       // レポートに会話ログIDを更新
       const lastRow = sheet.getLastRow();
       const logIdColIndex = 25; // 商談ログID列
@@ -301,7 +287,7 @@ function getDealReportsByStaff(staffId) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const staffIdIndex = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
+  const staffIdIndex = headers.indexOf('assignee_id');
 
   const reports = [];
   for (let i = 1; i < data.length; i++) {
@@ -326,13 +312,13 @@ function getDealReportDropdownOptions() {
 
   // 商談レポート用の追加選択肢
   return {
-    dealResult: options['商談結果'] || ['成約', '失注', '追客', '見送り', '対象外'],
+    dealResult: options['deal_result'] || ['成約', '失注', '追客', '見送り', '対象外'],
     products: options['取り扱い商材'] || ['Pokemon', 'One Piece', 'Yu-Gi-Oh!', 'Dragon Ball', 'その他'],
     salesChannels: options['販売先'] || ['実店舗', 'EC', 'ライブ配信', '卸売', '複合', 'その他'],
     customerType: options['信頼重視/価格重視'] || ['信頼重視', '価格重視', '不明'],
     purchaseFrequency: options['購入頻度(月次)'] || ['週1以上', '週1', '月2-3回', '月1', '不定期', '不明'],
     partnershipLevel: ['5', '4', '3', '2', '1'],
-    countries: options['国'] || DEFAULT_DROPDOWN_OPTIONS['国']
+    countries: options['country'] || DEFAULT_DROPDOWN_OPTIONS['country']
   };
 }
 

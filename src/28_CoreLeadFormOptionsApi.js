@@ -1,18 +1,3 @@
-/**
- * リード登録フォーム用 選択肢API
- *
- * getLeadFormOptions(sessionId) … リード種別 / 返信速度 / 国マスタ / 流入元マスタを一括返却
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 var LEAD_FORM_OPTIONS_CACHE_INDEX  = 'LEAD_FORM_OPTIONS_CACHE_INDEX';
 var LEAD_FORM_OPTIONS_CACHE_PREFIX = 'LEAD_FORM_OPTIONS_CACHE_';
@@ -53,8 +38,8 @@ function getLeadFormOptions(sessionId) {
   if (optSheet && optSheet.getLastRow() > 1) {
     var optData = optSheet.getDataRange().getValues();
     var optH    = optData[0].map(String);
-    var ltIdx   = _leadsHeaderIdx(optH, 'lead_type', 'リード種別');
-    var rsIdx   = _leadsHeaderIdx(optH, 'response_speed', '返信速度');
+    var ltIdx   = optH.indexOf('lead_type');
+    var rsIdx   = optH.indexOf('response_speed');
     for (var r = 1; r < optData.length; r++) {
       if (ltIdx >= 0) {
         var lt = String(optData[r][ltIdx] != null ? optData[r][ltIdx] : '').trim();

@@ -1,17 +1,4 @@
-/**
- * スプレッドシート初期設定
- * シート作成、ヘッダー設定、入力規則設定
- */
 
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 function initializeSpreadsheet() {
   const ss = getSpreadsheet();
 
@@ -604,7 +591,7 @@ function getIntegratedLeads(filter, leadType) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const statusIndex = headers.indexOf('進捗ステータス');
-  const typeIndex = _leadsHeaderIdx(headers, 'lead_type', 'リード種別');
+  const typeIndex = headers.indexOf('lead_type');
 
   const leads = [];
 
@@ -672,25 +659,25 @@ function addIntegratedLead(leadData, leadType) {
     leadType,                         // 3: リード種別
     now,                              // 4: シート更新日
     // カテゴリ2: CS記入（15列）
-    leadData['流入経路'] || '',       // 5: 流入経路
-    leadData['顧客名'] || '',         // 6: 顧客名
-    leadData['呼び方（英語）'] || '', // 7: 呼び方（英語）
-    leadData['国'] || '',             // 8: 国
-    leadData['メール'] || '',         // 9: メール
-    leadData['電話番号'] || '',       // 10: 電話番号
-    leadData['連絡手段'] || leadData['SNS/連絡手段'] || '',   // 11: 連絡手段
-    leadData['メッセージURL'] || '',  // 12: メッセージURL
+    leadData['lead_source'] || '',       // 5: 流入経路
+    leadData['customer_name'] || '',         // 6: 顧客名
+    leadData['english_call_name'] || '', // 7: 呼び方（英語）
+    leadData['country'] || '',             // 8: 国
+    leadData['email'] || '',         // 9: メール
+    leadData['phone'] || '',       // 10: 電話番号
+    leadData['contact_method'] || leadData['SNS/連絡手段'] || '',   // 11: 連絡手段
+    leadData['message_url'] || '',  // 12: メッセージURL
     leadData['初回接触日'] || '',     // 13: 初回接触日
-    leadData['温度感'] || '',         // 14: 温度感
-    leadData['想定規模'] || '',       // 15: 想定規模
-    leadData['顧客タイプ'] || '',     // 16: 顧客タイプ
-    leadData['返信速度'] || '',       // 17: 返信速度
-    leadData['CSメモ'] || '',         // 18: CSメモ
+    leadData['temperature'] || '',         // 14: 温度感
+    leadData['expected_scale'] || '',       // 15: 想定規模
+    leadData['customer_type'] || '',     // 16: 顧客タイプ
+    leadData['response_speed'] || '',       // 17: 返信速度
+    leadData['cs_note'] || '',         // 18: CSメモ
     1,                                // 19: 問い合わせ回数
     // カテゴリ3: アサイン・担当（5列）
     '新規',                           // 20: 進捗ステータス
     leadData['担当者'] || '',         // 21: 担当者
-    leadData['担当者ID'] || '',       // 22: 担当者ID
+    leadData['assignee_id'] || '',       // 22: 担当者ID
     '',                               // 23: アサイン日
     '',                               // 24: 最終対応者ID
     // カテゴリ4: 営業（商談中）（13列）
@@ -774,7 +761,7 @@ function updateIntegratedLead(leadId, updateData) {
       });
 
       // シート更新日を更新
-      const updateDateIndex = _leadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
+      const updateDateIndex = headers.indexOf('sheet_updated_at');
       if (updateDateIndex >= 0) {
         sheet.getRange(i + 1, updateDateIndex + 1).setValue(new Date());
       }
@@ -863,15 +850,15 @@ function checkDuplicateLead(email, messageUrl, customerName, source) {
   const headers = data[0];
 
   // 列インデックスを取得
-  const leadIdIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
-  const emailIdx = headers.indexOf('メール');
-  const urlIdx = _leadsHeaderIdx(headers, 'message_url', 'メッセージURL');
-  const nameIdx = headers.indexOf('顧客名');
-  const sourceIdx = _leadsHeaderIdx(headers, 'lead_source', '流入経路');
-  const archiveDateIdx = _leadsHeaderIdx(headers, 'archived_at', 'アーカイブ日');
-  const archiveReasonIdx = _leadsHeaderIdx(headers, 'archive_reason', 'アーカイブ理由');
-  const contactCountIdx = _leadsHeaderIdx(headers, 'inquiry_count', '問い合わせ回数');
-  const csMemoIdx = _leadsHeaderIdx(headers, 'cs_note', 'CSメモ');
+  const leadIdIdx = headers.indexOf('lead_id');
+  const emailIdx = headers.indexOf('email');
+  const urlIdx = headers.indexOf('message_url');
+  const nameIdx = headers.indexOf('customer_name');
+  const sourceIdx = headers.indexOf('lead_source');
+  const archiveDateIdx = headers.indexOf('archived_at');
+  const archiveReasonIdx = headers.indexOf('archive_reason');
+  const contactCountIdx = headers.indexOf('inquiry_count');
+  const csMemoIdx = headers.indexOf('cs_note');
 
   let match = null;
   let matchPriority = 0; // 優先度: 1=メール, 2=URL, 3=名前+経路

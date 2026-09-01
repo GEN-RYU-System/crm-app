@@ -4,31 +4,6 @@ const CORE_SCHEMA_V1_TABLES = {
     headers: createCoreSchemaV1Headers([
       ['LEAD_ID', 'lead_id'], ['REGISTERED_AT', 'registered_at'], ['CUSTOMER_NAME', 'customer_name'], ['DEAL_RESULT', 'deal_result'], ['ENGLISH_CALL_NAME', 'english_call_name'], ['COUNTRY', 'country'], ['SHEET_UPDATED_AT', 'sheet_updated_at'], ['LEAD_ASSIGNEE_NAME', 'lead_assignee_name'], ['LEAD_TYPE', 'lead_type'], ['LEAD_SOURCE', 'lead_source'], ['LEAD_SOURCE_ID', 'lead_source_id'], ['MESSAGE_URL', 'message_url'], ['HANDLED_TITLE', 'handled_title'], ['IP_IDS', 'ip_ids'], ['CS_NOTE', 'cs_note'], ['EMAIL', 'email'], ['PHONE', 'phone'], ['CONTACT_METHOD', 'contact_method'], ['TEMPERATURE', 'temperature'], ['EXPECTED_SCALE', 'expected_scale'], ['RESPONSE_SPEED', 'response_speed'], ['INQUIRY_COUNT', 'inquiry_count'], ['ARCHIVED_AT', 'archived_at'], ['ARCHIVE_REASON', 'archive_reason'], ['ASSIGNED_AT', 'assigned_at'], ['SALES_ASSIGNEE_NAME', 'sales_assignee_name'], ['ASSIGNEE_ID', 'assignee_id'], ['CUSTOMER_TYPE', 'customer_type'], ['LAST_RESPONDER_ID', 'last_responder_id'], ['PROSPECT_SCORE', 'prospect_score'], ['NEXT_ACTION', 'next_action'], ['NEXT_ACTION_DATE', 'next_action_date'], ['DEAL_NOTE', 'deal_note'], ['CUSTOMER_ISSUE', 'customer_issue'], ['SALES_CHANNEL', 'sales_channel'], ['MONTHLY_EXPECTED_AMOUNT', 'monthly_expected_amount'], ['COMPETITOR_COMPARISON', 'competitor_comparison'], ['ALERT_CONFIRMED_AT', 'alert_confirmed_at'], ['EXCLUSION_REASON', 'exclusion_reason'], ['LOSS_REASON', 'loss_reason'], ['FIRST_TRANSACTION_DATE', 'first_transaction_date'], ['FIRST_TRANSACTION_AMOUNT', 'first_transaction_amount'], ['CUMULATIVE_TRANSACTION_AMOUNT', 'cumulative_transaction_amount'], ['CONVERSATION_SUMMARY', 'conversation_summary'], ['LAST_CONVERSATION_AT', 'last_conversation_at'], ['CONVERSATION_COUNT', 'conversation_count'], ['DUPLICATE_FLAG', 'duplicate_flag'], ['DUPLICATE_SOURCE_LEAD_ID', 'duplicate_source_lead_id'], ['DUPLICATE_CONFIRMED_AT', 'duplicate_confirmed_at'], ['DUPLICATE_CONFIRMED_BY', 'duplicate_confirmed_by'], ['LEAD_STATUS', 'lead_status']
     ]),
-    headerAliasMap: {
-      'リードID': 'lead_id', '登録日': 'registered_at', '顧客名': 'customer_name',
-      '商談結果': 'deal_result', '呼び方（英語）': 'english_call_name', '国': 'country',
-      'シート更新日': 'sheet_updated_at', 'リード担当者': 'lead_assignee_name',
-      'リード種別': 'lead_type', '流入経路': 'lead_source', '流入元ID': 'lead_source_id',
-      'メッセージURL': 'message_url', '取り扱いタイトル': 'handled_title', '作品ID': 'ip_ids',
-      'CSメモ': 'cs_note', 'メール': 'email', '電話番号': 'phone',
-      '連絡手段': 'contact_method', '温度感': 'temperature', '想定規模': 'expected_scale',
-      '返信速度': 'response_speed', '問い合わせ回数': 'inquiry_count',
-      'アーカイブ日': 'archived_at', 'アーカイブ理由': 'archive_reason',
-      'アサイン日': 'assigned_at', '営業担当者': 'sales_assignee_name',
-      '担当者ID': 'assignee_id', '顧客タイプ': 'customer_type',
-      '最終対応者ID': 'last_responder_id', '見込度': 'prospect_score',
-      '次回アクション': 'next_action', '次回アクション日': 'next_action_date',
-      '商談メモ': 'deal_note', '相手の課題': 'customer_issue', '販売形態': 'sales_channel',
-      '月間見込み金額': 'monthly_expected_amount', '競合比較中': 'competitor_comparison',
-      'アラート確認日': 'alert_confirmed_at', '対象外理由': 'exclusion_reason',
-      '失注理由': 'loss_reason', '初回取引日': 'first_transaction_date',
-      '初回取引金額': 'first_transaction_amount',
-      '累計取引金額': 'cumulative_transaction_amount',
-      '会話要約': 'conversation_summary', '最終会話日時': 'last_conversation_at',
-      '会話数': 'conversation_count', '重複フラグ': 'duplicate_flag',
-      '重複元リードID': 'duplicate_source_lead_id', '重複確認日': 'duplicate_confirmed_at',
-      '重複確認者': 'duplicate_confirmed_by', 'リードステータス': 'lead_status'
-    },
     primaryKey: 'LEAD_ID',
     referenceIds: [
       { headerKey: 'ASSIGNEE_ID', targetTableKey: 'STAFF' },
@@ -605,28 +580,15 @@ function validateCoreSchemaV1TableForWrite(spreadsheet, tableKey) {
   if (new Set(nonEmptyHeaders).size !== nonEmptyHeaders.length) {
     throw new Error('CORE_SCHEMA_NON_EMPTY_HEADER_DUPLICATE');
   }
-  const aliasMap = table.headerAliasMap || {};
-  // headerAliasMap は { 旧名: 新名 } 形式。新名→旧名の逆引きマップを生成する。
-  const reverseAliasMap = Object.keys(aliasMap).reduce(function(acc, oldName) {
-    acc[aliasMap[oldName]] = oldName;
-    return acc;
-  }, {});
   const requiredHeaders = Object.keys(table.headers).map(headerKey => table.headers[headerKey]);
-  // headerAliasMap フォールバック: 新名が見つからなければ旧名（逆引き）で検索する
-  const resolveHeaderIndex = function(headerName) {
-    var idx = headers.indexOf(headerName);
-    if (idx !== -1) return idx;
-    var oldName = reverseAliasMap[headerName];
-    return oldName !== undefined ? headers.indexOf(oldName) : -1;
-  };
-  if (requiredHeaders.some(headerName => resolveHeaderIndex(headerName) === -1)) {
+  if (requiredHeaders.some(headerName => headers.indexOf(headerName) === -1)) {
     throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING');
   }
   return {
     sheet: sheet,
     tableKey: resolveCoreSchemaV1TableKey(tableKey),
     headerIndexes: requiredHeaders.reduce((indexes, headerName) => {
-      indexes[headerName] = resolveHeaderIndex(headerName) + 1;
+      indexes[headerName] = headers.indexOf(headerName) + 1;
       return indexes;
     }, {})
   };

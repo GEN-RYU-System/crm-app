@@ -64,10 +64,10 @@ function dryRunIpIdsMigration() {
   if (leadLastRow < 2) throw new Error('リード管理にデータがありません');
 
   var leadHeaders     = leadSheet.getRange(1, 1, 1, leadLastCol).getValues()[0].map(String);
-  var titleColIdx     = leadHeaders.indexOf('取り扱いタイトル');
-  var leadIdColIdx    = leadHeaders.indexOf('リードID');
-  if (titleColIdx  < 0) throw new Error('リード管理に「取り扱いタイトル」列がありません');
-  if (leadIdColIdx < 0) throw new Error('リード管理に「リードID」列がありません');
+  var titleColIdx     = leadHeaders.indexOf('handled_title');
+  var leadIdColIdx    = leadHeaders.indexOf('lead_id');
+  if (titleColIdx  < 0) throw new Error('リード管理に「handled_title」列がありません');
+  if (leadIdColIdx < 0) throw new Error('リード管理に「lead_id」列がありません');
 
   var allData = leadSheet.getRange(2, 1, leadLastRow - 1, leadLastCol).getValues();
 

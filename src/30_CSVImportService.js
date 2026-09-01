@@ -1,28 +1,3 @@
-/**
- * CSVインポートサービス
- *
- * Purpose: CSVファイルからデータを一括インポート（ID自動生成対応）
- * Features:
- * - リードID/顧客ID/ログIDの自動採番
- * - 重複チェック（メールアドレスベース）
- * - リード自動紐付け（会話ログ用）
- * - バリデーション機能
- *
- * Design Principle:
- * - 既存データ移行を想定（IDなしデータに対応）
- * - エラーは詳細レポートで報告（処理は継続）
- * - 安全性優先（重複はデフォルトでスキップ）
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 /**
  * CSVコンテンツをパースしてオブジェクト配列に変換
@@ -241,7 +216,7 @@ function findLeadByEmail(email) {
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
 
-    const emailIdx = headers.indexOf('メール');
+    const emailIdx = headers.indexOf('email');
     if (emailIdx === -1) return null;
 
     for (let i = 1; i < data.length; i++) {
@@ -278,11 +253,11 @@ function findLeadByCustomerInfo(customerName, email, phone, country) {
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
 
-    const nameIdx = headers.indexOf('顧客名');
-    const emailIdx = headers.indexOf('メール');
-    const phoneIdx = headers.indexOf('電話番号');
-    const countryIdx = headers.indexOf('国');
-    const idIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
+    const nameIdx = headers.indexOf('customer_name');
+    const emailIdx = headers.indexOf('email');
+    const phoneIdx = headers.indexOf('phone');
+    const countryIdx = headers.indexOf('country');
+    const idIdx = headers.indexOf('lead_id');
 
     // 1. メールアドレスで検索（最優先）
     if (email && email.trim() !== '') {
@@ -384,7 +359,7 @@ function importLeadsCSV(csvContent, options) {
         const rowNumber = index + 2; // ヘッダー行を考慮
 
         // 必須項目チェック
-        if (!row['顧客名'] || row['顧客名'].trim() === '') {
+        if (!row['customer_name'] || row['customer_name'].trim() === '') {
           results.errors.push({
             row: rowNumber,
             type: 'MISSING_REQUIRED',
@@ -393,7 +368,7 @@ function importLeadsCSV(csvContent, options) {
           return;
         }
 
-        if (!row['リード種別']) {
+        if (!row['lead_type']) {
           results.errors.push({
             row: rowNumber,
             type: 'MISSING_REQUIRED',
@@ -403,7 +378,7 @@ function importLeadsCSV(csvContent, options) {
         }
 
         // リード種別チェック
-        const leadType = row['リード種別'];
+        const leadType = row['lead_type'];
         if (leadType !== 'インバウンド' && leadType !== 'アウトバウンド') {
           results.errors.push({
             row: rowNumber,
@@ -414,29 +389,29 @@ function importLeadsCSV(csvContent, options) {
         }
 
         // 重複チェック
-        if (skipDuplicates && row['メール']) {
-          const existingLead = findLeadByEmail(row['メール']);
+        if (skipDuplicates && row['email']) {
+          const existingLead = findLeadByEmail(row['email']);
           if (existingLead) {
             results.skipped++;
             results.errors.push({
               row: rowNumber,
               type: 'DUPLICATE_EMAIL',
-              message: `メールアドレス重複: ${row['メール']}`,
-              data: row['顧客名']
+              message: `メールアドレス重複: ${row['email']}`,
+              data: row['customer_name']
             });
             return;
           }
         }
 
         // リードID自動生成（空またはない場合）
-        let leadId = row['リードID'];
+        let leadId = row['lead_id'];
         if (!leadId || leadId.trim() === '') {
           leadId = generateNextLeadId(leadType);
           results.generatedIds.push(leadId);
         }
 
         // 登録日自動設定
-        const registrationDate = row['登録日'] || new Date();
+        const registrationDate = row['registered_at'] || new Date();
 
         // スプレッドシートに書き込むデータを準備
         const rowData = headers.map(header => {
@@ -459,7 +434,7 @@ function importLeadsCSV(csvContent, options) {
           row: index + 2,
           type: 'PROCESSING_ERROR',
           message: error.message,
-          data: row['顧客名'] || '不明'
+          data: row['customer_name'] || '不明'
         });
       }
     });
@@ -585,23 +560,23 @@ function importConversationLogCSV(csvContent, options) {
         }
 
         // リードIDを検索
-        let leadId = row['リードID'];
+        let leadId = row['lead_id'];
 
         if (!leadId || leadId.trim() === '') {
           // リードIDがない場合、顧客情報から検索
           const matchResult = findLeadByCustomerInfo(
-            row['顧客名'],
-            row['メール'],
-            row['電話番号'],
-            row['国']
+            row['customer_name'],
+            row['email'],
+            row['phone'],
+            row['country']
           );
 
           if (!matchResult) {
             results.errors.push({
               row: rowNumber,
               type: 'LEAD_NOT_FOUND',
-              message: `リードが見つかりません: ${row['顧客名']}（メール: ${row['メール'] || 'なし'}）`,
-              data: row['顧客名']
+              message: `リードが見つかりません: ${row['customer_name']}（メール: ${row['email'] || 'なし'}）`,
+              data: row['customer_name']
             });
             return;
           }
@@ -639,14 +614,14 @@ function importConversationLogCSV(csvContent, options) {
             row: index + 2,
             type: 'MULTIPLE_MATCHES',
             message: error.message,
-            data: row['顧客名']
+            data: row['customer_name']
           });
         } else {
           results.errors.push({
             row: index + 2,
             type: 'PROCESSING_ERROR',
             message: error.message,
-            data: row['顧客名'] || '不明'
+            data: row['customer_name'] || '不明'
           });
         }
       }

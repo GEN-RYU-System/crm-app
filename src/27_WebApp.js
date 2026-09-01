@@ -15,11 +15,6 @@
  * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
  * PR-1（デュアルサポート期）専用。PR-3 で削除する。
  */
-function _webAppLeadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
-
 function doGet(e) {
   const params = e.parameter || {};
 
@@ -349,9 +344,9 @@ function getDashboardKPIs(sessionId) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const typeIdx = _webAppLeadsHeaderIdx(headers, 'lead_type', 'リード種別');
-  const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
-  const revenueIdx = headers.indexOf('初回取引金額');
+  const typeIdx = headers.indexOf('lead_type');
+  const statusIdx = headers.indexOf('lead_status');
+  const revenueIdx = headers.indexOf('first_transaction_amount');
 
   let leadsIn = 0, leadsOut = 0, activeDeals = 0, wonDeals = 0, lostDeals = 0, totalRevenue = 0;
   const statusCounts = {};
@@ -425,11 +420,11 @@ function getLeads(filter, leadType) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const typeIdx = _webAppLeadsHeaderIdx(headers, 'lead_type', 'リード種別');
-  const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
-  const archivedAtIdx = headers.indexOf('アーカイブ日');
-  const sourceIdIdx = headers.indexOf('流入元ID');
-  const ipIdsIdx    = headers.indexOf('作品ID');
+  const typeIdx = headers.indexOf('lead_type');
+  const statusIdx = headers.indexOf('lead_status');
+  const archivedAtIdx = headers.indexOf('archived_at');
+  const sourceIdIdx = headers.indexOf('lead_source_id');
+  const ipIdsIdx    = headers.indexOf('ip_ids');
 
   // 流入元ID → 名称変換マップ（流入元ID列が存在する場合のみ取得）
   const sourceIdMap  = sourceIdIdx >= 0 ? getLeadSourceIdMap_()  : {};
@@ -500,25 +495,25 @@ function getLeads(filter, leadType) {
     // - 流入元IDが入っている行: マスタから名称に変換して流入経路フィールドを上書き
     // - 流入元IDが空欄の行: 流入経路列の値をそのまま返す（テストデータ・未移行分）
     if (sourceIdIdx >= 0) {
-      const rawId = String(lead['流入元ID'] || '').trim();
+      const rawId = String(lead['lead_source_id'] || '').trim();
       if (rawId && sourceIdMap[rawId]) {
-        lead['流入経路'] = sourceIdMap[rawId];
+        lead['lead_source'] = sourceIdMap[rawId];
       }
     }
 
-    // 作品ID → 取り扱いタイトル（名称）変換（移行期互換ルール）
+    // ip_ids → handled_title（名称）変換（移行期互換ルール）
     // - 作品IDが入っている行: マスタから名称に変換して取り扱いタイトルフィールドを上書き
     //   表示名は別名優先、空の場合は作品名（在庫ページのタブと同じ規則）
     //   カンマ+空白で再結合（例: "ポケモン, ワンピース"）
-    // - 作品IDが空欄の行: 取り扱いタイトル列の値をそのまま返す（未変換分）
+    // - 作品IDが空欄の行: handled_title列の値をそのまま返す（未変換分）
     if (ipIdsIdx >= 0) {
-      const rawIds = String(lead['作品ID'] || '').trim();
+      const rawIds = String(lead['ip_ids'] || '').trim();
       if (rawIds) {
         const names = rawIds.split(',').map(function(id) {
           const trimmed = id.trim();
           return ipMasterMap[trimmed] || trimmed;
         });
-        lead['取り扱いタイトル'] = names.join(', ');
+        lead['handled_title'] = names.join(', ');
       }
     }
 
@@ -782,7 +777,7 @@ function getLeadDetail(sessionId, leadId) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const idIndex = _webAppLeadsHeaderIdx(headers, 'lead_id', 'リードID');
+  const idIndex = headers.indexOf('lead_id');
 
   if (idIndex === -1) {
     console.log('getLeadDetail: リードID列が見つかりません');
@@ -847,7 +842,7 @@ function getMyLeads() {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const assigneeIdIndex = _webAppLeadsHeaderIdx(headers, 'assignee_id', '担当者ID');
+  const assigneeIdIndex = headers.indexOf('assignee_id');
 
   if (assigneeIdIndex === -1) {
     console.log('getMyLeads: 担当者ID列が見つかりません');
@@ -928,7 +923,7 @@ function createLead(sessionId, leadData) {
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
 
   // リード種別を決定（デフォルトはインバウンド）
-  const leadType = leadData['リード種別'] || 'インバウンド';
+  const leadType = leadData['lead_type'] || 'インバウンド';
 
   // リードIDを生成
   const leadId = generateNextLeadId(leadType);
@@ -941,18 +936,18 @@ function createLead(sessionId, leadData) {
   // 新しい行のデータを作成
   const newRow = [];
   headers.forEach(header => {
-    if (header === 'リードID') {
+    if (header === 'lead_id') {
       newRow.push(leadId);
-    } else if (header === '登録日') {
+    } else if (header === 'registered_at') {
       newRow.push(new Date());
-    } else if (header === 'シート更新日') {
+    } else if (header === 'sheet_updated_at') {
       newRow.push(new Date());
-    } else if (header === 'リード種別') {
+    } else if (header === 'lead_type') {
       newRow.push(leadType);
-    } else if (header === 'リードステータス') {
+    } else if (header === 'lead_status') {
       // 新規リード作成時は必ず「新規リード」を設定
       newRow.push('新規リード');
-    } else if (header === 'リード担当者') {
+    } else if (header === 'lead_assignee_name') {
       // 新規リード作成時は現在のユーザー名を設定
       newRow.push(leadData[header] || currentUserName);
     } else if (header === '担当者') {
@@ -992,7 +987,7 @@ function updateLead(sessionId, sheetName, leadId, updateData) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const idIndex = _webAppLeadsHeaderIdx(headers, 'lead_id', 'リードID');
+  const idIndex = headers.indexOf('lead_id');
 
   if (idIndex === -1) {
     throw new Error('リードID列が見つかりません');
@@ -1025,15 +1020,15 @@ function updateLead(sessionId, sheetName, leadId, updateData) {
       });
 
       // 更新日を設定
-      const updateDateIndex = _webAppLeadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
+      const updateDateIndex = headers.indexOf('sheet_updated_at');
       if (updateDateIndex !== -1) {
         rowValues[updateDateIndex] = new Date();
       }
 
       sheet.getRange(targetRow, 1, 1, headers.length).setValues([rowValues]);
 
-      // リードステータスが成約/失注の場合は商談結果を連携（onEdit経路と共通関数を使用）
-      syncDealResultByStatus_(sheet, headers, targetRow, updateData['リードステータス'] || '');
+      // lead_statusが成約/失注の場合は商談結果を連携（onEdit経路と共通関数を使用）
+      syncDealResultByStatus_(sheet, headers, targetRow, updateData['lead_status'] || '');
 
       return leadId;
     }
@@ -1061,7 +1056,7 @@ function updateLeadField(leadId, field, value) {
 
     const data = leadsSheet.getDataRange().getValues();
     const headers = data[0];
-    const idIndex = _webAppLeadsHeaderIdx(headers, 'lead_id', 'リードID');
+    const idIndex = headers.indexOf('lead_id');
     const fieldIndex = headers.indexOf(field);
 
     if (idIndex === -1) {
@@ -1098,7 +1093,7 @@ function updateLeadField(leadId, field, value) {
     leadsSheet.getRange(targetRow, fieldIndex + 1).setValue(value);
 
     // シート更新日を更新
-    const updateDateIndex = _webAppLeadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
+    const updateDateIndex = headers.indexOf('sheet_updated_at');
     if (updateDateIndex !== -1) {
       leadsSheet.getRange(targetRow, updateDateIndex + 1).setValue(new Date());
     }
@@ -1132,9 +1127,9 @@ function updateDealStatus(leadId, newStatus) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const idIndex = _webAppLeadsHeaderIdx(headers, 'lead_id', 'リードID');
+  const idIndex = headers.indexOf('lead_id');
   const statusIndex = headers.indexOf('進捗ステータス');
-  const updateDateIndex = _webAppLeadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
+  const updateDateIndex = headers.indexOf('sheet_updated_at');
 
   if (idIndex === -1 || statusIndex === -1) {
     throw new Error('必要な列が見つかりません');
@@ -1181,12 +1176,12 @@ function assignLeadToSales(leadId) {
   const headers = data[0];
 
   // 必要な列インデックスを取得
-  const idIndex = _webAppLeadsHeaderIdx(headers, 'lead_id', 'リードID');
-  const assignDateIndex = headers.indexOf('アサイン日');
+  const idIndex = headers.indexOf('lead_id');
+  const assignDateIndex = headers.indexOf('assigned_at');
   const assigneeIndex = headers.indexOf('担当者');
-  const assigneeIdIndex = _webAppLeadsHeaderIdx(headers, 'assignee_id', '担当者ID');
-  const customerNameIndex = headers.indexOf('顧客名');
-  const updateDateIndex = _webAppLeadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
+  const assigneeIdIndex = headers.indexOf('assignee_id');
+  const customerNameIndex = headers.indexOf('customer_name');
+  const updateDateIndex = headers.indexOf('sheet_updated_at');
 
   if (idIndex === -1) {
     return { success: false, message: 'リードID列が見つかりません' };
@@ -1211,7 +1206,7 @@ function assignLeadToSales(leadId) {
   const currentUser = resolveCurrentUserEmail();
 
   // 各列を更新
-  const leadStatusIndex = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
+  const leadStatusIndex = headers.indexOf('lead_status');
   if (leadStatusIndex !== -1) {
     sheet.getRange(targetRow, leadStatusIndex + 1).setValue('アサイン確定');
   }
@@ -1257,7 +1252,7 @@ function archiveLeadToArchive(leadId) {
 
   const data = leadsSheet.getDataRange().getValues();
   const headers = data[0];
-  const idIndex = _webAppLeadsHeaderIdx(headers, 'lead_id', 'リードID');
+  const idIndex = headers.indexOf('lead_id');
 
   if (idIndex === -1) {
     return { success: false, message: 'リードID列が見つかりません' };
@@ -1486,7 +1481,7 @@ function getArchiveReasons() {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const archiveReasonCol = _webAppLeadsHeaderIdx(headers, 'archive_reason', 'アーカイブ理由');
+  const archiveReasonCol = headers.indexOf('archive_reason');
 
   if (archiveReasonCol === -1) {
     return [];
@@ -1521,10 +1516,10 @@ function assignLead(leadId, staffId, staffName) {
 
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
-    const idCol = _webAppLeadsHeaderIdx(headers, 'lead_id', 'リードID');
+    const idCol = headers.indexOf('lead_id');
     const staffCol = headers.indexOf('担当者');
-    const staffIdCol = _webAppLeadsHeaderIdx(headers, 'assignee_id', '担当者ID');
-    const assignDateCol = headers.indexOf('アサイン日');
+    const staffIdCol = headers.indexOf('assignee_id');
+    const assignDateCol = headers.indexOf('assigned_at');
     const statusCol = headers.indexOf('進捗ステータス');
 
     for (let i = 1; i < data.length; i++) {
@@ -1701,13 +1696,13 @@ function assignLeadToStaff(leadId, staffId) {
     // 2. リードシートを更新
     const leadsData = leadsSheet.getDataRange().getValues();
     const leadsHeaders = leadsData[0];
-    const leadIdIdx = _webAppLeadsHeaderIdx(leadsHeaders, 'lead_id', 'リードID');
-    const leadStatusIdx = _webAppLeadsHeaderIdx(leadsHeaders, 'lead_status', 'リードステータス');
-    const staffNameIdx = _webAppLeadsHeaderIdx(leadsHeaders, 'sales_assignee_name', '営業担当者');
-    const staffIdColIdx = _webAppLeadsHeaderIdx(leadsHeaders, 'assignee_id', '担当者ID');
-    const assignDateIdx = leadsHeaders.indexOf('アサイン日');
-    const updateDateIdx = _webAppLeadsHeaderIdx(leadsHeaders, 'sheet_updated_at', 'シート更新日');
-    const customerNameIdx = leadsHeaders.indexOf('顧客名');
+    const leadIdIdx = leadsHeaders.indexOf('lead_id');
+    const leadStatusIdx = leadsHeaders.indexOf('lead_status');
+    const staffNameIdx = leadsHeaders.indexOf('sales_assignee_name');
+    const staffIdColIdx = leadsHeaders.indexOf('assignee_id');
+    const assignDateIdx = leadsHeaders.indexOf('assigned_at');
+    const updateDateIdx = leadsHeaders.indexOf('sheet_updated_at');
+    const customerNameIdx = leadsHeaders.indexOf('customer_name');
 
     let leadRowNum = -1;
     let customerName = '';
@@ -1765,10 +1760,10 @@ function archiveLeadWithReason(leadId, archiveReason) {
 
     Logger.log('📊 ヘッダー取得: ' + leadsHeaders.length + '列');
 
-    const leadIdIdx = _webAppLeadsHeaderIdx(leadsHeaders, 'lead_id', 'リードID');
-    const archiveReasonIdx = _webAppLeadsHeaderIdx(leadsHeaders, 'archive_reason', 'アーカイブ理由');
-    const archiveDateIdx = leadsHeaders.indexOf('アーカイブ日');
-    const updateDateIdx = _webAppLeadsHeaderIdx(leadsHeaders, 'sheet_updated_at', 'シート更新日');
+    const leadIdIdx = leadsHeaders.indexOf('lead_id');
+    const archiveReasonIdx = leadsHeaders.indexOf('archive_reason');
+    const archiveDateIdx = leadsHeaders.indexOf('archived_at');
+    const updateDateIdx = leadsHeaders.indexOf('sheet_updated_at');
 
     Logger.log('📍 列インデックス: リードID=' + leadIdIdx + ', アーカイブ理由=' + archiveReasonIdx + ', アーカイブ日=' + archiveDateIdx + ', シート更新日=' + updateDateIdx);
 
@@ -1783,7 +1778,7 @@ function archiveLeadWithReason(leadId, archiveReason) {
     for (let i = 1; i < leadsData.length; i++) {
       if (leadsData[i][leadIdIdx] === leadId) {
         leadRowNum = i + 1; // スプレッドシートの行番号（1始まり）
-        Logger.log('✅ リード発見: 行番号=' + leadRowNum + ', 顧客名=' + leadsData[i][leadsHeaders.indexOf('顧客名')]);
+        Logger.log('✅ リード発見: 行番号=' + leadRowNum + ', 顧客名=' + leadsData[i][leadsHeaders.indexOf('customer_name')]);
         break;
       }
     }
@@ -1853,8 +1848,8 @@ function getNewAssigns() {
     const headers = data[0];
 
     // 必要な列インデックスを取得
-    const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
-    const staffIdIdx = _webAppLeadsHeaderIdx(headers, 'assignee_id', '担当者ID');
+    const statusIdx = headers.indexOf('lead_status');
+    const staffIdIdx = headers.indexOf('assignee_id');
 
     const newAssigns = [];
 
@@ -1901,9 +1896,9 @@ function startDeal(leadId) {
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
 
-    const leadIdIdx = _webAppLeadsHeaderIdx(headers, 'lead_id', 'リードID');
-    const leadStatusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
-    const updateDateIdx = _webAppLeadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
+    const leadIdIdx = headers.indexOf('lead_id');
+    const leadStatusIdx = headers.indexOf('lead_status');
+    const updateDateIdx = headers.indexOf('sheet_updated_at');
 
     let leadRowNum = -1;
 
@@ -1953,13 +1948,13 @@ function archiveLeadToDropped(leadId, reason, csMemo) {
     // リードデータを取得
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
-    const idCol = _webAppLeadsHeaderIdx(headers, 'lead_id', 'リードID');
-    const archiveDateCol = headers.indexOf('アーカイブ日');
-    const archiveReasonCol = _webAppLeadsHeaderIdx(headers, 'archive_reason', 'アーカイブ理由');
+    const idCol = headers.indexOf('lead_id');
+    const archiveDateCol = headers.indexOf('archived_at');
+    const archiveReasonCol = headers.indexOf('archive_reason');
     const statusCol = headers.indexOf('進捗ステータス');
-    const lastHandlerCol = headers.indexOf('最終対応者ID');
-    const csMemoCol = headers.indexOf('CSメモ');
-    const updateDateCol = _webAppLeadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
+    const lastHandlerCol = headers.indexOf('last_responder_id');
+    const csMemoCol = headers.indexOf('cs_note');
+    const updateDateCol = headers.indexOf('sheet_updated_at');
 
     let leadRowIndex = -1;
     for (let i = 1; i < data.length; i++) {
@@ -2026,7 +2021,7 @@ function getDeals() {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
+  const statusIdx = headers.indexOf('lead_status');
   const staffIdx = headers.indexOf('担当者');
   const deals = [];
 
@@ -2497,7 +2492,7 @@ function getGoals(staffId) {
     });
 
     // staffIdが指定されている場合はフィルタ
-    if (staffId && goal['担当者ID'] !== staffId) {
+    if (staffId && goal['assignee_id'] !== staffId) {
       continue;
     }
 
@@ -2799,10 +2794,10 @@ function getLeadsKPI(leadType) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const typeIdx = _webAppLeadsHeaderIdx(headers, 'lead_type', 'リード種別');
-  const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
+  const typeIdx = headers.indexOf('lead_type');
+  const statusIdx = headers.indexOf('lead_status');
   const assignIdx = headers.indexOf('担当者');
-  const regDateIdx = headers.indexOf('登録日');
+  const regDateIdx = headers.indexOf('registered_at');
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -2856,10 +2851,10 @@ function getCSMetrics() {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const regDateIdx = headers.indexOf('登録日');
+  const regDateIdx = headers.indexOf('registered_at');
   const assignIdx = headers.indexOf('担当者');
-  const assignDateIdx = headers.indexOf('アサイン日');
-  const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
+  const assignDateIdx = headers.indexOf('assigned_at');
+  const statusIdx = headers.indexOf('lead_status');
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -2920,11 +2915,11 @@ function getSalesMetrics(staffId) {
   const headers = data[0];
   const staffCol = headers.indexOf('担当者');
   const statusCol = headers.indexOf('進捗ステータス');
-  const amountCol = headers.indexOf('月間見込み金額');
-  const nextActionCol = _webAppLeadsHeaderIdx(headers, 'next_action', '次回アクション');
-  const nextActionDateCol = _webAppLeadsHeaderIdx(headers, 'next_action_date', '次回アクション日');
-  const customerCol = headers.indexOf('顧客名');
-  const leadIdCol = _webAppLeadsHeaderIdx(headers, 'lead_id', 'リードID');
+  const amountCol = headers.indexOf('monthly_expected_amount');
+  const nextActionCol = headers.indexOf('next_action');
+  const nextActionDateCol = headers.indexOf('next_action_date');
+  const customerCol = headers.indexOf('customer_name');
+  const leadIdCol = headers.indexOf('lead_id');
   const messageUrlCol = headers.indexOf('メッセージURL');
 
   let totalDeals = 0, wonDeals = 0, lostDeals = 0, pendingDeals = 0, totalSales = 0;
@@ -3119,7 +3114,7 @@ function getTeamStats() {
   const headers = data[0];
   const dStaffCol = headers.indexOf('担当者');
   const dStatusCol = headers.indexOf('進捗ステータス');
-  const dAmountCol = headers.indexOf('月間見込み金額');
+  const dAmountCol = headers.indexOf('monthly_expected_amount');
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
@@ -3177,10 +3172,10 @@ function getLeaderMetrics() {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const regDateIdx = headers.indexOf('登録日');
+  const regDateIdx = headers.indexOf('registered_at');
   const assignIdx = headers.indexOf('担当者');
-  const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
-  const amountIdx = headers.indexOf('月間見込み金額');
+  const statusIdx = headers.indexOf('lead_status');
+  const amountIdx = headers.indexOf('monthly_expected_amount');
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -3288,9 +3283,9 @@ function getBuddyData(staffName) {
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
     const staffCol = headers.indexOf('担当者');
-    const customerCol = headers.indexOf('顧客名');
-    const nextActionCol = _webAppLeadsHeaderIdx(headers, 'next_action', '次回アクション');
-    const nextActionDateCol = _webAppLeadsHeaderIdx(headers, 'next_action_date', '次回アクション日');
+    const customerCol = headers.indexOf('customer_name');
+    const nextActionCol = headers.indexOf('next_action');
+    const nextActionDateCol = headers.indexOf('next_action_date');
     const statusCol = headers.indexOf('進捗ステータス');
 
     for (let i = 1; i < data.length; i++) {
@@ -3454,8 +3449,8 @@ function saveDealReport(reportData) {
   if (leadSheet && leadSheet.getLastRow() > 1) {
     const leadData = leadSheet.getDataRange().getValues();
     const headers = leadData[0];
-    const idCol = _webAppLeadsHeaderIdx(headers, 'lead_id', 'リードID');
-    const nameCol = headers.indexOf('顧客名');
+    const idCol = headers.indexOf('lead_id');
+    const nameCol = headers.indexOf('customer_name');
 
     for (let i = 1; i < leadData.length; i++) {
       if (leadData[i][idCol] === reportData.dealId) {
@@ -3658,10 +3653,10 @@ function checkNextActionAlerts() {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const idCol = _webAppLeadsHeaderIdx(headers, 'lead_id', 'リードID');
-  const customerCol = headers.indexOf('顧客名');
+  const idCol = headers.indexOf('lead_id');
+  const customerCol = headers.indexOf('customer_name');
   const staffCol = headers.indexOf('担当者');
-  const nextActionDateCol = _webAppLeadsHeaderIdx(headers, 'next_action_date', '次回アクション日');
+  const nextActionDateCol = headers.indexOf('next_action_date');
   const statusCol = headers.indexOf('進捗ステータス');
 
   const alerts = { noNextAction: [], overdue: [] };
@@ -3716,11 +3711,11 @@ function checkStagnantDeals(days) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const idCol = _webAppLeadsHeaderIdx(headers, 'lead_id', 'リードID');
-  const customerCol = headers.indexOf('顧客名');
+  const idCol = headers.indexOf('lead_id');
+  const customerCol = headers.indexOf('customer_name');
   const staffCol = headers.indexOf('担当者');
   const statusCol = headers.indexOf('進捗ステータス');
-  const updateCol = _webAppLeadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
+  const updateCol = headers.indexOf('sheet_updated_at');
 
   const stagnantDeals = [];
   const today = new Date();
@@ -3908,13 +3903,13 @@ function restoreLeadFromArchive(leadId, newStatus) {
     // リードデータを取得
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
-    const idCol = _webAppLeadsHeaderIdx(headers, 'lead_id', 'リードID');
-    const archiveDateCol = headers.indexOf('アーカイブ日');
-    const archiveReasonCol = _webAppLeadsHeaderIdx(headers, 'archive_reason', 'アーカイブ理由');
-    const leadStaffCol = headers.indexOf('リード担当者'); // 追加
-    const staffIdCol = _webAppLeadsHeaderIdx(headers, 'assignee_id', '担当者ID'); // 追加
-    const assignDateCol = headers.indexOf('アサイン日'); // 追加
-    const updateDateCol = _webAppLeadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
+    const idCol = headers.indexOf('lead_id');
+    const archiveDateCol = headers.indexOf('archived_at');
+    const archiveReasonCol = headers.indexOf('archive_reason');
+    const leadStaffCol = headers.indexOf('lead_assignee_name'); // 追加
+    const staffIdCol = headers.indexOf('assignee_id'); // 追加
+    const assignDateCol = headers.indexOf('assigned_at'); // 追加
+    const updateDateCol = headers.indexOf('sheet_updated_at');
 
     let leadRowIndex = -1;
     for (let i = 1; i < data.length; i++) {
@@ -3944,7 +3939,7 @@ function restoreLeadFromArchive(leadId, newStatus) {
         Logger.log('🔄 Clearing archiveReason at row=' + leadRowIndex + ', col=' + (archiveReasonCol + 1));
         sheet.getRange(leadRowIndex, archiveReasonCol + 1).clearContent();
       }
-      const leadStatusCol = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
+      const leadStatusCol = headers.indexOf('lead_status');
       if (leadStatusCol >= 0) {
         Logger.log('🔄 Setting leadStatus to "リード対応中" at row=' + leadRowIndex + ', col=' + (leadStatusCol + 1));
         sheet.getRange(leadRowIndex, leadStatusCol + 1).setValue('リード対応中');
@@ -3995,8 +3990,8 @@ function getLeadCsMemo(leadId) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const leadIdIdx = _webAppLeadsHeaderIdx(headers, 'lead_id', 'リードID');
-  const csMemoIdx = headers.indexOf('CSメモ');
+  const leadIdIdx = headers.indexOf('lead_id');
+  const csMemoIdx = headers.indexOf('cs_note');
 
   if (leadIdIdx === -1 || csMemoIdx === -1) {
     return '';
@@ -4042,8 +4037,8 @@ function debugLeadsPage() {
   const headers = data[0];
   Logger.log('ヘッダー: ' + headers.join(', '));
 
-  const typeIdx = _webAppLeadsHeaderIdx(headers, 'lead_type', 'リード種別');
-  const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
+  const typeIdx = headers.indexOf('lead_type');
+  const statusIdx = headers.indexOf('lead_status');
   Logger.log('リード種別の列インデックス: ' + typeIdx);
   Logger.log('進捗ステータスの列インデックス: ' + statusIdx);
   Logger.log('CONFIG.LEAD_STATUSES: ' + JSON.stringify(CONFIG.LEAD_STATUSES));
@@ -4102,8 +4097,8 @@ function getAllLeadsNoFilter() {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const typeIdx = _webAppLeadsHeaderIdx(headers, 'lead_type', 'リード種別');
-  const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
+  const typeIdx = headers.indexOf('lead_type');
+  const statusIdx = headers.indexOf('lead_status');
 
   const leads = [];
   const stats = { total: 0, inbound: 0, outbound: 0, newStatus: 0, inProgressStatus: 0, other: 0 };
@@ -4205,7 +4200,7 @@ function diagnoseSheetsStructure() {
   Logger.log('期待する列数: 60');
 
   // 重要な列のインデックス確認
-  const checkColumns = ['リードID', 'リード種別', '進捗ステータス', '顧客名', '担当者'];
+  const checkColumns = ['lead_id', 'lead_type', '進捗ステータス', 'customer_name', '担当者'];
   checkColumns.forEach(col => {
     const idx = headers.indexOf(col);
     Logger.log('  ' + col + ': index=' + idx + (idx === -1 ? ' *** NOT FOUND ***' : ''));
@@ -4220,8 +4215,8 @@ function diagnoseSheetsStructure() {
   // データ行の確認
   if (lastRow >= 2) {
     const firstDataRow = sheet.getRange(2, 1, 1, lastCol).getValues()[0];
-    const typeIdx = _webAppLeadsHeaderIdx(headers, 'lead_type', 'リード種別');
-    const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
+    const typeIdx = headers.indexOf('lead_type');
+    const statusIdx = headers.indexOf('lead_status');
     Logger.log('最初のデータ行:');
     Logger.log('  リード種別: "' + (typeIdx >= 0 ? firstDataRow[typeIdx] : 'N/A') + '"');
     Logger.log('  進捗ステータス: "' + (statusIdx >= 0 ? firstDataRow[statusIdx] : 'N/A') + '"');
@@ -4346,9 +4341,9 @@ function diagnosticGetLeadsSteps() {
       results.step5_data = {
         headerCount: headers.length,
         sampleHeaders: headers.slice(0, 5),
-        typeIdx: _webAppLeadsHeaderIdx(headers, 'lead_type', 'リード種別'),
+        typeIdx: headers.indexOf('lead_type'),
         statusIdx: headers.indexOf('進捗ステータス'),
-        firstRowType: firstRow[_webAppLeadsHeaderIdx(headers, 'lead_type', 'リード種別')],
+        firstRowType: firstRow[headers.indexOf('lead_type')],
         firstRowStatus: firstRow[headers.indexOf('進捗ステータス')]
       };
     } else {
@@ -4406,9 +4401,9 @@ function debugGetLeads() {
     console.log('データ取得完了: ' + (new Date() - startTime) + 'ms');
 
     const headers = data[0];
-    const typeIdx = _webAppLeadsHeaderIdx(headers, 'lead_type', 'リード種別');
-    const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
-    const idIdx = _webAppLeadsHeaderIdx(headers, 'lead_id', 'リードID');
+    const typeIdx = headers.indexOf('lead_type');
+    const statusIdx = headers.indexOf('lead_status');
+    const idIdx = headers.indexOf('lead_id');
 
     console.log('リード種別列: ' + typeIdx);
     console.log('進捗ステータス列: ' + statusIdx);
@@ -4540,7 +4535,7 @@ function addConversationLog(data) {
 
   // フロントエンドからの日本語フィールドを英語に変換
   const convertedData = {
-    leadId: data['リードID'] || data.leadId,
+    leadId: data['lead_id'] || data.leadId,
     direction: data['送受信'] || data.direction,
     speaker: data['発言者'] || data.speaker,
     originalText: data['原文'] || data.originalText,
@@ -4609,7 +4604,7 @@ function translateAndAddLog(data) {
 
   // フロントエンドからの日本語フィールドを英語に変換
   const convertedData = {
-    leadId: data['リードID'] || data.leadId,
+    leadId: data['lead_id'] || data.leadId,
     direction: data['送受信'] || data.direction,
     speaker: data['発言者'] || data.speaker,
     originalText: data['原文'] || data.originalText,
@@ -4759,10 +4754,10 @@ function diagnoseDashboardData() {
   const data = leadSheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
 
   // 重要な列のインデックス
-  const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
+  const statusIdx = headers.indexOf('lead_status');
   const staffIdx = headers.indexOf('担当者');
-  const staffIdIdx = _webAppLeadsHeaderIdx(headers, 'assignee_id', '担当者ID');
-  const customerIdx = headers.indexOf('顧客名');
+  const staffIdIdx = headers.indexOf('assignee_id');
+  const customerIdx = headers.indexOf('customer_name');
 
   Logger.log('');
   Logger.log('列インデックス:');
@@ -5374,11 +5369,11 @@ function getSalesStats() {
     const headers = data[0];
 
     const staffIdx = headers.indexOf('担当者');
-    const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
-    const tradeDateIdx = headers.indexOf('初回取引日');
-    const tradeAmountIdx = headers.indexOf('初回取引金額');
-    const cumulativeAmountIdx = headers.indexOf('累計取引金額');
-    const updateDateIdx = _webAppLeadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
+    const statusIdx = headers.indexOf('lead_status');
+    const tradeDateIdx = headers.indexOf('first_transaction_date');
+    const tradeAmountIdx = headers.indexOf('first_transaction_amount');
+    const cumulativeAmountIdx = headers.indexOf('cumulative_transaction_amount');
+    const updateDateIdx = headers.indexOf('sheet_updated_at');
 
     const now = new Date();
     const thisMonth = now.getMonth();
@@ -5479,8 +5474,8 @@ function getReminders() {
     const headers = data[0];
 
     const staffIdx = headers.indexOf('担当者');
-    const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
-    const nextActionDateIdx = _webAppLeadsHeaderIdx(headers, 'next_action_date', '次回アクション日');
+    const statusIdx = headers.indexOf('lead_status');
+    const nextActionDateIdx = headers.indexOf('next_action_date');
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -5513,8 +5508,8 @@ function getReminders() {
 
     // 日付順にソート
     reminders.sort((a, b) => {
-      const dateA = new Date(a['次回アクション日']);
-      const dateB = new Date(b['次回アクション日']);
+      const dateA = new Date(a['next_action_date']);
+      const dateB = new Date(b['next_action_date']);
       return dateA - dateB;
     });
 
@@ -5543,7 +5538,7 @@ function getFollowUps() {
     const headers = data[0];
 
     const staffIdx = headers.indexOf('担当者');
-    const dealResultIdx = headers.indexOf('商談結果');
+    const dealResultIdx = headers.indexOf('deal_result');
 
     const followUps = [];
 
@@ -5590,7 +5585,7 @@ function getNewCustomers() {
     const headers = data[0];
 
     const staffIdx = headers.indexOf('担当者');
-    const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
+    const statusIdx = headers.indexOf('lead_status');
 
     const newCustomers = [];
 
@@ -5637,8 +5632,8 @@ function getRouteCustomers() {
     const headers = data[0];
 
     const staffIdx = headers.indexOf('担当者');
-    const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
-    const tradeDateIdx = headers.indexOf('初回取引日');
+    const statusIdx = headers.indexOf('lead_status');
+    const tradeDateIdx = headers.indexOf('first_transaction_date');
 
     const routeCustomers = [];
 
@@ -5662,8 +5657,8 @@ function getRouteCustomers() {
 
     // 初回取引日の新しい順にソート
     routeCustomers.sort((a, b) => {
-      const dateA = a['初回取引日'] ? new Date(a['初回取引日']) : new Date(0);
-      const dateB = b['初回取引日'] ? new Date(b['初回取引日']) : new Date(0);
+      const dateA = a['first_transaction_date'] ? new Date(a['first_transaction_date']) : new Date(0);
+      const dateB = b['first_transaction_date'] ? new Date(b['first_transaction_date']) : new Date(0);
       return dateB - dateA;
     });
 
@@ -5701,10 +5696,10 @@ function getAllDealsStats() {
     const data = leadSheet.getDataRange().getValues();
     const headers = data[0];
 
-    const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
-    const tradeDateIdx = headers.indexOf('初回取引日');
-    const cumulativeAmountIdx = headers.indexOf('累計取引金額');
-    const updateDateIdx = _webAppLeadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
+    const statusIdx = headers.indexOf('lead_status');
+    const tradeDateIdx = headers.indexOf('first_transaction_date');
+    const cumulativeAmountIdx = headers.indexOf('cumulative_transaction_amount');
+    const updateDateIdx = headers.indexOf('sheet_updated_at');
 
     const now = new Date();
     const thisMonth = now.getMonth();
@@ -5800,10 +5795,10 @@ function getStaffSummary() {
     const headers = data[0];
 
     const staffIdx = headers.indexOf('担当者');
-    const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
-    const tradeDateIdx = headers.indexOf('初回取引日');
-    const tradeAmountIdx = headers.indexOf('初回取引金額');
-    const updateDateIdx = _webAppLeadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
+    const statusIdx = headers.indexOf('lead_status');
+    const tradeDateIdx = headers.indexOf('first_transaction_date');
+    const tradeAmountIdx = headers.indexOf('first_transaction_amount');
+    const updateDateIdx = headers.indexOf('sheet_updated_at');
 
     const now = new Date();
     const thisMonth = now.getMonth();
@@ -5897,7 +5892,7 @@ function getAllNewCustomers() {
     const data = leadSheet.getDataRange().getValues();
     const headers = data[0];
 
-    const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
+    const statusIdx = headers.indexOf('lead_status');
 
     const allNewCustomers = [];
 
@@ -5940,8 +5935,8 @@ function getAllRouteCustomers() {
     const data = leadSheet.getDataRange().getValues();
     const headers = data[0];
 
-    const statusIdx = _webAppLeadsHeaderIdx(headers, 'lead_status', 'リードステータス');
-    const tradeDateIdx = headers.indexOf('初回取引日');
+    const statusIdx = headers.indexOf('lead_status');
+    const tradeDateIdx = headers.indexOf('first_transaction_date');
 
     const allRouteCustomers = [];
 
@@ -5963,8 +5958,8 @@ function getAllRouteCustomers() {
 
     // 初回取引日の新しい順にソート
     allRouteCustomers.sort((a, b) => {
-      const dateA = a['初回取引日'] ? new Date(a['初回取引日']) : new Date(0);
-      const dateB = b['初回取引日'] ? new Date(b['初回取引日']) : new Date(0);
+      const dateA = a['first_transaction_date'] ? new Date(a['first_transaction_date']) : new Date(0);
+      const dateB = b['first_transaction_date'] ? new Date(b['first_transaction_date']) : new Date(0);
       return dateB - dateA;
     });
 

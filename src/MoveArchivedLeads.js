@@ -1,16 +1,4 @@
-/**
- * アーカイブ日が設定されているリードをリード_アーカイブシートに移動
- */
 
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 function moveArchivedLeadsToArchiveSheet() {
   try {
     const ss = getSpreadsheet();
@@ -38,7 +26,7 @@ function moveArchivedLeadsToArchiveSheet() {
     const headers = data[0];
 
     // アーカイブ日列のインデックスを取得
-    const archiveDateIdx = _leadsHeaderIdx(headers, 'archived_at', 'アーカイブ日');
+    const archiveDateIdx = headers.indexOf('archived_at');
 
     if (archiveDateIdx === -1) {
       throw new Error('アーカイブ日列が見つかりません');
@@ -92,7 +80,7 @@ function moveArchivedLeadsToArchiveSheet() {
       success: true,
       movedCount: rowsToMove.length,
       message: `${rowsToMove.length}件のリードをアーカイブシートに移動しました`,
-      movedLeadIds: rowsToMove.map(r => r.data[_leadsHeaderIdx(headers, 'lead_id', 'リードID')]).filter(id => id)
+      movedLeadIds: rowsToMove.map(r => r.data[headers.indexOf('lead_id')]).filter(id => id)
     };
 
   } catch (error) {
@@ -128,9 +116,9 @@ function checkArchivedLeadsCount() {
 
     const data = leadsSheet.getDataRange().getValues();
     const headers = data[0];
-    const archiveDateIdx = _leadsHeaderIdx(headers, 'archived_at', 'アーカイブ日');
-    const idIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
-    const nameIdx = headers.indexOf('顧客名');
+    const archiveDateIdx = headers.indexOf('archived_at');
+    const idIdx = headers.indexOf('lead_id');
+    const nameIdx = headers.indexOf('customer_name');
 
     if (archiveDateIdx === -1) {
       throw new Error('アーカイブ日列が見つかりません');

@@ -1,17 +1,3 @@
-/**
- * Buddy壁打ちシステム - コーチングサービス
- * 目標設定、実績集計、週次レポートAPI
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 // ==========================================
 // Phase 1-1: 目標設定シート管理
@@ -218,7 +204,7 @@ function getGoals(staffId, period) {
       });
 
       // フィルタリング
-      if (staffId && goal['担当者ID'] !== staffId) continue;
+      if (staffId && goal['assignee_id'] !== staffId) continue;
       if (period && goal['対象期間'] !== period) continue;
 
       goals.push(goal);
@@ -324,11 +310,11 @@ function getPerformanceMetrics(staffId, periodType, period) {
     const data = leadsSheet.getDataRange().getValues();
     const headers = data[0];
 
-    const staffIdIdx = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
+    const staffIdIdx = headers.indexOf('assignee_id');
     const statusIdx = headers.indexOf('進捗ステータス');
-    const revenueIdx = _leadsHeaderIdx(headers, 'first_transaction_amount', '初回取引金額');
-    const assignDateIdx = _leadsHeaderIdx(headers, 'assigned_at', 'アサイン日');
-    const firstTradeIdx = _leadsHeaderIdx(headers, 'first_transaction_date', '初回取引日');
+    const revenueIdx = headers.indexOf('first_transaction_amount');
+    const assignDateIdx = headers.indexOf('assigned_at');
+    const firstTradeIdx = headers.indexOf('first_transaction_date');
 
     // 期間の開始・終了日を計算
     const { startDate, endDate } = getPeriodDates(periodType, period);
@@ -516,7 +502,7 @@ function getWeeklyReports(staffId, limit) {
       });
 
       // 担当者フィルタ
-      if (staffId && report['担当者ID'] !== staffId) continue;
+      if (staffId && report['assignee_id'] !== staffId) continue;
 
       reports.push(report);
     }
@@ -862,7 +848,7 @@ function getBuddyDialogHistory(staffId, limit) {
         log[header] = value;
       });
 
-      if (log['担当者ID'] === staffId) {
+      if (log['assignee_id'] === staffId) {
         history.push(log);
         if (history.length >= (limit || 10)) break;
       }
@@ -1767,11 +1753,11 @@ function sendMidWeekRemindersToAll() {
       if (!['営業', 'リーダー'].includes(staff['役割'])) return;
 
       const staffName = (staff['苗字（日本語）'] || '') + ' ' + (staff['名前（日本語）'] || '');
-      const reminder = generateMidWeekReminder(staff['担当者ID'], staffName.trim());
+      const reminder = generateMidWeekReminder(staff['assignee_id'], staffName.trim());
 
       // TODO: Discord通知やメール送信を実装
       results.push({
-        staffId: staff['担当者ID'],
+        staffId: staff['assignee_id'],
         staffName: staffName,
         message: reminder.message,
         success: reminder.success
@@ -1798,11 +1784,11 @@ function sendFridayReportPromptsToAll() {
       if (staff['ステータス'] !== '有効') return;
 
       const staffName = (staff['苗字（日本語）'] || '') + ' ' + (staff['名前（日本語）'] || '');
-      const prompt = generateFridayReportPrompt(staff['担当者ID'], staffName.trim());
+      const prompt = generateFridayReportPrompt(staff['assignee_id'], staffName.trim());
 
       // TODO: Discord通知やメール送信を実装
       results.push({
-        staffId: staff['担当者ID'],
+        staffId: staff['assignee_id'],
         staffName: staffName,
         message: prompt.message,
         hasSubmitted: prompt.hasSubmitted,
@@ -2071,11 +2057,11 @@ function getDealsClosedOn(staffId, date) {
 
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
-    const staffIdIdx = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
+    const staffIdIdx = headers.indexOf('assignee_id');
     const statusIdx = headers.indexOf('進捗ステータス');
-    const tradeDateIdx = _leadsHeaderIdx(headers, 'first_transaction_date', '初回取引日');
-    const customerIdx = headers.indexOf('顧客名');
-    const revenueIdx = _leadsHeaderIdx(headers, 'first_transaction_amount', '初回取引金額');
+    const tradeDateIdx = headers.indexOf('first_transaction_date');
+    const customerIdx = headers.indexOf('customer_name');
+    const revenueIdx = headers.indexOf('first_transaction_amount');
 
     const targetDateStr = Utilities.formatDate(date, 'Asia/Tokyo', 'yyyy-MM-dd');
     const deals = [];
@@ -2122,11 +2108,11 @@ function getActionsDueOn(staffId, date) {
 
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
-    const staffIdIdx = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
+    const staffIdIdx = headers.indexOf('assignee_id');
     const statusIdx = headers.indexOf('進捗ステータス');
-    const actionIdx = _leadsHeaderIdx(headers, 'next_action', '次回アクション');
-    const actionDateIdx = _leadsHeaderIdx(headers, 'next_action_date', '次回アクション日');
-    const customerIdx = headers.indexOf('顧客名');
+    const actionIdx = headers.indexOf('next_action');
+    const actionDateIdx = headers.indexOf('next_action_date');
+    const customerIdx = headers.indexOf('customer_name');
 
     const targetDateStr = Utilities.formatDate(date, 'Asia/Tokyo', 'yyyy-MM-dd');
     const actions = [];
@@ -2352,7 +2338,7 @@ function generateDailyBuddyMessagesForAll() {
       // 有効なスタッフのみ
       if (staff['ステータス'] !== '有効') return;
 
-      const staffId = staff['担当者ID'];
+      const staffId = staff['assignee_id'];
       const staffName = ((staff['苗字（日本語）'] || '') + ' ' + (staff['名前（日本語）'] || '')).trim() || staff['氏名（日本語）'] || '担当者';
 
       try {
@@ -2436,7 +2422,7 @@ function getDefaultBuddyGreeting(staffId) {
   if (staffId) {
     try {
       const staffList = getStaffList();
-      const staff = staffList.find(s => s['担当者ID'] === staffId);
+      const staff = staffList.find(s => s['assignee_id'] === staffId);
       if (staff) {
         const name = ((staff['苗字（日本語）'] || '') + ' ' + (staff['名前（日本語）'] || '')).trim() || staff['氏名（日本語）'];
         if (name) {
