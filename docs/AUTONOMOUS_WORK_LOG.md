@@ -7210,3 +7210,56 @@ CoreSchemaRegistry の LEADS 定義 (51列) に存在しない13列を DEV ス�
   4. git revert <PR3 SHA> （Registry 復元）
   5. git revert <PR2 SHA> （フォールバック復元）
   注意: 列削除は git で戻せない
+
+---
+
+### 2026-09-01 受注明細のコンディションを CONDITION 列に書き込む（PR-W1）
+
+**設計意図:**
+- `ORDER_LINES.STATUS` 列は旧 `08_Config.js` 由来の「状態」列（物理名: `状態`）。
+  実態はコンディション（Sealed/Damaged/Case 等）を格納する列であり、
+  Core Schema V1 の `CONDITION` 列（物理名: `コンディション`）と機能が重複していた。
+- `ShippingBoxBuilder` は `ORDER_LINES.CONDITION` を読んで送料計算を行うため、
+  新規データは必ず `CONDITION` に入る必要があった。
+- `STATUS` 列はコード上どこでもステータス判定・集計に使われておらず、
+  表示専用（`OrderDetailPage.tsx` のみ）。
+- SQL 移行時は `CONDITION` のみを残し、`STATUS` は廃止する方針。
+  `STATUS` の削除は PO の承認が必要な不可逆操作。
+
+**実施内容:**
+- GAS write/update: `setLineCell('CONDITION', ...)` を追加。`STATUS` にも同値を書き続けて後方互換を維持
+- GAS read: `lineFields` に `CONDITION` を追加してフロントに返す
+- フロント payload: `condition` フィールドを追加（`status` も維持）
+- `OrderDetailPage`: `line.CONDITION || line.STATUS` で表示（既存データも表示できる）
+- `JSDoc / @deprecated`: STATUS は旧来の「状態」列で将来削除の候補と明記
+
+**変更ファイル:**
+- `src/28_CoreOrderWriteApi.js` — `setLineCell('CONDITION', ...)` 追加、JSDoc 更新
+- `src/28_CoreOrderUpdateApi.js` — 同上
+- `src/28_CoreOrderReadApi.js` — `lineFields` に `'CONDITION'` 追加
+- `frontend/src/features/orders/contracts.ts` — `OrderLineInput.condition` 追加
+- `frontend/src/gas/client.ts` — `OrderDetailRecord.lines[].CONDITION` 追加
+- `frontend/src/pages/orders/OrderEditorPage.tsx` — payload に `condition` 追加
+- `frontend/src/pages/orders/OrderDetailPage.tsx` — `CONDITION || STATUS` 表示
+
+**PR:** #884
+
+**検証結果:**
+| 手順 | 結果 |
+|------|------|
+| SHA 一致 | bee2b789b3849e72c850a816e3f0be1b513ef560（origin/develop と一致） |
+| Conformance Audit | 総不一致 0 → PASS |
+| dryRunOrderStatusRecalculation | 変更あり 0 件 |
+
+**既存データの扱い:**
+- 既存 25 行の `STATUS` に入っている「新品」（24件）・「未定」（1件）はコンディションマスタに存在しない旧値のため移行しない
+- 既存行の `CONDITION` は空のままとし、`OrderDetailPage` の `STATUS` フォールバックで引き続き表示
+
+**将来の課題:**
+- `ORDER_LINES.STATUS` 列は将来削除の候補。削除時は：
+  1. PO 承認を取得
+  2. `STATUS` の書き込み（GAS write/update）を削除
+  3. `OrderDetailPage` の STATUS フォールバックを削除
+  4. `OrderLineInput.status` / `OrderDetailRecord.lines[].STATUS` を削除
+  5. Registry の ORDER_LINES.STATUS ヘッダー定義を削除（不可逆）
+- 既存 25 行のデータ移行（STATUS → CONDITION）は別フェーズで検討
