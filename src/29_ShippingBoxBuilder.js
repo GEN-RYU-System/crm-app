@@ -289,7 +289,9 @@ function buildBoxesFromLines_(lines, ss) {
     }
 
     // 送料計算対象チェック（TRUE 以外はスキップ）
-    if (condEntry.shippingTarget !== 'TRUE' && condEntry.shippingTarget !== true) {
+    // coreCustomerFrontendValue は boolean を 'true'（小文字）に変換するため
+    // String().toUpperCase() で正規化して比較する
+    if (String(condEntry.shippingTarget).toUpperCase() !== 'TRUE') {
       skipped.push({ productId: productId, condition: condition, reason: SBB_REASON_CONDITION_NOT_TARGET });
       return;
     }
