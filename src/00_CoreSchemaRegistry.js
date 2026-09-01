@@ -573,6 +573,37 @@ const CORE_SCHEMA_V1_TABLES = {
       { headerKey: 'SHIPMENT_ID', targetTableKey: 'SHIPMENTS' },
       { headerKey: 'CARRIER_ID',  targetTableKey: 'CARRIERS' }
     ]
+  },
+  CONDITIONS: {
+    sheetName: 'コンディションマスタ', canonicalName: 'コンディションマスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    // 商品コンディション（状態）と荷姿単位の対応を自社側で保持するマスタ。
+    // 共用在庫（SHARED_INVENTORY）の CONDITION 値と照合して荷姿単位を引く。
+    // crm-app がこの一覧を正本とし、共有先に合わせてもらう方針。
+    // ORIGIN=SHARED は共用在庫由来。ORIGIN=OWN は自社独自追加。
+    headers: createCoreSchemaV1Headers([
+      ['CONDITION_ID',       'コンディションID'],
+      ['CONDITION_VALUE',    'コンディション値'],
+      ['NAME_JA',            '名称（日本語）'],
+      ['UNIT',               '対応単位'],
+      ['ORIGIN',             '由来'],
+      ['SHIPPING_TARGET',    '送料計算対象'],
+      ['ACTIVE',             '有効'],
+      ['REGISTERED_AT',      '登録日'],
+      ['UPDATED_AT',         '更新日']
+    ]), primaryKey: 'CONDITION_ID',
+    values: {
+      UNIT: {
+        CASE: 'ケース',
+        BOX:  'ボックス',
+        PACK: 'パック',
+        NONE: '対象外'
+      },
+      ORIGIN: {
+        SHARED: 'SHARED',
+        OWN:    'OWN'
+      }
+    },
+    referenceIds: []
   }
 };
 
