@@ -6255,3 +6255,43 @@ DRY_RUN で報告されていた未マッチ16件をゼロにした上でデー�
 
 APPLY は3マスタへの書き込みであり `git revert` では戻らない。
 ロールバックが必要な場合は 地帯マスタ・送料表マスタ・配送会社マスタ の各シートを手動クリアすること。
+
+---
+
+### 2026-09-01 料金表シートの重量帯読み取り関数を新設（PR #810 / PR-T3a）
+
+**概要:**
+FedEx送料・DHL送料・UPS送料シートから重量帯（Min_Weight / Max_Weight）のみを返す
+`readRateSheetWeightBands(sheetKey)` を `src/99_DevZoneSheetReader.js` に追加した。
+料金の値は返さない（契約料金のため）。
+
+#### 変更ファイル
+
+- `src/99_DevZoneSheetReader.js`
+  - `RATE_SHEET_WEIGHT_COL` 定数を追加（ヘッダー名の直書き防止）
+  - `readRateSheetWeightBands(sheetKey)` を追加
+    - DEV 環境ガード・引数バリデーション（sheetKey 必須 / FEDEX/DHL/UPS のみ受け付け）
+    - シート名は `IMPORT_SOURCE_SHEET_NAMES[key]` で取得（直書き禁止）
+    - 列位置は `headerRow.indexOf()` で特定（列番号の直書き禁止）
+    - 読み取り専用・副作用なし
+
+#### 重量帯の実測値
+
+各社とも rowCount=89、最小重量=0、最大重量=68（単位: kg）
+
+| 社 | 0kg～21kg | 21kg～68kg | 境界 |
+|----|-----------|------------|------|
+| FedEx | 0.5kg 刻み（42行） | 1kg 刻み（47行） | 21kg で切替 |
+| DHL  | 0.5kg 刻み（42行） | 1kg 刻み（47行） | 21kg で切替 |
+| UPS  | 0.5kg 刻み（42行） | 1kg 刻み（47行） | 21kg で切替 |
+
+- 判定根拠: bands[41] は {min:20.5, max:21}（差=0.5）/ bands[42] は {min:21, max:22}（差=1.0）
+- 3社で構成が完全に一致していることを実測で確認
+
+#### 事後確認
+
+- getDeployedSha: `9dcd000` = PR #810 squash SHA ✅
+- readRateSheetWeightBands("FEDEX"): rowCount=89、min=0、max=68 ✅
+- readRateSheetWeightBands("DHL"): rowCount=89、min=0、max=68 ✅
+- readRateSheetWeightBands("UPS"): rowCount=89、min=0、max=68 ✅
+- runCoreSchemaConformanceAudit: 総不一致 2件 = ベースライン ✅
