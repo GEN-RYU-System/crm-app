@@ -8,6 +8,16 @@
  * 4. updateLead()で商談メモを更新できるか
  * 5. 更新後の値を正しく読み取れるか
  */
+
+/**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
 function testMemoSyncFlow() {
   Logger.log('='.repeat(80));
   Logger.log('商談メモ同期フロー 完全テスト');
@@ -35,7 +45,8 @@ function testMemoSyncFlow() {
   const testLeadId = testLead['リードID'];
 
   Logger.log('テストリードID: ' + testLeadId);
-  Logger.log('顧客名: ' + testLead['顧客名']);
+  var nameKey = 'customer_name';
+  Logger.log(nameKey + ': ' + (testLead[nameKey] || testLead['顧客名'] || '(unknown)'));
   Logger.log('');
 
   // 【Step 2】getLeads()の結果を確認
@@ -78,8 +89,8 @@ function testMemoSyncFlow() {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const leadIdIdx = headers.indexOf('リードID');
-  const memoIdx = headers.indexOf('商談メモ');
+  const leadIdIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
+  const memoIdx = _leadsHeaderIdx(headers, 'deal_note', '商談メモ');
 
   Logger.log('リードID列番号: ' + (leadIdIdx + 1) + ' (0-indexed: ' + leadIdIdx + ')');
   Logger.log('商談メモ列番号: ' + (memoIdx + 1) + ' (0-indexed: ' + memoIdx + ')');

@@ -3,6 +3,16 @@
  * 会話ログの記録、取得、翻訳、要約を管理
  */
 
+/**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
 // ============================================================
 // 会話ログシート作成（手動実行用）
 // ============================================================
@@ -254,7 +264,7 @@ function getConversationLogs(leadId, type) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const leadIdIdx = headers.indexOf('リードID');
+  const leadIdIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
   if (leadIdIdx === -1) {
     throw new Error('会話ログに「リードID」列がありません: ' + sheetName);
   }
@@ -290,10 +300,10 @@ function updateLeadConversationInfo(leadId) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const leadIdIdx = headers.indexOf('リードID');
-  const summaryIdx = headers.indexOf('会話要約');
-  const lastDateIdx = headers.indexOf('最終会話日時');
-  const countIdx = headers.indexOf('会話数');
+  const leadIdIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
+  const summaryIdx = _leadsHeaderIdx(headers, 'conversation_summary', '会話要約');
+  const lastDateIdx = _leadsHeaderIdx(headers, 'last_conversation_at', '最終会話日時');
+  const countIdx = _leadsHeaderIdx(headers, 'conversation_count', '会話数');
 
   if (leadIdIdx === -1) return;
 

@@ -2,6 +2,16 @@
  * リード管理の商談メモ同期テスト
  */
 
+/**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
 function testLeadMemoSync() {
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
@@ -14,7 +24,7 @@ function testLeadMemoSync() {
   // 1. ヘッダー確認
   Logger.log('【Step 1: ヘッダー確認】');
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const memoIndex = headers.indexOf('商談メモ');
+  const memoIndex = _leadsHeaderIdx(headers, 'deal_note', '商談メモ');
 
   Logger.log('ヘッダー数: ' + headers.length);
   Logger.log('商談メモ列番号: ' + (memoIndex + 1) + ' (0-indexed: ' + memoIndex + ')');
@@ -44,7 +54,7 @@ function testLeadMemoSync() {
 
   dataRange.forEach((row, index) => {
     const actualRow = startRow + index;
-    const leadId = row[headers.indexOf('リードID')];
+    const leadId = row[_leadsHeaderIdx(headers, 'lead_id', 'リードID')];
     const customerName = row[headers.indexOf('顧客名')];
     const memoValue = row[memoIndex];
 
@@ -124,9 +134,9 @@ function testLeadMemoSync() {
   // 5. updateLead() のテスト（書き込みせずに確認のみ）
   Logger.log('【Step 5: ヘッダーマッピング確認】');
   Logger.log('商談メモのヘッダー位置: ' + (memoIndex + 1) + '列目');
-  Logger.log('HEADERS.LEADSでの位置: ' + (HEADERS.LEADS.indexOf('商談メモ') + 1) + '列目');
+  Logger.log('HEADERS.LEADSでの位置: ' + (HEADERS._leadsHeaderIdx(LEADS, 'deal_note', '商談メモ') + 1) + '列目');
 
-  const configIndex = HEADERS.LEADS.indexOf('商談メモ');
+  const configIndex = HEADERS._leadsHeaderIdx(LEADS, 'deal_note', '商談メモ');
   if (configIndex === memoIndex) {
     Logger.log('✅ 一致: HEADERSとシートで列位置が一致');
   } else {

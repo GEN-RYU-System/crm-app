@@ -2,6 +2,16 @@
  * スプレッドシート初期設定
  * シート作成、ヘッダー設定、入力規則設定
  */
+
+/**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
 function initializeSpreadsheet() {
   const ss = getSpreadsheet();
 
@@ -594,7 +604,7 @@ function getIntegratedLeads(filter, leadType) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const statusIndex = headers.indexOf('進捗ステータス');
-  const typeIndex = headers.indexOf('リード種別');
+  const typeIndex = _leadsHeaderIdx(headers, 'lead_type', 'リード種別');
 
   const leads = [];
 
@@ -764,7 +774,7 @@ function updateIntegratedLead(leadId, updateData) {
       });
 
       // シート更新日を更新
-      const updateDateIndex = headers.indexOf('シート更新日');
+      const updateDateIndex = _leadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
       if (updateDateIndex >= 0) {
         sheet.getRange(i + 1, updateDateIndex + 1).setValue(new Date());
       }
@@ -853,15 +863,15 @@ function checkDuplicateLead(email, messageUrl, customerName, source) {
   const headers = data[0];
 
   // 列インデックスを取得
-  const leadIdIdx = headers.indexOf('リードID');
+  const leadIdIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
   const emailIdx = headers.indexOf('メール');
-  const urlIdx = headers.indexOf('メッセージURL');
+  const urlIdx = _leadsHeaderIdx(headers, 'message_url', 'メッセージURL');
   const nameIdx = headers.indexOf('顧客名');
-  const sourceIdx = headers.indexOf('流入経路');
-  const archiveDateIdx = headers.indexOf('アーカイブ日');
-  const archiveReasonIdx = headers.indexOf('アーカイブ理由');
-  const contactCountIdx = headers.indexOf('問い合わせ回数');
-  const csMemoIdx = headers.indexOf('CSメモ');
+  const sourceIdx = _leadsHeaderIdx(headers, 'lead_source', '流入経路');
+  const archiveDateIdx = _leadsHeaderIdx(headers, 'archived_at', 'アーカイブ日');
+  const archiveReasonIdx = _leadsHeaderIdx(headers, 'archive_reason', 'アーカイブ理由');
+  const contactCountIdx = _leadsHeaderIdx(headers, 'inquiry_count', '問い合わせ回数');
+  const csMemoIdx = _leadsHeaderIdx(headers, 'cs_note', 'CSメモ');
 
   let match = null;
   let matchPriority = 0; // 優先度: 1=メール, 2=URL, 3=名前+経路

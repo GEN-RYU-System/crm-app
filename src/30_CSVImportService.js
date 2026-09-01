@@ -15,6 +15,16 @@
  */
 
 /**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
+/**
  * CSVコンテンツをパースしてオブジェクト配列に変換
  *
  * @param {string} csvContent - CSVコンテンツ（UTF-8 BOM対応）
@@ -272,7 +282,7 @@ function findLeadByCustomerInfo(customerName, email, phone, country) {
     const emailIdx = headers.indexOf('メール');
     const phoneIdx = headers.indexOf('電話番号');
     const countryIdx = headers.indexOf('国');
-    const idIdx = headers.indexOf('リードID');
+    const idIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
 
     // 1. メールアドレスで検索（最優先）
     if (email && email.trim() !== '') {

@@ -3,6 +3,16 @@
  * 会話ログのアーカイブ処理を担当
  */
 
+/**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
 // アーカイブシート名
 const ARCHIVE_SHEETS = {
   LEAD_ARCHIVE: 'リード会話ログ_アーカイブ',
@@ -250,9 +260,9 @@ function archiveOldConversations(status, days) {
   const data = leadSheet.getDataRange().getValues();
   const headers = data[0];
 
-  const idCol = headers.indexOf('リードID');
-  const resultCol = headers.indexOf('商談結果');
-  const dateCol = headers.indexOf('シート更新日');
+  const idCol = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
+  const resultCol = _leadsHeaderIdx(headers, 'deal_result', '商談結果');
+  const dateCol = _leadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
 
   if (idCol === -1 || resultCol === -1) return;
 
@@ -377,7 +387,7 @@ function deleteLogsFromSheet(ss, sheetName, leadId) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const leadIdCol = headers.indexOf('リードID');
+  const leadIdCol = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
 
   if (leadIdCol === -1) return;
 

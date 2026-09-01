@@ -4,6 +4,16 @@
  * Phase 3: アラート機能
  */
 
+/**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
 // ==================== アラートレベル定義 ====================
 const ALERT_LEVELS = {
   LEVEL1: {
@@ -477,7 +487,7 @@ function markAlertAsRead(leadId) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const idIdx = headers.indexOf('リードID');
+  const idIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
   const notifyIdx = headers.indexOf('通知確認');
 
   if (idIdx === -1 || notifyIdx === -1) return { success: false };

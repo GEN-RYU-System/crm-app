@@ -2,8 +2,34 @@ const CORE_SCHEMA_V1_TABLES = {
   LEADS: {
     sheetName: 'リード管理', canonicalName: 'リード管理', aliases: [], headerRowNumber: 1, sheetType: 'TRANSACTION', writeAllowed: true,
     headers: createCoreSchemaV1Headers([
-      ['LEAD_ID', 'リードID'], ['REGISTERED_AT', '登録日'], ['CUSTOMER_NAME', '顧客名'], ['DEAL_RESULT', '商談結果'], ['ENGLISH_CALL_NAME', '呼び方（英語）'], ['COUNTRY', '国'], ['SHEET_UPDATED_AT', 'シート更新日'], ['LEAD_ASSIGNEE_NAME', 'リード担当者'], ['LEAD_TYPE', 'リード種別'], ['LEAD_SOURCE', '流入経路'], ['LEAD_SOURCE_ID', '流入元ID'], ['MESSAGE_URL', 'メッセージURL'], ['HANDLED_TITLE', '取り扱いタイトル'], ['IP_IDS', '作品ID'], ['CS_NOTE', 'CSメモ'], ['EMAIL', 'メール'], ['PHONE', '電話番号'], ['CONTACT_METHOD', '連絡手段'], ['TEMPERATURE', '温度感'], ['EXPECTED_SCALE', '想定規模'], ['RESPONSE_SPEED', '返信速度'], ['INQUIRY_COUNT', '問い合わせ回数'], ['ARCHIVED_AT', 'アーカイブ日'], ['ARCHIVE_REASON', 'アーカイブ理由'], ['ASSIGNED_AT', 'アサイン日'], ['SALES_ASSIGNEE_NAME', '営業担当者'], ['ASSIGNEE_ID', '担当者ID'], ['CUSTOMER_TYPE', '顧客タイプ'], ['LAST_RESPONDER_ID', '最終対応者ID'], ['PROSPECT_SCORE', '見込度'], ['NEXT_ACTION', '次回アクション'], ['NEXT_ACTION_DATE', '次回アクション日'], ['DEAL_NOTE', '商談メモ'], ['CUSTOMER_ISSUE', '相手の課題'], ['SALES_CHANNEL', '販売形態'], ['MONTHLY_EXPECTED_AMOUNT', '月間見込み金額'], ['COMPETITOR_COMPARISON', '競合比較中'], ['ALERT_CONFIRMED_AT', 'アラート確認日'], ['EXCLUSION_REASON', '対象外理由'], ['LOSS_REASON', '失注理由'], ['FIRST_TRANSACTION_DATE', '初回取引日'], ['FIRST_TRANSACTION_AMOUNT', '初回取引金額'], ['CUMULATIVE_TRANSACTION_AMOUNT', '累計取引金額'], ['CONVERSATION_SUMMARY', '会話要約'], ['LAST_CONVERSATION_AT', '最終会話日時'], ['CONVERSATION_COUNT', '会話数'], ['DUPLICATE_FLAG', '重複フラグ'], ['DUPLICATE_SOURCE_LEAD_ID', '重複元リードID'], ['DUPLICATE_CONFIRMED_AT', '重複確認日'], ['DUPLICATE_CONFIRMED_BY', '重複確認者'], ['LEAD_STATUS', 'リードステータス']
-    ]), primaryKey: 'LEAD_ID',
+      ['LEAD_ID', 'lead_id'], ['REGISTERED_AT', 'registered_at'], ['CUSTOMER_NAME', 'customer_name'], ['DEAL_RESULT', 'deal_result'], ['ENGLISH_CALL_NAME', 'english_call_name'], ['COUNTRY', 'country'], ['SHEET_UPDATED_AT', 'sheet_updated_at'], ['LEAD_ASSIGNEE_NAME', 'lead_assignee_name'], ['LEAD_TYPE', 'lead_type'], ['LEAD_SOURCE', 'lead_source'], ['LEAD_SOURCE_ID', 'lead_source_id'], ['MESSAGE_URL', 'message_url'], ['HANDLED_TITLE', 'handled_title'], ['IP_IDS', 'ip_ids'], ['CS_NOTE', 'cs_note'], ['EMAIL', 'email'], ['PHONE', 'phone'], ['CONTACT_METHOD', 'contact_method'], ['TEMPERATURE', 'temperature'], ['EXPECTED_SCALE', 'expected_scale'], ['RESPONSE_SPEED', 'response_speed'], ['INQUIRY_COUNT', 'inquiry_count'], ['ARCHIVED_AT', 'archived_at'], ['ARCHIVE_REASON', 'archive_reason'], ['ASSIGNED_AT', 'assigned_at'], ['SALES_ASSIGNEE_NAME', 'sales_assignee_name'], ['ASSIGNEE_ID', 'assignee_id'], ['CUSTOMER_TYPE', 'customer_type'], ['LAST_RESPONDER_ID', 'last_responder_id'], ['PROSPECT_SCORE', 'prospect_score'], ['NEXT_ACTION', 'next_action'], ['NEXT_ACTION_DATE', 'next_action_date'], ['DEAL_NOTE', 'deal_note'], ['CUSTOMER_ISSUE', 'customer_issue'], ['SALES_CHANNEL', 'sales_channel'], ['MONTHLY_EXPECTED_AMOUNT', 'monthly_expected_amount'], ['COMPETITOR_COMPARISON', 'competitor_comparison'], ['ALERT_CONFIRMED_AT', 'alert_confirmed_at'], ['EXCLUSION_REASON', 'exclusion_reason'], ['LOSS_REASON', 'loss_reason'], ['FIRST_TRANSACTION_DATE', 'first_transaction_date'], ['FIRST_TRANSACTION_AMOUNT', 'first_transaction_amount'], ['CUMULATIVE_TRANSACTION_AMOUNT', 'cumulative_transaction_amount'], ['CONVERSATION_SUMMARY', 'conversation_summary'], ['LAST_CONVERSATION_AT', 'last_conversation_at'], ['CONVERSATION_COUNT', 'conversation_count'], ['DUPLICATE_FLAG', 'duplicate_flag'], ['DUPLICATE_SOURCE_LEAD_ID', 'duplicate_source_lead_id'], ['DUPLICATE_CONFIRMED_AT', 'duplicate_confirmed_at'], ['DUPLICATE_CONFIRMED_BY', 'duplicate_confirmed_by'], ['LEAD_STATUS', 'lead_status']
+    ]),
+    headerAliasMap: {
+      'lead_id': 'リードID', 'registered_at': '登録日', 'customer_name': '顧客名',
+      'deal_result': '商談結果', 'english_call_name': '呼び方（英語）', 'country': '国',
+      'sheet_updated_at': 'シート更新日', 'lead_assignee_name': 'リード担当者',
+      'lead_type': 'リード種別', 'lead_source': '流入経路', 'lead_source_id': '流入元ID',
+      'message_url': 'メッセージURL', 'handled_title': '取り扱いタイトル', 'ip_ids': '作品ID',
+      'cs_note': 'CSメモ', 'email': 'メール', 'phone': '電話番号',
+      'contact_method': '連絡手段', 'temperature': '温度感', 'expected_scale': '想定規模',
+      'response_speed': '返信速度', 'inquiry_count': '問い合わせ回数',
+      'archived_at': 'アーカイブ日', 'archive_reason': 'アーカイブ理由',
+      'assigned_at': 'アサイン日', 'sales_assignee_name': '営業担当者',
+      'assignee_id': '担当者ID', 'customer_type': '顧客タイプ',
+      'last_responder_id': '最終対応者ID', 'prospect_score': '見込度',
+      'next_action': '次回アクション', 'next_action_date': '次回アクション日',
+      'deal_note': '商談メモ', 'customer_issue': '相手の課題', 'sales_channel': '販売形態',
+      'monthly_expected_amount': '月間見込み金額', 'competitor_comparison': '競合比較中',
+      'alert_confirmed_at': 'アラート確認日', 'exclusion_reason': '対象外理由',
+      'loss_reason': '失注理由', 'first_transaction_date': '初回取引日',
+      'first_transaction_amount': '初回取引金額',
+      'cumulative_transaction_amount': '累計取引金額',
+      'conversation_summary': '会話要約', 'last_conversation_at': '最終会話日時',
+      'conversation_count': '会話数', 'duplicate_flag': '重複フラグ',
+      'duplicate_source_lead_id': '重複元リードID', 'duplicate_confirmed_at': '重複確認日',
+      'duplicate_confirmed_by': '重複確認者', 'lead_status': 'リードステータス'
+    },
+    primaryKey: 'LEAD_ID',
     referenceIds: [
       { headerKey: 'ASSIGNEE_ID', targetTableKey: 'STAFF' },
       { headerKey: 'LAST_RESPONDER_ID', targetTableKey: 'STAFF' },
@@ -575,15 +601,26 @@ function validateCoreSchemaV1TableForWrite(spreadsheet, tableKey) {
   if (new Set(nonEmptyHeaders).size !== nonEmptyHeaders.length) {
     throw new Error('CORE_SCHEMA_NON_EMPTY_HEADER_DUPLICATE');
   }
+  // headerAliasMap: 新名 → 旧名。新名がシートに無い場合は旧名でフォールバック
+  const aliasMap = table.headerAliasMap || {};
   const requiredHeaders = Object.keys(table.headers).map(headerKey => table.headers[headerKey]);
-  if (requiredHeaders.some(headerName => headers.indexOf(headerName) === -1)) {
+  if (requiredHeaders.some(function(headerName) {
+    if (headers.indexOf(headerName) !== -1) return false;
+    var alias = aliasMap[headerName];
+    return !alias || headers.indexOf(alias) === -1;
+  })) {
     throw new Error('CORE_SCHEMA_REQUIRED_HEADER_MISSING');
   }
   return {
     sheet: sheet,
     tableKey: resolveCoreSchemaV1TableKey(tableKey),
-    headerIndexes: requiredHeaders.reduce((indexes, headerName) => {
-      indexes[headerName] = headers.indexOf(headerName) + 1;
+    headerIndexes: requiredHeaders.reduce(function(indexes, headerName) {
+      var idx = headers.indexOf(headerName);
+      if (idx === -1) {
+        var alias = aliasMap[headerName];
+        idx = alias ? headers.indexOf(alias) : -1;
+      }
+      indexes[headerName] = idx + 1;
       return indexes;
     }, {})
   };

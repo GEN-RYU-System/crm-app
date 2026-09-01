@@ -9,6 +9,16 @@
  * テスト対象リード: LDI-TEST-001（DEV専用テストリード・空データ）
  */
 
+/**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
 var PHASE2_TEST_LEAD_ID = 'LDI-TEST-001';
 
 /**
@@ -22,12 +32,12 @@ function _getPhase2TestState_() {
   var data = sheet.getDataRange().getValues();
   var headers = data[0];
 
-  var idIdx         = headers.indexOf('リードID');
-  var statusIdx     = headers.indexOf('リードステータス');
-  var dealResultIdx = headers.indexOf('商談結果');
-  var archiveDateIdx = headers.indexOf('アーカイブ日');
-  var archiveRsnIdx  = headers.indexOf('アーカイブ理由');
-  var updateDateIdx  = headers.indexOf('シート更新日');
+  var idIdx         = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
+  var statusIdx     = _leadsHeaderIdx(headers, 'lead_status', 'リードステータス');
+  var dealResultIdx = _leadsHeaderIdx(headers, 'deal_result', '商談結果');
+  var archiveDateIdx = _leadsHeaderIdx(headers, 'archived_at', 'アーカイブ日');
+  var archiveRsnIdx  = _leadsHeaderIdx(headers, 'archive_reason', 'アーカイブ理由');
+  var updateDateIdx  = _leadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
 
   var testRow = -1;
   for (var i = 1; i < data.length; i++) {

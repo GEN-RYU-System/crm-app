@@ -3,6 +3,16 @@
  * 手動実行専用（PR11 / PR12）
  */
 
+/**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
 // ============================================================
 // 【PR12】旧顧客マスタ52行 → 新3タブ構造への移行
 // ============================================================
@@ -46,8 +56,8 @@ function migrateCustomers52DryRun() {
     dZip:     ch.indexOf('D Zip'),
     dCountry: ch.indexOf('D Country'),
     billing:  ch.indexOf('支払い名義'),
-    salesRep: ch.indexOf('営業担当者'),
-    oldLead:  ch.indexOf('リードID'),
+    salesRep: _leadsHeaderIdx(ch, 'sales_assignee_name', '営業担当者'),
+    oldLead:  _leadsHeaderIdx(ch, 'lead_id', 'リードID'),
     logId:    ch.indexOf('ログID'),
     channel:  ch.indexOf('連絡ツール'),
     sales:    ch.indexOf('販売先'),
@@ -64,10 +74,10 @@ function migrateCustomers52DryRun() {
   // ---- 成約リードの 源流リードID / 初回取引日 を名前正規化で引く ----
   const leadData = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
   const lh = leadData[0];
-  const liId   = lh.indexOf('リードID');
+  const liId   = _leadsHeaderIdx(lh, 'lead_id', 'リードID');
   const liName = lh.indexOf('顧客名');
-  const liStat = lh.indexOf('リードステータス');
-  const liTx   = lh.indexOf('初回取引日');
+  const liStat = _leadsHeaderIdx(lh, 'lead_status', 'リードステータス');
+  const liTx   = _leadsHeaderIdx(lh, 'first_transaction_date', '初回取引日');
 
   const norm = v => String(v || '').toLowerCase().replace(/　/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -184,10 +194,10 @@ function matchCustomersByIdentity() {
   // ---- リード管理（成約のみ） ----
   const leadData = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
   const lh = leadData[0];
-  const liId   = lh.indexOf('リードID');
+  const liId   = _leadsHeaderIdx(lh, 'lead_id', 'リードID');
   const liName = lh.indexOf('顧客名');
   const liMail = lh.indexOf('メール');
-  const liStat = lh.indexOf('リードステータス');
+  const liStat = _leadsHeaderIdx(lh, 'lead_status', 'リードステータス');
 
   const norm = v => String(v || '').toLowerCase()
     .replace(/　/g, ' ').replace(/\s+/g, ' ').trim();
@@ -242,10 +252,10 @@ function reconcileCustomers52() {
   const ss = getSpreadsheet();
   const cust = ss.getSheetByName('顧客マスタ').getDataRange().getValues();
   const ch = cust[0];
-  const ci = ch.indexOf('顧客ID'), li = ch.indexOf('リードID');
+  const ci = ch.indexOf('顧客ID'), li = _leadsHeaderIdx(ch, 'lead_id', 'リードID');
   const leads = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
   const lh = leads[0];
-  const lid = lh.indexOf('リードID'), lst = lh.indexOf('リードステータス');
+  const lid = _leadsHeaderIdx(lh, 'lead_id', 'リードID'), lst = _leadsHeaderIdx(lh, 'lead_status', 'リードステータス');
   const leadMap = {};
   leads.slice(1).forEach(r => { leadMap[String(r[lid])] = String(r[lst]); });
   const out = { total: 0, linked成約: 0, linked他ステータス: [], リードID空: 0, リード不在: [], ctDup: [] };
@@ -331,7 +341,7 @@ function migrateCustomers52Write() {
     dZip:    oh.indexOf('D Zip'),
     dCountry:oh.indexOf('D Country'),
     billing: oh.indexOf('支払い名義'),
-    salesRep:oh.indexOf('営業担当者'),
+    salesRep:_leadsHeaderIdx(oh, 'sales_assignee_name', '営業担当者'),
     channel: oh.indexOf('連絡ツール'),
     fedex:   oh.indexOf('FedEx ID'),
     memo:    oh.indexOf('発送時メモ'),
@@ -342,9 +352,9 @@ function migrateCustomers52Write() {
   const leadData = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
   const lh = leadData[0];
   const liName = lh.indexOf('顧客名');
-  const liId   = lh.indexOf('リードID');
-  const liStat = lh.indexOf('リードステータス');
-  const liTx   = lh.indexOf('初回取引日');
+  const liId   = _leadsHeaderIdx(lh, 'lead_id', 'リードID');
+  const liStat = _leadsHeaderIdx(lh, 'lead_status', 'リードステータス');
+  const liTx   = _leadsHeaderIdx(lh, 'first_transaction_date', '初回取引日');
 
   const norm = v => String(v || '').toLowerCase().replace(/　/g, ' ').replace(/\s+/g, ' ').trim();
   const leadByName = {};
@@ -455,7 +465,7 @@ function verifyMigration() {
 
   const cidIdx = cH.indexOf('顧客ID');
   const srcIdx = cH.indexOf('源流リードID');
-  const salesRepIdx= cH.indexOf('営業担当者');
+  const salesRepIdx= _leadsHeaderIdx(cH, 'sales_assignee_name', '営業担当者');
 
   const cidSeen = {}, srcSeen = {}, cidDups = [], srcDups = [];
   rows.forEach(r => {
@@ -468,7 +478,7 @@ function verifyMigration() {
   const lData = ss.getSheetByName(CONFIG.SHEETS.LEADS).getDataRange().getValues();
   const lH = lData[0];
   const allLeadIds = {};
-  lData.slice(1).forEach(r => { const id = String(r[lH.indexOf('リードID')]||''); if(id) allLeadIds[id]=true; });
+  lData.slice(1).forEach(r => { const id = String(r[_leadsHeaderIdx(lH, 'lead_id', 'リードID')]||''); if(id) allLeadIds[id]=true; });
   const missingRefs = rows.filter(r => !allLeadIds[String(r[srcIdx]||'')]).map(r => String(r[srcIdx]));
 
   lines.push('[顧客マスタ]');
@@ -648,16 +658,16 @@ function backfillCustomersDryRun() {
   const data = leadsSheet.getDataRange().getValues();
   const h = data[0];
 
-  const idCol       = h.indexOf('リードID');
+  const idCol       = _leadsHeaderIdx(h, 'lead_id', 'リードID');
   const nameCol     = h.indexOf('顧客名');
-  const nickCol     = h.indexOf('呼び方（英語）');
+  const nickCol     = _leadsHeaderIdx(h, 'english_call_name', '呼び方（英語）');
   const countryCol  = h.indexOf('国');
   const emailCol    = h.indexOf('メール');
   const phoneCol    = h.indexOf('電話番号');
-  const firstTxCol  = h.indexOf('初回取引日');
+  const firstTxCol  = _leadsHeaderIdx(h, 'first_transaction_date', '初回取引日');
   const regDateCol  = h.indexOf('登録日');
-  const dupSrcCol   = h.indexOf('重複元リードID');
-  const statusCol   = h.indexOf('リードステータス');
+  const dupSrcCol   = _leadsHeaderIdx(h, 'duplicate_source_lead_id', '重複元リードID');
+  const statusCol   = _leadsHeaderIdx(h, 'lead_status', 'リードステータス');
 
   const missingCols = [
     ['リードID', idCol], ['顧客名', nameCol], ['リードステータス', statusCol],
@@ -798,16 +808,16 @@ function backfillCustomersWrite() {
   const data = leadsSheet.getDataRange().getValues();
   const h = data[0];
 
-  const idCol      = h.indexOf('リードID');
+  const idCol      = _leadsHeaderIdx(h, 'lead_id', 'リードID');
   const nameCol    = h.indexOf('顧客名');
-  const nickCol    = h.indexOf('呼び方（英語）');
+  const nickCol    = _leadsHeaderIdx(h, 'english_call_name', '呼び方（英語）');
   const countryCol = h.indexOf('国');
   const emailCol   = h.indexOf('メール');
   const phoneCol   = h.indexOf('電話番号');
-  const firstTxCol = h.indexOf('初回取引日');
+  const firstTxCol = _leadsHeaderIdx(h, 'first_transaction_date', '初回取引日');
   const regDateCol = h.indexOf('登録日');
-  const dupSrcCol  = h.indexOf('重複元リードID');
-  const statusCol  = h.indexOf('リードステータス');
+  const dupSrcCol  = _leadsHeaderIdx(h, 'duplicate_source_lead_id', '重複元リードID');
+  const statusCol  = _leadsHeaderIdx(h, 'lead_status', 'リードステータス');
 
   const allLeadsByIdMap = {};
   for (let i = 1; i < data.length; i++) {
@@ -921,7 +931,7 @@ function verifyCustomerMaster() {
   const leadsSheet = ss.getSheetByName(CONFIG.SHEETS.LEADS);
   const leadsData = leadsSheet.getDataRange().getValues();
   const leadsH = leadsData[0];
-  const lidCol = leadsH.indexOf('リードID');
+  const lidCol = _leadsHeaderIdx(leadsH, 'lead_id', 'リードID');
   const allLeadIds = {};
   for (let i = 1; i < leadsData.length; i++) {
     const lid = leadsData[i][lidCol];
@@ -1074,9 +1084,9 @@ function dryRunSchemaV2() {
   const lh = leadData[0];
   const norm = function(v) { return String(v||'').toLowerCase().replace(/　/g,' ').replace(/\s+/g,' ').trim(); };
   const leadByName = {};
-  leadData.slice(1).filter(function(r){ return String(r[lh.indexOf('リードステータス')]) === '成約'; }).forEach(function(r){
+  leadData.slice(1).filter(function(r){ return String(r[_leadsHeaderIdx(lh, 'lead_status', 'リードステータス')]) === '成約'; }).forEach(function(r){
     const n = norm(r[lh.indexOf('顧客名')]);
-    if (n) leadByName[n] = String(r[lh.indexOf('リードID')]);
+    if (n) leadByName[n] = String(r[_leadsHeaderIdx(lh, 'lead_id', 'リードID')]);
   });
   const bNameIdx = oh.indexOf('B Name');
   const errors = rows51.filter(function(r){ return !leadByName[norm(String(r[bNameIdx]||''))]; });
@@ -1194,7 +1204,7 @@ function migrateCustomersWriteV2() {
     dZip:    oh.indexOf('D Zip'),
     dCountry:oh.indexOf('D Country'),
     billing: oh.indexOf('支払い名義'),
-    salesRep:oh.indexOf('営業担当者'),
+    salesRep:_leadsHeaderIdx(oh, 'sales_assignee_name', '営業担当者'),
     channel: oh.indexOf('連絡ツール'),
     fedex:   oh.indexOf('FedEx ID'),
     memo:    oh.indexOf('発送時メモ'),
@@ -1206,9 +1216,9 @@ function migrateCustomersWriteV2() {
   const lh = leadData[0];
   const norm = function(v) { return String(v||'').toLowerCase().replace(/　/g,' ').replace(/\s+/g,' ').trim(); };
   const leadByName = {};
-  leadData.slice(1).filter(function(r){ return String(r[lh.indexOf('リードステータス')]) === '成約'; }).forEach(function(r){
+  leadData.slice(1).filter(function(r){ return String(r[_leadsHeaderIdx(lh, 'lead_status', 'リードステータス')]) === '成約'; }).forEach(function(r){
     const n = norm(r[lh.indexOf('顧客名')]);
-    if (n) leadByName[n] = { leadId: String(r[lh.indexOf('リードID')]), firstTx: r[lh.indexOf('初回取引日')] };
+    if (n) leadByName[n] = { leadId: String(r[_leadsHeaderIdx(lh, 'lead_id', 'リードID')]), firstTx: r[_leadsHeaderIdx(lh, 'first_transaction_date', '初回取引日')] };
   });
 
   const g = function(row, idx){ return idx >= 0 ? row[idx] : ''; };

@@ -4,6 +4,16 @@
  * Phase 4: シフト管理
  */
 
+/**
+ * リード管理シートのヘッダー配列から列インデックスを取得する。
+ * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
+ * PR-1（デュアルサポート期）専用。PR-3 で削除する。
+ */
+function _leadsHeaderIdx(headers, newName, oldName) {
+  var idx = headers.indexOf(newName);
+  return idx !== -1 ? idx : headers.indexOf(oldName);
+}
+
 // ==================== 時間帯定義 ====================
 const SHIFT_TIME_SLOTS = [
   '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
@@ -149,7 +159,7 @@ function saveShift(staffId, targetWeek, day, shiftData) {
   // 既存のシフトを検索
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const staffIdIdx = headers.indexOf('担当者ID');
+  const staffIdIdx = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
   const weekIdx = headers.indexOf('対象週');
   const dayIdx = headers.indexOf('曜日');
 
