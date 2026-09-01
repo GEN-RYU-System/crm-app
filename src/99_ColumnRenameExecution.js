@@ -1171,3 +1171,127 @@ function verifyLeadMasterSheetBackup() {
     backupRows: backupRows
   };
 }
+
+// ===================================================================
+// リード管理 列名整形
+// PR-2: renameLeadMasterHeaders（シートの51列をリネーム）
+// ===================================================================
+
+/**
+ * リード管理シートのヘッダー行を旧列名（日本語）から英語スネークケースへ一括変更する。
+ *
+ * 変換する: CoreSchemaRegistry LEADS 定義の 51列のみ
+ * 変換しない: 定義外13列（リード進捗/商談進捗/1回の発注金額/購入頻度(月次)/
+ *             商談の手応え/Good Point/More Point/反省と今後の抱負/
+ *             レポート提出日/レポート確認者/レポート確認日/レポートコメント/
+ *             Buddyフィードバック）
+ *
+ * 前提条件:
+ * - 環境: DEV のみ
+ * - バックアップシート「リード管理_backup_20260901」が存在すること
+ * - シートの合計列数: 64列（変換51 + 未変換13）
+ */
+function renameLeadMasterHeaders() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('renameLeadMasterHeaders は DEV 環境でのみ実行できます');
+  }
+  var ss = getSpreadsheet();
+
+  // バックアップが存在しない場合は停止
+  var backupName = 'リード管理_backup_20260901';
+  if (!ss.getSheetByName(backupName)) {
+    throw new Error('バックアップシートが存在しません。先に backupLeadMasterSheet() を実行してください: ' + backupName);
+  }
+
+  // 変換対象: 旧名（日本語）→ 新名（英語スネークケース）
+  // CoreSchemaRegistry LEADS 定義 51列のみ
+  var oldToNew = {
+    'リードID': 'lead_id',
+    '登録日': 'registered_at',
+    '顧客名': 'customer_name',
+    '商談結果': 'deal_result',
+    '呼び方（英語）': 'english_call_name',
+    '国': 'country',
+    'シート更新日': 'sheet_updated_at',
+    'リード担当者': 'lead_assignee_name',
+    'リード種別': 'lead_type',
+    '流入経路': 'lead_source',
+    '流入元ID': 'lead_source_id',
+    'メッセージURL': 'message_url',
+    '取り扱いタイトル': 'handled_title',
+    '作品ID': 'ip_ids',
+    'CSメモ': 'cs_note',
+    'メール': 'email',
+    '電話番号': 'phone',
+    '連絡手段': 'contact_method',
+    '温度感': 'temperature',
+    '想定規模': 'expected_scale',
+    '返信速度': 'response_speed',
+    '問い合わせ回数': 'inquiry_count',
+    'アーカイブ日': 'archived_at',
+    'アーカイブ理由': 'archive_reason',
+    'アサイン日': 'assigned_at',
+    '営業担当者': 'sales_assignee_name',
+    '担当者ID': 'assignee_id',
+    '顧客タイプ': 'customer_type',
+    '最終対応者ID': 'last_responder_id',
+    '見込度': 'prospect_score',
+    '次回アクション': 'next_action',
+    '次回アクション日': 'next_action_date',
+    '商談メモ': 'deal_note',
+    '相手の課題': 'customer_issue',
+    '販売形態': 'sales_channel',
+    '月間見込み金額': 'monthly_expected_amount',
+    '競合比較中': 'competitor_comparison',
+    'アラート確認日': 'alert_confirmed_at',
+    '対象外理由': 'exclusion_reason',
+    '失注理由': 'loss_reason',
+    '初回取引日': 'first_transaction_date',
+    '初回取引金額': 'first_transaction_amount',
+    '累計取引金額': 'cumulative_transaction_amount',
+    '会話要約': 'conversation_summary',
+    '最終会話日時': 'last_conversation_at',
+    '会話数': 'conversation_count',
+    '重複フラグ': 'duplicate_flag',
+    '重複元リードID': 'duplicate_source_lead_id',
+    '重複確認日': 'duplicate_confirmed_at',
+    '重複確認者': 'duplicate_confirmed_by',
+    'リードステータス': 'lead_status'
+  };
+
+  var sheet = getCoreSchemaV1Sheet(ss, 'LEADS');
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) throw new Error('リード管理シートに列がありません');
+
+  var headerRange = sheet.getRange(1, 1, 1, lastCol);
+  var currentHeaders = headerRange.getDisplayValues()[0];
+
+  Logger.log('変換前ヘッダー（' + lastCol + '列）: ' + JSON.stringify(currentHeaders));
+
+  var details = [];
+  var skipped = [];
+  var newHeaders = currentHeaders.map(function(h, i) {
+    var trimmed = String(h).trim();
+    var mapped = oldToNew[trimmed];
+    if (mapped !== undefined && mapped !== trimmed) {
+      details.push({ col: i + 1, before: trimmed, after: mapped });
+      return mapped;
+    }
+    skipped.push({ col: i + 1, header: trimmed });
+    return trimmed;
+  });
+
+  Logger.log('変換後ヘッダー: ' + JSON.stringify(newHeaders));
+  Logger.log('変換: ' + details.length + '列, スキップ: ' + skipped.length + '列');
+
+  // 一括書き込み（行/列の追加・削除・並び替えは一切しない）
+  headerRange.setValues([newHeaders]);
+
+  return {
+    status: 'OK',
+    renamed: details.length,
+    total: lastCol,
+    skipped: skipped.length,
+    details: details
+  };
+}
