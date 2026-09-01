@@ -1,6 +1,7 @@
 
-var LEAD_FORM_OPTIONS_CACHE_INDEX  = 'LEAD_FORM_OPTIONS_CACHE_INDEX';
-var LEAD_FORM_OPTIONS_CACHE_PREFIX = 'LEAD_FORM_OPTIONS_CACHE_';
+// V2: 新シート参照に切り替えたためキャッシュキーをバージョンアップ（旧V1キャッシュを無効化）
+var LEAD_FORM_OPTIONS_CACHE_INDEX  = 'LEAD_FORM_OPTIONS_V2_CACHE_INDEX';
+var LEAD_FORM_OPTIONS_CACHE_PREFIX = 'LEAD_FORM_OPTIONS_V2_CACHE_';
 var LEAD_FORM_OPTIONS_CACHE_TTL    = 600;
 var LEAD_FORM_OPTIONS_CACHE_CHUNK  = 90000;
 
@@ -31,26 +32,15 @@ function getLeadFormOptions(sessionId) {
 
   var ss = getSpreadsheet();
 
-  // ── 選択肢マスタ（リード種別 / 返信速度）────────────────────────────────
-  var leadTypes      = [];
-  var responseSpeeds = [];
-  var optSheet = ss.getSheetByName(CONFIG.SHEETS.SETTINGS);
-  if (optSheet && optSheet.getLastRow() > 1) {
-    var optData = optSheet.getDataRange().getValues();
-    var optH    = optData[0].map(String);
-    var ltIdx   = optH.indexOf('lead_type');
-    var rsIdx   = optH.indexOf('response_speed');
-    for (var r = 1; r < optData.length; r++) {
-      if (ltIdx >= 0) {
-        var lt = String(optData[r][ltIdx] != null ? optData[r][ltIdx] : '').trim();
-        if (lt) leadTypes.push(lt);
-      }
-      if (rsIdx >= 0) {
-        var rs = String(optData[r][rsIdx] != null ? optData[r][rsIdx] : '').trim();
-        if (rs) responseSpeeds.push(rs);
-      }
-    }
-  }
+  // ── 選択肢マスタV2（リード種別 / 返信速度）──────────────────────────────
+  // 新シート（選択肢マスタV2）から一括取得し、フォールバックは DEFAULT に委ねる
+  var allOpts        = getAllOptionsGroupedFromV2_();
+  var leadTypes      = allOpts['lead_type']      && allOpts['lead_type'].length      > 0
+    ? allOpts['lead_type']
+    : [CONFIG.LEAD_TYPES.INBOUND, CONFIG.LEAD_TYPES.OUTBOUND];
+  var responseSpeeds = allOpts['response_speed'] && allOpts['response_speed'].length > 0
+    ? allOpts['response_speed']
+    : (DEFAULT_DROPDOWN_OPTIONS['返信速度'] || []);
 
   // ── 国マスタ（有効行のみ・シート表示順）────────────────────────────────
   var countries = [];
