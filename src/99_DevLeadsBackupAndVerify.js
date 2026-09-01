@@ -10,7 +10,7 @@
 function checkLeadBackupSheetHeaders() {
   if (getEnvironment() !== 'development') throw new Error('DEV only');
   var ss = getSpreadsheet();
-  var backupName = 'リード管理_backup_20260831';
+  var backupName = 'リード管理_backup_20260901';
   var sheet = ss.getSheetByName(backupName);
   if (!sheet) return JSON.stringify({ exists: false, sheetName: backupName });
   var lastCol = sheet.getLastColumn();
