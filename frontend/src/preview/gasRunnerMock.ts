@@ -89,7 +89,7 @@ function configurePreviewProfile(): void {
 const MOCK_STAFF = [
   {
     staffId: 'EMP-00001',
-    fullNameJa: 'Preview User',
+    fullNameJa: 'Tanizawa Shingo',
     role: 'admin',
     status: 'active',
     email: '[preview-user]',
