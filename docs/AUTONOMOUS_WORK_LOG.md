@@ -2,6 +2,95 @@
 
 ---
 
+### 2026-09-01 コンディションマスタ（CONDITIONS）を新設し初期9件を登録（PR #856）
+
+**概要:**
+商品コンディション（状態）と荷姿単位の対応表を自社側で保持するための
+コンディションマスタ（CONDITIONS テーブル）を新設し、
+共用在庫の CONDITION 8値＋自社管理用 Single 値の計9件を初期登録した。
+
+**背景・設計意図:**
+
+- 共用在庫（SHARED_INVENTORY）は外部同期・書き込み不可のため、
+  CONDITION 値ごとの荷姿単位対応を自社側で持つ必要がある
+- 共用在庫 CONDITION の実測（PR #844）で8値・1,086行（空値なし）を確認し、
+  その全値を初期データとして登録した
+- `由来` 列（ORIGIN）を設け SHARED / OWN の2値で管理する：
+  - **SHARED**: 共用在庫（外部同期）由来の値。crm-app がこの一覧を正本とし、
+    共有先に合わせてもらう方針
+  - **OWN**: 自社独自追加値。共用在庫の同期に影響しない
+- **CND-0009（FLAG_SINGLE）** は共有先の不具合による値。本来は CND-0008（Single）。
+  共有先が修正すれば使われなくなる。この経緯を記録・保持するため明示的に登録する
+- SQL 移行時、対応単位と由来は ENUM または参照テーブルになる
+
+**変更ファイル:**
+
+- `src/00_CoreSchemaRegistry.js`
+  - CONDITIONS テーブルを追加（9列）
+    - コンディションID / コンディション値 / 名称（日本語） / 対応単位 / 由来 /
+      送料計算対象 / 有効 / 登録日 / 更新日
+    - values.UNIT: ケース / ボックス / パック / 対象外
+    - values.ORIGIN: SHARED / OWN
+
+- `src/99_DevConditionMasterSetup.js`（新規）
+  - `setupConditionMaster(mode)` を追加
+  - mode='DRY_RUN': 作成予定を出力（実際には何もしない）
+  - mode='APPLY': シート作成 + 初期9件登録
+  - DEV 環境ガード付き・同名シート衝突スキップ
+
+**初期データ（9件、由来すべて SHARED）:**
+
+| ID | コンディション値 | 名称（日本語） | 対応単位 | 送料計算対象 |
+|---|---|---|---|---|
+| CND-0001 | Case | ケース | ケース | TRUE |
+| CND-0002 | Damaged case | ダメージケース | ケース | TRUE |
+| CND-0003 | Sealed box | シュリンク付きボックス | ボックス | TRUE |
+| CND-0004 | Damaged sealed box | ダメージシュリンクボックス | ボックス | TRUE |
+| CND-0005 | No shrink box | シュリンクなしボックス | ボックス | TRUE |
+| CND-0006 | Searched pack | サーチ済みパック | パック | TRUE |
+| CND-0007 | Unsearched pack | 未サーチパック | パック | TRUE |
+| CND-0008 | Single | シングル | 対象外 | '' |
+| CND-0009 | FLAG_SINGLE | シングル（旧値） | 対象外 | '' |
+
+**実行結果:**
+
+```json
+// DRY_RUN
+{ "mode": "DRY_RUN", "toCreateCount": 1, "dataRowCount": 9, "conflictCount": 0, "conflicts": [] }
+
+// APPLY
+{ "mode": "APPLY", "createdCount": 1, "skippedCount": 0, "dataRowCount": 9, "created": ["コンディションマスタ"] }
+```
+
+**コンフォーマンス監査結果（runCoreSchemaConformanceAudit）:**
+
+```
+[CONDITIONS / コンディションマスタ]
+  1. シート取得: OK (コンディションマスタ)
+  2. 定義→実シート 欠落ヘッダー: なし
+  3. ヘッダー列数: 定義 9 / 実シート 9 → OK
+  4. 主キー列 (コンディションID): OK
+  5. Values [UNIT] (対応単位): OK
+  5. Values [ORIGIN] (由来): OK
+  小計不一致: 0件
+
+=== 総不一致: 0 → PASS ===
+```
+
+**検算（手順9）:**
+【未確認】CONDITIONS テーブルを読む既存関数が存在しないため、
+登録9件のデータ行（コンディション値・対応単位・由来）の内容確認は省略した。
+コンフォーマンス監査でシート構造（9列・values定義）の整合は確認済み。
+
+**事後確認:**
+
+- PR #856 squash merge: mergedAt=2026-09-01T08:29:17Z ✅
+- Deploy to DEV (run 33487280611): success ✅
+- getDeployedSha: `4beb93855fc81276265a95d599b1111ca0247811` = origin/develop HEAD ✅
+- runCoreSchemaConformanceAudit: 総不一致0件 ✅
+
+---
+
 ### 2026-09-01 共用在庫 CONDITION 列読み取り DEV 関数を追加（PR #844）
 
 **概要:**
