@@ -6923,3 +6923,17 @@ CoreSchemaRegistry の LEADS 定義 (51列) に存在しない13列を DEV ス�
 - 検証: dry-run 9列一致（colNumber 6〜14, headerValue 全空文字） / 削除後 26列→17列 / データ行数4行（変化なし） / 空ヘッダー0件
 - 復元: システム設定_backup_predelete_20260901 から書き戻し。コードは git revert 8ac35ebccb8a2340690cc9090033c88ceca09756
 - 注意: 列削除は git で戻せない
+
+---
+
+### 2026-09-01 CUSTOMERS 担当者ID の Registry 追加と値書き込み
+
+- PO決定: 論理キー名 SALES_ASSIGNEE_ID、物理列名 sales_assignee_id（旧: 担当者ID）
+- PR-1: 列名変更（担当者ID → sales_assignee_id）— PR #853
+- PR-2: CoreSchemaRegistry に SALES_ASSIGNEE_ID 追加 — PR #854
+- PR-3: 全6行に EMP-00001（谷澤 伸吾）を書き込み — PR #855
+- バックアップ: 顧客マスタ_backup_20260901（7行 15列）
+- 検証: Conformance Audit 0件（旧差1列が解消）
+- 復元: 顧客マスタ_backup_20260901 から書き戻し。コードは git revert <各PR SHA>
+- 次フェーズの課題: 営業担当者（sales_assignee_name）は ID採用前の旧定義であり廃止予定。
+  参照86件の書き換えが必要なため別フェーズで実施する（PO決定 2026-09-01）
