@@ -607,6 +607,18 @@ const CORE_SCHEMA_V1_TABLES = {
       }
     },
     referenceIds: []
+  },
+  OPTION_MASTER: {
+    sheetName: '選択肢マスタV2', canonicalName: '選択肢マスタV2', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['OPTION_ID',  'option_id'],
+      ['CATEGORY',   'category'],
+      ['VALUE',      'value'],
+      ['SORT_ORDER', 'sort_order'],
+      ['IS_ACTIVE',  'is_active']
+    ]),
+    primaryKey: 'OPTION_ID',
+    referenceIds: []
   }
 };
 
