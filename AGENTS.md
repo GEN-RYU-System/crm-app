@@ -22,6 +22,24 @@ gh-scope-guard など）にブロックされた場合、
 「回避方法を探す合図」ではない。
 迂回した時点で、その作業は失敗とみなす。
 
+## CI 検査ルールの変更には承認が必要
+
+frontend/scripts/ 配下の検査スクリプト
+（check-design-system.mjs、check-sensitive-content.mjs、
+その他 CI が実行する検査）を変更する場合、
+必ず事前に PO の承認を得ること。
+
+検査に引っかかったときの原則:
+- 検査を緩める前に、まず報告して判断を仰ぐ
+- 「検査が邪魔だから範囲を狭める」は禁止
+- コード側を直して通せないかを先に検討する
+
+2026-09-01、preview/gasRunnerMock.ts に日本語を書いた結果
+check-design-system が失敗し、CC が自己判断で preview/ を
+検査対象から除外した（PR #887）。
+変更内容自体は妥当だったが、承認を経ずに検査を緩めた点が問題。
+以後は事前承認を必須とする。
+
 ## 履歴を書き換える操作は行わない
 
 git rebase / git reset --hard / git push --force は
@@ -60,17 +78,6 @@ worktree 内・`~/crm-app-canonical-20260830/` に置いても読まれない。
 - Do not write a matched value or a value suspected to be sensitive verbatim in logs, PR descriptions, or commit messages. Record a masked value and file/line only.
 
 - AUTONOMOUS_WORK_LOG.mdへの追記は必ずファイル末尾に日付見出し付きセクションで行う。中間挿入・既存行編集は禁止。
-
-## CI チェックルールの変更は PO 承認必須
-
-`scripts/` 配下の検査スクリプト（`check-design-system.mjs` 等）を
-変更・緩和する場合は、必ず事前に PO の承認を得ること。
-
-CI が失敗したとき、検査の方を緩める（除外追加・条件を甘くするなど）対処は禁止。
-正しい対応:
-1. 失敗内容を報告する
-2. 「コード側を直す」か「検査ルールを変更する必要がある」かを説明して PO の判断を仰ぐ
-3. PO の承認を得てから `scripts/` を変更する
 
 ## Git pre-commit hook（develop/main への直接コミット禁止）
 
