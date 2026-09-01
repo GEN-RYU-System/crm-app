@@ -1,23 +1,3 @@
-/**
- * Phase 2 商談結果自動連携 検証テスト（DEV環境専用）
- *
- * 使用方法:
- *   clasp run runPhase2ApiPathVerification   — API経由3ケース検証
- *   clasp run runPhase2OnEditVerification    — onEdit擬似実行3ケース検証
- *
- * 前提: syncDealResultByStatus_ が GAS に配備済みであること（PR #627 merge後）
- * テスト対象リード: LDI-TEST-001（DEV専用テストリード・空データ）
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 var PHASE2_TEST_LEAD_ID = 'LDI-TEST-001';
 
@@ -32,12 +12,12 @@ function _getPhase2TestState_() {
   var data = sheet.getDataRange().getValues();
   var headers = data[0];
 
-  var idIdx         = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
-  var statusIdx     = _leadsHeaderIdx(headers, 'lead_status', 'リードステータス');
-  var dealResultIdx = _leadsHeaderIdx(headers, 'deal_result', '商談結果');
-  var archiveDateIdx = _leadsHeaderIdx(headers, 'archived_at', 'アーカイブ日');
-  var archiveRsnIdx  = _leadsHeaderIdx(headers, 'archive_reason', 'アーカイブ理由');
-  var updateDateIdx  = _leadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
+  var idIdx         = headers.indexOf('lead_id');
+  var statusIdx     = headers.indexOf('lead_status');
+  var dealResultIdx = headers.indexOf('deal_result');
+  var archiveDateIdx = headers.indexOf('archived_at');
+  var archiveRsnIdx  = headers.indexOf('archive_reason');
+  var updateDateIdx  = headers.indexOf('sheet_updated_at');
 
   var testRow = -1;
   for (var i = 1; i < data.length; i++) {

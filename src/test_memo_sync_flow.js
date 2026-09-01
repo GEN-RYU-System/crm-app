@@ -1,23 +1,4 @@
-/**
- * 商談メモの完全な同期フローをテスト
- *
- * テスト項目:
- * 1. getLeads()で取得したリードに商談メモが含まれているか
- * 2. getLeadDetail()で取得したリードに商談メモが含まれているか
- * 3. スプレッドシートの商談メモ値を直接読み取れるか
- * 4. updateLead()で商談メモを更新できるか
- * 5. 更新後の値を正しく読み取れるか
- */
 
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 function testMemoSyncFlow() {
   Logger.log('='.repeat(80));
   Logger.log('商談メモ同期フロー 完全テスト');
@@ -42,29 +23,28 @@ function testMemoSyncFlow() {
   }
 
   const testLead = allLeads[0];
-  const testLeadId = testLead['リードID'];
+  const testLeadId = testLead['lead_id'];
 
   Logger.log('テストリードID: ' + testLeadId);
-  var nameKey = 'customer_name';
-  Logger.log(nameKey + ': ' + (testLead[nameKey] || testLead['顧客名'] || '(unknown)'));
+  Logger.log('customer_name: ' + (testLead['customer_name'] || '(unknown)'));
   Logger.log('');
 
   // 【Step 2】getLeads()の結果を確認
-  Logger.log('【Step 2: getLeads() の商談メモ確認】');
+  Logger.log('【Step 2: getLeads() の deal_note 確認】');
 
-  if ('商談メモ' in testLead) {
-    Logger.log('✅ 商談メモキー: 存在する');
-    const memoValue = testLead['商談メモ'];
-    Logger.log('商談メモ値: ' + (memoValue === '' ? '(空)' : memoValue));
+  if ('deal_note' in testLead) {
+    Logger.log('✅ deal_noteキー: 存在する');
+    const memoValue = testLead['deal_note'];
+    Logger.log('deal_note値: ' + (memoValue === '' ? '(空)' : memoValue));
   } else {
-    Logger.log('❌ 商談メモキー: 存在しない');
+    Logger.log('❌ deal_noteキー: 存在しない');
     Logger.log('利用可能なキー: ' + Object.keys(testLead).join(', '));
-    return { success: false, error: 'getLeads()に商談メモが含まれない' };
+    return { success: false, error: 'getLeads()にdeal_noteが含まれない' };
   }
   Logger.log('');
 
   // 【Step 3】getLeadDetail()で詳細取得
-  Logger.log('【Step 3: getLeadDetail() の商談メモ確認】');
+  Logger.log('【Step 3: getLeadDetail() の deal_note 確認】');
 
   const leadDetail = getLeadDetail(testLeadId);
 
@@ -73,14 +53,14 @@ function testMemoSyncFlow() {
     return { success: false, error: 'getLeadDetail()がnull' };
   }
 
-  if ('商談メモ' in leadDetail) {
-    Logger.log('✅ 商談メモキー: 存在する');
-    const memoValue = leadDetail['商談メモ'];
-    Logger.log('商談メモ値: ' + (memoValue === '' ? '(空)' : memoValue));
+  if ('deal_note' in leadDetail) {
+    Logger.log('✅ deal_noteキー: 存在する');
+    const memoValue = leadDetail['deal_note'];
+    Logger.log('deal_note値: ' + (memoValue === '' ? '(空)' : memoValue));
   } else {
-    Logger.log('❌ 商談メモキー: 存在しない');
+    Logger.log('❌ deal_noteキー: 存在しない');
     Logger.log('利用可能なキー: ' + Object.keys(leadDetail).join(', '));
-    return { success: false, error: 'getLeadDetail()に商談メモが含まれない' };
+    return { success: false, error: 'getLeadDetail()にdeal_noteが含まれない' };
   }
   Logger.log('');
 
@@ -89,15 +69,15 @@ function testMemoSyncFlow() {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const leadIdIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
-  const memoIdx = _leadsHeaderIdx(headers, 'deal_note', '商談メモ');
+  const leadIdIdx = headers.indexOf('lead_id');
+  const memoIdx = headers.indexOf('deal_note');
 
   Logger.log('リードID列番号: ' + (leadIdIdx + 1) + ' (0-indexed: ' + leadIdIdx + ')');
-  Logger.log('商談メモ列番号: ' + (memoIdx + 1) + ' (0-indexed: ' + memoIdx + ')');
+  Logger.log('deal_note列番号: ' + (memoIdx + 1) + ' (0-indexed: ' + memoIdx + ')');
 
   if (memoIdx === -1) {
-    Logger.log('❌ 商談メモ列が見つかりません');
-    return { success: false, error: '商談メモ列が見つからない' };
+    Logger.log('❌ deal_note列が見つかりません');
+    return { success: false, error: 'deal_note列が見つからない' };
   }
 
   let targetRow = -1;
@@ -114,20 +94,20 @@ function testMemoSyncFlow() {
   }
 
   const directMemoValue = data[targetRow][memoIdx];
-  Logger.log('スプレッドシートの商談メモ値: ' + (directMemoValue === '' ? '(空)' : directMemoValue));
+  Logger.log('スプレッドシートのdeal_note値: ' + (directMemoValue === '' ? '(空)' : directMemoValue));
   Logger.log('');
 
-  // 【Step 5】updateLead()で商談メモを更新
-  Logger.log('【Step 5: 商談メモを更新】');
+  // 【Step 5】updateLead()でdeal_noteを更新
+  Logger.log('【Step 5: deal_noteを更新】');
 
   const timestamp = new Date().toISOString();
   const testMemoValue = 'テスト更新 ' + timestamp;
 
-  Logger.log('更新前の値: ' + (leadDetail['商談メモ'] === '' ? '(空)' : leadDetail['商談メモ']));
+  Logger.log('更新前の値: ' + (leadDetail['deal_note'] === '' ? '(空)' : leadDetail['deal_note']));
   Logger.log('更新する値: ' + testMemoValue);
 
   try {
-    updateLead('リード管理', testLeadId, { '商談メモ': testMemoValue });
+    updateLead('リード管理', testLeadId, { 'deal_note': testMemoValue });
     Logger.log('✅ updateLead() 実行成功');
   } catch (e) {
     Logger.log('❌ updateLead() エラー: ' + e.message);
@@ -141,7 +121,7 @@ function testMemoSyncFlow() {
   Utilities.sleep(1000); // 1秒待機
 
   const updatedLead = getLeadDetail(testLeadId);
-  const updatedMemoValue = updatedLead['商談メモ'];
+  const updatedMemoValue = updatedLead['deal_note'];
 
   Logger.log('更新後の値: ' + updatedMemoValue);
 
@@ -173,29 +153,29 @@ function testMemoSyncFlow() {
   Logger.log('');
 
   Logger.log('='.repeat(80));
-  Logger.log('✅ 全てのテスト完了 - 商談メモの同期は正常に動作しています');
+  Logger.log('✅ 全てのテスト完了 - deal_noteの同期は正常に動作しています');
   Logger.log('='.repeat(80));
 
   return {
     success: true,
     testLeadId: testLeadId,
     testValue: testMemoValue,
-    getLeadsHasMemo: ('商談メモ' in testLead),
-    getLeadDetailHasMemo: ('商談メモ' in leadDetail),
+    getLeadsHasMemo: ('deal_note' in testLead),
+    getLeadDetailHasMemo: ('deal_note' in leadDetail),
     updateSucceeded: (updatedMemoValue === testMemoValue),
     sheetValueMatches: (updatedDirectValue === testMemoValue)
   };
 }
 
 /**
- * 商談メモの値を元に戻す（クリーンアップ用）
+ * deal_noteの値を元に戻す（クリーンアップ用）
  */
 function cleanupMemoTest(leadId) {
-  Logger.log('商談メモをクリアしています...');
+  Logger.log('deal_noteをクリアしています...');
 
   try {
-    updateLead('リード管理', leadId, { '商談メモ': '' });
-    Logger.log('✅ 商談メモをクリアしました');
+    updateLead('リード管理', leadId, { 'deal_note': '' });
+    Logger.log('✅ deal_noteをクリアしました');
     return { success: true };
   } catch (e) {
     Logger.log('❌ クリーンアップ失敗: ' + e.message);

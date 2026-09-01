@@ -1,21 +1,4 @@
-/**
- * アサイン移行処理
- * リード一覧（IN/OUT）→ 商談管理 に移動
- * 
- * 実行条件：
- * - 「担当者」列と「担当者ID」列が両方入っている行
- * - 「進捗」列が「アサイン待ち」の行
- */
 
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 function runAssignMigration() {
   const ss = SpreadsheetApp.getActive();
   const activeSheet = ss.getActiveSheet();
@@ -51,10 +34,10 @@ function runAssignMigration() {
   // 列インデックス取得
   const colIndex = {
     担当者: headers.indexOf('担当者'),
-    担当者ID: _leadsHeaderIdx(headers, 'assignee_id', '担当者ID'),
+    担当者ID: headers.indexOf('assignee_id'),
     進捗: headers.indexOf('進捗'),
-    顧客名: headers.indexOf('顧客名'),
-    リードID: _leadsHeaderIdx(headers, 'lead_id', 'リードID')
+    顧客名: headers.indexOf('customer_name'),
+    リードID: headers.indexOf('lead_id')
   };
   
   // 移行対象行を抽出（逆順で処理：削除時のインデックスずれ防止）
@@ -178,14 +161,14 @@ function runAssignMigrationIntegrated() {
 
   // 列インデックス取得
   const colIndex = {
-    リードID: _leadsHeaderIdx(headers, 'lead_id', 'リードID'),
-    リード種別: _leadsHeaderIdx(headers, 'lead_type', 'リード種別'),
+    リードID: headers.indexOf('lead_id'),
+    リード種別: headers.indexOf('lead_type'),
     進捗ステータス: headers.indexOf('進捗ステータス'),
-    アサイン日: _leadsHeaderIdx(headers, 'assigned_at', 'アサイン日'),
+    アサイン日: headers.indexOf('assigned_at'),
     担当者: headers.indexOf('担当者'),
-    担当者ID: _leadsHeaderIdx(headers, 'assignee_id', '担当者ID'),
-    顧客名: headers.indexOf('顧客名'),
-    シート更新日: _leadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日')
+    担当者ID: headers.indexOf('assignee_id'),
+    顧客名: headers.indexOf('customer_name'),
+    シート更新日: headers.indexOf('sheet_updated_at')
   };
 
   // アサイン対象行を抽出

@@ -725,7 +725,7 @@ function auditAddressCharset() {
     },
     {
       name: CONFIG.SHEETS.CRM_CUSTOMERS,
-      cols: ['顧客名']
+      cols: ['customer_name']
     }
   ];
 

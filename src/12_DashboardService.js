@@ -42,13 +42,13 @@ function getTeamDashboardData() {
 
     // 今月の成約
     const thisMonthWon = wonDeals.filter(l => {
-      const date = new Date(l['初回取引日'] || l['シート更新日']);
+      const date = new Date(l['first_transaction_date'] || l['sheet_updated_at']);
       return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
     });
 
     // 売上計算
-    const totalSales = wonDeals.reduce((sum, l) => sum + (parseFloat(l['初回取引金額']) || 0), 0);
-    const thisMonthSales = thisMonthWon.reduce((sum, l) => sum + (parseFloat(l['初回取引金額']) || 0), 0);
+    const totalSales = wonDeals.reduce((sum, l) => sum + (parseFloat(l['first_transaction_amount']) || 0), 0);
+    const thisMonthSales = thisMonthWon.reduce((sum, l) => sum + (parseFloat(l['first_transaction_amount']) || 0), 0);
 
     // 成約率計算
     const closedDeals = wonDeals.length + lostDeals.length;
@@ -56,13 +56,13 @@ function getTeamDashboardData() {
 
     // 目標取得
     const memberGoal = goals.find(g =>
-      g['担当者ID'] === member['担当者ID'] &&
+      g['assignee_id'] === member['assignee_id'] &&
       g['期間タイプ'] === '月次' &&
       g['期間'] === `${thisYear}/${String(thisMonth + 1).padStart(2, '0')}`
     );
 
     return {
-      担当者ID: member['担当者ID'],
+      担当者ID: member['assignee_id'],
       担当者名: memberName,
       進行中商談: activeDeals.length,
       成約数: wonDeals.length,
@@ -124,7 +124,7 @@ function getTrendData(staffId, months) {
   // 担当者名を取得
   let staffName = null;
   if (staffId) {
-    const currentStaff = staff.find(s => s['担当者ID'] === staffId);
+    const currentStaff = staff.find(s => s['assignee_id'] === staffId);
     if (currentStaff) {
       staffName = getStaffFullName(currentStaff);
     }
@@ -148,25 +148,25 @@ function getTrendData(staffId, months) {
     // その月の成約
     const monthWon = targetLeads.filter(l => {
       if (l['進捗ステータス'] !== '成約') return false;
-      const date = new Date(l['初回取引日'] || l['シート更新日']);
+      const date = new Date(l['first_transaction_date'] || l['sheet_updated_at']);
       return date.getMonth() === targetMonth && date.getFullYear() === targetYear;
     });
 
     // その月の失注
     const monthLost = targetLeads.filter(l => {
       if (l['進捗ステータス'] !== '失注') return false;
-      const date = new Date(l['シート更新日']);
+      const date = new Date(l['sheet_updated_at']);
       return date.getMonth() === targetMonth && date.getFullYear() === targetYear;
     });
 
     // その月のアサイン
     const monthAssigned = targetLeads.filter(l => {
-      if (!l['アサイン日']) return false;
-      const date = new Date(l['アサイン日']);
+      if (!l['assigned_at']) return false;
+      const date = new Date(l['assigned_at']);
       return date.getMonth() === targetMonth && date.getFullYear() === targetYear;
     });
 
-    const monthSales = monthWon.reduce((sum, l) => sum + (parseFloat(l['初回取引金額']) || 0), 0);
+    const monthSales = monthWon.reduce((sum, l) => sum + (parseFloat(l['first_transaction_amount']) || 0), 0);
 
     trendData.push({
       month: monthLabel,
@@ -229,25 +229,25 @@ function getGoalProgressRanking(periodType, period) {
 
   const ranking = periodGoals.map(goal => {
     // 担当者情報を取得
-    const staffMember = staff.find(s => s['担当者ID'] === goal['担当者ID']);
+    const staffMember = staff.find(s => s['assignee_id'] === goal['assignee_id']);
     const staffName = staffMember ? getStaffFullName(staffMember) : goal['担当者名'];
 
     // 実績を計算
     const memberDeals = leads.filter(l => l['担当者'] === staffName);
     const wonDeals = memberDeals.filter(l => {
       if (l['進捗ステータス'] !== '成約') return false;
-      const date = new Date(l['初回取引日'] || l['シート更新日']);
+      const date = new Date(l['first_transaction_date'] || l['sheet_updated_at']);
       return date.getMonth() === targetMonth && date.getFullYear() === targetYear;
     });
 
-    const actualSales = wonDeals.reduce((sum, l) => sum + (parseFloat(l['初回取引金額']) || 0), 0);
+    const actualSales = wonDeals.reduce((sum, l) => sum + (parseFloat(l['first_transaction_amount']) || 0), 0);
     const actualWon = wonDeals.length;
 
     const salesGoal = parseFloat(goal['売上目標']) || 0;
     const wonGoal = parseInt(goal['成約数目標']) || 0;
 
     return {
-      担当者ID: goal['担当者ID'],
+      担当者ID: goal['assignee_id'],
       担当者名: staffName,
       売上目標: salesGoal,
       売上実績: actualSales,
@@ -294,7 +294,7 @@ function getCsDashboardData() {
 
   // 本日の新規リード
   const todayNew = leadsOnly.filter(l => {
-    const regDate = new Date(l['登録日']);
+    const regDate = new Date(l['registered_at']);
     return regDate >= today;
   });
 
@@ -303,22 +303,22 @@ function getCsDashboardData() {
 
   // 今週アサイン確定
   const weekAssigned = leads.filter(l => {
-    if (!l['アサイン日']) return false;
-    const assignDate = new Date(l['アサイン日']);
+    if (!l['assigned_at']) return false;
+    const assignDate = new Date(l['assigned_at']);
     return assignDate >= thisWeekStart;
   });
 
   // 種別別集計
   const byType = {
-    インバウンド: leadsOnly.filter(l => l['リード種別'] === 'インバウンド').length,
-    アウトバウンド: leadsOnly.filter(l => l['リード種別'] === 'アウトバウンド').length
+    インバウンド: leadsOnly.filter(l => l['lead_type'] === 'インバウンド').length,
+    アウトバウンド: leadsOnly.filter(l => l['lead_type'] === 'アウトバウンド').length
   };
 
   // 温度感別集計
   const byTemp = {
-    高: leadsOnly.filter(l => l['温度感'] === '高').length,
-    中: leadsOnly.filter(l => l['温度感'] === '中').length,
-    低: leadsOnly.filter(l => l['温度感'] === '低').length
+    高: leadsOnly.filter(l => l['temperature'] === '高').length,
+    中: leadsOnly.filter(l => l['temperature'] === '中').length,
+    低: leadsOnly.filter(l => l['temperature'] === '低').length
   };
 
   return {
@@ -353,44 +353,44 @@ function getAlertData() {
 
   // アクション期限超過
   const overdueActions = activeDeals.filter(l => {
-    if (!l['次回アクション日']) return false;
-    const actionDate = new Date(l['次回アクション日']);
+    if (!l['next_action_date']) return false;
+    const actionDate = new Date(l['next_action_date']);
     return actionDate < today;
   }).map(l => ({
-    リードID: l['リードID'],
-    顧客名: l['顧客名'],
+    リードID: l['lead_id'],
+    顧客名: l['customer_name'],
     担当者: l['担当者'],
-    次回アクション日: l['次回アクション日'],
-    超過日数: Math.floor((today - new Date(l['次回アクション日'])) / (1000 * 60 * 60 * 24))
+    次回アクション日: l['next_action_date'],
+    超過日数: Math.floor((today - new Date(l['next_action_date'])) / (1000 * 60 * 60 * 24))
   })).sort((a, b) => b.超過日数 - a.超過日数);
 
   // 長期未更新（7日以上）
   const staleDeals = activeDeals.filter(l => {
-    if (!l['シート更新日']) return false;
-    const updateDate = new Date(l['シート更新日']);
+    if (!l['sheet_updated_at']) return false;
+    const updateDate = new Date(l['sheet_updated_at']);
     const daysSinceUpdate = Math.floor((now - updateDate) / (1000 * 60 * 60 * 24));
     return daysSinceUpdate >= 7;
   }).map(l => ({
-    リードID: l['リードID'],
-    顧客名: l['顧客名'],
+    リードID: l['lead_id'],
+    顧客名: l['customer_name'],
     担当者: l['担当者'],
-    シート更新日: l['シート更新日'],
-    未更新日数: Math.floor((now - new Date(l['シート更新日'])) / (1000 * 60 * 60 * 24))
+    シート更新日: l['sheet_updated_at'],
+    未更新日数: Math.floor((now - new Date(l['sheet_updated_at'])) / (1000 * 60 * 60 * 24))
   })).sort((a, b) => b.未更新日数 - a.未更新日数);
 
   // 高温度で進捗なし（3日以上）
   const hotLeadsNoProgress = activeDeals.filter(l => {
-    if (l['温度感'] !== '高') return false;
-    if (!l['シート更新日']) return false;
-    const updateDate = new Date(l['シート更新日']);
+    if (l['temperature'] !== '高') return false;
+    if (!l['sheet_updated_at']) return false;
+    const updateDate = new Date(l['sheet_updated_at']);
     const daysSinceUpdate = Math.floor((now - updateDate) / (1000 * 60 * 60 * 24));
     return daysSinceUpdate >= 3;
   }).map(l => ({
-    リードID: l['リードID'],
-    顧客名: l['顧客名'],
+    リードID: l['lead_id'],
+    顧客名: l['customer_name'],
     担当者: l['担当者'],
-    温度感: l['温度感'],
-    未更新日数: Math.floor((now - new Date(l['シート更新日'])) / (1000 * 60 * 60 * 24))
+    温度感: l['temperature'],
+    未更新日数: Math.floor((now - new Date(l['sheet_updated_at'])) / (1000 * 60 * 60 * 24))
   }));
 
   return {
@@ -424,7 +424,7 @@ function getStaffFullName(staff) {
     return staff['氏名（日本語）'];
   }
   // フォールバック
-  return staff['担当者名'] || staff['担当者ID'] || '不明';
+  return staff['担当者名'] || staff['assignee_id'] || '不明';
 }
 
 /**
@@ -519,7 +519,7 @@ function getPersonalDashboardData(staffId) {
   }
 
   // 自分の案件をフィルタ
-  const myDeals = leads.filter(l => l['担当者'] === staffName || l['担当者ID'] === staffId);
+  const myDeals = leads.filter(l => l['担当者'] === staffName || l['assignee_id'] === staffId);
 
   // 進行中の案件（Config.gsの定義を使用）
   const activeStatuses = CONFIG.DEAL_STATUSES || ['アサイン確定', '商談中'];
@@ -528,7 +528,7 @@ function getPersonalDashboardData(staffId) {
   // 今月の成約
   const thisMonthWon = myDeals.filter(l => {
     if (l['進捗ステータス'] !== '成約') return false;
-    const tradeDate = l['初回取引日'] || l['シート更新日'];
+    const tradeDate = l['first_transaction_date'] || l['sheet_updated_at'];
     if (!tradeDate) return false;
     const date = new Date(tradeDate);
     return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
@@ -536,7 +536,7 @@ function getPersonalDashboardData(staffId) {
 
   // 今月の売上
   const thisMonthSales = thisMonthWon.reduce((sum, l) => {
-    return sum + (parseFloat(l['月間見込み金額']) || parseFloat(l['初回取引金額']) || 0);
+    return sum + (parseFloat(l['monthly_expected_amount']) || parseFloat(l['first_transaction_amount']) || 0);
   }, 0);
 
   // 目標進捗
@@ -546,7 +546,7 @@ function getPersonalDashboardData(staffId) {
     const currentPeriod = `${thisYear}-${String(thisMonth + 1).padStart(2, '0')}`;
 
     const currentGoal = goalsData.find(g =>
-      g['担当者ID'] === staffId &&
+      g['assignee_id'] === staffId &&
       g['対象期間タイプ'] === '月次' &&
       g['対象期間'] === currentPeriod &&
       g['ステータス'] === '進行中'
@@ -572,18 +572,18 @@ function getPersonalDashboardData(staffId) {
   const sevenDaysLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
   const upcomingActions = activeDeals
     .filter(l => {
-      if (!l['次回アクション日']) return false;
-      const actionDate = new Date(l['次回アクション日']);
+      if (!l['next_action_date']) return false;
+      const actionDate = new Date(l['next_action_date']);
       return actionDate >= today && actionDate <= sevenDaysLater;
     })
     .map(l => {
-      const actionDate = new Date(l['次回アクション日']);
+      const actionDate = new Date(l['next_action_date']);
       const daysDiff = Math.floor((actionDate - today) / (1000 * 60 * 60 * 24));
 
       return {
-        company: l['顧客名'] || '(顧客名なし)',
-        action: l['次回アクション'] || '-',
-        date: l['次回アクション日'],
+        company: l['customer_name'] || '(顧客名なし)',
+        action: l['next_action'] || '-',
+        date: l['next_action_date'],
         dateFormatted: formatDateJP(actionDate),
         dueType: daysDiff === 0 ? 'today' : (daysDiff === 1 ? 'tomorrow' : 'later'),
         daysDiff: daysDiff
@@ -595,14 +595,14 @@ function getPersonalDashboardData(staffId) {
   // 担当案件（進行中）
   const activeDealsList = activeDeals
     .map(l => ({
-      leadId: l['リードID'] || '',
-      company: l['顧客名'] || '(顧客名なし)',
+      leadId: l['lead_id'] || '',
+      company: l['customer_name'] || '(顧客名なし)',
       status: l['進捗ステータス'],
-      amount: Math.round((parseFloat(l['月間見込み金額']) || 0) / 10000), // 万円単位
-      nextAction: l['次回アクション'] || '-',
-      nextActionDate: l['次回アクション日'] || '',
+      amount: Math.round((parseFloat(l['monthly_expected_amount']) || 0) / 10000), // 万円単位
+      nextAction: l['next_action'] || '-',
+      nextActionDate: l['next_action_date'] || '',
       staff: l['担当者'] || '-',
-      messageUrl: l['メッセージURL'] || ''
+      messageUrl: l['message_url'] || ''
     }))
     .slice(0, 10);
 
@@ -677,21 +677,21 @@ function getBottleneckDashboardData() {
 
   // 今月の成約・失注
   const thisMonthWon = wonDeals.filter(l => {
-    const date = new Date(l['初回取引日'] || l['シート更新日']);
+    const date = new Date(l['first_transaction_date'] || l['sheet_updated_at']);
     return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
   });
   const thisMonthLost = lostDeals.filter(l => {
-    const date = new Date(l['シート更新日']);
+    const date = new Date(l['sheet_updated_at']);
     return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
   });
 
   // 先月の成約・失注
   const lastMonthWon = wonDeals.filter(l => {
-    const date = new Date(l['初回取引日'] || l['シート更新日']);
+    const date = new Date(l['first_transaction_date'] || l['sheet_updated_at']);
     return date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
   });
   const lastMonthLost = lostDeals.filter(l => {
-    const date = new Date(l['シート更新日']);
+    const date = new Date(l['sheet_updated_at']);
     return date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
   });
 
@@ -711,15 +711,15 @@ function getBottleneckDashboardData() {
 
   // 停滞案件（商談メモ未更新48時間以上）
   const stagnantDeals = activeDeals.filter(l => {
-    const updateDate = l['シート更新日'] ? new Date(l['シート更新日']).getTime() : 0;
+    const updateDate = l['sheet_updated_at'] ? new Date(l['sheet_updated_at']).getTime() : 0;
     return updateDate < stagnationThreshold;
   }).map(l => ({
-    leadId: l['リードID'],
-    customerName: l['顧客名'] || '(顧客名なし)',
+    leadId: l['lead_id'],
+    customerName: l['customer_name'] || '(顧客名なし)',
     staffName: l['担当者'],
     status: l['進捗ステータス'],
-    lastUpdate: l['シート更新日'],
-    hoursSinceUpdate: Math.floor((now.getTime() - new Date(l['シート更新日']).getTime()) / (1000 * 60 * 60))
+    lastUpdate: l['sheet_updated_at'],
+    hoursSinceUpdate: Math.floor((now.getTime() - new Date(l['sheet_updated_at']).getTime()) / (1000 * 60 * 60))
   }));
 
   teamKPI.stagnantCount = stagnantDeals.length;
@@ -735,15 +735,15 @@ function getBottleneckDashboardData() {
 
   // クロージング長期化案件
   const longDeals = activeDeals.filter(l => {
-    const assignDate = l['アサイン日'] ? new Date(l['アサイン日']).getTime() : 0;
+    const assignDate = l['assigned_at'] ? new Date(l['assigned_at']).getTime() : 0;
     return assignDate > 0 && assignDate < longDealThreshold;
   }).map(l => ({
-    leadId: l['リードID'],
-    customerName: l['顧客名'] || '(顧客名なし)',
+    leadId: l['lead_id'],
+    customerName: l['customer_name'] || '(顧客名なし)',
     staffName: l['担当者'],
     status: l['進捗ステータス'],
-    assignDate: l['アサイン日'],
-    daysSinceAssign: Math.floor((now.getTime() - new Date(l['アサイン日']).getTime()) / (1000 * 60 * 60 * 24))
+    assignDate: l['assigned_at'],
+    daysSinceAssign: Math.floor((now.getTime() - new Date(l['assigned_at']).getTime()) / (1000 * 60 * 60 * 24))
   })).sort((a, b) => b.daysSinceAssign - a.daysSinceAssign);
 
   // 成約率低下担当者
@@ -755,12 +755,12 @@ function getBottleneckDashboardData() {
     // 今月
     const thisMonthStaffWon = staffDeals.filter(l => {
       if (l['進捗ステータス'] !== '成約') return false;
-      const date = new Date(l['初回取引日'] || l['シート更新日']);
+      const date = new Date(l['first_transaction_date'] || l['sheet_updated_at']);
       return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
     }).length;
     const thisMonthStaffLost = staffDeals.filter(l => {
       if (l['進捗ステータス'] !== '失注') return false;
-      const date = new Date(l['シート更新日']);
+      const date = new Date(l['sheet_updated_at']);
       return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
     }).length;
     const thisMonthTotal = thisMonthStaffWon + thisMonthStaffLost;
@@ -769,12 +769,12 @@ function getBottleneckDashboardData() {
     // 先月
     const lastMonthStaffWon = staffDeals.filter(l => {
       if (l['進捗ステータス'] !== '成約') return false;
-      const date = new Date(l['初回取引日'] || l['シート更新日']);
+      const date = new Date(l['first_transaction_date'] || l['sheet_updated_at']);
       return date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
     }).length;
     const lastMonthStaffLost = staffDeals.filter(l => {
       if (l['進捗ステータス'] !== '失注') return false;
-      const date = new Date(l['シート更新日']);
+      const date = new Date(l['sheet_updated_at']);
       return date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
     }).length;
     const lastMonthTotal = lastMonthStaffWon + lastMonthStaffLost;
@@ -785,7 +785,7 @@ function getBottleneckDashboardData() {
       const drop = lastMonthRate - thisMonthRate;
       if (drop >= settings.CONVERSION_DROP_THRESHOLD) {
         conversionDropStaff.push({
-          staffId: s['担当者ID'],
+          staffId: s['assignee_id'],
           staffName: staffName,
           thisMonthRate: thisMonthRate,
           lastMonthRate: lastMonthRate,
@@ -804,13 +804,13 @@ function getBottleneckDashboardData() {
     // 今月の成約
     const staffWon = staffDeals.filter(l => {
       if (l['進捗ステータス'] !== '成約') return false;
-      const date = new Date(l['初回取引日'] || l['シート更新日']);
+      const date = new Date(l['first_transaction_date'] || l['sheet_updated_at']);
       return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
     }).length;
 
     const staffLost = staffDeals.filter(l => {
       if (l['進捗ステータス'] !== '失注') return false;
-      const date = new Date(l['シート更新日']);
+      const date = new Date(l['sheet_updated_at']);
       return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
     }).length;
 
@@ -823,7 +823,7 @@ function getBottleneckDashboardData() {
     // 目標取得
     const currentPeriod = `${thisYear}-${String(thisMonth + 1).padStart(2, '0')}`;
     const staffGoal = goals.find(g =>
-      g['担当者ID'] === s['担当者ID'] &&
+      g['assignee_id'] === s['assignee_id'] &&
       g['期間タイプ'] === '月次' &&
       g['期間'] === currentPeriod
     );
@@ -833,14 +833,14 @@ function getBottleneckDashboardData() {
     let status = 'ok'; // ✅ 順調
     if (stagnantCount >= settings.STAGNATION_WARNING_COUNT) {
       status = 'critical'; // 🚨 要介入
-    } else if (conversionDropStaff.find(c => c.staffId === s['担当者ID'])) {
+    } else if (conversionDropStaff.find(c => c.staffId === s['assignee_id'])) {
       status = 'critical';
     } else if (stagnantCount >= 1 || (goalWinRate && winRate !== null && winRate < goalWinRate)) {
       status = 'warning'; // ⚠️ 注意
     }
 
     return {
-      staffId: s['担当者ID'],
+      staffId: s['assignee_id'],
       staffName: staffName,
       dealCount: staffActiveDeals.length,
       wonCount: staffWon,
@@ -887,7 +887,7 @@ function getStaffDetailForBottleneck(staffId) {
   const leads = getSheetDataAsObjects(leadSheet);
   const staff = getSheetDataAsObjects(staffSheet);
 
-  const targetStaff = staff.find(s => s['担当者ID'] === staffId);
+  const targetStaff = staff.find(s => s['assignee_id'] === staffId);
   if (!targetStaff) {
     return { error: '担当者が見つかりません' };
   }
@@ -905,13 +905,13 @@ function getStaffDetailForBottleneck(staffId) {
   // 今月の数字
   const thisMonthWon = staffDeals.filter(l => {
     if (l['進捗ステータス'] !== '成約') return false;
-    const date = new Date(l['初回取引日'] || l['シート更新日']);
+    const date = new Date(l['first_transaction_date'] || l['sheet_updated_at']);
     return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
   }).length;
 
   const thisMonthLost = staffDeals.filter(l => {
     if (l['進捗ステータス'] !== '失注') return false;
-    const date = new Date(l['シート更新日']);
+    const date = new Date(l['sheet_updated_at']);
     return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
   }).length;
 
@@ -920,8 +920,8 @@ function getStaffDetailForBottleneck(staffId) {
 
   // 対応が必要な案件
   const problemDeals = activeDeals.map(l => {
-    const updateDate = l['シート更新日'] ? new Date(l['シート更新日']).getTime() : 0;
-    const assignDate = l['アサイン日'] ? new Date(l['アサイン日']).getTime() : 0;
+    const updateDate = l['sheet_updated_at'] ? new Date(l['sheet_updated_at']).getTime() : 0;
+    const assignDate = l['assigned_at'] ? new Date(l['assigned_at']).getTime() : 0;
     const isStagnant = updateDate < stagnationThreshold;
     const daysSinceAssign = assignDate > 0 ? Math.floor((now.getTime() - assignDate) / (1000 * 60 * 60 * 24)) : 0;
     const isLongDeal = daysSinceAssign >= settings.LONG_DEAL_DAYS;
@@ -931,8 +931,8 @@ function getStaffDetailForBottleneck(staffId) {
     if (isLongDeal) problems.push('長期化');
 
     return {
-      leadId: l['リードID'],
-      customerName: l['顧客名'] || '(顧客名なし)',
+      leadId: l['lead_id'],
+      customerName: l['customer_name'] || '(顧客名なし)',
       status: l['進捗ステータス'],
       stagnantDays: isStagnant ? Math.floor((now.getTime() - updateDate) / (1000 * 60 * 60 * 24)) : 0,
       daysSinceAssign: daysSinceAssign,
@@ -949,13 +949,13 @@ function getStaffDetailForBottleneck(staffId) {
 
     const weekWon = staffDeals.filter(l => {
       if (l['進捗ステータス'] !== '成約') return false;
-      const date = new Date(l['初回取引日'] || l['シート更新日']);
+      const date = new Date(l['first_transaction_date'] || l['sheet_updated_at']);
       return date >= weekStart && date < weekEnd;
     }).length;
 
     const weekLost = staffDeals.filter(l => {
       if (l['進捗ステータス'] !== '失注') return false;
-      const date = new Date(l['シート更新日']);
+      const date = new Date(l['sheet_updated_at']);
       return date >= weekStart && date < weekEnd;
     }).length;
 

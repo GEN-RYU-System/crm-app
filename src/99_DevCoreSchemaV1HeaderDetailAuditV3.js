@@ -10,7 +10,7 @@ const DEV_CORE_SCHEMA_V1_HEADER_DETAIL_AUDIT_V3_SHEETS = [
   { name: '仕入れ', headerRowNumber: 1, requiredIdHeaders: ['仕入れID', 'オーダーID', '仕入れ担当ID'] },
   { name: 'フォームトークン', headerRowNumber: 1, requiredIdHeaders: ['トークン', 'リードID'] },
   { name: '商品マスタ同期', headerRowNumber: 1, requiredIdHeaders: ['product_id'] },
-  { name: '担当者マスタ', headerRowNumber: 1, requiredIdHeaders: ['担当者ID'] }
+  { name: '担当者マスタ', headerRowNumber: 1, requiredIdHeaders: ['assignee_id'] }
 ];
 const DEV_CORE_SCHEMA_V1_HEADER_DETAIL_AUDIT_V3_LEGACY_INPUT = {
   name: '請求書作成',

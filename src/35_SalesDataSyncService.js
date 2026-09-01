@@ -56,7 +56,7 @@ function getStaffFullName(emailOrId, staffSheet, staffMapping) {
 
   try {
     const data = staffSheet.getDataRange().getValues();
-    const emailCol = staffMapping['メール'];
+    const emailCol = staffMapping['email'];
     const nameCol = staffMapping['氏名（日本語）'];
 
     if (!emailCol || !nameCol) {
@@ -102,7 +102,7 @@ function getCustomerSalesRep(customerName, customerSheet, customerMapping) {
   try {
     const data = customerSheet.getDataRange().getValues();
     const nameCol = customerMapping['B Name'];
-    const salesRepCol = customerMapping['営業担当者'];
+    const salesRepCol = customerMapping['sales_assignee_name'];
 
     if (!nameCol || !salesRepCol) {
       Logger.log('⚠️ 顧客マスタに必要な列が見つかりません');
@@ -369,8 +369,8 @@ function writeInvoiceToSalesData(pdfUrl) {
       // ========================================
       const salesStatusRepCol = salesDataMapping['取引状況営業担当者'];
       if (salesStatusRepCol) {
-        rowData[salesStatusRepCol - 1] = settings['営業担当者'] || '';
-        Logger.log('    取引状況営業担当者: ' + (settings['営業担当者'] || '（空欄）'));
+        rowData[salesStatusRepCol - 1] = settings['sales_assignee_name'] || '';
+        Logger.log('    取引状況営業担当者: ' + (settings['sales_assignee_name'] || '（空欄）'));
       } else {
         Logger.log('    ⚠️ 「取引状況営業担当者」列が見つかりません');
       }
@@ -378,10 +378,10 @@ function writeInvoiceToSalesData(pdfUrl) {
       // ========================================
       // 項目4: 営業担当者（顧客マスタから取得）
       // ========================================
-      const salesRepCol = salesDataMapping['営業担当者'];
+      const salesRepCol = salesDataMapping['sales_assignee_name'];
       if (salesRepCol) {
         const salesRep = getCustomerSalesRep(
-          settings['顧客名'],
+          settings['customer_name'],
           customerSheet,
           customerMapping
         );
@@ -396,7 +396,7 @@ function writeInvoiceToSalesData(pdfUrl) {
       // 項目5: 取引状況取引先名
       const customerNameCol = salesDataMapping['取引状況取引先名'];
       if (customerNameCol) {
-        rowData[customerNameCol - 1] = settings['顧客名'] || '';
+        rowData[customerNameCol - 1] = settings['customer_name'] || '';
       }
 
       // 項目6: 取引状況商品名
@@ -531,7 +531,7 @@ function writeInvoiceToSalesData(pdfUrl) {
       // 項目25: 発送情報リードID
       const leadIdCol = salesDataMapping['発送情報リードID'];
       if (leadIdCol) {
-        rowData[leadIdCol - 1] = settings['リードID'] || '';
+        rowData[leadIdCol - 1] = settings['lead_id'] || '';
       }
 
       // 項目26: 発送情報受取人氏名
@@ -543,7 +543,7 @@ function writeInvoiceToSalesData(pdfUrl) {
       // 項目27: 発送情報電話番号
       const phoneCol = salesDataMapping['発送情報電話番号'];
       if (phoneCol) {
-        rowData[phoneCol - 1] = shippingInfo['電話番号'] || '';
+        rowData[phoneCol - 1] = shippingInfo['phone'] || '';
       }
 
       // 項目28: 発送情報メールアドレス

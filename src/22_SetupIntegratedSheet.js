@@ -1,21 +1,3 @@
-/**
- * CRMリード管理シート セットアップ
- * 手動実行用関数群
- *
- * 実行順序:
- * 1. setupIntegratedLeadSheet() - リード管理シート作成
- * 2. addTestData() - テストデータ追加（オプション）
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 /**
  * リード管理シートの60列ヘッダー定義

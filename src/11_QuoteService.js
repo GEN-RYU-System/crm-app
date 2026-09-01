@@ -135,8 +135,8 @@ function saveQuote(quoteData) {
       // ★ 列番号ではなくヘッダー名でデータを構築
       const row = new Array(totalColumns).fill('');
       row[colMapping['見積書ID'] - 1] = quoteId;
-      row[colMapping['顧客名'] - 1] = quoteData.customerName || '';
-      row[colMapping['リードID'] - 1] = quoteData.leadId || '';
+      row[colMapping['customer_name'] - 1] = quoteData.customerName || '';
+      row[colMapping['lead_id'] - 1] = quoteData.leadId || '';
       row[colMapping['カテゴリ'] - 1] = item.category || '';
       row[colMapping['商品マーク'] - 1] = productMark;
       row[colMapping['商品英語名'] - 1] = productEnTitle;
@@ -151,15 +151,15 @@ function saveQuote(quoteData) {
         row[colMapping['Sub Total'] - 1] = quoteData.subtotal || 0;
         row[colMapping['shipping'] - 1] = quoteData.shipping || 0;
         row[colMapping['Total'] - 1] = quoteData.total || 0;
-        row[colMapping['国'] - 1] = quoteData.country || '';
+        row[colMapping['country'] - 1] = quoteData.country || '';
         row[colMapping['発送方法'] - 1] = quoteData.shippingMethod || '';
         row[colMapping['総重量'] - 1] = quoteData.totalWeight || 0;
         row[colMapping['支払い方法'] - 1] = quoteData.paymentMethod || '';
         row[colMapping['為替レート'] - 1] = quoteData.exchangeRate || 0;
         row[colMapping['作成日'] - 1] = createdDate;
         row[colMapping['有効期限'] - 1] = expiryDate;
-        row[colMapping['営業担当者'] - 1] = quoteData.salesRep || userEmail;
-        row[colMapping['担当者ID'] - 1] = quoteData.salesRepId || userEmail;
+        row[colMapping['sales_assignee_name'] - 1] = quoteData.salesRep || userEmail;
+        row[colMapping['assignee_id'] - 1] = quoteData.salesRepId || userEmail;
         row[colMapping['メモ'] - 1] = quoteData.memo || '';
       }
 
@@ -258,21 +258,21 @@ function getQuoteById(quoteId) {
     // ★ ヘッダー名ベースで見積もりデータを構築
     const quoteData = {
       quoteId: quoteId,
-      customerName: firstRow[colMapping['顧客名'] - 1],
-      leadId: firstRow[colMapping['リードID'] - 1],
+      customerName: firstRow[colMapping['customer_name'] - 1],
+      leadId: firstRow[colMapping['lead_id'] - 1],
       items: items,
       subtotal: firstRow[colMapping['Sub Total'] - 1],
       shipping: firstRow[colMapping['shipping'] - 1],
       total: firstRow[colMapping['Total'] - 1],
-      country: firstRow[colMapping['国'] - 1],
+      country: firstRow[colMapping['country'] - 1],
       shippingMethod: firstRow[colMapping['発送方法'] - 1],
       totalWeight: firstRow[colMapping['総重量'] - 1],
       paymentMethod: firstRow[colMapping['支払い方法'] - 1],
       exchangeRate: firstRow[colMapping['為替レート'] - 1],
       createdDate: firstRow[colMapping['作成日'] - 1],
       expiryDate: firstRow[colMapping['有効期限'] - 1],
-      salesRep: firstRow[colMapping['営業担当者'] - 1],
-      salesRepId: firstRow[colMapping['担当者ID'] - 1],
+      salesRep: firstRow[colMapping['sales_assignee_name'] - 1],
+      salesRepId: firstRow[colMapping['assignee_id'] - 1],
       memo: firstRow[colMapping['メモ'] - 1]
     };
 
@@ -339,7 +339,7 @@ function getAllQuotes(options) {
     // 見積書IDごとにグループ化（1行目のみ取得）
     const quoteMap = {};
     const quoteIdCol = colMapping['見積書ID'] - 1;
-    const leadIdCol = colMapping['リードID'] - 1;
+    const leadIdCol = colMapping['lead_id'] - 1;
 
     data.forEach(row => {
       const quoteId = row[quoteIdCol];
@@ -352,16 +352,16 @@ function getAllQuotes(options) {
         // ★ ヘッダー名ベースでデータを取得
         quoteMap[quoteId] = {
           quoteId: quoteId,
-          customerName: row[colMapping['顧客名'] - 1],
+          customerName: row[colMapping['customer_name'] - 1],
           leadId: row[leadIdCol],
           itemCount: 1,
           subtotal: row[colMapping['Sub Total'] - 1],
           shipping: row[colMapping['shipping'] - 1],
           total: row[colMapping['Total'] - 1],
-          country: row[colMapping['国'] - 1],
+          country: row[colMapping['country'] - 1],
           createdDate: row[colMapping['作成日'] - 1],
           expiryDate: row[colMapping['有効期限'] - 1],
-          salesRep: row[colMapping['営業担当者'] - 1]
+          salesRep: row[colMapping['sales_assignee_name'] - 1]
         };
       } else {
         quoteMap[quoteId].itemCount++;

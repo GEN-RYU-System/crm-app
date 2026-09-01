@@ -1,18 +1,3 @@
-/**
- * ReportService.gs
- * 週次・月次レポート機能を提供するサービス
- * Phase 6: レポート機能
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 // ==================== レポート取得関数 ====================
 
@@ -32,7 +17,7 @@ function getWeeklyReport(staffId, targetWeek) {
 
   const reports = getSheetDataAsObjects(sheet);
   const report = reports.find(r =>
-    r['担当者ID'] === staffId && r['対象週'] === targetWeek
+    r['assignee_id'] === staffId && r['対象週'] === targetWeek
   );
 
   return {
@@ -58,7 +43,7 @@ function getMonthlyReport(staffId, targetMonth) {
 
   const reports = getSheetDataAsObjects(sheet);
   const report = reports.find(r =>
-    r['担当者ID'] === staffId && r['対象月'] === targetMonth
+    r['assignee_id'] === staffId && r['対象月'] === targetMonth
   );
 
   return {
@@ -89,7 +74,7 @@ function getMyReportHistory(staffId, reportType, limit) {
 
   const reports = getSheetDataAsObjects(sheet);
   const myReports = reports
-    .filter(r => r['担当者ID'] === staffId)
+    .filter(r => r['assignee_id'] === staffId)
     .sort((a, b) => new Date(b['提出日時']) - new Date(a['提出日時']))
     .slice(0, limit);
 
@@ -118,7 +103,7 @@ function saveWeeklyReport(staffId, targetWeek, reportData) {
   let staffName = '';
   if (staffSheet) {
     const staffData = getSheetDataAsObjects(staffSheet);
-    const staff = staffData.find(s => s['担当者ID'] === staffId);
+    const staff = staffData.find(s => s['assignee_id'] === staffId);
     if (staff) {
       staffName = getStaffFullName(staff);
     }
@@ -127,7 +112,7 @@ function saveWeeklyReport(staffId, targetWeek, reportData) {
   // 既存レポートを検索
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const staffIdIdx = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
+  const staffIdIdx = headers.indexOf('assignee_id');
   const weekIdx = headers.indexOf('対象週');
 
   let existingRow = -1;
@@ -207,7 +192,7 @@ function saveMonthlyReport(staffId, targetMonth, reportData) {
   let staffName = '';
   if (staffSheet) {
     const staffData = getSheetDataAsObjects(staffSheet);
-    const staff = staffData.find(s => s['担当者ID'] === staffId);
+    const staff = staffData.find(s => s['assignee_id'] === staffId);
     if (staff) {
       staffName = getStaffFullName(staff);
     }
@@ -216,7 +201,7 @@ function saveMonthlyReport(staffId, targetMonth, reportData) {
   // 既存レポートを検索
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const staffIdIdx = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
+  const staffIdIdx = headers.indexOf('assignee_id');
   const monthIdx = headers.indexOf('対象月');
 
   let existingRow = -1;
@@ -322,7 +307,7 @@ function generateBuddyFeedbackForReport(staffId, period, type, reportData) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const staffIdIdx = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
+  const staffIdIdx = headers.indexOf('assignee_id');
   const periodIdx = type === 'monthly' ? headers.indexOf('対象月') : headers.indexOf('対象週');
   const feedbackIdx = headers.indexOf('Buddyフィードバック');
 
@@ -415,19 +400,19 @@ function getReportSubmissionStatus(reportType, period) {
   const submittedStaffIds = new Set();
   reportData
     .filter(r => r[periodKey] === period)
-    .forEach(r => submittedStaffIds.add(r['担当者ID']));
+    .forEach(r => submittedStaffIds.add(r['assignee_id']));
 
   const submitted = [];
   const notSubmitted = [];
 
   activeStaff.forEach(staff => {
     const staffInfo = {
-      担当者ID: staff['担当者ID'],
+      担当者ID: staff['assignee_id'],
       担当者名: getStaffFullName(staff),
       役割: staff['役割']
     };
 
-    if (submittedStaffIds.has(staff['担当者ID'])) {
+    if (submittedStaffIds.has(staff['assignee_id'])) {
       submitted.push(staffInfo);
     } else {
       notSubmitted.push(staffInfo);

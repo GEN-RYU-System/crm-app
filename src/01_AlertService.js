@@ -1,18 +1,3 @@
-/**
- * AlertService.gs
- * アラート機能を提供するサービス
- * Phase 3: アラート機能
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 // ==================== アラートレベル定義 ====================
 const ALERT_LEVELS = {
@@ -56,9 +41,9 @@ function checkOverdueActions() {
   leads.forEach(lead => {
     // 商談中のもののみチェック
     if (!CONFIG.DEAL_STATUSES.includes(lead['進捗ステータス'])) return;
-    if (!lead['次回アクション日']) return;
+    if (!lead['next_action_date']) return;
 
-    const actionDate = new Date(lead['次回アクション日']);
+    const actionDate = new Date(lead['next_action_date']);
     if (actionDate >= today) return;
 
     const overdueDays = Math.floor((today - actionDate) / (1000 * 60 * 60 * 24));
@@ -66,15 +51,15 @@ function checkOverdueActions() {
 
     alerts.push({
       type: 'overdue_action',
-      リードID: lead['リードID'],
-      顧客名: lead['顧客名'],
+      リードID: lead['lead_id'],
+      顧客名: lead['customer_name'],
             担当者: lead['担当者'],
-      担当者ID: lead['担当者ID'],
-      次回アクション: lead['次回アクション'],
-      次回アクション日: lead['次回アクション日'],
+      担当者ID: lead['assignee_id'],
+      次回アクション: lead['next_action'],
+      次回アクション日: lead['next_action_date'],
       超過日数: overdueDays,
       alertLevel: alertLevel,
-      message: `「${lead['顧客名']}」のアクション期限が${overdueDays}日超過しています`
+      message: `「${lead['customer_name']}」のアクション期限が${overdueDays}日超過しています`
     });
   });
 
@@ -104,9 +89,9 @@ function checkLongNoUpdate(thresholdDays) {
   leads.forEach(lead => {
     // 商談中のもののみチェック
     if (!CONFIG.DEAL_STATUSES.includes(lead['進捗ステータス'])) return;
-    if (!lead['シート更新日']) return;
+    if (!lead['sheet_updated_at']) return;
 
-    const updateDate = new Date(lead['シート更新日']);
+    const updateDate = new Date(lead['sheet_updated_at']);
     const daysSinceUpdate = Math.floor((now - updateDate) / (1000 * 60 * 60 * 24));
 
     if (daysSinceUpdate < thresholdDays) return;
@@ -115,14 +100,14 @@ function checkLongNoUpdate(thresholdDays) {
 
     alerts.push({
       type: 'long_no_update',
-      リードID: lead['リードID'],
-      顧客名: lead['顧客名'],
+      リードID: lead['lead_id'],
+      顧客名: lead['customer_name'],
             担当者: lead['担当者'],
-      担当者ID: lead['担当者ID'],
-      シート更新日: lead['シート更新日'],
+      担当者ID: lead['assignee_id'],
+      シート更新日: lead['sheet_updated_at'],
       未更新日数: daysSinceUpdate,
       alertLevel: alertLevel,
-      message: `「${lead['顧客名']}」が${daysSinceUpdate}日間更新されていません`
+      message: `「${lead['customer_name']}」が${daysSinceUpdate}日間更新されていません`
     });
   });
 
@@ -152,25 +137,25 @@ function checkHotLeadStagnation(thresholdDays) {
   leads.forEach(lead => {
     // 商談中かつ温度感「高」のみチェック
     if (!CONFIG.DEAL_STATUSES.includes(lead['進捗ステータス'])) return;
-    if (lead['温度感'] !== '高') return;
-    if (!lead['シート更新日']) return;
+    if (lead['temperature'] !== '高') return;
+    if (!lead['sheet_updated_at']) return;
 
-    const updateDate = new Date(lead['シート更新日']);
+    const updateDate = new Date(lead['sheet_updated_at']);
     const daysSinceUpdate = Math.floor((now - updateDate) / (1000 * 60 * 60 * 24));
 
     if (daysSinceUpdate < thresholdDays) return;
 
     alerts.push({
       type: 'hot_lead_stagnation',
-      リードID: lead['リードID'],
-      顧客名: lead['顧客名'],
+      リードID: lead['lead_id'],
+      顧客名: lead['customer_name'],
             担当者: lead['担当者'],
-      担当者ID: lead['担当者ID'],
-      温度感: lead['温度感'],
-      シート更新日: lead['シート更新日'],
+      担当者ID: lead['assignee_id'],
+      温度感: lead['temperature'],
+      シート更新日: lead['sheet_updated_at'],
       未更新日数: daysSinceUpdate,
       alertLevel: 'LEVEL2', // 高温度は即座にLEVEL2
-      message: `高温度の「${lead['顧客名']}」が${daysSinceUpdate}日間動きがありません`
+      message: `高温度の「${lead['customer_name']}」が${daysSinceUpdate}日間動きがありません`
     });
   });
 
@@ -487,7 +472,7 @@ function markAlertAsRead(leadId) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const idIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
+  const idIdx = headers.indexOf('lead_id');
   const notifyIdx = headers.indexOf('通知確認');
 
   if (idIdx === -1 || notifyIdx === -1) return { success: false };

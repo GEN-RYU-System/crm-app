@@ -1,32 +1,3 @@
-/**
- * 流入元ID列 追加・移行マイグレーション
- *
- * addLeadSourceIdColumn()
- *   リード管理シートに「流入元ID」列を挿入する（冪等）
- *
- * applyLeadSourceIdMigration()
- *   流入元マスタの名称→IDマップを使い、流入元ID列にIDを書き込む。
- *   withSheetWrite_（ロック＋キャッシュ削除）を使用。
- *   ★ dryRunLeadSourceIdMigration() で承認を得てから実行すること。
- *
- * surveyLeadSourceIdColumn()
- *   流入元ID列と流入経路列の分布を出力する（書き込みなし）。
- *
- * 実行方法:
- *   clasp run addLeadSourceIdColumn
- *   clasp run applyLeadSourceIdMigration
- *   clasp run surveyLeadSourceIdColumn
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 /**
  * リード管理シートに「流入元ID」列を追加する（冪等）。
@@ -45,12 +16,12 @@ function addLeadSourceIdColumn() {
   var lastCol = sheet.getLastColumn();
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(String);
 
-  if (_leadsHeaderIdx(headers, 'lead_source_id', '流入元ID') !== -1) {
+  if (headers.indexOf('lead_source_id') !== -1) {
     Logger.log('列既存: 流入元ID（スキップ）');
     return '列既存: 流入元ID';
   }
 
-  var sourceIdx = _leadsHeaderIdx(headers, 'lead_source', '流入経路');
+  var sourceIdx = headers.indexOf('lead_source');
   if (sourceIdx === -1) throw new Error('「流入経路」列が見つかりません');
 
   // insertColumnAfter は 1-based インデックスを取る
@@ -59,7 +30,7 @@ function addLeadSourceIdColumn() {
 
   var newLastCol     = sheet.getLastColumn();
   var updatedHeaders = sheet.getRange(1, 1, 1, newLastCol).getValues()[0].map(String);
-  var newIdx         = _leadsHeaderIdx(updatedHeaders, 'lead_source_id', '流入元ID');
+  var newIdx         = updatedHeaders.indexOf('lead_source_id');
 
   Logger.log('列追加完了: 流入元ID（列' + (newIdx + 1) + '、流入経路 の直後）');
   Logger.log('総列数: ' + newLastCol);
@@ -114,8 +85,8 @@ function applyLeadSourceIdMigration() {
   if (leadLastRow < 2) throw new Error('リード管理にデータがありません');
 
   var leadHeaders    = leadSheet.getRange(1, 1, 1, leadLastCol).getValues()[0].map(String);
-  var sourceColIdx   = _leadsHeaderIdx(leadHeaders, 'lead_source', '流入経路');
-  var sourceIdColIdx = _leadsHeaderIdx(leadHeaders, 'lead_source_id', '流入元ID');
+  var sourceColIdx   = leadHeaders.indexOf('lead_source');
+  var sourceIdColIdx = leadHeaders.indexOf('lead_source_id');
   if (sourceColIdx   < 0) throw new Error('リード管理に「流入経路」列がありません');
   if (sourceIdColIdx < 0) throw new Error('リード管理に「流入元ID」列がありません');
 
@@ -167,8 +138,8 @@ function surveyLeadSourceIdColumn() {
   if (leadLastRow < 2) throw new Error('リード管理にデータがありません');
 
   var leadHeaders    = leadSheet.getRange(1, 1, 1, leadLastCol).getValues()[0].map(String);
-  var sourceColIdx   = _leadsHeaderIdx(leadHeaders, 'lead_source', '流入経路');
-  var sourceIdColIdx = _leadsHeaderIdx(leadHeaders, 'lead_source_id', '流入元ID');
+  var sourceColIdx   = leadHeaders.indexOf('lead_source');
+  var sourceIdColIdx = leadHeaders.indexOf('lead_source_id');
   if (sourceColIdx   < 0) throw new Error('「流入経路」列が見つかりません');
   if (sourceIdColIdx < 0) throw new Error('「流入元ID」列が見つかりません');
 

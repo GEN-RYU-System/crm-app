@@ -1,17 +1,3 @@
-/**
- * 重複検知サービス
- * 過去の問い合わせ履歴を検索し、重複を検知
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 // ============================================================
 // 重複検知
@@ -60,13 +46,13 @@ function searchInMainSheet(email) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  const emailCol = headers.indexOf('メール');
-  const customerCol = headers.indexOf('顧客名');
+  const emailCol = headers.indexOf('email');
+  const customerCol = headers.indexOf('customer_name');
   const progressCol = headers.indexOf('進捗ステータス');
   const staffCol = headers.indexOf('担当者');
-  const dateCol = _leadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
-  const idCol = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
-  const archiveDateCol = _leadsHeaderIdx(headers, 'archived_at', 'アーカイブ日');
+  const dateCol = headers.indexOf('sheet_updated_at');
+  const idCol = headers.indexOf('lead_id');
+  const archiveDateCol = headers.indexOf('archived_at');
 
   for (let i = 1; i < data.length; i++) {
     const rowEmail = data[i][emailCol] || '';
@@ -109,12 +95,12 @@ function searchInArchivedLeads(email) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  const emailCol = headers.indexOf('メール');
-  const customerCol = headers.indexOf('顧客名');
-  const archiveReasonCol = _leadsHeaderIdx(headers, 'archive_reason', 'アーカイブ理由');
-  const archiveDateCol = _leadsHeaderIdx(headers, 'archived_at', 'アーカイブ日');
-  const idCol = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
-  const staffCol = _leadsHeaderIdx(headers, 'last_responder_id', '最終対応者ID');
+  const emailCol = headers.indexOf('email');
+  const customerCol = headers.indexOf('customer_name');
+  const archiveReasonCol = headers.indexOf('archive_reason');
+  const archiveDateCol = headers.indexOf('archived_at');
+  const idCol = headers.indexOf('lead_id');
+  const staffCol = headers.indexOf('last_responder_id');
   const progressCol = headers.indexOf('進捗ステータス');
 
   for (let i = 1; i < data.length; i++) {
@@ -170,8 +156,8 @@ function searchInArchiveBook(email, archiveBookId) {
 
         if (email && rowEmail && rowEmail.toLowerCase() === email.toLowerCase()) {
           // 見つかったシート名から情報を取得
-          const leadIdCol = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
-          const customerCol = headers.indexOf('顧客名');
+          const leadIdCol = headers.indexOf('lead_id');
+          const customerCol = headers.indexOf('customer_name');
           const dateCol = headers.indexOf('離脱日') >= 0 ? headers.indexOf('離脱日') : headers.indexOf('記録日時');
 
           return {
@@ -213,10 +199,10 @@ function getDuplicateInfo(leadId) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  const idCol = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
-  const customerCol = headers.indexOf('顧客名');
-  const dupFlagCol = _leadsHeaderIdx(headers, 'duplicate_flag', '重複フラグ');
-  const dupSourceCol = _leadsHeaderIdx(headers, 'duplicate_source_lead_id', '重複元リードID');
+  const idCol = headers.indexOf('lead_id');
+  const customerCol = headers.indexOf('customer_name');
+  const dupFlagCol = headers.indexOf('duplicate_flag');
+  const dupSourceCol = headers.indexOf('duplicate_source_lead_id');
 
   for (let i = 1; i < data.length; i++) {
     if (data[i][idCol] === leadId) {
@@ -256,13 +242,13 @@ function getLeadInfoById(leadId) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  const idCol = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
-  const customerCol = headers.indexOf('顧客名');
+  const idCol = headers.indexOf('lead_id');
+  const customerCol = headers.indexOf('customer_name');
   const progressCol = headers.indexOf('進捗ステータス');
   const staffCol = headers.indexOf('担当者');
-  const dateCol = _leadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
-  const archiveDateCol = _leadsHeaderIdx(headers, 'archived_at', 'アーカイブ日');
-  const archiveReasonCol = _leadsHeaderIdx(headers, 'archive_reason', 'アーカイブ理由');
+  const dateCol = headers.indexOf('sheet_updated_at');
+  const archiveDateCol = headers.indexOf('archived_at');
+  const archiveReasonCol = headers.indexOf('archive_reason');
 
   for (let i = 1; i < data.length; i++) {
     if (data[i][idCol] === leadId) {
@@ -299,11 +285,11 @@ function clearDuplicateFlag(leadId) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  const idCol = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
-  const dupFlagCol = _leadsHeaderIdx(headers, 'duplicate_flag', '重複フラグ');
-  const dupSourceCol = _leadsHeaderIdx(headers, 'duplicate_source_lead_id', '重複元リードID');
-  const dupDateCol = _leadsHeaderIdx(headers, 'duplicate_confirmed_at', '重複確認日');
-  const dupConfirmerCol = _leadsHeaderIdx(headers, 'duplicate_confirmed_by', '重複確認者');
+  const idCol = headers.indexOf('lead_id');
+  const dupFlagCol = headers.indexOf('duplicate_flag');
+  const dupSourceCol = headers.indexOf('duplicate_source_lead_id');
+  const dupDateCol = headers.indexOf('duplicate_confirmed_at');
+  const dupConfirmerCol = headers.indexOf('duplicate_confirmed_by');
 
   if (idCol === -1 || dupFlagCol === -1) {
     return { success: false, error: '必要な列が見つかりません' };
@@ -345,9 +331,9 @@ function setDuplicateFlag(leadId, sourceId) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  const idCol = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
-  const dupFlagCol = _leadsHeaderIdx(headers, 'duplicate_flag', '重複フラグ');
-  const dupSourceCol = _leadsHeaderIdx(headers, 'duplicate_source_lead_id', '重複元リードID');
+  const idCol = headers.indexOf('lead_id');
+  const dupFlagCol = headers.indexOf('duplicate_flag');
+  const dupSourceCol = headers.indexOf('duplicate_source_lead_id');
 
   if (idCol === -1 || dupFlagCol === -1) {
     return { success: false, error: '必要な列が見つかりません' };
@@ -379,7 +365,7 @@ function setDuplicateFlag(leadId, sourceId) {
  * @returns {Object} チェック結果
  */
 function checkDuplicateBeforeAdd(leadData) {
-  const email = leadData.email || leadData['メール'] || '';
+  const email = leadData.email || leadData['email'] || '';
 
   if (!email) {
     return { duplicate: false };

@@ -1,17 +1,3 @@
-/**
- * 商談解析サービス
- * Gemini APIを使用してメッセージから商談状況を分析
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 /**
  * メッセージから商談を解析
@@ -100,7 +86,7 @@ function getLeadInfo(leadId) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const leadIdIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
+  const leadIdIdx = headers.indexOf('lead_id');
 
   if (leadIdIdx === -1) {
     Logger.log('リードID列が見つかりません');
@@ -138,7 +124,7 @@ function getConversationHistory(leadId, currentLogId) {
   const data = logSheet.getDataRange().getValues();
   const headers = data[0];
   const logIdIdx = headers.indexOf('ログID');
-  const leadIdIdx = _leadsHeaderIdx(headers, 'lead_id', 'リードID');
+  const leadIdIdx = headers.indexOf('lead_id');
   const dateIdx = headers.indexOf('日時');
   const directionIdx = headers.indexOf('送受信');
   const textIdx = headers.indexOf('翻訳文');
@@ -181,10 +167,10 @@ function buildDealAnalysisPrompt(messageText, leadInfo, history) {
 以下の会話内容から商談の状況を分析し、営業担当者がとるべきアクションを提案してください。
 
 【顧客情報】
-- 顧客名: ${leadInfo['顧客名'] || '不明'}
-- 国: ${leadInfo['国'] || '不明'}
-- リード種別: ${leadInfo['リード種別'] || '不明'}
-- リードステータス: ${leadInfo['リードステータス'] || '不明'}
+- 顧客名: ${leadInfo['customer_name'] || '不明'}
+- 国: ${leadInfo['country'] || '不明'}
+- リード種別: ${leadInfo['lead_type'] || '不明'}
+- リードステータス: ${leadInfo['lead_status'] || '不明'}
 
 【過去の会話履歴】
 ${historyText}

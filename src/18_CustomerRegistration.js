@@ -1,34 +1,3 @@
-/**
- * フォーム受け口: registerCustomerFromForm(payload)
- * PR18: form-intake
- *
- * payload 契約:
- * {
- *   token: string,
- *   billing:  { name, phone, email, taxId, addr1, addr2, addr3, city, state, zip, country },
- *   shipping: { ...同構成 } | null   ← null = billing と同一住所
- * }
- *
- * 返り値:
- * {
- *   success:    boolean,
- *   customerId: string | null,
- *   addrId:     string | null,   // 配送先ID
- *   payId:      string | null,   // 支払先ID
- *   warnings:   string[],        // 要確認リスト（normalizePhone フラグ等）
- *   errors:     string[]         // 全バリデーションエラー（失敗時）
- * }
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 var FORM_TOKEN_SHEET       = 'フォームトークン';
 var FORM_TOKEN_HEADERS     = ['トークン', 'リードID', '発行日', '使用日'];
@@ -581,7 +550,7 @@ function testRegisterCustomer() {
   if (!leadSh) return '=== testRegisterCustomer ===\nERROR: リード管理シートが存在しません';
   var leadData = leadSh.getDataRange().getValues();
   var lh       = leadData[0];
-  var lidIdx   = _leadsHeaderIdx(lh, 'lead_id', 'リードID');
+  var lidIdx   = lh.indexOf('lead_id');
   var testLeadId = null;
   for (var li = 1; li < leadData.length; li++) {
     var lid = String(leadData[li][lidIdx] || '').trim();
@@ -870,7 +839,7 @@ function verifyCustomerByLeadId(leadId) {
   var tokSh   = ss.getSheetByName(FORM_TOKEN_SHEET);
   var tokData = tokSh ? tokSh.getDataRange().getValues() : [];
   var tokH    = tokData[0] || [];
-  var tokLeadIdx = _leadsHeaderIdx(tokH, 'lead_id', 'リードID');
+  var tokLeadIdx = tokH.indexOf('lead_id');
   var tokUseIdx  = tokH.indexOf('使用日');
   var tokRows = tokData.slice(1).filter(function(r) {
     return String(r[tokLeadIdx] || '').trim() === leadId;
@@ -1031,10 +1000,10 @@ function createTestFormLead() {
 
   var data = sh.getDataRange().getValues();
   var h    = data[0];
-  var idIdx   = _leadsHeaderIdx(h, 'lead_id', 'リードID');
-  var dateIdx = h.indexOf('登録日');
-  var nameIdx = h.indexOf('顧客名');
-  var typeIdx = _leadsHeaderIdx(h, 'lead_type', 'リード種別');
+  var idIdx   = h.indexOf('lead_id');
+  var dateIdx = h.indexOf('registered_at');
+  var nameIdx = h.indexOf('customer_name');
+  var typeIdx = h.indexOf('lead_type');
   if (idIdx < 0) return 'ERROR: リードID列が見つかりません';
 
   // 次のLDI-IDを採番
@@ -1084,7 +1053,7 @@ function testOrderFormFlow() {
   var data = sh.getDataRange().getValues();
   var h    = data[0];
   var tokIdx  = h.indexOf('トークン');
-  var leadIdx = _leadsHeaderIdx(h, 'lead_id', 'リードID');
+  var leadIdx = h.indexOf('lead_id');
   var useIdx  = h.indexOf('使用日');
   var tokenRow = -1;
   for (var i = 1; i < data.length; i++) {

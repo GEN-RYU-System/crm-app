@@ -1,13 +1,4 @@
 
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 // ==========================================
 // 日報サービス
 // 営業担当者の日報管理システム
@@ -137,7 +128,7 @@ function getTodayStats(staffId) {
   if (dealSheet && dealSheet.getLastRow() >= 2) {
     const dealData = dealSheet.getDataRange().getValues();
     const dealHeaders = dealData[0];
-    const staffIdIdx = _leadsHeaderIdx(dealHeaders, 'assignee_id', '担当者ID');
+    const staffIdIdx = dealHeaders.indexOf('assignee_id');
     const dateIdx = dealHeaders.indexOf('商談日');
     const statusIdx = dealHeaders.indexOf('ステータス');
 
@@ -169,7 +160,7 @@ function getTodayStats(staffId) {
   if (leadInSheet && leadInSheet.getLastRow() >= 2) {
     const leadData = leadInSheet.getDataRange().getValues();
     const leadHeaders = leadData[0];
-    const assigneeIdx = _leadsHeaderIdx(leadHeaders, 'assignee_id', '担当者ID');
+    const assigneeIdx = leadHeaders.indexOf('assignee_id');
     const contactDateIdx = leadHeaders.indexOf('初回接触日');
 
     for (let i = 1; i < leadData.length; i++) {
@@ -197,7 +188,7 @@ function getTodayStats(staffId) {
   if (leadOutSheet && leadOutSheet.getLastRow() >= 2) {
     const leadData = leadOutSheet.getDataRange().getValues();
     const leadHeaders = leadData[0];
-    const assigneeIdx = _leadsHeaderIdx(leadHeaders, 'assignee_id', '担当者ID');
+    const assigneeIdx = leadHeaders.indexOf('assignee_id');
     const contactDateIdx = leadHeaders.indexOf('初回接触日');
 
     for (let i = 1; i < leadData.length; i++) {

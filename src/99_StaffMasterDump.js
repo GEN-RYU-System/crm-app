@@ -1,17 +1,4 @@
-/**
- * 【読み取り専用】オーダー管理の「ステータス」列のプルダウン選択肢を返す
- * セル値・個人データは出力しない
- */
 
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 function checkOrderStatusDropdown() {
   var ss = getSpreadsheet();
   var sh = ss.getSheetByName('オーダー管理');
@@ -296,7 +283,7 @@ function setLeadStatusValidation() {
   var optLastCol = optSh.getLastColumn();
   var optLastRow = optSh.getLastRow();
   var optHeaders = optSh.getRange(1, 1, 1, optLastCol).getValues()[0];
-  var optColIdx = _leadsHeaderIdx(optHeaders, 'lead_status', 'リードステータス');
+  var optColIdx = optHeaders.indexOf('lead_status');
   if (optColIdx < 0) {
     var m2 = '[ABORT] 選択肢マスタに「リードステータス」列が見つかりません。';
     Logger.log(m2); return m2;
@@ -342,7 +329,7 @@ function setLeadStatusValidation() {
   var leadLastCol = leadSh.getLastColumn();
   var leadLastRow = leadSh.getLastRow();
   var leadHeaders = leadSh.getRange(1, 1, 1, leadLastCol).getValues()[0];
-  var leadColIdx  = _leadsHeaderIdx(leadHeaders, 'lead_status', 'リードステータス');
+  var leadColIdx  = leadHeaders.indexOf('lead_status');
   if (leadColIdx < 0) {
     var m4 = '[ABORT] リード管理に「リードステータス」列が見つかりません。';
     Logger.log(m4); return m4;
@@ -474,7 +461,7 @@ function dryRunLeadStatusConversion() {
   var lastCol = sh.getLastColumn();
   var lastRow = sh.getLastRow();
   var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
-  var colIdx = _leadsHeaderIdx(headers, 'lead_status', 'リードステータス');
+  var colIdx = headers.indexOf('lead_status');
 
   if (colIdx < 0) {
     var msg = '[NOT FOUND] リードステータス列 (全' + lastCol + '列を検索)';
@@ -588,7 +575,7 @@ function convertLeadStatusShinkikuToShinkiLead() {
   var lastCol = sh.getLastColumn();
   var lastRow = sh.getLastRow();
   var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
-  var colIdx = _leadsHeaderIdx(headers, 'lead_status', 'リードステータス');
+  var colIdx = headers.indexOf('lead_status');
 
   if (colIdx < 0) {
     var notFound = '[NOT FOUND] リードステータス列 (全' + lastCol + '列を検索)';
@@ -720,7 +707,7 @@ function inspectLeadStatusValidation() {
   } else {
     var leadLastCol = leadSh.getLastColumn();
     var leadHeaders = leadSh.getRange(1, 1, 1, leadLastCol).getValues()[0];
-    var leadColIdx = _leadsHeaderIdx(leadHeaders, 'lead_status', 'リードステータス');
+    var leadColIdx = leadHeaders.indexOf('lead_status');
     out.push('リードステータス列: ' + (leadColIdx >= 0 ? 'col' + (leadColIdx + 1) : '[NOT FOUND]'));
 
     if (leadColIdx >= 0) {

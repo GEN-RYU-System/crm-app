@@ -8,7 +8,7 @@ const DEV_CUSTOMER_ORDER_ANALYTICS_SCHEMA_INVALID =
 const DEV_CUSTOMER_ORDER_ANALYTICS_FAILED =
   'CUSTOMER_ORDER_ANALYTICS_READINESS_FAILED';
 const DEV_CUSTOMER_ORDER_ANALYTICS_SCHEMAS = {
-  leads: { sheet: 'リード管理', headers: ['リードID'] },
+  leads: { sheet: 'リード管理', headers: ['lead_id'] },
   customers: { sheet: '顧客マスタ', headers: ['源流リードID', '顧客ID'] },
   orders: { sheet: 'オーダー管理', headers: ['オーダーID', '顧客ID', '受注日', '請求総額'] },
   lines: { sheet: 'オーダー明細', headers: ['オーダーID', '商品ID'] },

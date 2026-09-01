@@ -491,8 +491,8 @@ function updateCustomerTransactionStats(customerId, transactionAmount, transacti
     const updates = {};
 
     // 1. 累計取引金額を更新
-    const currentTotal = Number(customer['累計取引金額']) || 0;
-    updates['累計取引金額'] = currentTotal + transactionAmount;
+    const currentTotal = Number(customer['cumulative_transaction_amount']) || 0;
+    updates['cumulative_transaction_amount'] = currentTotal + transactionAmount;
 
     // 2. 取引回数をインクリメント
     const currentCount = Number(customer['取引回数']) || 0;
@@ -502,8 +502,8 @@ function updateCustomerTransactionStats(customerId, transactionAmount, transacti
     updates['最終取引日'] = transactionDate || new Date();
 
     // 4. 初回取引日がない場合は設定
-    if (!customer['初回取引日']) {
-      updates['初回取引日'] = transactionDate || new Date();
+    if (!customer['first_transaction_date']) {
+      updates['first_transaction_date'] = transactionDate || new Date();
     }
 
     // 顧客情報を更新
@@ -519,7 +519,7 @@ function updateCustomerTransactionStats(customerId, transactionAmount, transacti
       success: true,
       message: '取引統計を更新しました',
       data: {
-        累計取引金額: updates['累計取引金額'],
+        累計取引金額: updates['cumulative_transaction_amount'],
         取引回数: updates['取引回数'],
         最終取引日: updates['最終取引日']
       }

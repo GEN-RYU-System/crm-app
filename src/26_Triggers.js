@@ -1,16 +1,3 @@
-/**
- * onEdit トリガー（インストーラブル）
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 function onEditTrigger(e) {
   if (!e) return;
@@ -48,7 +35,7 @@ function updateSheetTimestamp(e) {
   if (editedRow === 1) return;
   
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const timestampColIndex = _leadsHeaderIdx(headers, 'sheet_updated_at', 'シート更新日');
+  const timestampColIndex = headers.indexOf('sheet_updated_at');
   
   if (timestampColIndex !== -1) {
     // 更新日列自体の編集は無視（無限ループ防止）
@@ -119,7 +106,7 @@ function autoFillStaffId(e) {
 
     if (fullName === staffName) {
       const staffMasterId = staffData[i][staffMasterIdCol];
-      const leadStaffIdColIndex = _leadsHeaderIdx(headers, 'assignee_id', '担当者ID');
+      const leadStaffIdColIndex = headers.indexOf('assignee_id');
       if (leadStaffIdColIndex !== -1 && staffMasterId) {
         sheet.getRange(editedRow, leadStaffIdColIndex + 1).setValue(staffMasterId);
       }

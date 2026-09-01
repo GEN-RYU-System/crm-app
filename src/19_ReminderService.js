@@ -35,12 +35,12 @@ function checkAndRemind() {
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    const status = row[colIndex['リードステータス']];
-    const lastUpdate = row[colIndex['シート更新日']];
-    const customerName = row[colIndex['顧客名']] || '不明';
-    const staffId = row[colIndex['担当者ID']] || '';
-    const staffName = row[colIndex['営業担当者']] || '';
-    const leadId = row[colIndex['リードID']] || '';
+    const status = row[colIndex['lead_status']];
+    const lastUpdate = row[colIndex['sheet_updated_at']];
+    const customerName = row[colIndex['customer_name']] || '不明';
+    const staffId = row[colIndex['assignee_id']] || '';
+    const staffName = row[colIndex['sales_assignee_name']] || '';
+    const leadId = row[colIndex['lead_id']] || '';
 
     // 商談中ステータスかつ48時間経過
     if (CONFIG.DEAL_STATUSES.includes(status) && lastUpdate instanceof Date) {
@@ -103,9 +103,9 @@ function checkActionDateRemind() {
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    const actionDate = row[colIndex['次回アクション日']];
-    const action = row[colIndex['次回アクション']];
-    const status = row[colIndex['リードステータス']];
+    const actionDate = row[colIndex['next_action_date']];
+    const action = row[colIndex['next_action']];
+    const status = row[colIndex['lead_status']];
 
     // 完了ステータスはスキップ
     if (CONFIG.CLOSED_STATUSES.includes(status)) continue;
@@ -115,9 +115,9 @@ function checkActionDateRemind() {
       checkDate.setHours(0, 0, 0, 0);
 
       if (checkDate.getTime() === today.getTime()) {
-        const customerName = row[colIndex['顧客名']] || '不明';
-        const staffId = row[colIndex['担当者ID']] || '';
-        const leadId = row[colIndex['リードID']] || '';
+        const customerName = row[colIndex['customer_name']] || '不明';
+        const staffId = row[colIndex['assignee_id']] || '';
+        const leadId = row[colIndex['lead_id']] || '';
 
         sendActionDateNotification(webhook, customerName, staffId, leadId, action);
       }

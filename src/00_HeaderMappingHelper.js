@@ -14,7 +14,7 @@
  *
  * @example
  * const mapping = getHeaderMapping(sheet);
- * const nameCol = mapping['顧客名'];  // → 2
+ * const nameCol = mapping['customer_name'];  // → 2
  * sheet.getRange(5, nameCol).setValue('ABC Corp');
  */
 function getHeaderMapping(sheet, headerRow = 1) {
@@ -74,7 +74,7 @@ function getColumnByHeader(sheet, headerName, headerRow = 1) {
  *
  * @example
  * const cols = getColumnsByHeaders(sheet, ['顧客名', 'メール', '電話番号']);
- * sheet.getRange(5, cols['顧客名']).setValue('ABC Corp');
+ * sheet.getRange(5, cols['customer_name']).setValue('ABC Corp');
  */
 function getColumnsByHeaders(sheet, headerNames, headerRow = 1) {
   const mapping = getHeaderMapping(sheet, headerRow);
@@ -192,7 +192,7 @@ function getQuoteHistoryMapping(sheet) {
  *
  * @example
  * const colIndex = buildColIndex(data[0], ['顧客名', '担当者ID']);
- * const name = row[colIndex['顧客名']];
+ * const name = row[colIndex['customer_name']];
  */
 function buildColIndex(headers, names) {
   const idx = {}, missing = [];

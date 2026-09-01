@@ -1,24 +1,3 @@
-/**
- * Market Place URL 調査
- *
- * surveyLeadSourceUrls()
- *   - リード管理ヘッダーを全件出力
- *   - 流入経路 = 'Market Place' / 'Facebook' / 'Card Market' の行について
- *     URL系列のドメイン分布を集計（書き込みなし）
- *
- * 実行方法:
- *   clasp run surveyLeadSourceUrls
- */
-
-/**
- * リード管理シートのヘッダー配列から列インデックスを取得する。
- * 新名（英語スネークケース）で検索し、見つからなければ旧名（日本語）でフォールバックする。
- * PR-1（デュアルサポート期）専用。PR-3 で削除する。
- */
-function _leadsHeaderIdx(headers, newName, oldName) {
-  var idx = headers.indexOf(newName);
-  return idx !== -1 ? idx : headers.indexOf(oldName);
-}
 
 function surveyLeadSourceUrls() {
   var ss    = getSpreadsheet();
@@ -48,7 +27,7 @@ function surveyLeadSourceUrls() {
   Logger.log('');
 
   // 流入経路列のインデックス
-  var sourceIdx = _leadsHeaderIdx(headers, 'lead_source', '流入経路');
+  var sourceIdx = headers.indexOf('lead_source');
   if (sourceIdx === -1) throw new Error('流入経路列が見つかりません');
 
   // ── データ読み込み ────────────────────────────────────────────────────────

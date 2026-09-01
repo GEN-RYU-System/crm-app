@@ -376,7 +376,7 @@ function insertBadgeTestData() {
 
   const testStaffId = 'TEST-001';
   const staffData = getSheetDataAsObjects(staffSheet);
-  const existingStaff = staffData.find(s => s['担当者ID'] === testStaffId);
+  const existingStaff = staffData.find(s => s['assignee_id'] === testStaffId);
 
   if (!existingStaff) {
     // テスト担当者を追加
@@ -415,15 +415,15 @@ function insertBadgeTestData() {
 
   // 既存のテストデータを確認
   const existingLeads = getSheetDataAsObjects(leadSheet);
-  const existingTestIds = existingLeads.filter(l => String(l['リードID']).startsWith('TEST-')).map(l => l['リードID']);
+  const existingTestIds = existingLeads.filter(l => String(l['lead_id']).startsWith('TEST-')).map(l => l['lead_id']);
 
   const leadHeaders = leadSheet.getRange(1, 1, 1, leadSheet.getLastColumn()).getDisplayValues()[0].map(String);
   testLeads.forEach(lead => {
-    if (!existingTestIds.includes(lead['リードID'])) {
+    if (!existingTestIds.includes(lead['lead_id'])) {
       leadSheet.appendRow(convertObjectToRowArray(lead, leadHeaders));
-      Logger.log('✅ テストリード追加: ' + lead['リードID'] + ' (' + lead['顧客名'] + ') ' + lead['リードステータス'] + ' ￥' + lead['初回取引金額']);
+      Logger.log('✅ テストリード追加: ' + lead['lead_id'] + ' (' + lead['customer_name'] + ') ' + lead['lead_status'] + ' ￥' + lead['first_transaction_amount']);
     } else {
-      Logger.log('ℹ️ テストリードは既に存在: ' + lead['リードID']);
+      Logger.log('ℹ️ テストリードは既に存在: ' + lead['lead_id']);
     }
   });
 
@@ -433,7 +433,7 @@ function insertBadgeTestData() {
     const period = thisYear + '/' + String(thisMonth + 1).padStart(2, '0');
     const goalsData = getSheetDataAsObjects(goalsSheet);
     const existingGoal = goalsData.find(g =>
-      g['担当者ID'] === testStaffId &&
+      g['assignee_id'] === testStaffId &&
       g['期間タイプ'] === '月次' &&
       g['期間'] === period
     );
@@ -490,45 +490,45 @@ function createTestLead(leadId, status, amount, daysAgo, staffId, customerName) 
   const dateStr = Utilities.formatDate(dealDate, 'Asia/Tokyo', 'yyyy/MM/dd');
 
   return {
-    'リードID': leadId,
-    '登録日': dateStr,
-    '顧客名': customerName,
-    'リードステータス': status,
-    '商談結果': status === '成約' ? '成約' : '',
-    '呼び方（英語）': 'Test Customer',
-    '国': 'USA',
-    'シート更新日': dateStr,
-    'リード担当者': 'テスト 太郎',
-    'リード種別': 'インバウンド',
-    '流入経路': 'テスト流入',
-    'メッセージURL': '',
-    'CSメモ': 'テストデータ',
-    'メール': '',
-    '電話番号': '',
-    '連絡手段': 'Email',
-    '温度感': '高',
-    '想定規模': '中規模',
-    '返信速度': '24h以内',
-    '問い合わせ回数': 1,
-    'アサイン日': dateStr,
-    '担当者ID': staffId,
-    '顧客タイプ': '信頼重視',
-    '最終対応者ID': staffId,
-    '見込度': 'A',
-    '次回アクション': '',
-    '次回アクション日': '',
-    '商談メモ': 'テスト商談',
-    '相手の課題': '',
-    '取り扱いタイトル': 'Pokemon',
-    '販売形態': 'EC',
-    '月間見込み金額': amount,
-    '競合比較中': 'いいえ',
-    'アラート確認日': '',
-    '対象外理由': '',
-    '失注理由': '',
-    '初回取引日': status === '成約' ? dateStr : '',
-    '初回取引金額': status === '成約' ? amount : 0,
-    '累計取引金額': status === '成約' ? amount : 0
+    'lead_id': leadId,
+    'registered_at': dateStr,
+    'customer_name': customerName,
+    'lead_status': status,
+    'deal_result': status === '成約' ? '成約' : '',
+    'english_call_name': 'Test Customer',
+    'country': 'USA',
+    'sheet_updated_at': dateStr,
+    'lead_assignee_name': 'テスト 太郎',
+    'lead_type': 'インバウンド',
+    'lead_source': 'テスト流入',
+    'message_url': '',
+    'cs_note': 'テストデータ',
+    'email': '',
+    'phone': '',
+    'contact_method': 'Email',
+    'temperature': '高',
+    'expected_scale': '中規模',
+    'response_speed': '24h以内',
+    'inquiry_count': 1,
+    'assigned_at': dateStr,
+    'assignee_id': staffId,
+    'customer_type': '信頼重視',
+    'last_responder_id': staffId,
+    'prospect_score': 'A',
+    'next_action': '',
+    'next_action_date': '',
+    'deal_note': 'テスト商談',
+    'customer_issue': '',
+    'handled_title': 'Pokemon',
+    'sales_channel': 'EC',
+    'monthly_expected_amount': amount,
+    'competitor_comparison': 'いいえ',
+    'alert_confirmed_at': '',
+    'exclusion_reason': '',
+    'loss_reason': '',
+    'first_transaction_date': status === '成約' ? dateStr : '',
+    'first_transaction_amount': status === '成約' ? amount : 0,
+    'cumulative_transaction_amount': status === '成約' ? amount : 0
   };
 }
 
