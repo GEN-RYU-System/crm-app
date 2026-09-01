@@ -6455,3 +6455,57 @@ FedEx送料・DHL送料・UPS送料シートから重量帯（Min_Weight / Max_W
   - Buddy専用: Good Point / More Point / レポート提出日 / レポート確認者 / レポート確認日 / レポートコメント / Buddyフィードバック
   - 要PO確定: 1回の発注金額 / 商談の手応え / 反省と今後の抱負
   - 未確認: リード進捗 / 商談進捗 / 購入頻度(月次)
+
+---
+
+### 2026-09-01 送料見積履歴シート新設と配送会社マスタへの API 設定列追加（PR #823 / PR-U1）
+
+**概要:**
+送料計算結果の保存テーブル「送料見積履歴」を CoreSchemaRegistry に追加・シートを新設した。
+また配送会社マスタに将来の API 接続切り替え用設定列3列を追加した。
+
+#### 変更ファイル
+
+- `src/00_CoreSchemaRegistry.js`
+  - **SHIPPING_FEE_ESTIMATES テーブルを新設（15列）**
+    - ID形式: SFE-0001（接頭辞 SFE + 4桁連番）
+    - 見積ID / 請求書ID / 発送ID の3列分離設計（SQL 外部キー宣言可能）
+    - CALC_SOURCE（API / MASTER）/ FEE_TYPE（ESTIMATE / ACTUAL）を values に定義
+    - sheetType: TRANSACTION / writeAllowed: true
+    - referenceIds: 見積ID → QUOTES / 請求書ID → INVOICES / 発送ID → SHIPMENTS / 配送会社ID → CARRIERS
+  - **CARRIERS テーブルに3列を追加（既存11列の末尾）**
+    - API有効 / APIエンドポイント / API認証キー名
+    - API認証キー名は GAS Script Properties に登録したキー名のみを保持（認証キー実値は不可）
+    - JSDoc に設計制約を明記: SQL 移行後は環境変数に置き換える
+
+- `src/99_DevShippingFeeEstimateSetup.js`（新規）
+  - `setupShippingFeeEstimateSheet(mode)`: 送料見積履歴シートを新設
+    - DEV 環境ガード・引数バリデーション（DRY_RUN / APPLY のみ受け付け）
+    - 同名シート存在時はスキップして報告（上書きなし）
+    - ヘッダー行は Registry の表示名から取得（列名直書きなし）
+    - targetRow を setValues の前に確定（`table.headerRowNumber`）
+  - `addCarrierApiColumns(mode)`: 配送会社マスタに3列追加
+    - 二重実行防止: 3列が揃っている場合はスキップ
+    - 部分追加検出: 一部のみ存在する場合は PARTIAL_COLUMNS_DETECTED エラーで停止
+    - 初期値: API有効 = '' / APIエンドポイント = '' / API認証キー名 = ''
+
+#### SQL 移行時の扱い
+
+| 要素 | SQL 移行後 |
+|------|-----------|
+| 見積ID / 請求書ID / 発送ID（3列分離） | 個別の外部キー（FK）として宣言可能 |
+| CALC_SOURCE / FEE_TYPE | ENUM または参照テーブル |
+| API_AUTH_KEY_NAME の値 | 環境変数（テーブルには持たない） |
+
+#### 事後確認
+
+- setupShippingFeeEstimateSheet("DRY_RUN"): alreadyExists=false / columnCount=15 / 衝突なし ✅
+- setupShippingFeeEstimateSheet("APPLY"): created=true / 15列 ✅
+- addCarrierApiColumns("DRY_RUN"): 追加予定3列 / 既存データ3行 ✅
+- addCarrierApiColumns("APPLY"): added=3 / updated=3 ✅
+- runCoreSchemaConformanceAudit:
+  - SHIPPING_FEE_ESTIMATES: 0件不一致 ✅
+  - CARRIERS（14列）: 0件不一致 ✅
+  - 総不一致 2件 = ベースライン（LEADS/CUSTOMERS の既存差分）✅
+- PR #823 mergedAt: `2026-09-01T02:32:39Z` ✅
+- Deploy to DEV: success ✅（getDeployedSha = `2220197` = origin/develop HEAD）
