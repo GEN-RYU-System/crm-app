@@ -57,11 +57,17 @@ var CORE_ORDER_WRITE_CACHE_TARGETS = [
  *     productName: string,
  *     category: string,
  *     status: string,
+ *     condition: string,
  *     quantity: string,
  *     unitPrice: string
  *   }>
  * }} payload
  * @returns {{ success: true, orderId: string }}
+ *
+ * @note ORDER_LINES.STATUS は旧 08_Config.js 由来の「状態」列であり、
+ *   歴史的経緯から残存している。実態はコンディション（CONDITION）と同じ値を格納する。
+ *   新規実装では ORDER_LINES.CONDITION を参照すること。
+ *   STATUS 列は将来削除の候補（削除は PO 承認が必要）。
  */
 function createCoreOrderForFrontend(sessionId, payload) {
   setEmailFromSession(sessionId);
@@ -225,7 +231,8 @@ function createCoreOrderForFrontend(sessionId, payload) {
         setLineCell('LINE_NUMBER', i + 1);
         setLineCell('CATEGORY', coreOrderWriteValue(line.category));
         setLineCell('PRODUCT_NAME', coreOrderWriteValue(line.productName));
-        setLineCell('STATUS', coreOrderWriteValue(line.status));
+        setLineCell('STATUS',    coreOrderWriteValue(line.status || line.condition));
+        setLineCell('CONDITION', coreOrderWriteValue(line.condition || line.status));
         setLineCell('QUANTITY', qty);
         setLineCell('UNIT_PRICE', unitPrice);
         setLineCell('SUBTOTAL', subtotal);

@@ -522,7 +522,9 @@ export type OrderDetailRecord = {
     CATEGORY: string;
     PRODUCT_NAME: string;
     ENGLISH_TITLE: string;
+    /** @deprecated Legacy column. Prefer CONDITION for display. */
     STATUS: string;
+    CONDITION: string;
     SKU: string;
     QUANTITY: string | number;
     UNIT_PRICE: string | number;
