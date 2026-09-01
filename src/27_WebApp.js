@@ -1472,30 +1472,10 @@ function getStaffListForAssign() {
  * @returns {Array<string>} アーカイブ理由の配列
  */
 function getArchiveReasons() {
-  const ss = getSpreadsheet();
-  const sheet = ss.getSheetByName(CONFIG.SHEETS.SETTINGS);
-  if (!sheet) throw new Error('シートが見つかりません: ' + CONFIG.SHEETS.SETTINGS);
-  if (sheet.getLastRow() < 2) {
-    return [];
-  }
-
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  const archiveReasonCol = headers.indexOf('archive_reason');
-
-  if (archiveReasonCol === -1) {
-    return [];
-  }
-
-  const archiveReasons = [];
-  for (let i = 1; i < data.length; i++) {
-    const reason = data[i][archiveReasonCol];
-    if (reason && reason.toString().trim() !== '') {
-      archiveReasons.push(reason.toString().trim());
-    }
-  }
-
-  return archiveReasons;
+  // 選択肢マスタV2 から読む。該当 category がなければ DEFAULT にフォールバック（段階6で除去予定）
+  var fromV2 = getOptionsByCategory_('archive_reason');
+  if (fromV2.length > 0) return fromV2;
+  return DEFAULT_DROPDOWN_OPTIONS['アーカイブ理由'] || [];
 }
 
 /**
