@@ -7,7 +7,7 @@ function backupCustomersMasterPreChange() {
     throw new Error('DEV環境でのみ実行可能');
   }
   var ss = getSpreadsheet();
-  var sheet = ss.getSheetByName(CONFIG.SHEETS.CUSTOMERS);
+  var sheet = ss.getSheetByName(getCoreSchemaV1TableName('CUSTOMERS'));
   if (!sheet) {
     return JSON.stringify({ success: false, reason: '顧客マスタシートが見つかりません' });
   }
