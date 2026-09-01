@@ -2,6 +2,99 @@
 
 ---
 
+### 2026-09-01 明細から箱を組み立て送料を計算するAPI（ShippingBoxBuilder）を追加（PR #866 / #867）
+
+**概要:**
+見積もり明細・オーダー明細の「商品ID + 数量 + コンディション」から
+箱を組み立て、送料計算 API に渡せる形にする `29_ShippingBoxBuilder.js` を追加した。
+DEV テストラッパー（`99_DevBoxBuilderTest.js`）も別 PR で追加した（PR #867）。
+
+**手順2: 見積もり→配送先取得経路の確認結果:**
+- 経路A: `QUOTES.ORDER_ID` → `ORDERS.SHIPPING_DESTINATION_ID`
+         → `SHIPPING_DESTINATIONS.COUNTRY + ZIP` ✅
+- 経路B（ORDER_ID 空の場合）: `QUOTES.CUSTOMER_ID` → `CUSTOMERS.COUNTRY`（ZIP なし） ✅
+- 両経路とも取得可能なため、実装を進めた
+
+**設計意図:**
+- 数量がそのまま箱数。入数は使わない（数量10・ボックス = 10箱。カード枚数ではない）
+- コンディションが単位を決め、単位が荷姿を決める連鎖:
+  CONDITION → CONDITIONS.UNIT → PRODUCT_PACKAGES.(CASE/BOX/PACK)_PACKAGE_ID
+           → PACKAGES → SIZES + WEIGHTS → 寸法・重量
+- スキップした明細は理由コード（英語）付きで返し、画面で表示する
+- SQL 移行時、この組み立て処理はそのまま残る
+
+**スキップ理由コード一覧:**
+- `CONDITION_NOT_FOUND` — CONDITION 値がコンディションマスタに存在しない
+- `CONDITION_NOT_SHIPPING_TARGET` — 送料計算対象外（TRUE でない）
+- `CONDITION_UNIT_NOT_APPLICABLE` — 対応単位が「対象外」またはマッピング不可
+- `PRODUCT_PACKAGE_NOT_FOUND` — 商品荷姿マスタに該当なし
+- `PACKAGE_ID_NOT_SET` — 単位に対応する荷姿IDが空
+- `PACKAGE_NOT_FOUND` — 荷姿マスタに該当荷姿IDがない
+- `SIZE_NOT_FOUND` / `WEIGHT_NOT_FOUND` — サイズ/重量マスタに該当なし
+
+**新規ファイル (PR #866):**
+- `src/29_ShippingBoxBuilder.js`
+  - `buildBoxesFromLines_(lines, ss)` — 内部: 明細→箱組み立て
+  - `estimateShippingFeeForQuoteForFrontend(sessionId, quoteId)` — 見積もり送料計算
+  - `estimateShippingFeeForOrderForFrontend(sessionId, orderId)` — 受注送料計算
+  - `_sbbResolveQuoteCountry_` — 見積もりの国コード解決（経路A/B）
+  - `_sbbResolveOrderCountry_` — 受注の国コード解決
+
+**新規ファイル (PR #867):**
+- `src/99_DevBoxBuilderTest.js`
+  - `devListExistingLineIds()` — ORDER_LINES / QUOTE_LINES の ID 一覧
+  - `devTestBuildBoxesFromOrderLines(orderId)` — 受注明細の箱組み立てテスト
+  - `devTestBuildBoxesFromQuoteLines(quoteId)` — 見積もり明細の箱組み立てテスト
+  - ※ セッション認証が不要な DEV 専用ラッパー
+
+**手順7: DEV テスト実行結果:**
+
+(a) 受注明細（ORD-0001、3行）:
+```json
+{ "orderId": "ORD-0001", "lineCount": 3, "boxCount": 0,
+  "skipped": [
+    { "productId": "", "condition": "", "reason": "CONDITION_NOT_FOUND" },
+    { "productId": "", "condition": "", "reason": "CONDITION_NOT_FOUND" },
+    { "productId": "", "condition": "", "reason": "CONDITION_NOT_FOUND" }
+  ]
+}
+```
+→ ORDER_LINES の CONDITION 列は追加直後のため全行空。
+  スキップ理由 `CONDITION_NOT_FOUND` が正しく返ることを確認した。
+
+(b) 見積もり明細（QT-00001、3行）:
+```json
+{ "quoteId": "QT-00001", "lineCount": 3, "boxCount": 0,
+  "skipped": [
+    { "productId": "", "condition": "", "reason": "CONDITION_NOT_FOUND" },
+    { "productId": "", "condition": "", "reason": "CONDITION_NOT_FOUND" },
+    { "productId": "", "condition": "", "reason": "CONDITION_NOT_FOUND" }
+  ]
+}
+```
+→ QUOTE_LINES の CONDITION も全行空（読み取り DEV 関数 PR #840 で確認済み）。
+  同様にスキップ理由が正しく返ることを確認した。
+
+**テスト方法の補足:**
+`estimateShippingFeeForOrderForFrontend` / `estimateShippingFeeForQuoteForFrontend` は
+sessionId を要するため `clasp run` での直接呼び出しは不可。
+`buildBoxesFromLines_` を直接呼ぶ DEV ラッパーで箱組み立てロジックを検証した。
+
+**手順8: コンフォーマンス監査:**
+```
+=== 総不一致: 0 → PASS ===
+```
+
+**事後確認:**
+- PR #866 squash merge: mergedAt=2026-09-01T10:27:42Z ✅
+- PR #867 squash merge: mergedAt=2026-09-01T10:33:31Z ✅
+- Deploy to DEV (#866): success ✅
+- Deploy to DEV (#867): 初回 failure（タイミング問題）→ re-run success ✅
+- getDeployedSha: `0fceefea111376236fdbfe3aef2343cfd319cf21` = origin/develop HEAD ✅
+- runCoreSchemaConformanceAudit: 総不一致0件 ✅
+
+---
+
 ### 2026-09-01 ORDER_LINES に CONDITION 列を追加し QUOTE_LINES に referenceId を追加（PR #862）
 
 **概要:**
