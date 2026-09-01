@@ -492,3 +492,36 @@ function devTestShippingFeeForOrderDev(orderId) {
     skipped:       built.skipped
   });
 }
+
+/**
+ * ORDER_LINES の STATUS 列に実際に入っている値と件数を集計する（読み取り専用）。
+ *
+ * 商品名・単価・顧客情報は出力しない。
+ *
+ * @returns {string} JSON: { totalRows, statusCounts: { [value]: count }, distinctValues: string[] }
+ */
+function devAuditOrderLineStatus() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('devAuditOrderLineStatus は development 環境でのみ実行できます。');
+  }
+
+  var ss = getSpreadsheet();
+  var data = coreCustomerFrontendReadTable(ss, 'ORDER_LINES', [
+    'ORDER_LINE_ID', 'STATUS'
+  ]);
+
+  var statusCounts = {};
+  data.rows.forEach(function(r) {
+    var status = coreCustomerFrontendValue(r[data.indexes.STATUS]);
+    var key = status === '' ? '（空欄）' : status;
+    statusCounts[key] = (statusCounts[key] || 0) + 1;
+  });
+
+  var distinctValues = Object.keys(statusCounts).sort();
+
+  return JSON.stringify({
+    totalRows:      data.rows.length,
+    statusCounts:   statusCounts,
+    distinctValues: distinctValues
+  });
+}
