@@ -5,18 +5,24 @@ import { Button, Card, DataTable, EmptyState, PageHeader, PageToolbar, StatusMes
 import { customersCopy } from '../../content/ja';
 import { CUSTOMER_LIST_COLUMNS, CUSTOMER_LIST_INITIAL_SORT, customerDetailPath, filterCustomerListRows, toCustomerListRows, type CustomerListRow, type CustomerSort } from './customerConfig';
 import { useCustomerListCache } from './CustomerListCacheContext';
+import { useStaffListCache } from '../staff/StaffListCacheContext';
 
 export function CustomerListPage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<CustomerSort>(CUSTOMER_LIST_INITIAL_SORT);
   const { customers, error, loading, refreshing, ensureLoaded, refresh, retry } = useCustomerListCache();
+  const { items: staffList } = useStaffListCache();
+  const staffMap = useMemo<ReadonlyMap<string, string>>(
+    () => new Map((staffList ?? []).map((s) => [s.staffId, s.fullNameJa])),
+    [staffList],
+  );
 
   useEffect(() => { void ensureLoaded(); }, [ensureLoaded]);
 
   const hasCustomers = customers !== undefined;
   const initialLoading = !hasCustomers && !error;
-  const rows = useMemo(() => toCustomerListRows(customers ?? [], sort), [customers, sort]);
+  const rows = useMemo(() => toCustomerListRows(customers ?? [], sort, staffMap), [customers, sort, staffMap]);
   const filteredRows = useMemo(() => filterCustomerListRows(rows, query), [rows, query]);
   const changeSort = (key: CustomerSort['key']) => setSort((previous) => previous.key === key ? { key, direction: previous.direction === 'ascending' ? 'descending' : 'ascending' } : { key, direction: 'ascending' });
   const columns: readonly DataTableColumn<CustomerListRow>[] = CUSTOMER_LIST_COLUMNS.map((column) => {

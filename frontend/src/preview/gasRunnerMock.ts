@@ -86,6 +86,17 @@ function configurePreviewProfile(): void {
   mockPermissions = MOCK_QUOTES_ONLY_PERMISSIONS;
 }
 
+const MOCK_STAFF = [
+  {
+    staffId: 'EMP-00001',
+    fullNameJa: 'Preview User',
+    role: 'admin',
+    status: 'active',
+    email: '[preview-user]',
+    discordId: '',
+  },
+];
+
 const MOCK_CUSTOMERS = [
   {
     customerId: 'CUS-0001',
@@ -93,6 +104,7 @@ const MOCK_CUSTOMERS = [
     country: 'JP',
     salesChannel: 'Web',
     handledTitle: '',
+    salesAssigneeId: 'EMP-00001',
     salesAssigneeName: 'Preview User',
     transactionCount: 2,
     transactionAmounts: [{ currency: 'JPY', amount: 50000 }],
@@ -103,6 +115,7 @@ const MOCK_CUSTOMERS = [
     country: 'US',
     salesChannel: 'Direct',
     handledTitle: '',
+    salesAssigneeId: 'EMP-00001',
     salesAssigneeName: 'Preview User',
     transactionCount: 1,
     transactionAmounts: [{ currency: 'USD', amount: 1000 }],
@@ -111,7 +124,7 @@ const MOCK_CUSTOMERS = [
 
 const MOCK_AGGREGATES: Record<string, unknown> = {
   'CUS-0001': {
-    profile: { customerId: 'CUS-0001', sourceLeadId: '', customerName: 'Preview Customer A', country: 'JP', emailAddress: '', phone: '', countryCode: '', firstTransactionDate: '', registeredAt: '', salesAssigneeName: 'Preview User', contactTool: '', shippingNote: '', shippingAddressCount: 1, paymentProfileCount: 1 },
+    profile: { customerId: 'CUS-0001', sourceLeadId: '', customerName: 'Preview Customer A', country: 'JP', emailAddress: '', phone: '', countryCode: '', firstTransactionDate: '', registeredAt: '', salesAssigneeId: 'EMP-00001', salesAssigneeName: 'Preview User', contactTool: '', shippingNote: '', shippingAddressCount: 1, paymentProfileCount: 1 },
     shippingAddresses: [
       {
         addressId: 'SHP-0001',
@@ -140,7 +153,7 @@ const MOCK_AGGREGATES: Record<string, unknown> = {
     ],
   },
   'CUS-0002': {
-    profile: { customerId: 'CUS-0002', sourceLeadId: '', customerName: 'Preview Customer B', country: 'US', emailAddress: '', phone: '', countryCode: '', firstTransactionDate: '', registeredAt: '', salesAssigneeName: 'Preview User', contactTool: '', shippingNote: '', shippingAddressCount: 1, paymentProfileCount: 1 },
+    profile: { customerId: 'CUS-0002', sourceLeadId: '', customerName: 'Preview Customer B', country: 'US', emailAddress: '', phone: '', countryCode: '', firstTransactionDate: '', registeredAt: '', salesAssigneeId: 'EMP-00001', salesAssigneeName: 'Preview User', contactTool: '', shippingNote: '', shippingAddressCount: 1, paymentProfileCount: 1 },
     shippingAddresses: [
       {
         addressId: 'SHP-0002',
@@ -294,7 +307,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
       succeed(agg ?? null);
     },
     getCoreAllCustomerAggregatesForFrontend(_sessionId: string | null) { succeed(MOCK_AGGREGATES); },
-    getCoreStaffForFrontend(_sessionId: string | null, _force: boolean) { succeed([]); },
+    getCoreStaffForFrontend(_sessionId: string | null, _force: boolean) { succeed(MOCK_STAFF); },
     getCoreStaffMemberForFrontend(_sessionId: string | null, _staffId: string) { succeed(null); },
 
     loginWithPassword(_staffId: string, _password: string) {
