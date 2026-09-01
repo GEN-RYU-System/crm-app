@@ -6509,3 +6509,70 @@ FedEx送料・DHL送料・UPS送料シートから重量帯（Min_Weight / Max_W
   - 総不一致 2件 = ベースライン（LEADS/CUSTOMERS の既存差分）✅
 - PR #823 mergedAt: `2026-09-01T02:32:39Z` ✅
 - Deploy to DEV: success ✅（getDeployedSha = `2220197` = origin/develop HEAD）
+
+---
+
+### 2026-09-01 送料見積の統一入口と保存ロジックを追加（PR #826 / PR-U2）
+
+**概要:**
+`estimateShippingFeeForFrontend` を新設し、送料計算〜SHIPPING_FEE_ESTIMATES への保存を
+一貫して処理できる統一入口を実装した。API フォールバック（MASTER）も含む。
+
+#### 変更ファイル（PR #826）
+
+- `src/29_ShippingFeeCalculator.js`（追記）
+  - `estimateShippingFeeForFrontend(sessionId, payload)` — 統一入口
+    - セッション認証 (`setEmailFromSession` / `checkPermission('deal_edit')`)
+    - ペイロード検証: countryCode 必須 / boxes 必須 / linkType (QUOTE|INVOICE|SHIPMENT) 必須 / linkId 必須
+    - linkId の存在確認（`_sfeValidateLinkId_`）→ 計算（`_sfeProcess_`）→ 保存（`saveShippingFeeEstimate_`）
+    - `save=false` でシート書き込みをスキップ可（デフォルト true）
+  - `_sfeProcess_(ss, carriers, zonesMap, ratesMap, payload)` — セッションなし内部ロジック
+    - 各キャリアに `callCarrierRateApi_` を試みる → `{supported: false}` の場合は MASTER フォールバック
+    - feeType: linkType=SHIPMENT → ACTUAL / それ以外 → ESTIMATE
+    - calcSource: API または MASTER を結果に付与
+  - `callCarrierRateApi_(carrier, apiPayload)` — API 呼び出し骨格
+    - 現時点では常に `{supported: false}` を返す（実装は将来フェーズ）
+  - `saveShippingFeeEstimate_(record)` — 保存関数
+    - `withSheetWrite_({ useLock: true })` で LockService 排他制御
+    - `validateCoreSchemaV1TableForWrite(ss, 'SHIPPING_FEE_ESTIMATES')` でスキーマ整合確認
+    - `targetRow = sheet.getLastRow() + 1` を `appendRow()` の前に確定
+    - ID 採番: `_sfeGenerateNextId_` で SFE-0001 形式（4桁連番）
+    - 3列制約: quoteId / invoiceId / shipmentId のうち2つ以上が非空なら即時拒否
+    - 日本語列名の直書きなし（`getCoreSchemaV1HeaderName` 経由）
+  - `_sfeValidateLinkId_(ss, linkType, linkId)` — リンクID存在確認
+    - QUOTE → QUOTES シートで QUOTE_ID を検索
+    - SHIPMENT → SHIPMENTS シートで SHIPMENT_ID を検索
+    - INVOICE → CoreSchemaRegistry 未登録のためスキップ
+  - `_sfeBuildLinkColumns_(linkType, linkId)` — 3列マッピング
+    - linkType に応じた { quoteId, invoiceId, shipmentId } を返す
+  - `_sfeGenerateNextId_(sheet, headerIndexes)` — SFE-NNNN 採番（ロック内専用）
+
+- `src/99_DevShippingFeeCalcTest.js`（追記・DEV専用）
+  - `devTestShippingFeeEstimate()` — ケース(a)-(d) のテストラッパー
+  - `_devRunEstimate(...)` — `_sfeProcess_` を直接呼び出してサマリーを返す（料金値は除外）
+  - `_devTestSave(...)` — `saveShippingFeeEstimate_` の書き込み動作を単独確認
+
+#### テストケース結果（料金値は記録しない）
+
+| ケース | linkType | 入力 | feeType | FedEx結果 | UPS結果 |
+|--------|----------|------|---------|-----------|---------|
+| (a) | QUOTE | US / 1箱 30×20×15cm / 1.2kg | ESTIMATE | zone=F / feeObtained=true ✅ | RATE_NOT_FOUND ✅ |
+| (b) | SHIPMENT | US / 1箱 同寸法 | ACTUAL | zone=F / feeObtained=true ✅ | RATE_NOT_FOUND ✅ |
+| (c) | QUOTE | CN-S(510001) / 1箱 同寸法 | ESTIMATE | zone=K / feeObtained=true ✅ | zone='10' / feeObtained=true ✅ |
+| (d) | save=true | US / FedEx 1箱 | ESTIMATE | saveShippingFeeEstimate_ → SFE-0001 採番成功 ✅ | — |
+
+- (a)(b) DHL/UPS の US RATE_NOT_FOUND は DEV マスタデータの非登録によるもの（正常系）
+- (c) CN-S 郵便番号 510001（広東省）の effectiveCode → CN-S 変換を確認
+- (d) SFE-0001 が採番され `{ saved: true, sfeId: 'SFE-0001' }` を返却
+
+#### スキーマ適合性監査
+
+- SHIPPING_FEE_ESTIMATES: 0件不一致 ✅
+- CARRIERS: 0件不一致 ✅
+- 総不一致 2件 = ベースライン（LEADS/CUSTOMERS の既存差分）✅
+
+#### 事後確認
+
+- PR #826 mergedAt: `2026-09-01T03:58:38Z` ✅
+- Deploy to DEV: `bed240f` / success ✅
+- devTestShippingFeeEstimate: ケース(a)-(d) 全件 期待値通り ✅
