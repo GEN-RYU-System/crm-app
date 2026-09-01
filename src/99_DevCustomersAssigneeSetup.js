@@ -89,3 +89,114 @@ function renameCustomersAssigneeIdHeader() {
     afterCols: afterCols
   });
 }
+
+/**
+ * DEV専用: 顧客マスタの sales_assignee_id 列に EMP-00001 を全行書き込む dry-run。
+ * 実際の書き込みは行わず、対象行数・列位置のみ報告する。
+ * @returns {string} JSON
+ */
+function setCustomersAssigneeIdDryRun() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('DEV環境でのみ実行可能');
+  }
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(getCoreSchemaV1TableName('CUSTOMERS'));
+  if (!sheet) return JSON.stringify({ error: '顧客マスタが見つかりません' });
+
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var targetIdx = headers.indexOf('sales_assignee_id');
+
+  if (targetIdx === -1) {
+    return JSON.stringify({ success: false, reason: 'sales_assignee_id 列が見つかりません', headers: headers });
+  }
+
+  var dataRows = lastRow - 1;
+  var currentValues = sheet.getRange(2, targetIdx + 1, dataRows, 1).getValues();
+
+  return JSON.stringify({
+    success: true,
+    colPosition: targetIdx + 1,
+    targetColName: 'sales_assignee_id',
+    dataRows: dataRows,
+    currentValues: currentValues.map(function(r, i) { return { rowNum: i + 2, currentValue: r[0] }; }),
+    willWrite: 'EMP-00001',
+    dryRun: true
+  });
+}
+
+/**
+ * DEV専用: 顧客マスタの sales_assignee_id 列に EMP-00001 を全行書き込む。
+ * sales_assignee_id 列のみ書き込む。他の列・他のシートには触れない。
+ * @returns {string} JSON
+ */
+function setCustomersAssigneeId() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('DEV環境でのみ実行可能');
+  }
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(getCoreSchemaV1TableName('CUSTOMERS'));
+  if (!sheet) return JSON.stringify({ error: '顧客マスタが見つかりません' });
+
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var targetIdx = headers.indexOf('sales_assignee_id');
+
+  if (targetIdx === -1) {
+    return JSON.stringify({ success: false, reason: 'sales_assignee_id 列が見つかりません' });
+  }
+
+  var dataRows = lastRow - 1;
+
+  // 書き込み前の全列スナップショット（照合用）
+  var beforeSnapshot = sheet.getRange(2, 1, dataRows, lastCol).getValues();
+
+  // sales_assignee_id 列のみに EMP-00001 を書き込む
+  Logger.log('書き込み前: col=' + (targetIdx + 1) + ', rows=' + dataRows);
+  var writeValues = [];
+  for (var i = 0; i < dataRows; i++) {
+    writeValues.push(['EMP-00001']);
+    Logger.log('  row' + (i + 2) + ': "" → "EMP-00001"');
+  }
+  sheet.getRange(2, targetIdx + 1, dataRows, 1).setValues(writeValues);
+
+  // 書き込み後の全列スナップショット（照合用）
+  var afterSnapshot = sheet.getRange(2, 1, dataRows, lastCol).getValues();
+
+  // 検証1: sales_assignee_id 列が全行 EMP-00001 になっているか
+  var allWritten = afterSnapshot.every(function(row) { return row[targetIdx] === 'EMP-00001'; });
+
+  // 検証2: 他の列が変化していないか
+  var otherColsIntact = true;
+  for (var r = 0; r < dataRows; r++) {
+    for (var c = 0; c < lastCol; c++) {
+      if (c === targetIdx) continue; // 対象列はスキップ
+      if (beforeSnapshot[r][c] !== afterSnapshot[r][c]) {
+        otherColsIntact = false;
+        Logger.log('警告: 他列が変化 row=' + (r + 2) + ' col=' + (c + 1));
+      }
+    }
+  }
+
+  // 検証3: 行数・列数が変化していないか
+  var afterRows = sheet.getLastRow();
+  var afterCols = sheet.getLastColumn();
+
+  return JSON.stringify({
+    success: allWritten && otherColsIntact && (afterRows === lastRow) && (afterCols === lastCol),
+    colPosition: targetIdx + 1,
+    dataRows: dataRows,
+    allWritten: allWritten,
+    otherColsIntact: otherColsIntact,
+    rowsMatch: afterRows === lastRow,
+    colsMatch: afterCols === lastCol,
+    afterSnapshot: afterSnapshot.map(function(row, i) {
+      return {
+        rowNum: i + 2,
+        sales_assignee_id: row[targetIdx]
+      };
+    })
+  });
+}
