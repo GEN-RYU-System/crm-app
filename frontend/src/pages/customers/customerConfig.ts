@@ -5,14 +5,12 @@ import { customersCopy } from '../../content/ja';
 
 export function resolveAssigneeName(
   salesAssigneeId: string | undefined,
-  salesAssigneeName: string | undefined,
   staffMap: ReadonlyMap<string, string>,
 ): string {
   if (salesAssigneeId) {
-    const name = staffMap.get(salesAssigneeId);
-    if (name !== undefined) return name;
+    return staffMap.get(salesAssigneeId) ?? '';
   }
-  return salesAssigneeName ?? '';
+  return '';
 }
 
 export type CustomerListRow = {
@@ -103,7 +101,7 @@ function compareTransactionAmounts(left: CustomerSummaryDto['transactionAmounts'
 }
 
 export function toCustomerListRows(customers: readonly CustomerSummaryDto[], sort: CustomerSort, staffMap: ReadonlyMap<string, string>): CustomerListRow[] {
-  const rows = customers.map((customer) => ({ customerId: customer.customerId, customerName: customer.customerName, country: customer.country, salesChannel: customer.salesChannel, handledTitle: customer.handledTitle, salesAssigneeName: resolveAssigneeName(customer.salesAssigneeId, customer.salesAssigneeName, staffMap), transactionCount: String(customer.transactionCount), transactionAmount: formatTransactionAmounts(customer.transactionAmounts), transactionAmounts: customer.transactionAmounts }));
+  const rows = customers.map((customer) => ({ customerId: customer.customerId, customerName: customer.customerName, country: customer.country, salesChannel: customer.salesChannel, handledTitle: customer.handledTitle, salesAssigneeName: resolveAssigneeName(customer.salesAssigneeId, staffMap), transactionCount: String(customer.transactionCount), transactionAmount: formatTransactionAmounts(customer.transactionAmounts), transactionAmounts: customer.transactionAmounts }));
   const direction = sort.direction === 'ascending' ? 1 : -1;
   return rows.sort((left, right) => {
     const comparison = sort.key === 'transactionAmount'

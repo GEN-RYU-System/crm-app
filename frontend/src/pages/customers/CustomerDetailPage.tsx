@@ -38,7 +38,7 @@ export function CustomerDetailPage({ repository }: { repository: CustomerReposit
   const profile = customer!.profile;
   const resolveProfileFieldValue = (key: (typeof CUSTOMER_PROFILE_FIELDS)[number]['key']): string => {
     if (key === 'salesAssigneeName') {
-      return resolveAssigneeName(profile.salesAssigneeId, profile.salesAssigneeName, staffMap);
+      return resolveAssigneeName(profile.salesAssigneeId, staffMap);
     }
     return displayCustomerProfileValue(profile, key);
   };
