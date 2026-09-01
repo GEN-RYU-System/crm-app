@@ -6,7 +6,7 @@ import { quotesCopy } from '../../content/ja';
 import { ISSUER_HEADER } from '../../content/ja/issuer';
 import { QuoteDocument } from '../../features/documents/QuoteDocument';
 import { formatDate } from '../shared/dateFormat';
-import { createCoreQuote, estimateShippingFeeForQuote, getCoreQuoteDetail, getLeadOptionsForFrontend, updateCoreQuote, type IssuerRecord, type LeadOption, type QuoteShippingFeeResult, type ShippingFeeCarrierResult } from '../../gas/client';
+import { createCoreQuote, estimateShippingFeeForLines, getCoreQuoteDetail, getLeadOptionsForFrontend, updateCoreQuote, type EstimateShippingFeeForLinesPayload, type IssuerRecord, type LeadOption, type ShippingFeeEstimateResult, type ShippingFeeCarrierResult } from '../../gas/client';
 import { useInventoryConditionsMap } from '../inventory/InventoryListCacheContext';
 import { useInventoryProductOptionsCache } from '../inventory/InventoryProductOptionsCacheContext';
 import { useCurrencyMasterCache } from '../currency/CurrencyMasterCacheContext';
@@ -82,7 +82,7 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
   } | null>(null);
   const [showPrint, setShowPrint] = useState(false);
   const [shippingFeeLoading, setShippingFeeLoading] = useState(false);
-  const [shippingFeeResult, setShippingFeeResult] = useState<QuoteShippingFeeResult | null>(null);
+  const [shippingFeeResult, setShippingFeeResult] = useState<ShippingFeeEstimateResult | null>(null);
   const [shippingFeeError, setShippingFeeError] = useState<string | undefined>();
 
   // Derive conditions from the prefetched inventory cache (no GAS call needed).
@@ -268,12 +268,21 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
   };
 
   const handleCalculateShippingFee = async () => {
-    if (!quoteId) return;
+    const countryCode = leads.find((l) => l.leadId === values.leadId)?.countryCode ?? '';
+    const payload: EstimateShippingFeeForLinesPayload = {
+      lines: values.lines.map((l) => ({
+        productId: l.productId,
+        condition: l.condition,
+        quantity: Number(l.quantity) || 0,
+      })),
+      countryCode,
+      postalCode: '',
+    };
     setShippingFeeLoading(true);
     setShippingFeeError(undefined);
     setShippingFeeResult(null);
     try {
-      const res = await estimateShippingFeeForQuote(quoteId);
+      const res = await estimateShippingFeeForLines(payload);
       if (!res.success) {
         setShippingFeeError(sfc.errorNoBoxes);
         setShippingFeeResult(res);
@@ -448,13 +457,10 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
           onClick={() => void handleCalculateShippingFee()}
           loading={shippingFeeLoading}
           loadingText={sfc.calculating}
-          disabled={!quoteId || shippingFeeLoading}
+          disabled={shippingFeeLoading}
         >
           {sfc.button}
         </Button>
-        {!quoteId && (
-          <p className="quote-editor-page__shipping-fee-hint">{sfc.saveFirst}</p>
-        )}
         {(shippingFeeError || shippingFeeResult) && !shippingFeeLoading && (
           <div className="quote-editor-page__shipping-fee-result">
             {shippingFeeError && (
