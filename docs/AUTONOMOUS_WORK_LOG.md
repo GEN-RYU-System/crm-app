@@ -7327,3 +7327,36 @@ CoreSchemaRegistry の LEADS 定義 (51列) に存在しない13列を DEV ス�
 **将来の課題:**
 - 計算した送料を見積もりに反映する機能（QUOTES.SHIPPING_FEE への書き込み）は今回対象外。
   必要に応じて別 PR で判断・実装する
+
+---
+
+### 2026-09-02 PR-W3: 受注詳細の請求情報タブに明細ベース送料概算を追加
+
+**PR:** #896
+**マージSHA:** f96fdcfc1f063ecebf1bf48eff5006660f1606f8
+
+**変更内容:**
+- `SalesOrderDetailPage.tsx`: 請求情報タブの明細テーブル下に送料概算セクションを追加
+  - 「送料を計算（明細から）」ボタン（`billingShippingFeeBtn`）
+  - 説明文「明細の商品・コンディションから計算した概算です。梱包後の実送料は発送タブで確認できます。」
+  - ボタンクリックで `estimateShippingFeeForOrderForFrontend` を呼び出す
+  - 結果テーブル「送料概算（明細ベース）」に 配送会社 / ゾーン / 総請求重量 / 箱数 / 送料 を表示
+  - スキップされた明細は商品名とスキップ理由を日本語で一覧表示
+  - 発送タブの送料計算（実箱寸法ベース）と名称・説明で明確に区別
+- `gas/client.ts`:
+  - `estimateShippingFeeForOrder` 関数を追加
+  - `ShippingFeeEstimateResult` / `ShippingFeeSkippedLine` を共有型として整備
+  - 旧 `QuoteShippingFeeResult` / `QuoteShippingFeeSkippedLine` を `@deprecated` alias として後方互換を維持
+- `gas/types.d.ts`: `estimateShippingFeeForOrderForFrontend` を GoogleScriptRun に追加
+- `content/ja/salesOrders.ts`: `billingShippingFee*` プレフィックスの請求タブ専用コピー文字列を追加
+- `SalesOrderDetailPage.css`: `__billing-shipping-fee-note` スタイルを追加（`--font-sm` 使用）
+- `gasRunnerMock.ts`: `estimateShippingFeeForOrderForFrontend` モックを追加（スキップ1件含む）
+- GAS 側 (`src/`) の変更なし
+
+**検証結果:**
+| 手順 | 結果 |
+|------|------|
+| ?preview 動作確認（Evaluator） | PASS（全 AC 確認済み：ボタン表示・結果テーブル・スキップ一覧・発送タブとの区別） |
+| SHA 一致 | f96fdcfc1f063ecebf1bf48eff5006660f1606f8（origin/develop HEAD と一致） |
+| Conformance Audit | 総不一致 0 → PASS |
+| dryRunOrderStatusRecalculation | 変更あり 0件 |
