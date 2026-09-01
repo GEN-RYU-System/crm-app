@@ -466,7 +466,11 @@ export function SalesOrderDetailPage() {
       });
       setShippingFeeResult({ hasIncompleteRows, results: res.results });
     } catch (e: unknown) {
-      setShippingFeeError(e instanceof Error ? e.message : copy.shippingFeeErrorUnknown);
+      const code = e instanceof Error ? e.message : '';
+      const knownErrors: Record<string, string> = {
+        MISSING_COUNTRY_CODE: copy.shippingFeeErrorMissingCountryCode,
+      };
+      setShippingFeeError(knownErrors[code] ?? copy.shippingFeeErrorUnknown);
     } finally {
       setShippingFeeLoading(false);
     }
@@ -481,7 +485,11 @@ export function SalesOrderDetailPage() {
       const res = await estimateShippingFeeForOrder(orderId);
       setBillingShippingFeeResult(res);
     } catch (e: unknown) {
-      setBillingShippingFeeError(e instanceof Error ? e.message : copy.billingShippingFeeErrorUnknown);
+      const code = e instanceof Error ? e.message : '';
+      const knownErrors: Record<string, string> = {
+        ORDER_COUNTRY_NOT_RESOLVABLE: copy.billingShippingFeeErrorOrderCountryNotResolvable,
+      };
+      setBillingShippingFeeError(knownErrors[code] ?? copy.billingShippingFeeErrorUnknown);
     } finally {
       setBillingShippingFeeLoading(false);
     }

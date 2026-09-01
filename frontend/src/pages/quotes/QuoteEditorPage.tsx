@@ -290,7 +290,11 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
         setShippingFeeResult(res);
       }
     } catch (e: unknown) {
-      setShippingFeeError(e instanceof Error ? e.message : sfc.errorUnknown);
+      const code = e instanceof Error ? e.message : '';
+      const knownErrors: Record<string, string> = {
+        MISSING_COUNTRY_CODE: sfc.errorMissingCountryCode,
+      };
+      setShippingFeeError(knownErrors[code] ?? sfc.errorUnknown);
     } finally {
       setShippingFeeLoading(false);
     }
