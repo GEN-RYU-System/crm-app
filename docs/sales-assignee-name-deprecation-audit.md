@@ -231,9 +231,32 @@
 
 ---
 
+## フロント実装（2026-09-01）
+
+### 切り替え対象
+
+| ファイル | 変更内容 |
+|---------|---------|
+| frontend/src/features/customers/contracts.ts | CustomerSummaryDto / CustomerProfileDto に salesAssigneeId: string を追加 |
+| frontend/src/pages/customers/customerConfig.ts | resolveAssigneeName 関数追加（ID→名前変換 + フォールバック） |
+| frontend/src/pages/customers/CustomerListPage.tsx | staffMap（useMemo・画面ごと1回）を適用 |
+| frontend/src/pages/customers/CustomerDetailPage.tsx | staffMap（useMemo・画面ごと1回）を適用 |
+| frontend/src/preview/gasRunnerMock.ts | モックデータに salesAssigneeId: 'EMP-00001' を追加 |
+
+### フォールバック方針
+
+salesAssigneeId が空または staffMap にヒットしない場合は salesAssigneeName を使用。
+name も空の場合は空文字 '' を表示（「未割当」等の固定文字列は使わない）。
+
+### Evaluator 確認結果
+
+- 顧客一覧: 担当者名「Preview User」表示 PASS
+- 顧客詳細: 「営業担当者」フィールドに「Preview User」表示 PASS
+- 白画面・コンソールエラーなし PASS
+- PR: #874
+
 ## 次フェーズの課題
 
-1. フロント実装: getCoreStaffForFrontend を使った ID→名前変換（新API不要）
-2. 新方式への書き換え（sales_assignee_name 参照箇所の削除）
-3. LEADS.SALES_ASSIGNEE_NAME の削除（値が全行空のため削除可能）
-4. CUSTOMERS.SALES_ASSIGNEE_NAME の削除（参照書き換え後）
+1. フォールバック（salesAssigneeName への退避）の除去（name 列削除フェーズ）
+2. LEADS.SALES_ASSIGNEE_NAME の削除（Registry + シート、値0件）
+3. CUSTOMERS.SALES_ASSIGNEE_NAME の削除（Registry + シート、参照書き換え後）
