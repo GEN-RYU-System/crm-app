@@ -1503,10 +1503,7 @@ function getStaffListForAssign() {
  * @returns {Array<string>} アーカイブ理由の配列
  */
 function getArchiveReasons() {
-  // 選択肢マスタV2 から読む。該当 category がなければ DEFAULT にフォールバック（段階6で除去予定）
-  var fromV2 = getOptionsByCategory_('archive_reason');
-  if (fromV2.length > 0) return fromV2;
-  return DEFAULT_DROPDOWN_OPTIONS['アーカイブ理由'] || [];
+  return getOptionsByCategory_('archive_reason');
 }
 
 /**
