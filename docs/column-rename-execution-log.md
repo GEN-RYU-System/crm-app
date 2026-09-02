@@ -738,7 +738,10 @@
 
 ### PR-3 — 旧名フォールバック除去
 
-- PR: #XXX（作成中）
+- PR: #944
+- マージ: 2026-09-02T07:01:12Z
+- CI: frontend-check / gas-global-namespace / Gitleaks / Sensitive Content 全 4件 SUCCESS
+- Deploy to DEV: success
 - 旧列名参照確認（通貨マスタコンテキスト）:
   - `通貨コード`: 0件（CoreSchemaRegistry のみ ＋ RENAME_MAP定義）
   - `円換算レート`: 0件（CoreSchemaRegistry のみ ＋ RENAME_MAP定義）
@@ -746,7 +749,12 @@
   - `indexOf('名称')`: 0件（通貨マスタコンテキスト外のみ：流入元マスタ等）
   - `indexOf('有効')`: 0件（通貨マスタコンテキスト外のみ：他シート）
 - コード変更: 通貨マスタコンテキストの旧列名参照が既に0件のため変更ファイルなし
-- 変更ファイル: 1ファイル
+- 変更ファイル: 2ファイル
   - `docs/column-rename-execution-log.md` — PR-3実行記録
+  - `docs/AUTONOMOUS_WORK_LOG.md` — 完了記録（revert SHA付き）
+- 事後確認（PR-3 後）:
+  - SHA: `f51fe98f1376c26a31c2875736670c6b4defc499` = origin/develop HEAD ✅
+  - 監査: 総不一致 0件 → PASS ✅
+  - dryRun: 変更あり 0件 ✅
 
 **通貨マスタ 列リネーム 完了 ✅**

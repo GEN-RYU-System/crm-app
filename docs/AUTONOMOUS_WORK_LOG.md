@@ -10,7 +10,7 @@
 
 - PR-1: #942 / `678af025` / コード新名対応 / mergedAt: 2026-09-02T06:49:11Z
 - PR-2: #943 / `e58237c1` / シートリネーム実行記録 / mergedAt: 2026-09-02T06:56:25Z
-- PR-3: #XXX / 旧名フォールバック除去 / mergedAt: 作成中
+- PR-3: #944 / `f51fe98f` / 旧名フォールバック除去確認・完了記録 / mergedAt: 2026-09-02T07:01:12Z
 - 変更列: 通貨コード→currency_code / 記号→symbol / 名称→name / 円換算レート→rate_to_jpy / 有効→is_active
 - バックアップ: `通貨マスタ_backup_20260902`（6行5列）
 - 実行後ヘッダー: `['currency_code', 'symbol', 'name', 'rate_to_jpy', 'is_active']`
