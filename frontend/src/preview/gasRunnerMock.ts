@@ -905,6 +905,30 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
         ],
       });
     },
+    getCoreItemsForFrontend(_s: string | null) {
+      succeed([
+        { itemId: 'ITM-0001', nameEn: 'Books', nameJa: '書籍', isActive: 'TRUE' },
+      ]);
+    },
+    getCoreHtsCodesForFrontend(_s: string | null) {
+      succeed([
+        { htsCodeId: 'HTS-0001', htsCode: '4901.99', descriptionEn: 'Books, brochures', descriptionJa: '書籍・パンフレット類', isActive: 'TRUE' },
+      ]);
+    },
+    getCoreMaterialsForFrontend(_s: string | null) {
+      succeed([
+        { materialId: 'MAT-0001', nameEn: 'Paper', nameJa: '紙', isActive: 'TRUE' },
+      ]);
+    },
+    upsertCoreItemForFrontend(_s: string | null, _payload: unknown) {
+      succeed({ success: true, itemId: 'ITM-0001' });
+    },
+    upsertCoreHtsCodeForFrontend(_s: string | null, _payload: unknown) {
+      succeed({ success: true, htsCodeId: 'HTS-0001' });
+    },
+    upsertCoreMaterialForFrontend(_s: string | null, _payload: unknown) {
+      succeed({ success: true, materialId: 'MAT-0001' });
+    },
   };
 
   return new Proxy(chain, {

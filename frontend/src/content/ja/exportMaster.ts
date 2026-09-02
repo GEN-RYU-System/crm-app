@@ -1,0 +1,35 @@
+export const exportMasterCopy = {
+  title: '輸出情報マスタ',
+  subtitle: '品目・HTSコード・素材を登録・編集します。',
+  tabItems: '品目',
+  tabHtsCodes: 'HTSコード',
+  tabMaterials: '素材',
+  loading: '読み込み中…',
+  loadError: '読み込みに失敗しました。',
+  retry: '再試行',
+  btnAddNew: '新規追加',
+  btnSave: '保存',
+  btnCancel: 'キャンセル',
+  saving: '保存中…',
+  saveSuccess: '保存しました。',
+  saveError: '保存に失敗しました。',
+  // Item fields
+  colItemId: '品目ID',
+  colNameEn: '品目名（英語）',
+  colNameJa: '品目名（日本語）',
+  colActive: '有効',
+  // HTS Code fields
+  colHtsCodeId: 'HTSコードID',
+  colHtsCode: 'HTSコード',
+  colDescriptionEn: '説明（英語）',
+  colDescriptionJa: '説明（日本語）',
+  // Material fields
+  colMaterialId: '素材ID',
+  colMaterialNameEn: '素材名（英語）',
+  colMaterialNameJa: '素材名（日本語）',
+  // Misc
+  inactiveLabel: '（無効）',
+  noData: 'データがありません。',
+  activeLabel: '有効',
+  inactiveSelectLabel: '無効',
+} as const;

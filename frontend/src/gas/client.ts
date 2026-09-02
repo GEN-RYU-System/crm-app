@@ -1512,3 +1512,84 @@ export function estimateShippingFeeForLines(payload: EstimateShippingFeeForLines
       .estimateShippingFeeForLinesForFrontend(getStoredSessionId(), payload);
   });
 }
+
+// ─── Export Master ─────────────────────────────────────────────────────────────
+
+export type ItemRecord     = { itemId: string; nameEn: string; nameJa: string; isActive: string };
+export type HtsCodeRecord  = { htsCodeId: string; htsCode: string; descriptionEn: string; descriptionJa: string; isActive: string };
+export type MaterialRecord = { materialId: string; nameEn: string; nameJa: string; isActive: string };
+
+export function getCoreItems(): Promise<ItemRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as ItemRecord[]))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getCoreItemsForFrontend(getStoredSessionId());
+  });
+}
+
+export function getCoreHtsCodes(): Promise<HtsCodeRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as HtsCodeRecord[]))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getCoreHtsCodesForFrontend(getStoredSessionId());
+  });
+}
+
+export function getCoreMaterials(): Promise<MaterialRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as MaterialRecord[]))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getCoreMaterialsForFrontend(getStoredSessionId());
+  });
+}
+
+export type UpsertItemPayload     = { itemId?: string; nameEn?: string; nameJa?: string; isActive?: boolean };
+export type UpsertItemResult      = { success: true; itemId: string };
+
+export function upsertCoreItem(payload: UpsertItemPayload): Promise<UpsertItemResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as UpsertItemResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .upsertCoreItemForFrontend(getStoredSessionId(), payload);
+  });
+}
+
+export type UpsertHtsCodePayload  = { htsCodeId?: string; htsCode?: string; descriptionEn?: string; descriptionJa?: string; isActive?: boolean };
+export type UpsertHtsCodeResult   = { success: true; htsCodeId: string };
+
+export function upsertCoreHtsCode(payload: UpsertHtsCodePayload): Promise<UpsertHtsCodeResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as UpsertHtsCodeResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .upsertCoreHtsCodeForFrontend(getStoredSessionId(), payload);
+  });
+}
+
+export type UpsertMaterialPayload = { materialId?: string; nameEn?: string; nameJa?: string; isActive?: boolean };
+export type UpsertMaterialResult  = { success: true; materialId: string };
+
+export function upsertCoreMaterial(payload: UpsertMaterialPayload): Promise<UpsertMaterialResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as UpsertMaterialResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .upsertCoreMaterialForFrontend(getStoredSessionId(), payload);
+  });
+}
