@@ -128,7 +128,7 @@ grep -nE "setValue|setValues|appendRow|insertSheet|deleteSheet|deleteRow|deleteC
 | 7 | last_name_en | 7/8 | string | [PII] maxLen=8 |
 | 8 | first_name_en | 7/8 | string | [PII] maxLen=7 |
 | 9 | email | 7/8 | string | [PII] maxLen=27 |
-| 10 | discord_id | 3/8 | string | maxLen=19、sample: 1255555836776939692 |
+| 10 | discord_id | 3/8 | string | maxLen=19（Discord ユーザーID 数値形式） |
 | 11 | staff_role | 8/8 | string | maxLen=7、sample: オーナー/システム管理者 |
 | 12 | status | 8/8 | string | maxLen=2、sample: 有効 |
 | 13 | source_candidate_id | 0/8 | empty | |
@@ -393,7 +393,7 @@ grep -nE "setValue|setValues|appendRow|insertSheet|deleteSheet|deleteRow|deleteC
 | 16 | REQUIRED_OUTPUT_VALUE | 98/100 | string | UPPERCASE | maxLen=33 |
 | 17 | MOQ | 11/100 | number | UPPERCASE | |
 | 18 | 品目 | 100/100 | string | NON_ASCII | maxLen=12 |
-| 19 | HSコード | 100/100 | number | UPPERCASE, NON_ASCII | sample: 9504400000 |
+| 19 | HSコード | 100/100 | number | UPPERCASE, NON_ASCII | 10桁数値（HSコード形式） |
 | 20 | 素材 | 100/100 | string | NON_ASCII | maxLen=5 |
 | 21 | 大分類ID | 100/100 | string | UPPERCASE, NON_ASCII | maxLen=5、sample: DIV01 |
 | 22 | 作品ID | 100/100 | string | UPPERCASE, NON_ASCII | maxLen=5、sample: IP001 |
@@ -470,7 +470,7 @@ DEV 環境では `選択肢マスタV2`（OPTION_MASTER: CoreSchemaV1 登録済�
 | 10 | country | 1/1 | string | maxLen=5 |
 | 11 | phone | 1/1 | string | [PII] maxLen=14 |
 | 12 | email | 1/1 | string | [PII] maxLen=28 |
-| 13 | registration_no | 1/1 | string | maxLen=14、sample: T3810449547408 |
+| 13 | registration_no | 1/1 | string | maxLen=14（T+13桁数値、インボイス登録番号形式） |
 | 14 | payee_name | 1/1 | string | [PII] maxLen=16 |
 | 15 | payment_email | 1/1 | string | [PII] maxLen=28 |
 | 16 | note | 1/1 | string | maxLen=256（長文テキスト） |
