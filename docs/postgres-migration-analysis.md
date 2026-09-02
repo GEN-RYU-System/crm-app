@@ -466,7 +466,7 @@ DEV 環境では `選択肢マスタV2`（OPTION_MASTER: CoreSchemaV1 登録済�
 | 6 | address_line_3 | 0/1 | empty | [PII] |
 | 7 | city | 1/1 | string | maxLen=11 |
 | 8 | state | 1/1 | string | maxLen=5 |
-| 9 | zip | 1/1 | number | sample: 1600023（日本の郵便番号を数値として格納） |
+| 9 | zip | 1/1 | number | 7桁数値（日本の郵便番号を数値として格納） |
 | 10 | country | 1/1 | string | maxLen=5 |
 | 11 | phone | 1/1 | string | [PII] maxLen=14 |
 | 12 | email | 1/1 | string | [PII] maxLen=28 |
@@ -677,7 +677,7 @@ PostgreSQL移行時に列の型を固定する必要がある。`zip` は TEXT�
 ### 6-4. その他の注意事項
 
 - **ログインセッション.セッションID** の maxLen=72: UUID（36文字）を2つ連結した形式（UUID+UUID）。PostgreSQL では UUID 型 2列への分割、または TEXT(72) で格納する必要がある。
-- **発行元マスタ.zip** は number型（sample: 1600023）: 日本の郵便番号（7桁数値）として格納。ハイフン無し。PostgreSQL では VARCHAR(7) か TEXT が適切。
+- **発行元マスタ.zip** は number型（7桁数値、日本の郵便番号をハイフン無し数値で格納）: PostgreSQL では VARCHAR(7) か TEXT が適切。
 - **システム設定.更新日時** は string型（ISO 8601形式の文字列として格納）: PostgreSQL では TIMESTAMPTZ が適切だが、型変換が必要。
 
 ---
