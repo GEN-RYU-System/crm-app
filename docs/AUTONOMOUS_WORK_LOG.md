@@ -8226,3 +8226,30 @@ localhost:5180/?preview#/inbox (Playwright)
 
 **revert SHA（緊急時）:** `e5ca671`（PR #958 squash commit = 現在の develop HEAD）
 **バックアップシート:** `会話ログ（商談用）_backup_20260902`（スプレッドシート内）
+
+---
+
+## 発送（SHIPMENTS）列名英語化 — 2026-09-02
+
+**作業概要:** 発送シート 22列の日本語列名を英語スネークケースに変換
+
+**PR-1 (#960): CoreSchemaRegistry 物理列名変更**
+- マージ: 2026-09-02T11:38:25Z
+- Deploy to DEV: success
+- 変更: 00_CoreSchemaRegistry.js の SHIPMENTS 物理列名22列を英語化
+- 追加: 99_DevRenameShipmentsColumns.js (シート変換スクリプト)
+- アーキテクチャ: getCoreSchemaV1HeaderName 経由のため Registry 変更のみで全 API 自動追従
+
+**PR-2+3 (#962): 旧参照削除**
+- マージ: 2026-09-02T11:45:52Z
+- Deploy to DEV: success
+- 変更: 08_Config.js / 99_DevCoreSchemaV1HeaderDetailAuditV3.js / 99_DevDemoSeed20260826.js / 99_DevOrderRealityAudit.js / 99_DevPostgresMigrationAnalysis.js / 99_DevReferenceIntegrityAudit.js / 99_SqlReadinessCheck.js
+- 旧列名参照（発送シートコンテキスト）: 0件確認済み
+- オーダー管理の同名列（発送方法/発送日/運送状番号/発送担当ID）: 変更なし（意図的）
+
+**シート変換（PR-2 後に実施が必要）:**
+- `devBackupShipmentsSheet()` → `発送_backup_20260902` 作成
+- `devRenameShipmentsColumns()` → 22列一括変換 (renamedCount=22 確認)
+
+**revert SHA（緊急時）:** `e2d3aca`（PR #960 squash commit）
+**バックアップシート:** `発送_backup_20260902`（シート変換後に GAS で作成）

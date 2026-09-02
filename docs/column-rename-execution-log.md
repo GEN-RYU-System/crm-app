@@ -1056,3 +1056,68 @@
   - 会話一覧表示: ✅（25件リスト表示）
   - 会話詳細表示: ✅（メッセージスレッド・顧客カルテ表示）
 - 判定: **PASS**
+
+---
+
+## 発送（SHIPMENTS）
+
+**対象列 22本:**
+
+| # | 旧名 | 新名 |
+|---|------|------|
+| 1 | 発送ID | shipment_id |
+| 2 | オーダーID | order_id |
+| 3 | 箱番号 | box_number |
+| 4 | 発送方法 | shipping_method |
+| 5 | 発送日 | shipped_at |
+| 6 | 運送状番号 | tracking_number |
+| 7 | 長さ | length |
+| 8 | 幅 | width |
+| 9 | 高さ | height |
+| 10 | 重量 | weight |
+| 11 | 見積もり送料 | estimated_shipping_fee |
+| 12 | ラベルURL | label_url |
+| 13 | インボイスURL | invoice_url |
+| 14 | 検品 | inspection |
+| 15 | 梱包 | packing |
+| 16 | 格納 | storage |
+| 17 | 集荷依頼 | pickup_request |
+| 18 | 通知 | notification |
+| 19 | 発送担当ID | shipping_assignee_id |
+| 20 | 備考 | note |
+| 21 | 登録日 | registered_at |
+| 22 | 更新日 | updated_at |
+
+### PR-1 (コード両対応)
+- PR: #960 (mergedAt: 2026-09-02T11:38:25Z)
+- 変更: `src/00_CoreSchemaRegistry.js` の SHIPMENTS 物理列名を22列英語化
+- 追加: `src/99_DevRenameShipmentsColumns.js` (PR-2 実行用スクリプト)
+- アーキテクチャ: getCoreSchemaV1HeaderName 経由のため Registry 変更のみで全 API 追従
+- フォールバック: 不要（Registry 経由の一元管理）
+- CI: 4件 pass
+- Deploy to DEV: success
+
+### PR-2+3 (旧参照削除)
+- PR: #962 (mergedAt: 2026-09-02T11:45:52Z)
+- 変更ファイル:
+  - `src/08_Config.js` — HEADERS.SHIPMENT を英語化
+  - `src/99_DevCoreSchemaV1HeaderDetailAuditV3.js` — 発送シート requiredIdHeaders 英語化
+  - `src/99_DevDemoSeed20260826.js` — 発送データキー英語化
+  - `src/99_DevOrderRealityAudit.js` — headers スキーマ + 参照英語化
+  - `src/99_DevPostgresMigrationAnalysis.js` — pkHeader/FK refCol 英語化
+  - `src/99_DevReferenceIntegrityAudit.js` — shipping_assignee_id 英語化
+  - `src/99_SqlReadinessCheck.js` — pkColumn 英語化
+- 旧列名参照 grep 確認結果:
+  - 発送シートコンテキスト: **0件** (コメント・RENAME_MAP 左辺・レガシーマイグレーション除く)
+  - オーダー管理の同名列（発送方法/発送日/運送状番号/発送担当ID）: 変更なし（意図的）
+- CI: 4件 pass
+- Deploy to DEV: success
+
+### シート変換手順（PR-2 後に GAS で実行）
+1. `devBackupShipmentsSheet()` → `発送_backup_20260902` 作成
+2. `devRenameShipmentsColumns()` → 22列を一括変換
+3. renamedCount=22, skipped=[], 行列数変化なし を確認
+
+### 発送関連画面表示確認
+- 【未確認】GAS 上での devRenameShipmentsColumns() 実行はローカル環境では不可能
+- PR-2 実行者が GAS スクリプトエディタで実施後に確認必要
