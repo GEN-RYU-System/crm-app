@@ -8,8 +8,10 @@ import {
   getCoreSharedProducts, getCoreProductPackages, upsertCoreProductPackage,
   getCoreOwnProducts, upsertCoreOwnProductWithPackage, getCorePackages,
   getCoreOwnCategories, getCoreOwnWorks, getCoreOwnManufacturers,
+  getCoreItems, getCoreHtsCodes, getCoreMaterials,
   type SharedProductRecord, type ProductPackageRecord, type OwnProductRecord, type PackageRecord,
   type OwnCategoryRecord, type OwnWorkRecord, type OwnManufacturerRecord,
+  type ItemRecord, type HtsCodeRecord, type MaterialRecord,
 } from '../../gas/client';
 
 // ─── Tab type ─────────────────────────────────────────────────────────────────
@@ -115,6 +117,9 @@ export function ProductMasterPage() {
   const [categories,      setCategories]      = useState<OwnCategoryRecord[]>([]);
   const [works,           setWorks]           = useState<OwnWorkRecord[]>([]);
   const [manufacturers,   setManufacturers]   = useState<OwnManufacturerRecord[]>([]);
+  const [items,           setItems]           = useState<ItemRecord[]>([]);
+  const [htsCodes,        setHtsCodes]        = useState<HtsCodeRecord[]>([]);
+  const [materials,       setMaterials]       = useState<MaterialRecord[]>([]);
 
   // Load state
   const [loadError, setLoadError] = useState<string | undefined>();
@@ -142,7 +147,7 @@ export function ProductMasterPage() {
     setLoading(true);
     setLoadError(undefined);
     try {
-      const [sp, pp, op, pkgs, cats, wrks, mfrs] = await Promise.all([
+      const [sp, pp, op, pkgs, cats, wrks, mfrs, itms, hts, mats] = await Promise.all([
         getCoreSharedProducts(),
         getCoreProductPackages(),
         getCoreOwnProducts(),
@@ -150,6 +155,9 @@ export function ProductMasterPage() {
         getCoreOwnCategories(),
         getCoreOwnWorks(),
         getCoreOwnManufacturers(),
+        getCoreItems(),
+        getCoreHtsCodes(),
+        getCoreMaterials(),
       ]);
       setSharedProducts(sp);
       setProductPackages(pp);
@@ -158,6 +166,9 @@ export function ProductMasterPage() {
       setCategories(cats);
       setWorks(wrks);
       setManufacturers(mfrs);
+      setItems(itms);
+      setHtsCodes(hts);
+      setMaterials(mats);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : productMasterCopy.loadError);
     } finally {
@@ -184,10 +195,13 @@ export function ProductMasterPage() {
     return m;
   }, [productPackages]);
 
-  const activePackages    = useMemo(() => packages.filter((p) => p.isActive === 'TRUE'), [packages]);
-  const activeCategories  = useMemo(() => categories.filter((c) => c.isActive === 'TRUE'), [categories]);
-  const activeWorks       = useMemo(() => works.filter((w) => w.isActive === 'TRUE'), [works]);
+  const activePackages      = useMemo(() => packages.filter((p) => p.isActive === 'TRUE'), [packages]);
+  const activeCategories    = useMemo(() => categories.filter((c) => c.isActive === 'TRUE'), [categories]);
+  const activeWorks         = useMemo(() => works.filter((w) => w.isActive === 'TRUE'), [works]);
   const activeManufacturers = useMemo(() => manufacturers.filter((m) => m.isActive === 'TRUE'), [manufacturers]);
+  const activeItems         = useMemo(() => items.filter((i) => i.isActive === 'TRUE'), [items]);
+  const activeHtsCodes      = useMemo(() => htsCodes.filter((h) => h.isActive === 'TRUE'), [htsCodes]);
+  const activeMaterials     = useMemo(() => materials.filter((m) => m.isActive === 'TRUE'), [materials]);
 
   const filteredShared = useMemo(() => {
     const q = sharedSearch.trim().toLowerCase();
@@ -323,7 +337,10 @@ export function ProductMasterPage() {
     </div>
   );
 
-  const packageOptions = activePackages.map((p) => ({ value: p.packageId, label: packageLabel(p) }));
+  const packageOptions  = activePackages.map((p) => ({ value: p.packageId, label: packageLabel(p) }));
+  const itemOptions     = activeItems.map((i) => ({ value: i.itemId, label: i.nameJa || i.nameEn }));
+  const htsCodeOptions  = activeHtsCodes.map((h) => ({ value: h.htsCodeId, label: h.htsCode + (h.descriptionJa || h.descriptionEn ? ' — ' + (h.descriptionJa || h.descriptionEn) : '') }));
+  const materialOptions = activeMaterials.map((m) => ({ value: m.materialId, label: m.nameJa || m.nameEn }));
 
   const sharedInlineForm = (
     <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--color-surface-secondary, #f8f8f8)', borderRadius: '0.5rem' }}>
@@ -337,6 +354,15 @@ export function ProductMasterPage() {
         <Select label={productMasterCopy.labelPackPackage} value={pkgForm.packPackageId}
           onChange={(e) => setPkgForm((p) => ({ ...p, packPackageId: e.target.value }))}
           placeholder={productMasterCopy.selectPlaceholder} options={packageOptions} fullWidth />
+        <Select label={productMasterCopy.labelItem} value={pkgForm.itemId}
+          onChange={(e) => setPkgForm((p) => ({ ...p, itemId: e.target.value }))}
+          placeholder={productMasterCopy.selectPlaceholder} options={itemOptions} fullWidth />
+        <Select label={productMasterCopy.labelHtsCode} value={pkgForm.htsCodeId}
+          onChange={(e) => setPkgForm((p) => ({ ...p, htsCodeId: e.target.value }))}
+          placeholder={productMasterCopy.selectPlaceholder} options={htsCodeOptions} fullWidth />
+        <Select label={productMasterCopy.labelMaterial} value={pkgForm.materialId}
+          onChange={(e) => setPkgForm((p) => ({ ...p, materialId: e.target.value }))}
+          placeholder={productMasterCopy.selectPlaceholder} options={materialOptions} fullWidth />
         <Select
           label={productMasterCopy.colActive}
           value={pkgForm.isActive ? 'TRUE' : ''}
@@ -394,6 +420,15 @@ export function ProductMasterPage() {
           <Select label={productMasterCopy.labelPackPackage} value={ownForm.packPackageId}
             onChange={(e) => setOwnForm((p) => ({ ...p, packPackageId: e.target.value }))}
             placeholder={productMasterCopy.selectPlaceholder} options={packageOptions} fullWidth />
+          <Select label={productMasterCopy.labelItem} value={ownForm.itemId}
+            onChange={(e) => setOwnForm((p) => ({ ...p, itemId: e.target.value }))}
+            placeholder={productMasterCopy.selectPlaceholder} options={itemOptions} fullWidth />
+          <Select label={productMasterCopy.labelHtsCode} value={ownForm.htsCodeId}
+            onChange={(e) => setOwnForm((p) => ({ ...p, htsCodeId: e.target.value }))}
+            placeholder={productMasterCopy.selectPlaceholder} options={htsCodeOptions} fullWidth />
+          <Select label={productMasterCopy.labelMaterial} value={ownForm.materialId}
+            onChange={(e) => setOwnForm((p) => ({ ...p, materialId: e.target.value }))}
+            placeholder={productMasterCopy.selectPlaceholder} options={materialOptions} fullWidth />
         </div>
       </div>
       {saveActions(handleSaveOwn)}
