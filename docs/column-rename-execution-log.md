@@ -672,3 +672,57 @@
   - dryRun: 変更あり 0件 ✅
 
 **システム設定 列リネーム 完了 ✅**
+
+---
+
+## 通貨マスタ（CURRENCIES）
+
+**選定根拠:** `docs/column-rename-plan-phase2.md` セクション 6 の参照数比較
+- 共用在庫: 17件（除外指定）
+- 作品マスタ_共用在庫: 38件（PR #930/932/934 完了済み）
+- システム設定: 46件（PR #937/938/939 完了済み）
+- 通貨マスタ: 57件（最小 → 本作業の対象）
+
+**対象列 5本:**
+
+| # | 旧名 | 新名 |
+|---|------|------|
+| 1 | 通貨コード | `currency_code` |
+| 2 | 記号 | `symbol` |
+| 3 | 名称 | `name` |
+| 4 | 円換算レート | `rate_to_jpy` |
+| 5 | 有効 | `is_active` |
+
+### バックアップ
+
+- バックアップ名: `通貨マスタ_backup_20260902`
+- originalRows: 6（ヘッダー1行 + データ5行）
+- originalCols: 5
+- 変更前ヘッダー: `['通貨コード', '記号', '名称', '円換算レート', '有効']`
+
+### PR-1 — コード新名対応
+
+- PR: #942
+- マージ: 2026-09-02T06:49:11Z
+- CI: frontend-check / gas-global-namespace / Gitleaks / Sensitive Content 全 4件 SUCCESS
+- Deploy to DEV: success
+- 変更ファイル: 4ファイル
+  - `src/00_CoreSchemaRegistry.js` — CURRENCIES ヘッダー物理名を英語スネークケースに変更
+  - `src/99_SqlReadinessCheck.js` — pkColumn '通貨コード' → 'currency_code'
+  - `src/99_DevPostgresMigrationAnalysis.js` — pkHeader '通貨コード' → 'currency_code'（2箇所）
+  - `src/99_DevRenameCurrencyMasterColumns.js` — 新規: バックアップ・列名変更 GAS 関数を追加
+- 監査（PR-1 後、シート未変更）: CURRENCIES 6件不一致（想定通り）、他テーブル 0件 ✅
+- dryRun: 変更あり 0件 ✅
+
+### PR-2 — シートリネーム実行
+
+- PR: #XXX（作成中）
+- シートリネーム実行結果（`clasp run devRenameCurrencyMasterColumns`）:
+  ```
+  {
+    renamedCount: 5, expectedCount: 5, skipped: [],
+    newHeaders: ['currency_code', 'symbol', 'name', 'rate_to_jpy', 'is_active'],
+    rowCountBefore: 6, rowCountAfter: 6,
+    colCountBefore: 5, colCountAfter: 5
+  }
+  ```
