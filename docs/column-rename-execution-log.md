@@ -570,3 +570,15 @@
   - SHA: `e75b72cd669b8c474d0b4f39953130452e0cc9ff` = origin/develop HEAD ✅
   - 監査: 総不一致 0件 → PASS ✅
   - dryRun: 変更あり 0件 ✅
+
+### PR-3 — 旧名フォールバック除去
+
+- PR: #933（予定）
+- 変更ファイル: 5ファイル
+  - `src/27_WebApp.js` — フォールバック除去: `indexOf('title') || indexOf('作品名')` → `indexOf('title')`
+  - `src/28_SharedInventoryReadApi.js` — 同上×2箇所（ipNameIdx / ipAltIdx）
+  - `src/99_PerfBench.js` — 同上×2箇所（ipNameIdx / ipAltIdx）
+  - `src/99_DevIpIdsMigration.js` — 同上×2箇所 + エラーメッセージ簡素化
+  - `src/99_DevIpIdsDryRun.js` — nameIdx/aliasIdx/activeIdx フォールバック除去
+- 旧列名 indexOf 確認（`作品マスタ_共用在庫` コンテキスト）: 0件 ✅
+- `有効` の残り参照は他シート（テンプレートシート・国マスタ・流入元マスタ等）のみ — 変更対象外 ✅

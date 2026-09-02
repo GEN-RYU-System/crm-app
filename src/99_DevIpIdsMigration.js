@@ -67,10 +67,10 @@ function dryRunIpIdsMigration() {
   var masterHeaders = masterData[0].map(String);
 
   var ipIdIdx  = masterHeaders.indexOf('ip_id');
-  var nameIdx  = masterHeaders.indexOf('title')  >= 0 ? masterHeaders.indexOf('title')  : masterHeaders.indexOf('作品名');
-  var aliasIdx = masterHeaders.indexOf('alias')  >= 0 ? masterHeaders.indexOf('alias')  : masterHeaders.indexOf('別名');
+  var nameIdx  = masterHeaders.indexOf('title');
+  var aliasIdx = masterHeaders.indexOf('alias');
   if (ipIdIdx < 0) throw new Error('作品マスタ_共用在庫に「ip_id」列がありません');
-  if (nameIdx < 0) throw new Error('作品マスタ_共用在庫に「title」(旧:「作品名」)列がありません');
+  if (nameIdx < 0) throw new Error('作品マスタ_共用在庫に「title」列がありません');
 
   // 名称 → { ipId, matchedBy } マップ（有効・無効問わず全件）
   // 同一キーが重複する場合は先勝ち
@@ -204,10 +204,10 @@ function applyIpIdsMigration() {
   var masterHeaders = masterData[0].map(String);
 
   var ipIdIdx  = masterHeaders.indexOf('ip_id');
-  var nameIdx  = masterHeaders.indexOf('title')  >= 0 ? masterHeaders.indexOf('title')  : masterHeaders.indexOf('作品名');
-  var aliasIdx = masterHeaders.indexOf('alias')  >= 0 ? masterHeaders.indexOf('alias')  : masterHeaders.indexOf('別名');
+  var nameIdx  = masterHeaders.indexOf('title');
+  var aliasIdx = masterHeaders.indexOf('alias');
   if (ipIdIdx < 0) throw new Error('作品マスタ_共用在庫に「ip_id」列がありません');
-  if (nameIdx < 0) throw new Error('作品マスタ_共用在庫に「title」(旧:「作品名」)列がありません');
+  if (nameIdx < 0) throw new Error('作品マスタ_共用在庫に「title」列がありません');
 
   var nameToId = {};
   for (var m = 1; m < masterData.length; m++) {
