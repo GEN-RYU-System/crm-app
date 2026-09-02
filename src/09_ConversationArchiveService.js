@@ -316,15 +316,15 @@ function archiveConversationsForLead(leadId, status) {
     // アーカイブシートに追加
     logs.forEach(log => {
       const row = [
-        log['ログID'],
+        log['log_id'],
         log['lead_id'],
-        log['日時'],
-        log['送受信'],
-        log['発言者'],
-        log['原文'],
-        log['翻訳文'],
-        log['記録者ID'],
-        log['記録日時']
+        log['occurred_at'],
+        log['direction'],
+        log['speaker'],
+        log['original_text'],
+        log['translated_text'],
+        log['recorded_by'],
+        log['recorded_at']
       ];
       targetSheet.appendRow(row);
     });
@@ -412,15 +412,15 @@ function archiveConversationLogsForArchivedLead(leadId) {
     // アーカイブシートに追加
     logs.forEach(log => {
       const row = [
-        log['ログID'],
+        log['log_id'],
         log['lead_id'],
-        log['日時'],
-        log['送受信'],
-        log['発言者'],
-        log['原文'],
-        log['翻訳文'],
-        log['記録者ID'],
-        log['記録日時']
+        log['occurred_at'],
+        log['direction'],
+        log['speaker'],
+        log['original_text'],
+        log['translated_text'],
+        log['recorded_by'],
+        log['recorded_at']
       ];
       targetSheet.appendRow(row);
     });

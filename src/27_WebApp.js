@@ -4541,13 +4541,13 @@ function addConversationLog(data) {
   // 現在のユーザー情報を取得
   const currentUser = getCurrentUserWithPermissions();
 
-  // フロントエンドからの日本語フィールドを英語に変換（新旧列名両対応）
+  // フロントエンドからの日本語フィールドを英語に変換
   const convertedData = {
     leadId: data['lead_id'] || data.leadId,
-    direction: data['direction'] || data['送受信'] || data.direction,
-    speaker: data['speaker'] || data['発言者'] || data.speaker,
-    originalText: data['original_text'] || data['原文'] || data.originalText,
-    translatedText: data['translated_text'] || data['翻訳文'] || data.translatedText || '',
+    direction: data['direction'] || data.direction,
+    speaker: data['speaker'] || data.speaker,
+    originalText: data['original_text'] || data.originalText,
+    translatedText: data['translated_text'] || data.translatedText || '',
     recorderId: currentUser.staffId, // 担当者IDを使用
     datetime: new Date()
   };
@@ -4610,12 +4610,12 @@ function translateAndAddLog(data) {
   // 現在のユーザー情報を取得
   const currentUser = getCurrentUserWithPermissions();
 
-  // フロントエンドからの日本語フィールドを英語に変換（新旧列名両対応）
+  // フロントエンドからの日本語フィールドを英語に変換
   const convertedData = {
     leadId: data['lead_id'] || data.leadId,
-    direction: data['direction'] || data['送受信'] || data.direction,
-    speaker: data['speaker'] || data['発言者'] || data.speaker,
-    originalText: data['original_text'] || data['原文'] || data.originalText,
+    direction: data['direction'] || data.direction,
+    speaker: data['speaker'] || data.speaker,
+    originalText: data['original_text'] || data.originalText,
     recorderId: currentUser.staffId, // 担当者IDを使用
     datetime: new Date()
   };
@@ -4641,7 +4641,7 @@ function translateAndAddLog(data) {
 
   // 追加されたログを取得して返す
   const logs = getConversationLogsForLead(convertedData.leadId);
-  const newLog = logs.find(log => (log['log_id'] || log['ログID']) === result.logId);
+  const newLog = logs.find(log => log['log_id'] === result.logId);
 
   return newLog || null;
 }
@@ -8036,9 +8036,9 @@ function updateConversationLogTranslation(logId, newTranslation) {
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
 
-    // 列インデックス取得（新旧列名両対応）
-    const logIdIdx = headers.indexOf('log_id') !== -1 ? headers.indexOf('log_id') : headers.indexOf('ログID');
-    const translationIdx = headers.indexOf('translated_text') !== -1 ? headers.indexOf('translated_text') : headers.indexOf('翻訳文');
+    // 列インデックス取得
+    const logIdIdx = headers.indexOf('log_id');
+    const translationIdx = headers.indexOf('translated_text');
 
     if (logIdIdx === -1 || translationIdx === -1) {
       throw new Error('必要な列が見つかりません');

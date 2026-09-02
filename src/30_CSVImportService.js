@@ -585,8 +585,8 @@ function importConversationLogCSV(csvContent, options) {
           leadId = matchResult.leadId;
         }
 
-        // ログID自動生成（新旧列名両対応）
-        let logId = row['log_id'] || row['ログID'];
+        // ログID自動生成
+        let logId = row['log_id'];
         if (!logId || logId.trim() === '') {
           logId = generateNextLogId();
           results.generatedIds.push(logId);
@@ -595,14 +595,13 @@ function importConversationLogCSV(csvContent, options) {
         // 記録日時自動設定
         const recordDate = new Date();
 
-        // スプレッドシートに書き込むデータを準備（新旧列名両対応）
+        // スプレッドシートに書き込むデータを準備
         const rowData = headers.map(header => {
-          if (header === 'log_id'    || header === 'ログID')    return logId;
-          if (header === 'lead_id'   || header === 'リードID')  return leadId;
-          if (header === 'recorded_at' || header === '記録日時') return recordDate;
-          if (header === 'recorded_by' || header === '記録者ID') return currentUser.email;
+          if (header === 'log_id')      return logId;
+          if (header === 'lead_id')     return leadId;
+          if (header === 'recorded_at') return recordDate;
+          if (header === 'recorded_by') return currentUser.email;
 
-          // 新列名でCSV行を参照し、なければ旧列名でフォールバック
           return row[header] || '';
         });
 

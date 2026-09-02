@@ -34,7 +34,7 @@ var SQL_CHECK_TARGETS = [
   { sheetName: '流入元マスタ',       pkColumn: 'source_id' },
   { sheetName: '選択肢マスタ',       pkColumn: null },
   { sheetName: '発行元マスタ',       pkColumn: '発行元ID' },
-  { sheetName: '会話ログ（商談用）', pkColumn: 'ログID' },
+  { sheetName: '会話ログ（商談用）', pkColumn: 'log_id' },
   { sheetName: 'システム設定',       pkColumn: 'setting_key' },
   { sheetName: '担当者マスタ',       pkColumn: '担当者ID' },
   { sheetName: 'ログインセッション', pkColumn: 'session_id' }
