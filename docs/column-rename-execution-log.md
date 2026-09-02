@@ -1121,3 +1121,59 @@
 ### 発送関連画面表示確認
 - 【未確認】GAS 上での devRenameShipmentsColumns() 実行はローカル環境では不可能
 - PR-2 実行者が GAS スクリプトエディタで実施後に確認必要
+
+---
+
+## 見積もり明細（QUOTE_LINES）
+
+**対象列 12本:**
+
+| # | 旧名（日本語） | 新名（英語） | 備考 |
+|---|---|---|---|
+| 1 | 明細ID | quote_line_id | QUOTE_LINES PK、QTL-xxxxx形式 |
+| 2 | 見積書ID | quote_id | QUOTES.QUOTE_ID と一致 |
+| 3 | 行番号 | line_no | QUOTE_LINES固有（ORDER_LINESは line_number と別名） |
+| 4 | 商品ID | product_id | |
+| 5 | 商品名 | product_name | |
+| 6 | 説明 | description | |
+| 7 | 状態 | condition | ORDER_LINESのSTATUS('状態')とは別物；CONDITION→CONDITIONSマスタ参照 |
+| 8 | 重量 | weight | |
+| 9 | 数量 | quantity | |
+| 10 | 単価 | unit_price | |
+| 11 | 金額 | amount | |
+| 12 | 備考 | note | |
+
+### PR-1 — コード先行変換
+
+- PR: #966 (mergedAt: 2026-09-02T12:18:06Z)
+- Deploy to DEV: success (58秒)
+- 変更ファイル:
+  - `src/00_CoreSchemaRegistry.js` — QUOTE_LINES.headers 物理名を英語スネークケースに変換
+  - `src/99_DevRenameQuoteLinesColumns.js` — 新規作成（バックアップ・列変更ユーティリティ）
+  - `src/99_SqlReadinessCheck.js` — pkColumn '明細ID' → 'quote_line_id'
+  - `src/99_DevPostgresMigrationAnalysis.js` — pkHeader 2箇所・refCol 2箇所を英語化
+  - `src/99_DevReferenceIntegrityAudit.js` — refCol '見積書ID' → 'quote_id'
+- ConformanceAudit 期待値: QUOTE_LINES で 12件不一致（シートはまだ日本語名）
+
+### PR-2 — シート実リネーム
+
+- PR: #967 (mergedAt: 2026-09-02T対応後に記入)
+- 変更ファイル: `docs/column-rename-execution-log.md`（本記録）
+
+### シート変換手順（PR-2 マージ後に GAS で実行）
+
+1. `devBackupQuoteLinesSheet()` → `見積もり明細_backup_20260902` 作成
+   - 期待値: headers 12列（日本語名）、行列数を記録
+2. `devRenameQuoteLinesColumns()` → 12列を一括変換
+   - 期待値: renamedCount=12, skipped=[], 行列数変化なし
+   - newHeaders: ['quote_line_id', 'quote_id', 'line_no', 'product_id', 'product_name', 'description', 'condition', 'weight', 'quantity', 'unit_price', 'amount', 'note']
+3. `runCoreSchemaConformanceAudit()` → QUOTE_LINES 不一致 0件 を確認
+
+### 見積もり関連画面表示確認
+- 【未確認】GAS 上での devRenameQuoteLinesColumns() 実行はローカル環境では不可能
+- PR-2 実行者が GAS スクリプトエディタで実施後に確認必要
+- 見積もり詳細/明細画面が開けること（エラーなし）、見積もり明細行が表示されること
+
+### revert SHA
+- バックアップシート: 見積もり明細_backup_20260902（スプレッドシート内に保持）
+- GAS revert: devBackupQuoteLinesSheet のバックアップから手動復元
