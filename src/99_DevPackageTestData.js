@@ -22,7 +22,7 @@
    coreCustomerFrontendReadTable, coreCustomerFrontendValue,
    createSession, buildBoxesFromLines_, _sfcLoadCarriers,
    _sfcBuildZonesMap, _sfcBuildRatesMap, _sfeProcess_,
-   getCoreSchemaV1TableName */
+   getCoreSchemaV1TableName, SFC_WEIGHT_STEP_BOUNDARY */
 
 // ─── 1. 商品検索（読み取り専用）─────────────────────────────────────────────
 
@@ -376,5 +376,109 @@ function devInspectPackageDimensions(packageId, productPackageId) {
     volumetricWeight_kg:  volumetricWeight_kg,
     exceedsMax68kg:       exceedsMax68kg,
     productPackage:       ppkResult
+  });
+}
+
+// ─── 5. 送料ゾーン・重量帯 診断（読み取り専用）──────────────────────────────────
+
+/**
+ * 指定国コードについて全キャリアのゾーン照合・課金重量計算・重量帯マッチングを返す。
+ * RATE_NOT_FOUND / ZONE_NOT_FOUND の原因特定用。
+ * 金額（rate）は返さない。
+ *
+ * @param {string} countryCode  ISO2 国コード（例: 'US'）
+ * @param {number} length_cm    箱の長さ(cm)
+ * @param {number} width_cm     箱の幅(cm)
+ * @param {number} height_cm    箱の高さ(cm)
+ * @param {number} actualWeight_kg  実重量(kg)
+ * @returns {string} JSON: { carriers: [{carrierId, carrierName, maxWeight, divisor,
+ *   stepSmall, stepLarge, zone, volumetricWeight_kg, chargeableWeight_kg,
+ *   exceedsMaxWeight, rateBands: [{minWeight,maxWeight}], matchedBand, error}] }
+ */
+function devInspectShippingRateAvailability(countryCode, length_cm, width_cm, height_cm, actualWeight_kg) {
+  if (getEnvironment() !== 'development') {
+    throw new Error('devInspectShippingRateAvailability は development 環境でのみ実行できます。');
+  }
+  if (!countryCode) throw new Error('countryCode を指定してください。');
+
+  var ss       = getSpreadsheet();
+  var carriers = _sfcLoadCarriers(ss);
+  var zonesMap = _sfcBuildZonesMap(ss);
+  var ratesMap = _sfcBuildRatesMap(ss);
+
+  var L = Number(length_cm);
+  var W = Number(width_cm);
+  var H = Number(height_cm);
+  var actualW = Number(actualWeight_kg);
+
+  var country = String(countryCode).trim().toUpperCase();
+
+  var result = carriers.map(function(carrier) {
+    var zone = zonesMap[carrier.id + '|' + country] || null;
+
+    if (!zone) {
+      return {
+        carrierId:   carrier.id,
+        carrierName: carrier.name,
+        maxWeight:   carrier.maxWeight,
+        divisor:     carrier.divisor,
+        stepSmall:   carrier.stepSmall,
+        stepLarge:   carrier.stepLarge,
+        zone:        null,
+        error:       'ZONE_NOT_FOUND'
+      };
+    }
+
+    // 課金重量計算（_sfcCalculateBox と同じロジック）
+    var ceilL = Math.ceil(L);
+    var ceilW = Math.ceil(W);
+    var ceilH = Math.ceil(H);
+    var volW  = (ceilL * ceilW * ceilH) / carrier.divisor;
+    var rawChargeable = Math.max(actualW, volW);
+    var step  = rawChargeable <= SFC_WEIGHT_STEP_BOUNDARY ? carrier.stepSmall : carrier.stepLarge;
+    var chargeableW = Math.ceil(rawChargeable / step) * step;
+
+    var exceedsMax = chargeableW > carrier.maxWeight;
+
+    // 重量帯一覧（金額なし）
+    var rateKey = carrier.id + '|' + zone;
+    var bands   = (ratesMap[rateKey] || []).map(function(b) {
+      return { minWeight: b.minWeight, maxWeight: b.maxWeight };
+    });
+
+    // マッチング判定（minWeight < chargeableWeight <= maxWeight）
+    var matchedBand = null;
+    var matched = bands.filter(function(b) {
+      return b.minWeight < chargeableW && chargeableW <= b.maxWeight;
+    });
+    if (matched.length > 0) matchedBand = matched[0];
+
+    var error = null;
+    if (exceedsMax)        error = 'WEIGHT_EXCEEDS_MAX';
+    else if (!matchedBand) error = 'RATE_NOT_FOUND';
+
+    return {
+      carrierId:            carrier.id,
+      carrierName:          carrier.name,
+      maxWeight:            carrier.maxWeight,
+      divisor:              carrier.divisor,
+      stepSmall:            carrier.stepSmall,
+      stepLarge:            carrier.stepLarge,
+      zone:                 zone,
+      volumetricWeight_kg:  Math.round(volW * 1000) / 1000,
+      chargeableWeight_kg:  chargeableW,
+      exceedsMaxWeight:     exceedsMax,
+      rateBandCount:        bands.length,
+      rateBands:            bands,
+      matchedBand:          matchedBand,
+      error:                error
+    };
+  });
+
+  return JSON.stringify({
+    countryCode:     country,
+    boxDimensions:   { length_cm: L, width_cm: W, height_cm: H },
+    actualWeight_kg: actualW,
+    carriers:        result
   });
 }
