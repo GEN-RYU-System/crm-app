@@ -8523,3 +8523,71 @@ clasp run runCoreSchemaConformanceAudit
 ```
 
 **revert SHA（緊急時）:** `13a5eeb`（PR-AB1 squash commit = PR-AB2 ロールバック先）
+
+---
+
+## 2026-09-02: 顧客詳細ページに通関用番号タブを追加 (PR-AB3)
+
+**作業概要:** 顧客詳細ページに「通関用番号」タブを新設し、PR-AB2 で追加した GAS API 3 関数
+（取得・一覧・upsert）をフロントエンドに接続する。
+
+**変更ファイル:**
+
+| ファイル | 変更種別 | 概要 |
+|--------|------|------|
+| `frontend/src/pages/customers/CustomerDetailPage.tsx` | 変更 | taxNumbers タブ実装（一覧・インラインフォーム・編集） |
+| `frontend/src/features/customers/taxNumbersAdapter.ts` | 新規 | gas/client を features 層に隔離するアダプター |
+| `frontend/src/pages/customers/customerConfig.ts` | 変更 | CustomerDetailTab 型拡張・CUSTOMER_DETAIL_TABS 更新 |
+| `frontend/src/gas/client.ts` | 変更 | 3 型 + 3 関数追加（TaxNumberTypeRecord / CustomerTaxNumberRecord 等） |
+| `frontend/src/gas/types.d.ts` | 変更 | GoogleScriptRun に 3 関数シグネチャ追加 |
+| `frontend/src/preview/gasRunnerMock.ts` | 変更 | 3 モック実装追加（7 種別・CTN-0001 サンプル） |
+| `frontend/src/content/ja/customers.ts` | 変更 | taxNumbers タブラベル + 22 コピーキー追加 |
+
+**設計判断:**
+- 直接 gas/client import は pages/ 境界違反 → `taxNumbersAdapter.ts` で features 層に隔離
+- 種別ドロップダウン: 有効かつ未登録のみ表示。編集時は自己 typeId を選択肢に残す（誤拒否防止）
+- 日本語 copy（`ー` 含む）はすべて `content/ja/customers.ts` に集約（`taxNumbersTypeLabel` 関数）
+- 削除機能なし: isActive を FALSE に更新する方式（GAS 側で実装済み）
+
+**PR (#982): feat: 顧客詳細に通関用番号（通関用番号）タブを追加**
+- マージ: 2026-09-02T20:58:20Z
+- squash commit SHA: `4192daa`
+- Deploy to DEV: success
+
+**手順4〜8 実測値:**
+
+手順4（`npm run build:gas`）:
+```
+typecheck: PASS（tsc --noEmit 0 errors）
+build: PASS（533 modules, 612.16 kB）
+check:design-system: PASS
+```
+
+手順5（Preview 動作確認 — Playwright AC 10/10）:
+```
+AC-1: 顧客詳細ページ表示 → PASS
+AC-2: 4 タブ表示（基本情報 / 配送先 / 支払情報 / 通関用番号）→ PASS
+AC-3: 通関用番号タブクリック → PASS（console errors 0）
+AC-4: テーブル 1 行表示（米国納税者番号（EIN/SSN） / 12-3456789 / ✓）→ PASS
+AC-5: 「番号を追加」ボタン表示 → PASS
+AC-6: インラインフォーム表示（種別・番号・有効/無効・保存・キャンセル）→ PASS
+AC-7: 種別ドロップダウン 7 選択肢（US_TAX_ID 除外済み）→ PASS
+AC-8: キャンセルでフォームを閉じる → PASS
+AC-9: 行クリックで編集フォーム（自己 typeId 含む 8 選択肢）→ PASS
+AC-10: 顧客一覧ページ正常表示 → PASS
+```
+
+手順7（getDeployedSha）:
+```
+clasp run getDeployedSha
+→ { sha: '4192daae565b1d19baa34146522f1c63cc9e23f4', deployedAt: '2026-09-02T20:59:11.037Z' }
+= origin/develop HEAD ✅
+```
+
+手順8（スキーマ整合監査）:
+```
+clasp run runCoreSchemaConformanceAudit
+→ 総不一致: 0 → PASS ✅
+```
+
+**revert SHA（緊急時）:** `d665ec1`（PR-AB2 work log squash = PR-AB3 ロールバック先）
