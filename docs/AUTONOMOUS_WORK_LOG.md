@@ -7881,6 +7881,88 @@ completed  success  docs: 完了報告は実測値のみを書くルールを AG
 
 ---
 
+### 2026-09-02 PR-Z4: 商品マスタ画面に品目・HTSコード・素材の選択欄を追加（PR #936）
+
+**PR:** #936
+**マージSHA:** 4408b23
+**mergedAt:** 2026-09-02T06:14:12Z
+
+**背景:**
+PR-Z2（#927）で GAS API（getCoreItems / getCoreHtsCodes / getCoreMaterials）と型定義を追加済み。
+商品マスタ画面（ProductMasterPage）のインライン編集フォームには品目・HTSコード・素材の
+Select が未追加の状態だったため、今 PR でフロント側を接続した。
+
+**変更ファイル:** `frontend/src/pages/data-management/ProductMasterPage.tsx`（40行追加・5行削除）
+
+**変更内容:**
+- import に `getCoreItems / getCoreHtsCodes / getCoreMaterials` と型3種を追加
+- `items / htsCodes / materials` の useState を追加
+- `loadAll` の Promise.all を 7本 → 10本に拡張
+- `activeItems / activeHtsCodes / activeMaterials` useMemo と options を追加
+- `sharedInlineForm` に品目 / HTSコード / 素材 Select を3つ追加
+- `ownInlineForm` の荷姿セクションに同 Select を3つ追加
+
+**実施した手順:**
+
+```
+$ bash scripts/new-worktree.sh release/product-master-export-fields
+✅ worktree を作成しました: /Users/tanizawashingo/worktrees/crm-app/release-product-master-export-fields
+
+$ bash scripts/validate-worktree-start.sh
+✅ worktreeチェック通過: release/product-master-export-fields
+
+$ cd frontend && npm run build:gas
+typecheck: PASS / vite build: PASS (597.68 kB) / emit-gas-html: PASS / check:design-system: PASS
+
+$ gh pr checks 936
+Gitleaks           pass  16s
+Sensitive Content  pass   6s
+frontend-check     pass  32s
+gas-global-namespace pass  11s
+
+$ gh pr view 936 --json mergedAt,state
+{"mergedAt":"2026-09-02T06:14:12Z","state":"MERGED"}
+
+$ gh run list --workflow deploy-dev.yml --limit 1
+completed  success  feat: 商品マスタ画面に品目・HTSコード・素材の選択欄を追加 (#936)  Deploy to DEV  55s
+```
+
+**手順4 ?preview 確認（Playwright Chromium headless、http://localhost:5274/?preview）:**
+
+| 確認項目 | 結果 |
+|---------|------|
+| 白画面・コンソールエラーなし | PASS（エラー0件） |
+| 共用商品タブ行クリック → 品目/HTSコード/素材 Select 表示 | PASS |
+| 自社商品タブ新規追加 → 同 Select 表示 | PASS |
+| 選択肢にデータが出る（書籍 / 4901.99 / 紙） | PASS |
+| 顧客一覧など他タブが壊れていない | PASS（エラー0件） |
+
+```
+$ clasp run getDeployedSha
+{
+  deployedAt: '2026-09-02T06:34:33.889Z',
+  sha: '82c5bc963dbf962f2c58170964e6d05562fe5b9a'
+}
+$ git rev-parse origin/develop
+82c5bc963dbf962f2c58170964e6d05562fe5b9a
+→ 一致（#936 マージ後に #937-#940 が追加マージされ GAS 再デプロイ済み）
+
+$ clasp run runCoreSchemaConformanceAudit
+=== 総不一致: 0 → PASS ===
+```
+
+**worktree 超過対応（21 → 19）:**
+push 時にプリプッシュフックが `ERROR: 21 worktrees; limit is 19` でブロック。
+- `feat/quote-shipping-fee-unsaved`（origin/develop にマージ済み・clean）→ `git worktree remove` + `git branch -d`
+- `docs/worklog-package-master-incident`（PR #757 マージ済み・clean）→ 同上
+
+**PPK-0006 誤作成（書き込み違反）:**
+PR-Z4 着手前の調査（読み取りのみの制約下）で `runProductPackageApiTest` を実行した際、
+内部で `upsertCoreProductPackageForFrontend` が呼ばれ PPK-0006 が意図せず作成された。
+今 PR 自体はデータ変更なし（フロント表示のみ）。
+
+**revert:** git revert `4408b23`（PR-Z4 squash merge）
+
 ---
 
 ### 2026-09-02 Phase 2 システム設定 列名リネーム（PR #937/938/939）
