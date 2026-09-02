@@ -8179,3 +8179,50 @@ clasp run runCoreSchemaConformanceAudit
 ```
 
 **revert SHA（緊急時）:** `e80df5e`（PR #955 squash commit = 現在の develop HEAD）
+
+---
+
+## 会話ログ（商談用）列名リネーム 3-PR パターン完走
+
+**日時:** 2026-09-02
+
+**目的:**
+- 会話ログ（商談用）シートの全11列を英語列名にリネーム
+- `ログID`, `リードID`, `日時`, `送受信`, `発言者`, `原文`, `原文言語`, `翻訳文`, `記録者ID`, `記録日時`, `商談解析`
+  → `log_id`, `lead_id`, `occurred_at`, `direction`, `speaker`, `original_text`, `original_language`, `translated_text`, `recorded_by`, `recorded_at`, `deal_analysis`
+
+**PR-1 (#957): コード両対応追加**
+- マージ: 2026-09-02T10:26:04Z
+- Deploy to DEV: success (2026-09-02T10:26:07Z)
+- 変更ファイル: 9ファイル（各 indexOf に新旧フォールバック追加 + 99_DevRenameConversationLogColumns.js 追加）
+- 事後確認: SHA `124d26f`, 監査 0件, dryRun 変更なし
+
+**シートリネーム実行（PR-1 後）:**
+```
+clasp run devBackupConversationLogSheet
+→ { backupName: '会話ログ（商談用）_backup_20260902', originalRows: 250, originalCols: 11,
+    headers: ['ログID', 'リードID', '日時', '送受信', '発言者', '原文', '原文言語', '翻訳文', '記録者ID', '記録日時', '商談解析'] }
+
+clasp run devRenameConversationLogColumns
+→ { renamedCount: 11, expectedCount: 11, skipped: [],
+    newHeaders: ['log_id', 'lead_id', 'occurred_at', 'direction', 'speaker', 'original_text', 'original_language', 'translated_text', 'recorded_by', 'recorded_at', 'deal_analysis'],
+    rowCountBefore: 250, rowCountAfter: 250, colCountBefore: 11, colCountAfter: 11 }
+```
+→ リネーム完了 ✅
+
+**PR-3 (#958): 旧列名フォールバック除去**
+- マージ: 2026-09-02T10:36:56Z
+- Deploy to DEV: success (2026-09-02T10:36:58Z)
+- 変更ファイル: 8ファイル（idx()フォールバック関数削除、旧列名参照を新列名のみに統一）
+- 事後確認: SHA `e5ca671` (deployedAt: 2026-09-02T10:37:47Z), 監査 0件, dryRun 変更なし
+
+**Inbox 画面表示確認:**
+```
+localhost:5180/?preview#/inbox (Playwright)
+→ Console: 0 errors ✅
+→ 会話一覧: 25件表示 ✅
+→ 会話詳細: メッセージスレッド・顧客カルテ表示 ✅
+```
+
+**revert SHA（緊急時）:** `e5ca671`（PR #958 squash commit = 現在の develop HEAD）
+**バックアップシート:** `会話ログ（商談用）_backup_20260902`（スプレッドシート内）

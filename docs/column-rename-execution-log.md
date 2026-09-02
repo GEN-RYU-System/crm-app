@@ -991,7 +991,7 @@
 ### PR-1 — デュアルサポート追加
 
 - PR: #957
-- マージ: （未完了）
+- マージ: 2026-09-02T10:26:04Z
 - 変更ファイル: 9ファイル
   - `src/08_Config.js` — HEADERS.CONVERSATION_LOG を全11列英語列名に更新
   - `src/28_CoreInboxApi.js` — resolveConvIdx_ ヘルパー追加。全 indexOf 参照を新旧両対応に変換
@@ -1002,24 +1002,57 @@
   - `src/check_conversation_structure.js` — indexOf を新旧両対応に変換
   - `src/add_original_language_column.js` — indexOf を新旧両対応に変換
   - `src/99_DevRenameConversationLogColumns.js` — バックアップ・リネーム実行用 DEV ユーティリティを新規追加
+- 事後確認（PR-1 後）:
+  - SHA: `124d26f` (deployedAt: 2026-09-02T10:27:01Z) ✅
+  - 監査: 総不一致 0件 → PASS ✅
+  - dryRun: 変更あり 0件 ✅
 
 ### PR-2 — シート列名変更
 
-- PR: （未実施）
-- 実行手順:
-  1. `devBackupConversationLogSheet()` を実行してバックアップ作成
-  2. headers が `['ログID', 'リードID', '日時', '送受信', '発言者', '原文', '原文言語', '翻訳文', '記録者ID', '記録日時', '商談解析']` であることを確認
-  3. `devRenameConversationLogColumns()` を実行
-  4. renamedCount === 11、skipped === []、newHeaders 確認
+- PR: (#957 に同梱 — 99_DevRenameConversationLogColumns.js)
+- シートリネーム実行日時: 2026-09-02T（PR-1 マージ後）
+- バックアップ確認（devBackupConversationLogSheet）:
+  - backupName: `会話ログ（商談用）_backup_20260902`
+  - originalRows: 250、originalCols: 11
+  - headers（変更前）: `['ログID', 'リードID', '日時', '送受信', '発言者', '原文', '原文言語', '翻訳文', '記録者ID', '記録日時', '商談解析']`
+- リネーム実行結果（devRenameConversationLogColumns）:
+  - renamedCount: 11 ✅
+  - expectedCount: 11 ✅
+  - skipped: [] ✅
+  - newHeaders: `['log_id', 'lead_id', 'occurred_at', 'direction', 'speaker', 'original_text', 'original_language', 'translated_text', 'recorded_by', 'recorded_at', 'deal_analysis']` ✅
+  - rowCount 変化なし: 250 → 250 ✅
+  - colCount 変化なし: 11 → 11 ✅
+- 事後確認（リネーム後）:
+  - SHA: `124d26f` (変化なし — GASコード変更なし) ✅
+  - 監査: 総不一致 0件 → PASS ✅
+  - dryRun: 変更あり 0件 ✅
 
 ### PR-3 — 旧名フォールバック除去
 
-- PR: （未実施）
-- 除去対象:
-  - `src/28_CoreInboxApi.js` — resolveConvIdx_ の旧名フォールバック行（各列の `|| headers.indexOf('旧名')` 部分）
-  - `src/10_ConversationLogService.js` — `|| b['日時']` `|| log['翻訳文']` 等のフォールバック
-  - `src/27_WebApp.js` — `|| data['送受信']` `|| data['発言者']` `|| data['原文']` 等のフォールバック
-  - `src/34_DealAnalysisService.js` — 各 indexOf の旧名フォールバック
-  - `src/30_CSVImportService.js` — 各ヘッダー判定の旧名フォールバック
-  - `src/check_conversation_structure.js` — indexOf の旧名フォールバック
-  - `src/add_original_language_column.js` — indexOf の旧名フォールバック
+- PR: #958
+- マージ: 2026-09-02T10:36:56Z
+- 変更ファイル: 8ファイル（67 insertions, 80 deletions）
+  - `src/09_ConversationArchiveService.js` — ログID/日時/送受信/発言者/翻訳文/記録者ID/記録日時 → 新列名（2箇所）
+  - `src/10_ConversationLogService.js` — 日時/翻訳文/送受信フォールバック削除、エラーメッセージ更新
+  - `src/27_WebApp.js` — addConversationLog/translateAndAddLog/updateConversationLogTranslation の旧名フォールバック削除
+  - `src/28_CoreInboxApi.js` — idx() フォールバック関数削除、直接 headers.indexOf() に統一
+  - `src/30_CSVImportService.js` — ログID/リードID/記録日時/記録者ID の旧名フォールバック削除
+  - `src/34_DealAnalysisService.js` — ログID/日時/送受信/翻訳文/商談解析フォールバック削除
+  - `src/99_SqlReadinessCheck.js` — pkColumn 'ログID' → 'log_id'
+  - `src/check_conversation_structure.js` — 原文/翻訳文フォールバック削除
+- 旧列名参照 grep 確認結果:
+  - 会話ログシート読み取り関連: **0件**
+  - 残存「ログID」等: コメント/JSDoc/ログインセッション列/バディログ（別シート）のみ
+- 事後確認（PR-3 後）:
+  - SHA: `e5ca671` (deployedAt: 2026-09-02T10:37:47Z) ✅
+  - 監査: 総不一致 0件 → PASS ✅
+  - dryRun: 変更あり 0件 ✅
+
+### Inbox 画面表示確認（PR-3 後）
+
+- 確認方法: ローカル開発サーバー（localhost:5180/?preview#/inbox）+ Playwright
+- 確認結果:
+  - Inbox 画面表示: ✅（Console: 0 errors, 2 warnings）
+  - 会話一覧表示: ✅（25件リスト表示）
+  - 会話詳細表示: ✅（メッセージスレッド・顧客カルテ表示）
+- 判定: **PASS**
