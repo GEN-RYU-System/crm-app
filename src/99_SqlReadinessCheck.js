@@ -30,7 +30,7 @@ var SQL_CHECK_TARGETS = [
   { sheetName: '商品マスタ同期',     pkColumn: 'product_id' },
   { sheetName: '作品マスタ_共用在庫', pkColumn: 'ip_id' },
   { sheetName: '国マスタ',           pkColumn: 'country_code' },
-  { sheetName: '通貨マスタ',         pkColumn: '通貨コード' },
+  { sheetName: '通貨マスタ',         pkColumn: 'currency_code' },
   { sheetName: '流入元マスタ',       pkColumn: 'source_id' },
   { sheetName: '選択肢マスタ',       pkColumn: null },
   { sheetName: '発行元マスタ',       pkColumn: '発行元ID' },
