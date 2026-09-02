@@ -8323,3 +8323,86 @@ localhost:5180/?preview#/inbox (Playwright)
 
 **revert SHA（緊急時）:** `f3f36b9`（PR #966 squash commit）
 **バックアップシート:** `見積もり明細_backup_20260902`（シート変換後に GAS で作成）
+
+---
+
+## 2026-09-02: 番号種別マスタ・顧客税務番号 新設 (PR-AB1)
+
+**作業概要:** CoreSchemaRegistry V1 に TAX_NUMBER_TYPES（8列）と CUSTOMER_TAX_NUMBERS（7列）を追加し、DEV スプレッドシートにシートを新設する。
+
+**変更ファイル:**
+- `src/00_CoreSchemaRegistry.js` — TAX_NUMBER_TYPES / CUSTOMER_TAX_NUMBERS テーブル定義追加
+- `src/99_DevTaxNumberMasterSetup.js` — 新規。DRY_RUN / APPLY 対応セットアップスクリプト（DEV 専用ガード付き）
+
+**テーブル定義:**
+
+TAX_NUMBER_TYPES（MASTER, 8列）:
+| 論理名 | 物理列名 |
+|--------|---------|
+| 番号種別ID | type_id |
+| 日本語名称 | name_ja |
+| 英語名称 | name_en |
+| 説明 | description |
+| 対象国 | target_country |
+| 有効フラグ | active |
+| 登録日 | registered_at |
+| 更新日 | updated_at |
+
+CUSTOMER_TAX_NUMBERS（CHILD, 7列）:
+| 論理名 | 物理列名 |
+|--------|---------|
+| 税務番号ID | tax_number_id |
+| 顧客ID | customer_id |
+| 番号種別ID | type_id |
+| 番号値 | number_value |
+| 有効フラグ | active |
+| 登録日 | registered_at |
+| 更新日 | updated_at |
+
+**初期データ（TAX_NUMBER_TYPES 7件）:**
+| typeId | nameJa | 対象国 |
+|--------|--------|--------|
+| US_TAX_ID | 米国納税者番号（EIN/SSN） | アメリカ |
+| TAX_ID | 納税者ID番号 | 汎用 |
+| VAT | VAT番号 | EU |
+| EORI | EORI番号 | EU・英国 |
+| ABN | 事業者番号 | オーストラリア |
+| PCCC | 個人通関固有符号 | 韓国 |
+| RFC | 納税者番号 | メキシコ |
+
+**PR (#974): feat: 番号種別マスタと顧客税務番号を新設（PR-AB1）**
+- マージ: 2026-09-02T14:17:59Z
+- squash commit SHA: `a9a4bc6`
+- Deploy to DEV: success (deployedAt: 2026-09-02T14:18:57Z, SHA: `a9a4bc6`)
+
+**手順5〜8 実測値:**
+
+手順5（Deploy to DEV 確認）:
+```
+getDeployedSha → a9a4bc6de787b0120dba10fe81000ee313c4a19b
+deployedAt     → 2026-09-02T14:18:57.766Z
+origin/develop → a9a4bc6 ✅（一致）
+```
+
+手順6（DRY_RUN）:
+```
+clasp run setupTaxNumberMaster --params '["DRY_RUN"]'
+→ { mode: 'DRY_RUN', toCreateCount: 2, conflictCount: 0, dataRowCount: 7, conflicts: [] }
+```
+
+手順7（APPLY）:
+```
+clasp run setupTaxNumberMaster --params '["APPLY"]'
+→ { mode: 'APPLY', createdCount: 2, skippedCount: 0, dataRowCount: 7,
+    created: ['番号種別マスタ', '顧客税務番号'], skipped: [] }
+```
+
+手順8（スキーマ整合監査）:
+```
+clasp run runCoreSchemaConformanceAudit
+→ TAX_NUMBER_TYPES:      不一致 0件 ✅
+→ CUSTOMER_TAX_NUMBERS: 不一致 0件 ✅
+→ 総不一致: 0 → PASS ✅
+```
+
+**revert SHA（緊急時）:** `a9a4bc6`（PR #974 squash commit = 現在の develop HEAD）
