@@ -758,3 +758,76 @@
   - dryRun: 変更あり 0件 ✅
 
 **通貨マスタ 列リネーム 完了 ✅**
+
+---
+
+## 流入元マスタ（LEAD_SOURCES）
+
+**選定根拠:** `docs/column-rename-plan-phase2.md` セクション 6 の参照数比較
+- 共用在庫: 17件（除外指定）
+- 作品マスタ_共用在庫: 38件（PR #930/932/934 完了済み）
+- システム設定: 46件（PR #937/938/939 完了済み）
+- 通貨マスタ: 57件（PR #942/943/944 完了済み）
+- 流入元マスタ: 153件（最小 → 本作業の対象）
+
+**対象列 5本:**
+
+| # | 旧名 | 新名 |
+|---|------|------|
+| 2 | 名称 | `name` |
+| 3 | インバウンド | `is_inbound` |
+| 4 | アウトバウンド | `is_outbound` |
+| 5 | 有効 | `is_active` |
+| 6 | 表示順 | `display_order` |
+
+列 #1 `source_id` は既に英語スネークケース → 変更なし。
+
+### バックアップ
+
+- バックアップ名: `流入元マスタ_backup_20260902`
+- originalRows: 10（ヘッダー1行 + データ9行）
+- originalCols: 6
+- 変更前ヘッダー: `['source_id', '名称', 'インバウンド', 'アウトバウンド', '有効', '表示順']`
+
+### Phase 0 調査結果
+
+**getCoreSchemaV1HeaderName 経由（主要業務コード）:**
+- `src/26_LeadSourceMasterSetup.js` 行160-165: 全列 getCoreSchemaV1HeaderName 経由
+- `src/28_CoreLeadFormOptionsApi.js` 行72-77: 全列 getCoreSchemaV1HeaderName 経由
+- `src/27_WebApp.js` 行578-579: SOURCE_ID, NAME を getCoreSchemaV1HeaderName 経由
+- `src/99_PerfBench.js` 行3131-3136: 全列 getCoreSchemaV1HeaderName 経由
+
+**直接参照（Dev系スクリプト、フォールバック対応）:**
+- `src/99_DevLeadSourceIdDryRun.js` 行18: `indexOf('名称')` → 新旧フォールバック対応
+- `src/99_DevLeadSourceIdMigration.js` 行66: `indexOf('名称')` → 新旧フォールバック対応
+- `src/99_PerfBench.js` 行2197, 2268: `indexOf('名称')` → 新旧フォールバック対応
+
+### PR-1 — コード新旧両対応
+
+- PR: #946
+- マージ: 2026-09-02T07:31:11Z
+- CI: frontend-check / gas-global-namespace / Gitleaks / Sensitive Content 全 4件 SUCCESS
+- Deploy to DEV: success
+- 変更ファイル: 5ファイル
+  - `src/00_CoreSchemaRegistry.js` — LEAD_SOURCES 物理列名を英語スネークケースに変更（名称→name / インバウンド→is_inbound / アウトバウンド→is_outbound / 有効→is_active / 表示順→display_order）
+  - `src/99_DevLeadSourceIdDryRun.js` — indexOf('name') >= 0 フォールバック追加（行18）
+  - `src/99_DevLeadSourceIdMigration.js` — indexOf('name') >= 0 フォールバック追加（行66）
+  - `src/99_PerfBench.js` — indexOf('name') >= 0 フォールバック追加（行2197, 2268）
+  - `src/99_DevRenameLeadSourceMasterColumns.js` — 新規: バックアップ・列名変更 GAS 関数を追加
+- 監査（PR-1 後、シート未変更）: LEAD_SOURCES 5件不一致（想定通り）、他テーブル 0件 ✅
+- dryRun: 変更あり 0件 ✅
+
+### PR-2 — シートリネーム実行
+
+- PR: #947（予定）
+- 変更ファイル: 1ファイル
+  - `docs/column-rename-execution-log.md` — PR-1・PR-2実行結果記録
+- シートリネーム実行結果（`clasp run devRenameLeadSourceMasterColumns`）:
+  ```
+  {
+    renamedCount: 5, expectedCount: 5, skipped: [],
+    newHeaders: ['source_id', 'name', 'is_inbound', 'is_outbound', 'is_active', 'display_order'],
+    rowCountBefore: 10, rowCountAfter: 10,
+    colCountBefore: 6, colCountAfter: 6
+  }
+  ```
