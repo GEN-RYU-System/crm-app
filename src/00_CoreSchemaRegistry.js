@@ -75,7 +75,7 @@ const CORE_SCHEMA_V1_TABLES = {
   },
   ORDER_LINES: {
     sheetName: 'オーダー明細', canonicalName: 'オーダー明細', aliases: [], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
-    headers: createCoreSchemaV1Headers([['ORDER_LINE_ID', '明細ID'], ['ORDER_ID', 'オーダーID'], ['LINE_NUMBER', '行番号'], ['CATEGORY', 'カテゴリ'], ['PRODUCT_NAME', '商品名'], ['STATUS', '状態'], ['SKU', 'SKU'], ['QUANTITY', '数量'], ['UNIT_PRICE', '単価'], ['SUBTOTAL', '小計'], ['PRODUCT_ID', '商品ID'], ['CONDITION', 'コンディション']]), primaryKey: 'ORDER_LINE_ID',
+    headers: createCoreSchemaV1Headers([['ORDER_LINE_ID', 'order_line_id'], ['ORDER_ID', 'order_id'], ['LINE_NUMBER', 'line_number'], ['CATEGORY', 'category'], ['PRODUCT_NAME', 'product_name'], ['STATUS', 'status'], ['SKU', 'sku'], ['QUANTITY', 'quantity'], ['UNIT_PRICE', 'unit_price'], ['SUBTOTAL', 'subtotal'], ['PRODUCT_ID', 'product_id'], ['CONDITION', 'condition']]), primaryKey: 'ORDER_LINE_ID',
     // CONDITION 表示名が '状態'（STATUS）と重複するため 'コンディション' を採用。
     // 見積もり明細（QUOTE_LINES）の CONDITION は '状態' のまま。
     referenceIds: [{ headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' }, { headerKey: 'PRODUCT_ID', targetTableKey: 'PRODUCTS' }, { headerKey: 'CONDITION', targetTableKey: 'CONDITIONS' }]

@@ -23,7 +23,7 @@ const DEV_REFERENCE_INTEGRITY_RELATIONSHIPS = [
   ['顧客マスタ', '顧客ID', 'オーダー管理', '顧客ID', 'REQUIRED'],
   ['リード管理', 'リードID', '顧客マスタ', '源流リードID', 'REQUIRED'],
   ['リード管理', 'リードID', 'オーダー管理', '源流リードID', 'REQUIRED'],
-  ['オーダー管理', 'オーダーID', 'オーダー明細', 'オーダーID', 'REQUIRED'],
+  ['オーダー管理', 'オーダーID', 'オーダー明細', 'order_id', 'REQUIRED'],
   ['オーダー管理', 'オーダーID', '発送', 'オーダーID', 'REQUIRED'],
   ['オーダー管理', 'オーダーID', '仕入れ', 'オーダーID', 'OPTIONAL'],
   ['担当者マスタ', '担当者ID', 'リード管理', '担当者ID', 'REQUIRED'],
