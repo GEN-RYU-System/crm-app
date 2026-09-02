@@ -161,7 +161,7 @@ function devCreateDealEditSession() {
  *   payload.countryCode   {string} ISO2 国コード（例: 'US'）
  *   payload.postalCode    {string} 郵便番号（任意）
  * @returns {string} JSON:
- *   { success, boxCount, carriersCount, skipped, reason? }
+ *   { success, boxCount, carriersCount, successCount, carrierSummary, skipped, reason? }
  *   ★ 送料金額は含まない
  */
 function devTestShippingFeeForLines(payload) {
@@ -207,11 +207,24 @@ function devTestShippingFeeForLines(payload) {
     ? results.filter(function(r) { return !r.error; }).length
     : 0;
 
+  // キャリアごとの成否と理由コード（金額は含まない）
+  var carrierSummary = Array.isArray(results)
+    ? results.map(function(r) {
+        return {
+          carrierId:   r.carrierId,
+          carrierName: r.carrierName,
+          ok:          !r.error,
+          error:       r.error || null
+        };
+      })
+    : [];
+
   return JSON.stringify({
-    success:       carriersCount > 0,
-    boxCount:      built.boxes.length,
-    carriersCount: carriersCount,
-    successCount:  successCount,
-    skipped:       built.skipped
+    success:        carriersCount > 0 && successCount > 0,
+    boxCount:       built.boxes.length,
+    carriersCount:  carriersCount,
+    successCount:   successCount,
+    carrierSummary: carrierSummary,
+    skipped:        built.skipped
   });
 }
