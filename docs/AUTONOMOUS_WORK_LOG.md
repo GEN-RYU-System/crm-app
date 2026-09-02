@@ -2,6 +2,26 @@
 
 ---
 
+### 2026-09-02 ログインセッション 列名リネーム（Phase 2 — 5シート目）
+
+**revert SHA（PR-1）**: `7afc98c5ab6519f8a28cdfce8849d818100b5393` (PR-1 squash merge後の develop HEAD)
+**revert 手順**: `clasp run devRenameLoginSessionsColumns` 逆方向実行（新名→旧名マップ）→ git revert PR-1 squash
+
+- PR-1: #951 / `7afc98c5` / Registry 物理名更新 + リネームスクリプト追加 / mergedAt: 2026-09-02T09:47:03Z
+- PR-2: シートリネーム実行（GAS関数呼び出しのみ、コード変更なし）— PR不要
+- PR-3: 旧名フォールバック不要（全参照がRegistry経由）— PR不要
+- 変更列: セッションID→session_id / 担当者ID→staff_id / 発行日時→issued_at / 最終利用日時→last_used_at / 失効日時→expires_at / 状態→status
+- バックアップ: `ログインセッション_backup_20260902`（67行6列）
+- 実行後ヘッダー: `['session_id', 'staff_id', 'issued_at', 'last_used_at', 'expires_at', 'status']`
+- 監査結果（シートリネーム後）: 総不一致 0件 → PASS ✅ / dryRun 変更あり 0件 ✅
+- 旧列名参照（ログインセッションコンテキスト）: 0件 ✅
+  - `26_SessionService.js`: 全アクセスが _sessionColIdx → getCoreSchemaV1HeaderName 経由（行361-363）
+  - `26_LoginService.js`: ログインセッション列への直接参照なし
+  - `indexOf('担当者ID')`: 他シート（担当者マスタ/顧客マスタ）コンテキストのみ — 変更対象外 ✅
+  - `indexOf('状態')`: 該当なし ✅
+
+---
+
 ### 2026-09-02 通貨マスタ 列名リネーム（Phase 2 — 3シート目）
 
 **revert SHA（PR-1）**: `678af025f998c07bfdd15487bb325cbfed1ca01e` (PR-1 squash merge後の develop HEAD)
