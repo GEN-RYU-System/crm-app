@@ -8074,7 +8074,7 @@ PR-Z4 着手前の調査（読み取りのみの制約下）で `runProductPacka
 - PR #950: mergedAt `2026-09-02T09:45:37Z`
 
 **Deploy:**
-- run 33615875144 → conclusion: success ✅
+- Deploy workflow: conclusion: success ✅
 
 **手順5（setupShipmentLineSheet DRY_RUN）:**
 ```
