@@ -136,3 +136,64 @@ function devCustomerLeadLinkageAudit() {
     sampleMatched: sampleMatched
   });
 }
+
+/**
+ * DEV専用: リード管理の全リードの contact_method 値を一覧する。
+ * 選択肢マスタV2 の正規値（Whatsapp/Instagram/Facebook/Market Place/
+ * Telegram/メール/Discord/その他）と照合して逸脱値を報告する。
+ *
+ * 読み取り専用。書き込み処理は一切含まない。
+ *
+ * @returns {string} JSON.stringify({ ... })
+ */
+function devCheckAllLeadContactMethods() {
+  if (getEnvironment() !== 'development') {
+    throw new Error('devCheckAllLeadContactMethods は DEV 環境でのみ実行できます');
+  }
+
+  var VALID_VALUES = [
+    'Whatsapp', 'Instagram', 'Facebook', 'Market Place',
+    'Telegram', 'メール', 'Discord', 'その他'
+  ];
+
+  var ss = getSpreadsheet();
+  var leadsTable  = getCoreSchemaV1Table('LEADS');
+  var leadsSheet  = getCoreSchemaV1Sheet(ss, 'LEADS');
+  var leadIdHeader      = getCoreSchemaV1HeaderName('LEADS', 'LEAD_ID');
+  var contactMethHeader = getCoreSchemaV1HeaderName('LEADS', 'CONTACT_METHOD');
+
+  if (!leadsSheet || leadsSheet.getLastRow() <= leadsTable.headerRowNumber) {
+    return JSON.stringify({ error: 'リード管理にデータがありません' });
+  }
+
+  var leadsData    = leadsSheet.getDataRange().getValues();
+  var leadsHeaders = leadsData[leadsTable.headerRowNumber - 1].map(function(h) { return String(h != null ? h : '').trim(); });
+  var leadIdIdx    = leadsHeaders.indexOf(leadIdHeader);
+  var contactIdx   = leadsHeaders.indexOf(contactMethHeader);
+
+  if (leadIdIdx < 0)  return JSON.stringify({ error: 'リード管理に ' + leadIdHeader + ' 列がありません' });
+  if (contactIdx < 0) return JSON.stringify({ error: 'リード管理に ' + contactMethHeader + ' 列がありません' });
+
+  var totalLeads   = 0;
+  var distribution = {};
+  var outOfSchema  = [];
+
+  for (var lr = leadsTable.headerRowNumber; lr < leadsData.length; lr++) {
+    var lid = String(leadsData[lr][leadIdIdx] != null ? leadsData[lr][leadIdIdx] : '').trim();
+    if (!lid) continue;
+    totalLeads++;
+    var cm = String(leadsData[lr][contactIdx] != null ? leadsData[lr][contactIdx] : '').trim();
+    var key = cm || '（空）';
+    distribution[key] = (distribution[key] || 0) + 1;
+    if (cm && VALID_VALUES.indexOf(cm) < 0) {
+      outOfSchema.push({ leadId: lid, contactMethod: cm });
+    }
+  }
+
+  return JSON.stringify({
+    totalLeads:   totalLeads,
+    distribution: distribution,
+    outOfSchema:  outOfSchema,
+    validValues:  VALID_VALUES
+  });
+}

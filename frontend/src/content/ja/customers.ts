@@ -60,6 +60,7 @@ export const customersCopy = {
     registeredAt: '登録日',
     salesAssigneeName: '営業担当者',
     contactTool: '連絡ツール',
+    contactMethod: '連絡手段',
     shippingNote: '発送時メモ'
   },
   shippingEmptyTitle: '配送先はありません',

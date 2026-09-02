@@ -23,6 +23,7 @@ export type CustomerProfileDto = {
   salesAssigneeId: string;
   salesAssigneeName: string;
   contactTool: string;
+  contactMethod: string;
   shippingNote: string;
   shippingAddressCount: number;
   paymentProfileCount: number;
