@@ -12,17 +12,18 @@ function addOriginalLanguageColumn() {
   }
 
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const originalTextIndex = headers.indexOf('原文');
-  const translatedTextIndex = headers.indexOf('翻訳文');
+  // 新旧列名両対応
+  const originalTextIndex = headers.indexOf('original_text') !== -1 ? headers.indexOf('original_text') : headers.indexOf('原文');
+  const translatedTextIndex = headers.indexOf('translated_text') !== -1 ? headers.indexOf('translated_text') : headers.indexOf('翻訳文');
 
   if (originalTextIndex === -1) {
-    throw new Error('原文列が見つかりません');
+    throw new Error('original_text/原文列が見つかりません');
   }
 
-  // 「原文言語」列が既に存在するか確認
-  if (headers.indexOf('原文言語') !== -1) {
-    Logger.log('⚠️ 「原文言語」列は既に存在します');
-    return '「原文言語」列は既に存在します';
+  // 「original_language」または「原文言語」列が既に存在するか確認
+  if (headers.indexOf('original_language') !== -1 || headers.indexOf('原文言語') !== -1) {
+    Logger.log('⚠️ 言語列（original_language/原文言語）は既に存在します');
+    return '言語列（original_language/原文言語）は既に存在します';
   }
 
   // 「原文」の次の列（translatedTextIndexの前）に「原文言語」を挿入

@@ -243,8 +243,8 @@ function getConversationLogs(leadId, type) {
   const sheet = ss.getSheetByName(sheetName);
 
   if (!sheet || sheet.getLastRow() < 2) {
-    // 日時でソート（新しい順）
-    logs.sort((a, b) => new Date(b['日時']) - new Date(a['日時']));
+    // 日時でソート（新しい順）: 新旧列名両対応
+    logs.sort((a, b) => new Date(b['occurred_at'] || b['日時']) - new Date(a['occurred_at'] || a['日時']));
     return logs;
   }
 
@@ -266,8 +266,8 @@ function getConversationLogs(leadId, type) {
     }
   }
 
-  // 日時でソート（新しい順）
-  logs.sort((a, b) => new Date(b['日時']) - new Date(a['日時']));
+  // 日時でソート（新しい順）: 新旧列名両対応
+  logs.sort((a, b) => new Date(b['occurred_at'] || b['日時']) - new Date(a['occurred_at'] || a['日時']));
 
   return logs;
 }
@@ -300,9 +300,9 @@ function updateLeadConversationInfo(leadId) {
         sheet.getRange(i + 1, countIdx + 1).setValue(logs.length);
       }
 
-      // 最終会話日時
+      // 最終会話日時: 新旧列名両対応
       if (lastDateIdx >= 0 && logs[0]) {
-        sheet.getRange(i + 1, lastDateIdx + 1).setValue(logs[0]['日時']);
+        sheet.getRange(i + 1, lastDateIdx + 1).setValue(logs[0]['occurred_at'] || logs[0]['日時']);
       }
 
       // 会話要約（直近5件から生成）
@@ -328,7 +328,8 @@ function generateConversationSummaryText(logs) {
   const recentLogs = logs.slice(0, 10);
 
   recentLogs.forEach(log => {
-    const text = log['翻訳文'] || log['原文'] || '';
+    // 新旧列名両対応
+    const text = log['translated_text'] || log['翻訳文'] || log['original_text'] || log['原文'] || '';
     // 簡易的なキーワード抽出（数字や短い文を含む）
     if (text.length > 0) {
       const snippet = text.substring(0, 30);
@@ -362,8 +363,9 @@ function generateConversationSummary(leadId) {
   // 会話テキストを構築
   let conversationText = '';
   recentLogs.reverse().forEach(log => {
-    const direction = log['送受信'] === '送信' ? '自社' : '顧客';
-    const text = log['翻訳文'] || log['原文'] || '';
+    // 新旧列名両対応
+    const direction = (log['direction'] || log['送受信']) === '送信' ? '自社' : '顧客';
+    const text = log['translated_text'] || log['翻訳文'] || log['original_text'] || log['原文'] || '';
     conversationText += `${direction}: ${text}\n`;
   });
 
