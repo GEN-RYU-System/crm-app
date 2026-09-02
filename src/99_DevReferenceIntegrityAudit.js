@@ -30,7 +30,7 @@ const DEV_REFERENCE_INTEGRITY_RELATIONSHIPS = [
   ['担当者マスタ', '担当者ID', 'オーダー管理', '受注担当ID', 'REQUIRED'],
   ['担当者マスタ', '担当者ID', 'オーダー管理', '営業担当ID', 'REQUIRED'],
   ['担当者マスタ', '担当者ID', 'オーダー管理', '発送担当ID', 'REQUIRED'],
-  ['担当者マスタ', '担当者ID', '発送', '発送担当ID', 'REQUIRED'],
+  ['担当者マスタ', '担当者ID', '発送', 'shipping_assignee_id', 'REQUIRED'],
   ['担当者マスタ', '担当者ID', '仕入れ', '仕入れ担当ID', 'REQUIRED'],
   ['担当者マスタ', '担当者ID', '仕入れ', '仕入れ支払者ID', 'OPTIONAL'],
   // 見積もり管理

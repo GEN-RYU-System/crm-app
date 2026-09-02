@@ -431,7 +431,7 @@ function devPostgresMigrationAnalysisStage1() {
     { name: 'ログインセッション', pkHeader: 'session_id' },
     { name: 'オーダー管理',     pkHeader: 'オーダーID' },
     { name: 'オーダー明細',     pkHeader: '明細ID' },
-    { name: '発送',             pkHeader: '発送ID' },
+    { name: '発送',             pkHeader: 'shipment_id' },
     { name: '仕入れ',           pkHeader: 'purchase_id' },
     { name: '見積もり管理',     pkHeader: '見積書ID' },
     { name: '見積もり明細',     pkHeader: '明細ID' },
@@ -475,7 +475,7 @@ function devPostgresMigrationAnalysisStage1() {
     { refSheet: '見積もり明細',   refCol: '見積書ID',              targetSheet: '見積もり管理', targetCol: '見積書ID' },
     { refSheet: '配送先マスタ',   refCol: 'customer_id',           targetSheet: '顧客マスタ',   targetCol: '顧客ID' },
     { refSheet: '支払先マスタ',   refCol: 'customer_id',           targetSheet: '顧客マスタ',   targetCol: '顧客ID' },
-    { refSheet: '発送',           refCol: 'オーダーID',            targetSheet: 'オーダー管理', targetCol: 'オーダーID' },
+    { refSheet: '発送',           refCol: 'order_id',              targetSheet: 'オーダー管理', targetCol: 'オーダーID' },
     { refSheet: '仕入れ',         refCol: 'order_id',              targetSheet: 'オーダー管理', targetCol: 'オーダーID' },
     { refSheet: '共用在庫',       refCol: 'product_id',            targetSheet: '商品マスタ同期', targetCol: 'product_id' }
   ];
@@ -584,7 +584,7 @@ function devPostgresMigrationAnalysisSheets1to8() {
     { name: 'ログインセッション', pkHeader: 'session_id' },
     { name: 'オーダー管理',     pkHeader: 'オーダーID' },
     { name: 'オーダー明細',     pkHeader: '明細ID' },
-    { name: '発送',             pkHeader: '発送ID' },
+    { name: '発送',             pkHeader: 'shipment_id' },
     { name: '仕入れ',           pkHeader: 'purchase_id' }
   ];
   return JSON.stringify({
@@ -661,7 +661,7 @@ function devPostgresMigrationAnalysisSheets17to22() {
     { refSheet: '見積もり明細', refCol: '見積書ID',          targetSheet: '見積もり管理', targetCol: '見積書ID' },
     { refSheet: '配送先マスタ', refCol: 'customer_id',       targetSheet: '顧客マスタ',   targetCol: '顧客ID' },
     { refSheet: '支払先マスタ', refCol: 'customer_id',       targetSheet: '顧客マスタ',   targetCol: '顧客ID' },
-    { refSheet: '発送',         refCol: 'オーダーID',        targetSheet: 'オーダー管理', targetCol: 'オーダーID' },
+    { refSheet: '発送',         refCol: 'order_id',          targetSheet: 'オーダー管理', targetCol: 'オーダーID' },
     { refSheet: '仕入れ',       refCol: 'order_id',          targetSheet: 'オーダー管理', targetCol: 'オーダーID' },
     { refSheet: '共用在庫',     refCol: 'product_id',        targetSheet: '商品マスタ同期', targetCol: 'product_id' }
   ];

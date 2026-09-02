@@ -10,7 +10,7 @@ const DEV_ORDER_REALITY_AUDIT_ORDER_SCHEMA = {
   headers: ['オーダーID', 'ステータス', '受注日', '請求書番号', '請求書リンク', '請求書発行日', '支払確認日', '発送日']
 };
 const DEV_ORDER_REALITY_AUDIT_SHIPMENT_SCHEMA = {
-  sheet: '発送', headers: ['オーダーID', '発送日']
+  sheet: '発送', headers: ['order_id', 'shipped_at']
 };
 const DEV_ORDER_REALITY_AUDIT_PURCHASE_SCHEMA = {
   sheet: '仕入れ', headers: ['オーダーID']
@@ -151,11 +151,11 @@ function getDevOrderRealityShipmentEvidence(shipments) {
   const shipmentOrderIds = new Set();
   const shipmentDateStatesByOrderId = {};
   shipments.rows.forEach(row => {
-    const orderId = getDevOrderRealityValue(shipments, row, 'オーダーID');
+    const orderId = getDevOrderRealityValue(shipments, row, 'order_id');
     if (isDevOrderRealityEmpty(orderId)) return;
     const normalizedOrderId = String(orderId);
     shipmentOrderIds.add(normalizedOrderId);
-    const state = getDevOrderRealityDateState(getDevOrderRealityValue(shipments, row, '発送日'));
+    const state = getDevOrderRealityDateState(getDevOrderRealityValue(shipments, row, 'shipped_at'));
     const states = shipmentDateStatesByOrderId[normalizedOrderId] || { valid: false, invalid: false };
     states.valid = states.valid || state === 'valid';
     states.invalid = states.invalid || state === 'invalid';

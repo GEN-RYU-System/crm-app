@@ -653,27 +653,28 @@ const HEADERS = {
   ],
 
   // 発送シート（20列: 1個口=1行・オーダーIDで親子紐付け）
+  // 注: ラベルURL / インボイスURL は CoreSchemaRegistry 側にのみ存在（このリストは legacy）
   SHIPMENT: [
-    '発送ID',           // 1: SHP-00001
-    'オーダーID',       // 2: OD-* 必須（オーダー管理の親キー）
-    '箱番号',           // 3: 1,2,3…（同オーダー内の個口連番）
-    '発送方法',         // 4: 選択肢マスタ参照（FedEx/eパケットライト等）
-    '発送日',           // 5
-    '運送状番号',       // 6: '@'テキスト書式
-    '長さ',             // 7: cm
-    '幅',               // 8: cm
-    '高さ',             // 9: cm
-    '重量',             // 10: g
-    '見積もり送料',     // 11
-    '検品',             // 12: 進捗フラグ
-    '梱包',             // 13
-    '格納',             // 14
-    '集荷依頼',         // 15
-    '通知',             // 16
-    '発送担当ID',       // 17: EMP-* 担当者マスタ参照
-    '備考',             // 18
-    '登録日',           // 19
-    '更新日'            // 20
+    'shipment_id',           // 1: SHP-00001
+    'order_id',              // 2: OD-* 必須（オーダー管理の親キー）
+    'box_number',            // 3: 1,2,3…（同オーダー内の個口連番）
+    'shipping_method',       // 4: 選択肢マスタ参照（FedEx/eパケットライト等）
+    'shipped_at',            // 5
+    'tracking_number',       // 6: '@'テキスト書式
+    'length',                // 7: cm
+    'width',                 // 8: cm
+    'height',                // 9: cm
+    'weight',                // 10: g
+    'estimated_shipping_fee', // 11
+    'inspection',            // 12: 進捗フラグ
+    'packing',               // 13
+    'storage',               // 14
+    'pickup_request',        // 15
+    'notification',          // 16
+    'shipping_assignee_id',  // 17: EMP-* 担当者マスタ参照
+    'note',                  // 18
+    'registered_at',         // 19
+    'updated_at'             // 20
   ],
 
   // 仕入れシート（17列: 1仕入れ=1行・オーダーIDは空許容）
