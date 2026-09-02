@@ -48,7 +48,7 @@ export const CUSTOMER_LIST_COLUMNS: readonly { key: CustomerListColumnKey; label
   { key: 'transactionAmount', label: customersCopy.columns.transactionAmount, cellAlignment: 'center', sortable: true }
 ];
 export const CUSTOMER_LIST_SEARCH_COLUMNS: readonly CustomerListColumnKey[] = CUSTOMER_LIST_COLUMNS.map(({ key }) => key);
-export const CUSTOMER_PROFILE_FIELDS: readonly { key: keyof Pick<CustomerProfileDto, 'customerId' | 'customerName' | 'emailAddress' | 'country' | 'phone' | 'countryCode' | 'firstTransactionDate' | 'registeredAt' | 'salesAssigneeName' | 'contactTool' | 'shippingNote'>; label: string }[] = [
+export const CUSTOMER_PROFILE_FIELDS: readonly { key: keyof Pick<CustomerProfileDto, 'customerId' | 'customerName' | 'emailAddress' | 'country' | 'phone' | 'countryCode' | 'firstTransactionDate' | 'registeredAt' | 'salesAssigneeName' | 'contactTool' | 'contactMethod' | 'shippingNote'>; label: string }[] = [
   { key: 'customerId', label: customersCopy.fields.customerId },
   { key: 'customerName', label: customersCopy.fields.customerName },
   { key: 'emailAddress', label: customersCopy.fields.emailAddress },
@@ -59,6 +59,7 @@ export const CUSTOMER_PROFILE_FIELDS: readonly { key: keyof Pick<CustomerProfile
   { key: 'registeredAt', label: customersCopy.fields.registeredAt },
   { key: 'salesAssigneeName', label: customersCopy.fields.salesAssigneeName },
   { key: 'contactTool', label: customersCopy.fields.contactTool },
+  { key: 'contactMethod', label: customersCopy.fields.contactMethod },
   { key: 'shippingNote', label: customersCopy.fields.shippingNote }
 ];
 export const CUSTOMER_SHIPPING_COLUMNS: readonly { key: keyof Pick<ShippingAddressDto, 'recipient' | 'country' | 'address' | 'phone' | 'emailAddress' | 'isDefault' | 'isActive'>; label: string; cellAlignment: DataTableCellAlignment }[] = [

@@ -98,6 +98,9 @@ function getCoreCustomerForFrontend(sessionId, customerId) {
     return coreCustomerFrontendValue(row[payments.indexes.CUSTOMER_ID]) === normalizedCustomerId;
   });
 
+  const leads = coreCustomerFrontendReadTable(spreadsheet, 'LEADS', ['LEAD_ID', 'CONTACT_METHOD']);
+  const leadsById = coreCustomerFrontendIndexBy(leads, 'LEAD_ID');
+
   return {
     profile: {
       customerId: normalizedCustomerId,
@@ -111,6 +114,11 @@ function getCoreCustomerForFrontend(sessionId, customerId) {
       registeredAt: coreCustomerFrontendValue(customerRow[customers.indexes.REGISTERED_AT]),
       salesAssigneeName: coreCustomerFrontendValue(customerRow[customers.indexes.SALES_ASSIGNEE_NAME]),
       contactTool: coreCustomerFrontendValue(customerRow[customers.indexes.CONTACT_TOOL]),
+      contactMethod: (function() {
+        var sid = coreCustomerFrontendValue(customerRow[customers.indexes.SOURCE_LEAD_ID]);
+        var lead = sid ? leadsById[sid] : null;
+        return lead ? coreCustomerFrontendValue(lead[leads.indexes.CONTACT_METHOD]) : '';
+      }()),
       shippingNote: coreCustomerFrontendValue(customerRow[customers.indexes.SHIPPING_NOTE]),
       shippingAddressCount: customerShipping.length,
       paymentProfileCount: customerPayments.length
