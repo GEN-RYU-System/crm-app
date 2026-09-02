@@ -67,10 +67,10 @@ function dryRunIpIdsMigration() {
   var masterHeaders = masterData[0].map(String);
 
   var ipIdIdx  = masterHeaders.indexOf('ip_id');
-  var nameIdx  = masterHeaders.indexOf('作品名');
-  var aliasIdx = masterHeaders.indexOf('別名');
+  var nameIdx  = masterHeaders.indexOf('title')  >= 0 ? masterHeaders.indexOf('title')  : masterHeaders.indexOf('作品名');
+  var aliasIdx = masterHeaders.indexOf('alias')  >= 0 ? masterHeaders.indexOf('alias')  : masterHeaders.indexOf('別名');
   if (ipIdIdx < 0) throw new Error('作品マスタ_共用在庫に「ip_id」列がありません');
-  if (nameIdx < 0) throw new Error('作品マスタ_共用在庫に「作品名」列がありません');
+  if (nameIdx < 0) throw new Error('作品マスタ_共用在庫に「title」(旧:「作品名」)列がありません');
 
   // 名称 → { ipId, matchedBy } マップ（有効・無効問わず全件）
   // 同一キーが重複する場合は先勝ち
@@ -80,8 +80,8 @@ function dryRunIpIdsMigration() {
     var name  = String(masterData[m][nameIdx]  || '').trim();
     var alias = aliasIdx >= 0 ? String(masterData[m][aliasIdx] || '').trim() : '';
     if (!ipId) continue;
-    if (name  && !nameToEntry[name])  nameToEntry[name]  = { ipId: ipId, matchedBy: '作品名' };
-    if (alias && !nameToEntry[alias]) nameToEntry[alias] = { ipId: ipId, matchedBy: '別名' };
+    if (name  && !nameToEntry[name])  nameToEntry[name]  = { ipId: ipId, matchedBy: 'title' };
+    if (alias && !nameToEntry[alias]) nameToEntry[alias] = { ipId: ipId, matchedBy: 'alias' };
   }
 
   Logger.log('作品マスタ_共用在庫 照合キー数: ' + Object.keys(nameToEntry).length);
@@ -204,10 +204,10 @@ function applyIpIdsMigration() {
   var masterHeaders = masterData[0].map(String);
 
   var ipIdIdx  = masterHeaders.indexOf('ip_id');
-  var nameIdx  = masterHeaders.indexOf('作品名');
-  var aliasIdx = masterHeaders.indexOf('別名');
+  var nameIdx  = masterHeaders.indexOf('title')  >= 0 ? masterHeaders.indexOf('title')  : masterHeaders.indexOf('作品名');
+  var aliasIdx = masterHeaders.indexOf('alias')  >= 0 ? masterHeaders.indexOf('alias')  : masterHeaders.indexOf('別名');
   if (ipIdIdx < 0) throw new Error('作品マスタ_共用在庫に「ip_id」列がありません');
-  if (nameIdx < 0) throw new Error('作品マスタ_共用在庫に「作品名」列がありません');
+  if (nameIdx < 0) throw new Error('作品マスタ_共用在庫に「title」(旧:「作品名」)列がありません');
 
   var nameToId = {};
   for (var m = 1; m < masterData.length; m++) {

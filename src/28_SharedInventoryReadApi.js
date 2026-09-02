@@ -52,8 +52,8 @@ function buildSharedInventoryRows_(ss) {
     var ipData    = ipSheet.getDataRange().getValues();
     var ipH       = ipData[0].map(String);
     var ipIdIdx   = ipH.indexOf('ip_id');
-    var ipNameIdx = ipH.indexOf('作品名');
-    var ipAltIdx  = ipH.indexOf('別名');
+    var ipNameIdx = ipH.indexOf('title')  >= 0 ? ipH.indexOf('title')  : ipH.indexOf('作品名');
+    var ipAltIdx  = ipH.indexOf('alias')  >= 0 ? ipH.indexOf('alias')  : ipH.indexOf('別名');
     if (ipIdIdx !== -1 && ipNameIdx !== -1) {
       for (var ii = 1; ii < ipData.length; ii++) {
         var ir      = ipData[ii];
@@ -259,8 +259,8 @@ function getInventoryBatchForFrontend(sessionId, forceRefresh) {
     var ipData    = ipSheet.getDataRange().getValues();
     var ipH       = ipData[0].map(String);
     var ipIdIdx   = ipH.indexOf('ip_id');
-    var ipNameIdx = ipH.indexOf('作品名');
-    var ipAltIdx  = ipH.indexOf('別名');
+    var ipNameIdx = ipH.indexOf('title')  >= 0 ? ipH.indexOf('title')  : ipH.indexOf('作品名');
+    var ipAltIdx  = ipH.indexOf('alias')  >= 0 ? ipH.indexOf('alias')  : ipH.indexOf('別名');
     if (ipIdIdx !== -1 && ipNameIdx !== -1) {
       for (var ii = 1; ii < ipData.length; ii++) {
         var ir      = ipData[ii];

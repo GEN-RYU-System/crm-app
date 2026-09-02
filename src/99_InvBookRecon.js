@@ -2921,7 +2921,7 @@ function dryRunMasterSetup() {
     ['DIV03','Goods','グッズ・雑貨','TRUE']
   ];
   var IP = [
-    ['ip_id','作品名','別名','有効'],
+    ['ip_id','title','alias','is_active'],
     ['IP001','Pokemon','ポケモン, ポケットモンスター','TRUE'],
     ['IP002','One Piece','ワンピース','TRUE'],
     ['IP003','Dragon Ball','ドラゴンボール','TRUE'],
@@ -3182,7 +3182,7 @@ function execMasterSetup() {
   if (!ipSh) { ipSh = ss.insertSheet('作品マスタ'); }
   else { ipSh.clearContents(); }
   var ipData = [
-    ['ip_id','作品名','別名','有効'],
+    ['ip_id','title','alias','is_active'],
     ['IP001','Pokemon','ポケモン, ポケットモンスター','TRUE'],
     ['IP002','One Piece','ワンピース','TRUE'],
     ['IP003','Dragon Ball','ドラゴンボール','TRUE'],
