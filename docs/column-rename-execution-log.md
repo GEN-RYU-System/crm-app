@@ -513,3 +513,60 @@
 - 旧列名 indexOf 残存: 変換51列分 0件 ✅
 
 **リード管理（LEADS）列リネーム 完了 ✅**
+
+---
+
+## 作品マスタ_共用在庫（IP_MASTER）
+
+**選定根拠:** `docs/column-rename-plan-phase2.md` セクション 6 の参照数比較
+- 共用在庫: 17件（除外指定）
+- 作品マスタ_共用在庫: 38件（最小 → 本作業の対象）
+
+**対象列 3本:**
+
+| # | 旧名 | 新名 | 備考 |
+|---|------|------|------|
+| 2 | 作品名 | `title` | PO 確定（Phase 2 案 `title_ja` を `title` に上書き） |
+| 3 | 別名 | `alias` | Phase 2 案どおり |
+| 4 | 有効 | `is_active` | Phase 2 案どおり |
+
+列 #1 `ip_id` は既に英語スネークケース → 変更なし。
+
+### バックアップ
+
+- バックアップ名: `作品マスタ_共用在庫_backup_20260902`
+- originalRows: 12（ヘッダー1行 + データ11行）
+- originalCols: 4
+- 変更前ヘッダー: `['ip_id', '作品名', '別名', '有効']`
+
+### PR-1 — コード新旧両対応
+
+- PR: #930
+- マージ: 2026-09-02T05:33:14Z
+- CI: frontend-check / gas-global-namespace / Gitleaks / Sensitive Content 全 4件 SUCCESS
+- Deploy to DEV: success
+- 変更ファイル: 7ファイル
+  - `src/27_WebApp.js` — `getIpMasterMap_` で title/作品名・alias/別名 フォールバック
+  - `src/28_SharedInventoryReadApi.js` — ip→表示名マップ構築×2箇所
+  - `src/99_PerfBench.js` — ip→表示名マップ構築×2箇所
+  - `src/99_DevIpIdsMigration.js` — masterHeaders 解決×2箇所、エラーメッセージ更新
+  - `src/99_DevIpIdsDryRun.js` — nameIdx/aliasIdx/activeIdx 新旧両対応
+  - `src/99_InvBookRecon.js` — シート新規作成関数のヘッダー配列を直接新名称に変更
+  - `src/99_DevRenameIpMasterColumns.js` — 新規: バックアップ・列名変更 GAS 関数を追加
+
+### PR-2 — シート実リネーム実行
+
+- PR: #932（予定）
+- シートリネーム実行結果（`clasp run devRenameIpMasterColumns`）:
+  ```
+  {
+    newHeaders: [ 'ip_id', 'title', 'alias', 'is_active' ],
+    colCountBefore: 4, colCountAfter: 4,
+    renamedCount: 3, expectedCount: 3,
+    rowCountBefore: 12, rowCountAfter: 12
+  }
+  ```
+- 事後確認:
+  - SHA: `e75b72cd669b8c474d0b4f39953130452e0cc9ff` = origin/develop HEAD ✅
+  - 監査: 総不一致 0件 → PASS ✅
+  - dryRun: 変更あり 0件 ✅
