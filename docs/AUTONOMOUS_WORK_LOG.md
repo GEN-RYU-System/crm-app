@@ -2,6 +2,23 @@
 
 ---
 
+### 2026-09-02 通貨マスタ 列名リネーム（Phase 2 — 3シート目）
+
+**revert SHA（PR-1）**: `678af025f998c07bfdd15487bb325cbfed1ca01e` (PR-1 squash merge後の develop HEAD)
+**revert SHA（PR-2）**: `e58237c15ae7682c8423773d1d2820dec3bfe04f` (PR-2 squash merge後の develop HEAD)
+**revert 手順**: git revert PR-3 squash → clasp run devRenameCurrencyMasterColumns 逆方向実行 → git revert PR-2 squash → git revert PR-1 squash
+
+- PR-1: #942 / `678af025` / コード新名対応 / mergedAt: 2026-09-02T06:49:11Z
+- PR-2: #943 / `e58237c1` / シートリネーム実行記録 / mergedAt: 2026-09-02T06:56:25Z
+- PR-3: #XXX / 旧名フォールバック除去 / mergedAt: 作成中
+- 変更列: 通貨コード→currency_code / 記号→symbol / 名称→name / 円換算レート→rate_to_jpy / 有効→is_active
+- バックアップ: `通貨マスタ_backup_20260902`（6行5列）
+- 実行後ヘッダー: `['currency_code', 'symbol', 'name', 'rate_to_jpy', 'is_active']`
+- 監査結果（PR-2後）: 総不一致 0件 → PASS ✅ / dryRun 変更あり 0件 ✅
+- 旧列名参照（通貨マスタコンテキスト）: 0件 ✅
+
+---
+
 ### 2026-09-02 PostgreSQL 移植に向けた構造分析（段階1）
 - PR-1: #920 / `38ce8a3` / 調査関数追加（読み取り専用）`src/99_DevPostgresMigrationAnalysis.js`
 - PR-2: #923 / `cd993cbd` / `docs/postgres-migration-analysis.md` 追加

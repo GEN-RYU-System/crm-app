@@ -716,7 +716,12 @@
 
 ### PR-2 — シートリネーム実行
 
-- PR: #XXX（作成中）
+- PR: #943
+- マージ: 2026-09-02T06:56:25Z
+- CI: frontend-check / gas-global-namespace / Gitleaks / Sensitive Content 全 4件 SUCCESS
+- Deploy to DEV: success
+- 変更ファイル: 1ファイル
+  - `docs/column-rename-execution-log.md` — PR-1・PR-2実行結果記録
 - シートリネーム実行結果（`clasp run devRenameCurrencyMasterColumns`）:
   ```
   {
@@ -726,3 +731,22 @@
     colCountBefore: 5, colCountAfter: 5
   }
   ```
+- 事後確認（PR-2 後、シートリネーム後）:
+  - SHA: `e58237c15ae7682c8423773d1d2820dec3bfe04f` = origin/develop HEAD ✅
+  - 監査: 総不一致 0件 → PASS ✅
+  - dryRun: 変更あり 0件 ✅
+
+### PR-3 — 旧名フォールバック除去
+
+- PR: #XXX（作成中）
+- 旧列名参照確認（通貨マスタコンテキスト）:
+  - `通貨コード`: 0件（CoreSchemaRegistry のみ ＋ RENAME_MAP定義）
+  - `円換算レート`: 0件（CoreSchemaRegistry のみ ＋ RENAME_MAP定義）
+  - `indexOf('記号')`: 0件
+  - `indexOf('名称')`: 0件（通貨マスタコンテキスト外のみ：流入元マスタ等）
+  - `indexOf('有効')`: 0件（通貨マスタコンテキスト外のみ：他シート）
+- コード変更: 通貨マスタコンテキストの旧列名参照が既に0件のため変更ファイルなし
+- 変更ファイル: 1ファイル
+  - `docs/column-rename-execution-log.md` — PR-3実行記録
+
+**通貨マスタ 列リネーム 完了 ✅**
