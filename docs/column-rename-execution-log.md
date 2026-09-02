@@ -573,12 +573,22 @@
 
 ### PR-3 — 旧名フォールバック除去
 
-- PR: #933（予定）
-- 変更ファイル: 5ファイル
+- PR: #934
+- マージ: 2026-09-02T05:47:14Z
+- CI: frontend-check / gas-global-namespace / Gitleaks / Sensitive Content 全 4件 SUCCESS
+- Deploy to DEV: success
+- 変更ファイル: 6ファイル
   - `src/27_WebApp.js` — フォールバック除去: `indexOf('title') || indexOf('作品名')` → `indexOf('title')`
   - `src/28_SharedInventoryReadApi.js` — 同上×2箇所（ipNameIdx / ipAltIdx）
   - `src/99_PerfBench.js` — 同上×2箇所（ipNameIdx / ipAltIdx）
   - `src/99_DevIpIdsMigration.js` — 同上×2箇所 + エラーメッセージ簡素化
   - `src/99_DevIpIdsDryRun.js` — nameIdx/aliasIdx/activeIdx フォールバック除去
+  - `docs/column-rename-execution-log.md` — PR-3 記録追加
 - 旧列名 indexOf 確認（`作品マスタ_共用在庫` コンテキスト）: 0件 ✅
 - `有効` の残り参照は他シート（テンプレートシート・国マスタ・流入元マスタ等）のみ — 変更対象外 ✅
+- 事後確認（PR-3 後）:
+  - SHA: `2773836a09488b6d03c63094e12f54239e1dfc75` = origin/develop HEAD ✅
+  - 監査: 総不一致 0件 → PASS ✅
+  - dryRun: 変更あり 0件 ✅
+
+**作品マスタ_共用在庫 列リネーム 完了 ✅**
