@@ -8055,3 +8055,63 @@ PR-Z4 着手前の調査（読み取りのみの制約下）で `runProductPacka
 - SHA: `3f4940cf8c07494161a6729aa51dabbac12e7770` = origin/develop HEAD ✅
 - 監査: 総不一致 0件 → PASS ✅
 - dryRun: 変更あり 0件 ✅
+
+---
+
+## PR-AA1: 発送明細シート新設・商品荷姿マスタ原産国列追加
+
+**日時:** 2026-09-02
+
+**目的:**
+- Part 1: CoreSchemaRegistry に SHIPMENT_LINES（発送明細、13列）を追加し、DEVシートを新設
+- Part 2: PRODUCT_PACKAGES に ORIGIN_COUNTRY（原産国）列を追加
+
+**実装内容:**
+- `src/00_CoreSchemaRegistry.js`: SHIPMENT_LINES テーブル定義追加（13列・8参照ID）／PRODUCT_PACKAGES に ORIGIN_COUNTRY 列追加（13列目）
+- `src/99_DevShipmentLineSetup.js`: 新規ファイル（`setupShipmentLineSheet(mode)` / `addProductPackageOriginCountryColumn(mode)` の2関数）
+
+**PR:**
+- PR #950: mergedAt `2026-09-02T09:45:37Z`
+
+**Deploy:**
+- run 33615875144 → conclusion: success ✅
+
+**手順5（setupShipmentLineSheet DRY_RUN）:**
+```
+clasp run setupShipmentLineSheet --params '["DRY_RUN"]'
+→ {sheetName: '発送明細', columnCount: 13, alreadyExists: false, mode: 'DRY_RUN'}
+```
+
+**手順6（setupShipmentLineSheet APPLY）:**
+```
+clasp run setupShipmentLineSheet --params '["APPLY"]'
+→ {columnCount: 13, created: true, skipped: false, mode: 'APPLY', sheetName: '発送明細'}
+```
+
+**手順7（addProductPackageOriginCountryColumn DRY_RUN）:**
+```
+clasp run addProductPackageOriginCountryColumn --params '["DRY_RUN"]'
+→ {currentColumnCount: 12, targetHeaderName: '原産国', alreadyExists: false, dataRowCount: 6}
+```
+
+**手順8a（addProductPackageOriginCountryColumn APPLY）:**
+```
+clasp run addProductPackageOriginCountryColumn --params '["APPLY"]'
+→ {columnIndex: 13, added: 1, mode: 'APPLY', headerName: '原産国'}
+```
+
+**手順8b（getDeployedSha）:**
+```
+clasp run getDeployedSha
+→ 860e7717fdb30767ee15d502334803aa0a2daa28 = origin/develop HEAD ✅
+```
+
+**手順8c（runCoreSchemaConformanceAudit）:**
+```
+clasp run runCoreSchemaConformanceAudit
+→ SHIPMENT_LINES: 0件 ✅
+→ PRODUCT_PACKAGES: 0件 ✅
+→ LOGIN_SESSIONS: 8件（PR #950 対象外・Phase2リネーム作業の既存不一致）
+```
+
+**revert SHA（緊急時）:** `860e7717fdb30767ee15d502334803aa0a2daa28`（PR #950 squash commit = 現在の develop HEAD）
