@@ -12,16 +12,29 @@ import {
   confirmCoreOrderPayment,
   estimateShippingFee,
   estimateShippingFeeForOrder,
+  getCoreCountries,
+  getCoreHtsCodes,
+  getCoreItems,
+  getCoreShipmentLines,
+  getCoreMaterials,
+  getProductExportDefaults,
   getCorePurchaseStatusOptions,
   upsertCorePurchase,
   upsertCoreShipment,
+  upsertCoreShipmentLine,
   uploadCoreShipmentFile,
+  type CountryRecord,
+  type HtsCodeRecord,
+  type ItemRecord,
+  type MaterialRecord,
   type OrderDetailRecord,
   type PurchaseStatusOption,
+  type ShipmentLineRecord,
   type ShippingFeeCarrierResult,
   type ShippingFeeEstimateResult,
   type UpsertPurchasePayload,
   type UpsertShipmentPayload,
+  type UpsertShipmentLinePayload,
 } from '../../gas/client';
 import { useSalesOrderListCache } from './SalesOrderListCacheContext';
 import { useSalesOrderDetailCache } from './SalesOrderDetailCacheContext';
@@ -139,6 +152,32 @@ const EMPTY_SHIPMENT_FORM: UpsertShipmentPayload = {
   note: '',
 };
 
+type ShipmentLineFormData = {
+  shipmentLineId: string;
+  orderLineId: string;
+  productId: string;
+  productName: string;
+  itemId: string;
+  htsCodeId: string;
+  materialId: string;
+  originCountry: string;
+  quantity: string;
+  saveToProductMaster: boolean;
+};
+
+const EMPTY_SHIPMENT_LINE_FORM: ShipmentLineFormData = {
+  shipmentLineId: '',
+  orderLineId: '',
+  productId: '',
+  productName: '',
+  itemId: '',
+  htsCodeId: '',
+  materialId: '',
+  originCountry: 'JP',
+  quantity: '',
+  saveToProductMaster: false,
+};
+
 const VALID_TABS: ReadonlySet<string> = new Set<DetailTab>(['billing', 'purchases', 'shipments']);
 
 function resolveInitialTab(tabParam: string | null): DetailTab {
@@ -176,6 +215,19 @@ export function SalesOrderDetailPage() {
   const [uploadingFileType, setUploadingFileType] = useState<'label' | 'invoice' | null>(null);
   const [uploadError, setUploadError] = useState<string | undefined>(undefined);
 
+  // shipment lines state
+  const [shipmentLines, setShipmentLines] = useState<ShipmentLineRecord[]>([]);
+  const [shipmentLinesLoading, setShipmentLinesLoading] = useState(false);
+  const [shipmentLineFormOpen, setShipmentLineFormOpen] = useState(false);
+  const [shipmentLineFormData, setShipmentLineFormData] = useState<ShipmentLineFormData>({ ...EMPTY_SHIPMENT_LINE_FORM });
+  const [shipmentLineFormSaving, setShipmentLineFormSaving] = useState(false);
+  const [shipmentLineFormError, setShipmentLineFormError] = useState<string | undefined>(undefined);
+  const [coreItems, setCoreItems] = useState<ItemRecord[]>([]);
+  const [coreHtsCodes, setCoreHtsCodes] = useState<HtsCodeRecord[]>([]);
+  const [coreMaterials, setCoreMaterials] = useState<MaterialRecord[]>([]);
+  const [coreCountries, setCoreCountries] = useState<CountryRecord[]>([]);
+  const [mastersLoading, setMastersLoading] = useState(false);
+
   // shipping fee calculation state (shipment tab — actual boxes)
   const [shippingFeeLoading, setShippingFeeLoading] = useState(false);
   const [shippingFeeResult, setShippingFeeResult] = useState<{
@@ -208,6 +260,31 @@ export function SalesOrderDetailPage() {
       .then((opts) => setPurchaseStatusOptions(opts))
       .catch(() => { /* ignore: status options fetch failed, keep empty */ });
   }, []);
+
+  useEffect(() => {
+    setShipmentLineFormOpen(false);
+    setShipmentLineFormError(undefined);
+    if (!selectedShipmentId) { setShipmentLines([]); return; }
+    setShipmentLinesLoading(true);
+    getCoreShipmentLines(selectedShipmentId)
+      .then(setShipmentLines)
+      .catch(() => { /* ignore */ })
+      .finally(() => setShipmentLinesLoading(false));
+  }, [selectedShipmentId]);
+
+  useEffect(() => {
+    if (!selectedShipmentId) return;
+    setMastersLoading(true);
+    void Promise.all([getCoreItems(), getCoreHtsCodes(), getCoreMaterials(), getCoreCountries()])
+      .then(([items, htsCodes, materials, countries]) => {
+        setCoreItems(items.filter((r) => r.isActive === 'TRUE'));
+        setCoreHtsCodes(htsCodes.filter((r) => r.isActive === 'TRUE'));
+        setCoreMaterials(materials.filter((r) => r.isActive === 'TRUE'));
+        setCoreCountries(countries.filter((r) => r.isActive === 'TRUE'));
+      })
+      .catch(() => { /* ignore */ })
+      .finally(() => setMastersLoading(false));
+  }, [selectedShipmentId]);
 
   const copy = salesOrdersCopy.detail;
 
@@ -364,6 +441,64 @@ export function SalesOrderDetailPage() {
       setShipmentInlineError(e instanceof Error ? e.message : copy.shipmentFormSaveError);
     } finally {
       setShipmentInlineSaving(false);
+    }
+  };
+
+  const handleShipmentLineProductChange = async (productId: string) => {
+    const line = detail?.lines.find((l) => String(l.PRODUCT_ID || '') === productId);
+    const productName = line ? String(line.PRODUCT_NAME || line.ENGLISH_TITLE || productId) : productId;
+    const orderLineId = line ? String(line.ORDER_LINE_ID || '') : '';
+    setShipmentLineFormData((prev) => ({
+      ...prev, productId, productName, orderLineId,
+      itemId: '', htsCodeId: '', materialId: '', originCountry: 'JP',
+    }));
+    if (!productId) return;
+    const isOwn = productId.startsWith('OWN-');
+    const payload = isOwn ? { ownProductId: productId } : { sharedProductId: productId };
+    try {
+      const defaults = await getProductExportDefaults(payload);
+      if (defaults.found) {
+        setShipmentLineFormData((prev) => ({
+          ...prev,
+          itemId: defaults.itemId,
+          htsCodeId: defaults.htsCodeId,
+          materialId: defaults.materialId,
+          originCountry: defaults.originCountry || 'JP',
+        }));
+      }
+    } catch { /* ignore — keep empty fields */ }
+  };
+
+  const handleShipmentLineSave = async () => {
+    if (!selectedShipmentId) return;
+    setShipmentLineFormSaving(true);
+    setShipmentLineFormError(undefined);
+    try {
+      const isOwn = shipmentLineFormData.productId.startsWith('OWN-');
+      const payload: UpsertShipmentLinePayload = {
+        ...(shipmentLineFormData.shipmentLineId ? { shipmentLineId: shipmentLineFormData.shipmentLineId } : {}),
+        shipmentId: selectedShipmentId,
+        ...(shipmentLineFormData.productId
+          ? isOwn
+            ? { ownProductId: shipmentLineFormData.productId }
+            : { sharedProductId: shipmentLineFormData.productId }
+          : {}),
+        itemId: shipmentLineFormData.itemId || undefined,
+        htsCodeId: shipmentLineFormData.htsCodeId || undefined,
+        materialId: shipmentLineFormData.materialId || undefined,
+        originCountry: shipmentLineFormData.originCountry || undefined,
+        quantity: shipmentLineFormData.quantity ? Number(shipmentLineFormData.quantity) : undefined,
+        saveToProductMaster: shipmentLineFormData.saveToProductMaster,
+      };
+      await upsertCoreShipmentLine(payload);
+      const lines = await getCoreShipmentLines(selectedShipmentId);
+      setShipmentLines(lines);
+      setShipmentLineFormOpen(false);
+      setShipmentLineFormData({ ...EMPTY_SHIPMENT_LINE_FORM });
+    } catch (e: unknown) {
+      setShipmentLineFormError(e instanceof Error ? e.message : copy.shipmentLineFormSaveError);
+    } finally {
+      setShipmentLineFormSaving(false);
     }
   };
 
@@ -950,6 +1085,173 @@ export function SalesOrderDetailPage() {
                           >
                             {shipmentInlineSaving ? copy.shipmentFormSaving : copy.btnSaveShipment}
                           </Button>
+                        </div>
+                        <div className="sales-order-detail-page__shipment-lines">
+                          <div className="sales-order-detail-page__shipment-lines-header">
+                            <span className="sales-order-detail-page__shipment-lines-title">{copy.shipmentLinesTitle}</span>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => {
+                                setShipmentLineFormData({ ...EMPTY_SHIPMENT_LINE_FORM });
+                                setShipmentLineFormError(undefined);
+                                setShipmentLineFormOpen(true);
+                              }}
+                            >
+                              {copy.shipmentLinesAdd}
+                            </Button>
+                          </div>
+                          {shipmentLinesLoading ? (
+                            <StatusMessage variant="loading">{copy.shipmentLineFormLoadingMasters}</StatusMessage>
+                          ) : shipmentLines.length === 0 ? (
+                            <p className="sales-order-detail-page__shipment-lines-empty">{copy.shipmentLinesEmpty}</p>
+                          ) : (
+                            <table className="sales-order-detail-page__shipment-lines-table">
+                              <thead>
+                                <tr>
+                                  <th>{copy.colSlLineNumber}</th>
+                                  <th>{copy.colSlProductName}</th>
+                                  <th>{copy.colSlItem}</th>
+                                  <th>{copy.colSlHtsCode}</th>
+                                  <th>{copy.colSlMaterial}</th>
+                                  <th>{copy.colSlOriginCountry}</th>
+                                  <th>{copy.colSlQuantity}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {shipmentLines.map((sl) => {
+                                  const isOwn = !!sl.ownProductId;
+                                  const productName = isOwn
+                                    ? (sl.ownProductNameJa || sl.ownProductNameEn)
+                                    : (sl.sharedProductJapaneseTitle || sl.sharedProductEnglishTitle);
+                                  return (
+                                    <tr
+                                      key={sl.shipmentLineId}
+                                      className="sales-order-detail-page__shipment-line-row"
+                                      onClick={() => {
+                                        setShipmentLineFormData({
+                                          shipmentLineId: sl.shipmentLineId,
+                                          orderLineId: sl.orderLineId,
+                                          productId: isOwn ? sl.ownProductId : sl.sharedProductId,
+                                          productName,
+                                          itemId: sl.itemId,
+                                          htsCodeId: sl.htsCodeId,
+                                          materialId: sl.materialId,
+                                          originCountry: sl.originCountry || 'JP',
+                                          quantity: sl.quantity,
+                                          saveToProductMaster: false,
+                                        });
+                                        setShipmentLineFormError(undefined);
+                                        setShipmentLineFormOpen(true);
+                                      }}
+                                    >
+                                      <td>{sl.lineNumber}</td>
+                                      <td>{productName}</td>
+                                      <td>{sl.itemNameJa || sl.itemNameEn}</td>
+                                      <td>{sl.htsCode}</td>
+                                      <td>{sl.materialNameJa || sl.materialNameEn}</td>
+                                      <td>{sl.originCountryNameJa || sl.originCountry}</td>
+                                      <td>{sl.quantity}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          )}
+                          {shipmentLineFormOpen && (
+                            <div className="sales-order-detail-page__shipment-line-form">
+                              {mastersLoading ? (
+                                <StatusMessage variant="loading">{copy.shipmentLineFormLoadingMasters}</StatusMessage>
+                              ) : (
+                                <>
+                                  <Select
+                                    label={copy.shipmentLineFormProductLabel}
+                                    value={shipmentLineFormData.productId}
+                                    options={[
+                                      { value: '', label: '-' },
+                                      ...(detail?.lines ?? []).map((l) => ({
+                                        value: String(l.PRODUCT_ID || ''),
+                                        label: String(l.PRODUCT_NAME || l.ENGLISH_TITLE || l.PRODUCT_ID || ''),
+                                      })),
+                                    ]}
+                                    onChange={(e) => void handleShipmentLineProductChange(e.target.value)}
+                                  />
+                                  <Select
+                                    label={copy.shipmentLineFormItemLabel}
+                                    value={shipmentLineFormData.itemId}
+                                    options={[
+                                      { value: '', label: '-' },
+                                      ...coreItems.map((it) => ({ value: it.itemId, label: it.nameJa || it.nameEn })),
+                                    ]}
+                                    onChange={(e) => setShipmentLineFormData((p) => ({ ...p, itemId: e.target.value }))}
+                                  />
+                                  <Select
+                                    label={copy.shipmentLineFormHtsCodeLabel}
+                                    value={shipmentLineFormData.htsCodeId}
+                                    options={[
+                                      { value: '', label: '-' },
+                                      ...coreHtsCodes.map((h) => ({
+                                        value: h.htsCodeId,
+                                        label: h.htsCode + (h.descriptionJa ? ' ' + h.descriptionJa : ''),
+                                      })),
+                                    ]}
+                                    onChange={(e) => setShipmentLineFormData((p) => ({ ...p, htsCodeId: e.target.value }))}
+                                  />
+                                  <Select
+                                    label={copy.shipmentLineFormMaterialLabel}
+                                    value={shipmentLineFormData.materialId}
+                                    options={[
+                                      { value: '', label: '-' },
+                                      ...coreMaterials.map((m) => ({ value: m.materialId, label: m.nameJa || m.nameEn })),
+                                    ]}
+                                    onChange={(e) => setShipmentLineFormData((p) => ({ ...p, materialId: e.target.value }))}
+                                  />
+                                  <Select
+                                    label={copy.shipmentLineFormOriginCountryLabel}
+                                    value={shipmentLineFormData.originCountry}
+                                    options={[
+                                      { value: '', label: '-' },
+                                      ...coreCountries.map((c) => ({ value: c.countryCode, label: c.nameJa || c.displayName })),
+                                    ]}
+                                    onChange={(e) => setShipmentLineFormData((p) => ({ ...p, originCountry: e.target.value }))}
+                                  />
+                                  <TextField
+                                    label={copy.shipmentLineFormQuantityLabel}
+                                    type="number"
+                                    value={shipmentLineFormData.quantity}
+                                    onChange={(e) => setShipmentLineFormData((p) => ({ ...p, quantity: e.target.value }))}
+                                  />
+                                  <label className="sales-order-detail-page__shipment-flag-label">
+                                    <input
+                                      type="checkbox"
+                                      checked={shipmentLineFormData.saveToProductMaster}
+                                      onChange={(e) => setShipmentLineFormData((p) => ({ ...p, saveToProductMaster: e.target.checked }))}
+                                    />
+                                    {copy.shipmentLineFormSaveToMasterLabel}
+                                  </label>
+                                  {shipmentLineFormError && (
+                                    <StatusMessage variant="error">{shipmentLineFormError}</StatusMessage>
+                                  )}
+                                  <div className="sales-order-detail-page__confirm-actions">
+                                    <Button
+                                      variant="secondary"
+                                      onClick={() => setShipmentLineFormOpen(false)}
+                                      disabled={shipmentLineFormSaving}
+                                    >
+                                      {copy.shipmentLineFormCancel}
+                                    </Button>
+                                    <Button
+                                      variant="primary"
+                                      disabled={shipmentLineFormSaving}
+                                      onClick={() => void handleShipmentLineSave()}
+                                    >
+                                      {shipmentLineFormSaving ? copy.shipmentLineFormSaving : copy.shipmentLineFormSave}
+                                    </Button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div className="sales-order-detail-page__shipment-files">
                           {!s.TRACKING_NUMBER ? (

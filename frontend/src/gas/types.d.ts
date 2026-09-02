@@ -82,6 +82,10 @@ interface GoogleScriptRun {
   upsertCoreItemForFrontend(sessionId: string | null, payload: unknown): void;
   upsertCoreHtsCodeForFrontend(sessionId: string | null, payload: unknown): void;
   upsertCoreMaterialForFrontend(sessionId: string | null, payload: unknown): void;
+  getCoreCountriesForFrontend(sessionId: string | null): void;
+  getCoreShipmentLinesForFrontend(sessionId: string | null, shipmentId: string): void;
+  getProductExportDefaultsForFrontend(sessionId: string | null, payload: unknown): void;
+  upsertCoreShipmentLineForFrontend(sessionId: string | null, payload: unknown): void;
 }
 
 interface Window {
