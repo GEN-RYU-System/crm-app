@@ -6,7 +6,7 @@ const DEV_CORE_SCHEMA_V1_HEADER_DETAIL_AUDIT_V3_SHEETS = [
   { name: '支払先マスタ', headerRowNumber: 1, requiredIdHeaders: ['支払先ID', '顧客ID'] },
   { name: 'オーダー管理', headerRowNumber: 1, requiredIdHeaders: ['オーダーID', '顧客ID', '配送先ID', '支払先ID', '源流リードID', '受注担当ID', '営業担当ID', '発送担当ID'] },
   { name: 'オーダー明細', headerRowNumber: 1, requiredIdHeaders: ['明細ID', 'オーダーID', '商品ID'] },
-  { name: '発送', headerRowNumber: 1, requiredIdHeaders: ['発送ID', 'オーダーID', '発送担当ID'] },
+  { name: '発送', headerRowNumber: 1, requiredIdHeaders: ['shipment_id', 'order_id', 'shipping_assignee_id'] },
   { name: '仕入れ', headerRowNumber: 1, requiredIdHeaders: ['仕入れID', 'オーダーID', '仕入れ担当ID'] },
   { name: 'フォームトークン', headerRowNumber: 1, requiredIdHeaders: ['トークン', 'リードID'] },
   { name: '商品マスタ同期', headerRowNumber: 1, requiredIdHeaders: ['product_id'] },

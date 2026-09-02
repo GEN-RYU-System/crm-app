@@ -549,51 +549,51 @@ function seedDevDemoData_20260826() {
     var shipmentsData = [
       // ORD-0001: 集荷依頼 + 運送状番号 → COMPLETED
       {
-        '発送ID': 'SH-0001', 'オーダーID': 'ORD-0001', '箱番号': 1,
-        '発送方法': 'FedEx', '発送日': D.jun20, '運送状番号': 'FX-DEMO-0001',
-        '集荷依頼': 'TRUE', '通知': 'TRUE', '登録日': D.jun20, '更新日': D.jun20
+        shipment_id: 'SH-0001', order_id: 'ORD-0001', box_number: 1,
+        shipping_method: 'FedEx', shipped_at: D.jun20, tracking_number: 'FX-DEMO-0001',
+        pickup_request: 'TRUE', notification: 'TRUE', registered_at: D.jun20, updated_at: D.jun20
       },
       // ORD-0001: 箱2 (集荷依頼なし → COMPLETED 判定には影響しない、SH-0001 が既に条件を満たす)
       {
-        '発送ID': 'SH-0002', 'オーダーID': 'ORD-0001', '箱番号': 2,
-        '発送方法': 'FedEx', '発送日': D.jun20, '運送状番号': 'FX-DEMO-0002',
-        '集荷依頼': 'TRUE', '通知': 'TRUE', '登録日': D.jun20, '更新日': D.jun20
+        shipment_id: 'SH-0002', order_id: 'ORD-0001', box_number: 2,
+        shipping_method: 'FedEx', shipped_at: D.jun20, tracking_number: 'FX-DEMO-0002',
+        pickup_request: 'TRUE', notification: 'TRUE', registered_at: D.jun20, updated_at: D.jun20
       },
       // ORD-0002: 集荷依頼 + 運送状番号 → COMPLETED
       {
-        '発送ID': 'SH-0003', 'オーダーID': 'ORD-0002', '箱番号': 1,
-        '発送方法': 'EMS', '発送日': D.jul01, '運送状番号': 'EMS-DEMO-0003',
-        '集荷依頼': 'TRUE', '通知': 'TRUE', '登録日': D.jul01, '更新日': D.jul01
+        shipment_id: 'SH-0003', order_id: 'ORD-0002', box_number: 1,
+        shipping_method: 'EMS', shipped_at: D.jul01, tracking_number: 'EMS-DEMO-0003',
+        pickup_request: 'TRUE', notification: 'TRUE', registered_at: D.jul01, updated_at: D.jul01
       },
       // ORD-0003: 集荷依頼なし・運送状番号なし → AWAITING_SHIPPING (purchase が PAID)
       {
-        '発送ID': 'SH-0004', 'オーダーID': 'ORD-0003', '箱番号': 1,
-        '発送方法': 'FedEx', '発送日': '', '運送状番号': '',
-        '集荷依頼': '', '通知': '', '登録日': D.jul10, '更新日': D.jul10
+        shipment_id: 'SH-0004', order_id: 'ORD-0003', box_number: 1,
+        shipping_method: 'FedEx', shipped_at: '', tracking_number: '',
+        pickup_request: '', notification: '', registered_at: D.jul10, updated_at: D.jul10
       },
       // ORD-0004: 同様
       {
-        '発送ID': 'SH-0005', 'オーダーID': 'ORD-0004', '箱番号': 1,
-        '発送方法': 'FedEx', '発送日': '', '運送状番号': '',
-        '集荷依頼': '', '通知': '', '登録日': D.jul15, '更新日': D.jul15
+        shipment_id: 'SH-0005', order_id: 'ORD-0004', box_number: 1,
+        shipping_method: 'FedEx', shipped_at: '', tracking_number: '',
+        pickup_request: '', notification: '', registered_at: D.jul15, updated_at: D.jul15
       },
       // ORD-0005: 集荷依頼なし → SOURCING
       {
-        '発送ID': 'SH-0006', 'オーダーID': 'ORD-0005', '箱番号': 1,
-        '発送方法': 'FedEx', '発送日': '', '運送状番号': '',
-        '集荷依頼': '', '通知': '', '登録日': D.aug01, '更新日': D.aug01
+        shipment_id: 'SH-0006', order_id: 'ORD-0005', box_number: 1,
+        shipping_method: 'FedEx', shipped_at: '', tracking_number: '',
+        pickup_request: '', notification: '', registered_at: D.aug01, updated_at: D.aug01
       },
       // ORD-0006: 集荷依頼なし → SOURCING
       {
-        '発送ID': 'SH-0007', 'オーダーID': 'ORD-0006', '箱番号': 1,
-        '発送方法': 'EMS', '発送日': '', '運送状番号': '',
-        '集荷依頼': '', '通知': '', '登録日': D.aug10, '更新日': D.aug10
+        shipment_id: 'SH-0007', order_id: 'ORD-0006', box_number: 1,
+        shipping_method: 'EMS', shipped_at: '', tracking_number: '',
+        pickup_request: '', notification: '', registered_at: D.aug10, updated_at: D.aug10
       },
       // ORD-0012: 集荷依頼なし → AWAITING_PAYMENT (invoice あり、purchase NOT_ORDERED)
       {
-        '発送ID': 'SH-0008', 'オーダーID': 'ORD-0012', '箱番号': 1,
-        '発送方法': 'FedEx', '発送日': '', '運送状番号': '',
-        '集荷依頼': '', '通知': '', '登録日': D.aug26, '更新日': D.aug26
+        shipment_id: 'SH-0008', order_id: 'ORD-0012', box_number: 1,
+        shipping_method: 'FedEx', shipped_at: '', tracking_number: '',
+        pickup_request: '', notification: '', registered_at: D.aug26, updated_at: D.aug26
       }
     ];
     writeDataRows(shipmentsSheet, shipmentsData);
@@ -611,11 +611,11 @@ function seedDevDemoData_20260826() {
 
     var shipmentsByOrderId = {};
     shipmentsData.forEach(function(s) {
-      var oid = s['オーダーID'];
+      var oid = s['order_id'];
       if (!shipmentsByOrderId[oid]) shipmentsByOrderId[oid] = [];
       shipmentsByOrderId[oid].push({
-        pickupRequest:  s['集荷依頼'],
-        trackingNumber: s['運送状番号']
+        pickupRequest:  s['pickup_request'],
+        trackingNumber: s['tracking_number']
       });
     });
 
