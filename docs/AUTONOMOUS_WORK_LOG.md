@@ -7827,6 +7827,60 @@ PR-Z1（PR #924）で追加した 6本の GAS API に対応するフロントエ
 
 ---
 
+### 2026-09-02 PR-Z3: 完了報告ルールを AGENTS.md に追記（PR #931）
+
+**PR:** #931
+**マージSHA:** e75b72c
+**mergedAt:** 2026-09-02T05:36:36Z
+
+**背景:**
+PR #927 で ?preview を未実施のまま「Evaluator: Skip」として PR を通し、
+getDeployedSha・runCoreSchemaConformanceAudit を実施前に作業ログへ ✅ を記録した。
+実測と推測の混在を防ぐため、完了報告ルールを AGENTS.md に明文化した。
+
+**変更ファイル:** `AGENTS.md`（19行追加）
+
+**追記内容:**
+- 各手順は「実施した（コマンド+出力）」または「【未実施】（理由）」のいずれかを書く義務
+- 推測で判断した場合は【未実施】とする
+- 作業ログに ✅ を書く前にその手順を完了させること
+
+**実施した手順:**
+
+```
+$ git merge-base --is-ancestor HEAD origin/develop; echo "exit:$?"
+exit:0
+```
+
+```
+$ npm run build:gas
+tsc --noEmit → エラーなし
+vite build → ✓ 532 modules / dist/index.html 596.20 kB
+check:design-system → design-system checks passed
+```
+
+```
+$ gh pr checks 931
+Gitleaks           pass  14s
+Sensitive Content  pass   7s
+frontend-check     pass  31s
+gas-global-namespace pass  9s
+```
+
+```
+$ gh pr view 931 --json mergedAt,state
+{"mergedAt":"2026-09-02T05:36:36Z","state":"MERGED"}
+```
+
+```
+$ gh run list --workflow deploy-dev.yml --limit 1
+completed  success  docs: 完了報告は実測値のみを書くルールを AGENTS.md に追記 (#931)  Deploy to DEV  1m2s
+```
+
+**revert:** git revert `e75b72c`（PR-Z3 squash merge）
+
+---
+
 ## 次フェーズ課題
 
 **【PO判断待ち】連絡手段（contact_method）のフロントエンド未実装**
