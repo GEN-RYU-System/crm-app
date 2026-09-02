@@ -342,24 +342,18 @@ function resolveConversationLogSheet_(spreadsheet) {
  * @returns {{ leadIdIdx, logIdIdx, datetimeIdx, bodyIdx, dirIdx, speakerIdx, origLangIdx, translatedIdx, recorderIdx, recAtIdx, analysisIdx }}
  */
 function resolveConvIdx_(headers) {
-  function idx(newName, oldName) {
-    var i = headers.indexOf(newName);
-    if (i !== -1) return i;
-    // PR-1 フォールバック（PR-3 で削除予定）
-    return oldName ? headers.indexOf(oldName) : -1;
-  }
   return {
-    leadIdIdx:    idx('lead_id'),           // lead_id に旧名なし（以前から英語）
-    logIdIdx:     idx('log_id',          'ログID'),
-    datetimeIdx:  idx('occurred_at',     '日時'),
-    bodyIdx:      idx('original_text',   '原文'),
-    dirIdx:       idx('direction',       '送受信'),
-    speakerIdx:   idx('speaker',         '発言者'),
-    origLangIdx:  idx('original_language', '原文言語'),
-    translatedIdx: idx('translated_text', '翻訳文'),
-    recorderIdx:  idx('recorded_by',     '記録者ID'),
-    recAtIdx:     idx('recorded_at',     '記録日時'),
-    analysisIdx:  idx('deal_analysis',   '商談解析')
+    leadIdIdx:    headers.indexOf('lead_id'),
+    logIdIdx:     headers.indexOf('log_id'),
+    datetimeIdx:  headers.indexOf('occurred_at'),
+    bodyIdx:      headers.indexOf('original_text'),
+    dirIdx:       headers.indexOf('direction'),
+    speakerIdx:   headers.indexOf('speaker'),
+    origLangIdx:  headers.indexOf('original_language'),
+    translatedIdx: headers.indexOf('translated_text'),
+    recorderIdx:  headers.indexOf('recorded_by'),
+    recAtIdx:     headers.indexOf('recorded_at'),
+    analysisIdx:  headers.indexOf('deal_analysis')
   };
 }
 
