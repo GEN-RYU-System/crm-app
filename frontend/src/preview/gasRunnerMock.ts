@@ -724,6 +724,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
         responseSpeeds: ['即レス(30分以内)', '24h以内', '48h以内', '3日以上', '未返信'],
         countries: [],
         leadSources: [],
+        contactMethods: ['Whatsapp', 'Instagram', 'Facebook', 'Market Place', 'Telegram', 'メール', 'Discord', 'LINE', 'その他'],
       } });
     },
     getLeadFormOptions(_s: string | null) {
@@ -732,6 +733,7 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
         responseSpeeds: ['即レス(30分以内)', '24h以内', '48h以内', '3日以上', '未返信'],
         countries: [],
         leadSources: [],
+        contactMethods: ['Whatsapp', 'Instagram', 'Facebook', 'Market Place', 'Telegram', 'メール', 'Discord', 'LINE', 'その他'],
       });
     },
     getCoreIssuerForFrontend(_s: string | null) {

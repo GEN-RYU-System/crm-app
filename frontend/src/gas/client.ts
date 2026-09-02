@@ -895,6 +895,7 @@ export type LeadFormOptions = {
   responseSpeeds: readonly string[];
   countries: readonly LeadFormCountry[];
   leadSources: readonly LeadSource[];
+  contactMethods?: readonly string[];
 };
 
 export function getLeadFormOptions(): Promise<LeadFormOptions> {
