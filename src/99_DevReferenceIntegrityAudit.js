@@ -39,7 +39,7 @@ const DEV_REFERENCE_INTEGRITY_RELATIONSHIPS = [
   ['オーダー管理', 'オーダーID', '見積もり管理', 'オーダーID', 'OPTIONAL'],
   ['担当者マスタ', '担当者ID',   '見積もり管理', '担当者ID',   'REQUIRED'],
   // 見積もり明細
-  ['見積もり管理', '見積書ID', '見積もり明細', '見積書ID', 'REQUIRED'],
+  ['見積もり管理', '見積書ID', '見積もり明細', 'quote_id', 'REQUIRED'],
   // 入金確認者
   ['担当者マスタ', '担当者ID', 'オーダー管理', '入金確認者ID', 'OPTIONAL']
 ];
