@@ -7781,6 +7781,52 @@ GAS（src/29_ShippingFeeCalculator.js）:
 
 ---
 
+### 2026-09-02 PR-Z2: 輸出情報マスタ管理画面を新設（PR #927）
+
+**PR:** #927
+**マージSHA:** f8ea2f4（develop HEAD after merge）
+**mergedAt:** 2026-09-02T03:41:07Z
+
+**背景:**
+PR-Z1（PR #924）で追加した 6本の GAS API に対応するフロントエンド管理画面を新設。
+荷姿マスタ（PackageMasterPage）とまったく同型の 3タブ構成。
+
+**追加ファイル:**
+| ファイル | 内容 |
+|---------|------|
+| `frontend/src/pages/data-management/ExportMasterPage.tsx` | 輸出情報マスタページ（3タブ: 品目/HTSコード/素材） |
+| `frontend/src/content/ja/exportMaster.ts` | 日本語コピー |
+
+**変更ファイル:**
+| ファイル | 変更内容 |
+|---------|---------|
+| `frontend/src/gas/client.ts` | getCoreItems / getCoreHtsCodes / getCoreMaterials / upsert 3本 追加 |
+| `frontend/src/gas/types.d.ts` | GoogleScriptRun に 6関数の型宣言を追加 |
+| `frontend/src/preview/gasRunnerMock.ts` | DEV プレビュー用モック 6本追加 |
+| `frontend/src/app/navigation.ts` | NavigationItemId に `exportMaster` 追加、PRODUCT_MGMT_SUB_ITEMS に order:5 で追加 |
+| `frontend/src/content/ja/dataManagement.ts` | `exportMaster: '輸出情報マスタ'` 追加 |
+| `frontend/src/content/ja/index.ts` | `exportMasterCopy` エクスポート追加 |
+| `frontend/src/App.tsx` | `exportMasterRoute` 定義 + `hubIndexRoutes` 登録 |
+| `frontend/scripts/check-design-system.mjs` | `ExportMasterPage` を GAS_CLIENT_IN_PAGES_ALLOWLIST に追加 |
+
+**タブ構成:**
+| タブ | GAS 関数 | ID 形式 | フォームフィールド |
+|------|---------|--------|----------------|
+| 品目 | getCoreItemsForFrontend / upsertCoreItemForFrontend | ITM-XXXX | nameEn / nameJa / isActive |
+| HTSコード | getCoreHtsCodesForFrontend / upsertCoreHtsCodeForFrontend | HTS-XXXX | htsCode / descriptionEn / descriptionJa / isActive |
+| 素材 | getCoreMaterialsForFrontend / upsertCoreMaterialForFrontend | MAT-XXXX | nameEn / nameJa / isActive |
+
+**最終確認結果:**
+| 手順 | 結果 |
+|------|------|
+| build:gas（typecheck + build + check:design-system） | ✅ 通過 |
+| CI（4件） | ✅ 全件 pass |
+| Deploy to DEV | ✅ success（run 33587969066） |
+
+**revert:** git revert `f8ea2f4`（PR-Z2 squash merge）
+
+---
+
 ## 次フェーズ課題
 
 **【PO判断待ち】連絡手段（contact_method）のフロントエンド未実装**
