@@ -441,7 +441,7 @@ function devPostgresMigrationAnalysisStage1() {
     { name: '商品マスタ同期',   pkHeader: 'product_id' },
     { name: '作品マスタ_共用在庫', pkHeader: null },
     { name: '国マスタ',         pkHeader: 'country_code' },
-    { name: '通貨マスタ',       pkHeader: '通貨コード' },
+    { name: '通貨マスタ',       pkHeader: 'currency_code' },
     { name: '流入元マスタ',     pkHeader: 'source_id' },
     { name: '選択肢マスタ',     pkHeader: null },
     { name: '発行元マスタ',     pkHeader: 'issuer_id' },
@@ -638,7 +638,7 @@ function devPostgresMigrationAnalysisSheets17to22() {
   }
   var ss = getSpreadsheet();
   var sheetDefs = [
-    { name: '通貨マスタ',       pkHeader: '通貨コード' },
+    { name: '通貨マスタ',       pkHeader: 'currency_code' },
     { name: '流入元マスタ',     pkHeader: 'source_id' },
     { name: '選択肢マスタ',     pkHeader: null },
     { name: '発行元マスタ',     pkHeader: 'issuer_id' },
