@@ -218,6 +218,7 @@ export function SalesOrderDetailPage() {
       RATE_NOT_FOUND:           copy.shippingFeeErrorRateNotFound,
       INVALID_BOX_DIMENSIONS:   copy.shippingFeeErrorInvalidBoxDimensions,
       UNSUPPORTED_DIM_ROUNDING: copy.shippingFeeErrorUnsupportedDimRounding,
+      CARRIER_NOT_AVAILABLE:    copy.shippingFeeErrorNotAvailable,
     };
     return errorMap[code] ?? copy.shippingFeeErrorUnknown;
   };
@@ -243,6 +244,7 @@ export function SalesOrderDetailPage() {
       RATE_NOT_FOUND:           copy.billingShippingFeeCarrierErrorRateNotFound,
       INVALID_BOX_DIMENSIONS:   copy.billingShippingFeeCarrierErrorInvalidBoxDimensions,
       UNSUPPORTED_DIM_ROUNDING: copy.billingShippingFeeCarrierErrorUnsupportedDimRounding,
+      CARRIER_NOT_AVAILABLE:    copy.billingShippingFeeCarrierErrorNotAvailable,
     };
     return map[error] ?? copy.billingShippingFeeCarrierErrorUnknown;
   };
