@@ -8461,3 +8461,65 @@ dryRunOrderStatusRecalculation: 変更あり 0件 ✅
 
 **revert SHA（緊急時）:** `b54947a`（PR #978 squash commit = develop HEAD）
 **バックアップシート:** `配送先マスタ_backup_20260902_type` / `支払先マスタ_backup_20260902_type` / `システム設定_backup_20260902_type`
+
+---
+
+## 2026-09-02: 顧客税務番号 API 新設 (PR-AB2)
+
+**作業概要:** 番号種別マスタ（TAX_NUMBER_TYPES）と顧客税務番号（CUSTOMER_TAX_NUMBERS）の
+読み書き GAS API を新設する。
+
+**変更ファイル:**
+- `src/28_CoreCustomerTaxNumberApi.js` — 新規。読み取り2本・書き込み1本
+- `src/99_DevCustomerTaxNumberApiTest.js` — 新規。DEV 検証ラッパー（シナリオ a〜f）
+
+**API 仕様:**
+
+| 関数名 | 種別 | 概要 |
+|--------|------|------|
+| `getCoreTaxNumberTypesForFrontend` | 読み取り | 番号種別マスタ全件（絞り込みなし） |
+| `getCoreCustomerTaxNumbersForFrontend` | 読み取り | 顧客IDで絞り、種別名（JA/EN）を結合して返す |
+| `upsertCoreCustomerTaxNumberForFrontend` | 書き込み | UNIQUE(customer_id, type_id) 代替検証付き upsert |
+
+**設計判断:**
+- UNIQUE(customer_id, type_id) は GAS では制約不可 → 書き込み前コード検証で代替
+- 更新時は自分自身（taxNumberId 一致行）を除外して重複判定（誤拒否防止）
+- 雛形: `28_CoreOwnMasterApi.js`（PR #772）
+
+**PR-1 (#977): feat: 顧客税務番号 API を新設（PR-AB2）**
+- マージ: 2026-09-02T19:43:03Z
+- squash commit SHA: `cf327a2`
+- Deploy to DEV: success (deployedAt: 2026-09-02T19:43:46Z)
+
+**PR-2 (#979): fix(dev): DEV テストラッパーにセッション作成を追加（PR-AB2 補修）**
+- マージ: 2026-09-02T19:50:32Z
+- squash commit SHA: `920cd94`
+- Deploy to DEV: success (deployedAt: 2026-09-02T19:50:34Z)
+- 補修理由: `setEmailFromSession(null)` が SESSION_REQUIRED を投げるため
+  `createSession(staffId)` / `revokeSession` で一時セッションを発行・破棄する方式に変更
+
+**手順5〜7 実測値:**
+
+手順5（Deploy to DEV 確認）:
+```
+PR #977 → getDeployedSha: cf327a2a5611d5ae2b29b4b504878ed7148bd08f
+          deployedAt: 2026-09-02T19:43:46.392Z ✅
+PR #979 → getDeployedSha: 920cd949fbee510de32a09ca58f248c8b853682f
+          deployedAt: 2026-09-02T19:50:34Z ✅
+```
+
+手順6（DEV テスト — シナリオ a〜f）:
+```
+clasp run devCustomerTaxNumberApiTest
+→ { a: 'PASS', b: 'PASS', c: 'PASS', d: 'PASS', e: 'PASS', f: 'PASS' }
+```
+
+手順7（スキーマ整合監査）:
+```
+clasp run runCoreSchemaConformanceAudit
+→ TAX_NUMBER_TYPES:      不一致 0件 ✅
+→ CUSTOMER_TAX_NUMBERS: 不一致 0件 ✅
+→ 総不一致: 0 → PASS ✅
+```
+
+**revert SHA（緊急時）:** `13a5eeb`（PR-AB1 squash commit = PR-AB2 ロールバック先）
