@@ -2,6 +2,39 @@
 
 ---
 
+### 2026-09-02 選択肢マスタV2 の contact_method に LINE を追加（PR #918）
+
+**revert SHA**: `7a937dd`（develop HEAD at branch creation）
+**mergedAt**: 2026-09-02T02:22:16Z
+
+**概要:**
+`devCheckAllLeadContactMethods` 調査（2026-09-02）で LDI-0005 に contact_method = "LINE" が
+存在することが判明。PO 決定により選択肢マスタV2 の contact_method を 8種 → 9種に拡張した。
+実際のシート書き込みは clasp run によるフローで実施。
+
+**実行フロー（PR マージ後）:**
+1. `devContactMethodAudit` — 現状確認（8行, maxOptionId=OPT-00067）
+2. `devBackupOptionMasterV2` — バックアップ作成: 選択肢マスタV2_backup_20260902（検証合格）
+3. `devAddLineContactMethodDryRun` — dry-run 確認
+   - 追加行: OPT-00068 / contact_method / LINE / sort_order=8 / is_active=TRUE
+   - sort_order 変更: OPT-00030（その他）8 → 9
+4. `devAddLineContactMethodExecute` — 実行（ok: true）
+5. `devVerifyLineAddResult` — PASS（9行, LINE存在, 重複なし, 他カテゴリ変化なし）
+
+**追加後の contact_method（9種）:**
+Whatsapp / Instagram / Facebook / Market Place / Telegram / メール / Discord / LINE / その他
+
+**フロント対応:**
+- `LeadFormOptions` 型に `contactMethods?: readonly string[]` 追加
+- gasRunnerMock に contactMethods（9値）を追加（UI実装時の前準備）
+
+**§7 マージ後検証:**
+- SHA: `7225b6e` 一致 ✓
+- Core Schema Conformance: 総不一致 0件 ✓
+- dryRunOrderStatusRecalculation: 変更なし 0件 ✓
+
+---
+
 ### 2026-09-01 明細から箱を組み立て送料を計算するAPI（ShippingBoxBuilder）を追加（PR #866 / #867）
 
 **概要:**

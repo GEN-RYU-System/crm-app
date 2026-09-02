@@ -558,3 +558,51 @@ category 名: `docs/column-rename-plan.md §3-8` の変換案を使用。
 | contact_method | Email | メール | 8件 |
 
 （§12 の影響調査結果より）
+
+---
+
+## 14. LINE 追加（2026-09-02 PO決定）
+
+### 14.1 経緯
+
+`devCheckAllLeadContactMethods`（2026-09-02 実行）でリード管理 全10件を確認したところ、
+LDI-0005 の contact_method が "LINE" であることが判明。
+
+選択肢マスタV2 の contact_method は 2026-09-01 時点で LINE を除外していたが（PO決定）、
+実データに存在するため PO が追加を決定（2026-09-02）。
+
+### 14.2 追加内容
+
+| 項目 | 値 |
+|------|----|
+| option_id | OPT-00068 |
+| category | contact_method |
+| value | LINE |
+| sort_order | 8（Discord の次、その他 の前） |
+| is_active | TRUE |
+
+sort_order 変更: OPT-00030（その他）8 → 9
+
+### 14.3 追加後の contact_method（9種）
+
+| sort_order | value |
+|-----------|-------|
+| 1 | Whatsapp |
+| 2 | Instagram |
+| 3 | Facebook |
+| 4 | Market Place |
+| 5 | Telegram |
+| 6 | メール |
+| 7 | Discord |
+| 8 | LINE ← 追加 |
+| 9 | その他 |
+
+### 14.4 検証結果（devVerifyLineAddResult）
+
+- 行数: 67 → 68（+1） ✓
+- contact_method: 9種類 ✓
+- LINE 存在 ✓
+- option_id 重複なし ✓
+- (category, value) 重複なし ✓
+- 他カテゴリ行数変化なし ✓
+- verdict: PASS
