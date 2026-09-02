@@ -430,7 +430,7 @@ function devPostgresMigrationAnalysisStage1() {
     { name: '担当者マスタ',     pkHeader: 'staff_id' },
     { name: 'ログインセッション', pkHeader: 'session_id' },
     { name: 'オーダー管理',     pkHeader: 'オーダーID' },
-    { name: 'オーダー明細',     pkHeader: '明細ID' },
+    { name: 'オーダー明細',     pkHeader: 'order_line_id' },
     { name: '発送',             pkHeader: 'shipment_id' },
     { name: '仕入れ',           pkHeader: 'purchase_id' },
     { name: '見積もり管理',     pkHeader: '見積書ID' },
@@ -470,7 +470,7 @@ function devPostgresMigrationAnalysisStage1() {
   var fkDefs = [
     { refSheet: '顧客マスタ',     refCol: '源流リードID',          targetSheet: 'リード管理',   targetCol: 'lead_id' },
     { refSheet: '顧客マスタ',     refCol: 'sales_assignee_id',     targetSheet: '担当者マスタ', targetCol: 'staff_id' },
-    { refSheet: 'オーダー明細',   refCol: 'オーダーID',            targetSheet: 'オーダー管理', targetCol: 'オーダーID' },
+    { refSheet: 'オーダー明細',   refCol: 'order_id',              targetSheet: 'オーダー管理', targetCol: 'オーダーID' },
     { refSheet: '見積もり管理',   refCol: '顧客ID',                targetSheet: '顧客マスタ',   targetCol: '顧客ID' },
     { refSheet: '見積もり明細',   refCol: 'quote_id',              targetSheet: '見積もり管理', targetCol: '見積書ID' },
     { refSheet: '配送先マスタ',   refCol: 'customer_id',           targetSheet: '顧客マスタ',   targetCol: '顧客ID' },
@@ -583,7 +583,7 @@ function devPostgresMigrationAnalysisSheets1to8() {
     { name: '担当者マスタ',     pkHeader: 'staff_id' },
     { name: 'ログインセッション', pkHeader: 'session_id' },
     { name: 'オーダー管理',     pkHeader: 'オーダーID' },
-    { name: 'オーダー明細',     pkHeader: '明細ID' },
+    { name: 'オーダー明細',     pkHeader: 'order_line_id' },
     { name: '発送',             pkHeader: 'shipment_id' },
     { name: '仕入れ',           pkHeader: 'purchase_id' }
   ];
@@ -656,7 +656,7 @@ function devPostgresMigrationAnalysisSheets17to22() {
   var fkDefs = [
     { refSheet: '顧客マスタ',   refCol: '源流リードID',      targetSheet: 'リード管理',   targetCol: 'lead_id' },
     { refSheet: '顧客マスタ',   refCol: 'sales_assignee_id', targetSheet: '担当者マスタ', targetCol: 'staff_id' },
-    { refSheet: 'オーダー明細', refCol: 'オーダーID',        targetSheet: 'オーダー管理', targetCol: 'オーダーID' },
+    { refSheet: 'オーダー明細', refCol: 'order_id',          targetSheet: 'オーダー管理', targetCol: 'オーダーID' },
     { refSheet: '見積もり管理', refCol: '顧客ID',            targetSheet: '顧客マスタ',   targetCol: '顧客ID' },
     { refSheet: '見積もり明細', refCol: 'quote_id',          targetSheet: '見積もり管理', targetCol: '見積書ID' },
     { refSheet: '配送先マスタ', refCol: 'customer_id',       targetSheet: '顧客マスタ',   targetCol: '顧客ID' },

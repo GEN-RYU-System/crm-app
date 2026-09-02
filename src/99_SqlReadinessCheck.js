@@ -21,7 +21,7 @@ var SQL_CHECK_TARGETS = [
   { sheetName: '配送先マスタ',       pkColumn: '配送先ID' },
   { sheetName: '支払先マスタ',       pkColumn: '支払先ID' },
   { sheetName: 'オーダー管理',       pkColumn: 'オーダーID' },
-  { sheetName: 'オーダー明細',       pkColumn: '明細ID' },
+  { sheetName: 'オーダー明細',       pkColumn: 'order_line_id' },
   { sheetName: '見積もり管理',       pkColumn: '見積書ID' },
   { sheetName: '見積もり明細',       pkColumn: 'quote_line_id' },
   { sheetName: '発送',               pkColumn: 'shipment_id' },
