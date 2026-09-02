@@ -154,6 +154,7 @@ export const quotesCopy = {
       carrierErrorRateNotFound: '該当する重量帯の料金が見つかりません',
       carrierErrorInvalidBoxDimensions: '寸法の値が無効です',
       carrierErrorUnsupportedDimRounding: '未対応の寸法丸め方式です',
+      carrierErrorNotAvailable: 'この配送会社は対象外です',
       carrierErrorUnknown: '計算に失敗しました',
       errorUnknown: '送料の計算に失敗しました',
     },

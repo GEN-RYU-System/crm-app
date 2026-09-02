@@ -318,9 +318,16 @@ function _sfcCalculateForCarrier(carrier, countryCode, boxes, zonesMap, ratesMap
   };
 
   // ゾーン照合
+  // 地帯マスタで「-」はその配送会社の取扱いがないことを示す慣習値。
+  // 2026-09-01 時点: US 向けは FedEx のみ契約（DHL / UPS は「-」）。
+  // 契約内容確認中。回答が得られたら地帯マスタを更新する可能性がある。
   var zone = zonesMap[carrier.id + '|' + countryCode] || null;
   if (!zone) {
     result.error = 'ZONE_NOT_FOUND';
+    return result;
+  }
+  if (zone.trim() === '-') {
+    result.error = 'CARRIER_NOT_AVAILABLE';
     return result;
   }
   result.zone = zone;

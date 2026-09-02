@@ -262,6 +262,7 @@ export const salesOrdersCopy = {
     billingShippingFeeCarrierErrorRateNotFound: '該当する重量帯の料金が見つかりません',
     billingShippingFeeCarrierErrorInvalidBoxDimensions: '寸法の値が無効です',
     billingShippingFeeCarrierErrorUnsupportedDimRounding: '未対応の寸法丸め方式です',
+    billingShippingFeeCarrierErrorNotAvailable: 'この配送会社は対象外です',
     billingShippingFeeCarrierErrorUnknown: '計算に失敗しました',
     // 送料計算
     btnCalculateShippingFee: '送料を計算',
@@ -280,6 +281,7 @@ export const salesOrdersCopy = {
     shippingFeeErrorRateNotFound: '該当する重量帯の料金が見つかりません',
     shippingFeeErrorInvalidBoxDimensions: '寸法の値が無効です',
     shippingFeeErrorUnsupportedDimRounding: '未対応の寸法丸め方式です',
+    shippingFeeErrorNotAvailable: 'この配送会社は対象外です',
     shippingFeeErrorMissingCountryCode: '配送先の国が登録されていません。受注の配送先を確認してください。',
     shippingFeeErrorUnknown: '計算に失敗しました',
   },

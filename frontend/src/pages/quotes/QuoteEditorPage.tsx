@@ -258,6 +258,7 @@ export function QuoteEditorPage({ mode, canEdit }: Props) {
       RATE_NOT_FOUND:           sfc.carrierErrorRateNotFound,
       INVALID_BOX_DIMENSIONS:   sfc.carrierErrorInvalidBoxDimensions,
       UNSUPPORTED_DIM_ROUNDING: sfc.carrierErrorUnsupportedDimRounding,
+      CARRIER_NOT_AVAILABLE:    sfc.carrierErrorNotAvailable,
     };
     return map[error] ?? sfc.carrierErrorUnknown;
   };
