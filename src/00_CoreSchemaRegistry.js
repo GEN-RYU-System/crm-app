@@ -190,7 +190,7 @@ const CORE_SCHEMA_V1_TABLES = {
   },
   LOGIN_SESSIONS: {
     sheetName: 'ログインセッション', canonicalName: 'ログインセッション', aliases: [], headerRowNumber: 1, sheetType: 'TRANSACTION', writeAllowed: true,
-    headers: createCoreSchemaV1Headers([['SESSION_ID', 'セッションID'], ['STAFF_ID', '担当者ID'], ['ISSUED_AT', '発行日時'], ['LAST_USED_AT', '最終利用日時'], ['EXPIRES_AT', '失効日時'], ['STATUS', '状態']]), primaryKey: 'SESSION_ID',
+    headers: createCoreSchemaV1Headers([['SESSION_ID', 'session_id'], ['STAFF_ID', 'staff_id'], ['ISSUED_AT', 'issued_at'], ['LAST_USED_AT', 'last_used_at'], ['EXPIRES_AT', 'expires_at'], ['STATUS', 'status']]), primaryKey: 'SESSION_ID',
     values: {
       STATUS: {
         ACTIVE:  '有効',
