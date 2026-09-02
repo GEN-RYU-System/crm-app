@@ -592,3 +592,74 @@
   - dryRun: 変更あり 0件 ✅
 
 **作品マスタ_共用在庫 列リネーム 完了 ✅**
+
+---
+
+## システム設定（SETTINGS）
+
+**選定根拠:** `docs/column-rename-plan-phase2.md` セクション 6 の参照数比較
+- 共用在庫: 17件（除外指定）
+- 作品マスタ_共用在庫: 38件（PR #930/932/934 完了済み）
+- システム設定: 46件（最小 → 本作業の対象）
+
+**対象列 5本:**
+
+| # | 旧名 | 新名 |
+|---|------|------|
+| 1 | 設定キー | `setting_key` |
+| 2 | 設定値 | `setting_value` |
+| 3 | 値の型 | `value_type` |
+| 4 | 説明 | `description` |
+| 5 | 更新日時 | `updated_at` |
+
+### バックアップ
+
+- バックアップ名: `システム設定_backup_20260902`
+- originalRows: 4（ヘッダー1行 + データ3行）
+- originalCols: 5
+- 変更前ヘッダー: `['設定キー', '設定値', '値の型', '説明', '更新日時']`
+
+### PR-1 — コード新旧両対応
+
+- PR: #937
+- マージ: 2026-09-02T06:09:47Z
+- CI: frontend-check / gas-global-namespace / Gitleaks / Sensitive Content 全 4件 SUCCESS
+- Deploy to DEV: success
+- 変更ファイル: 2ファイル
+  - `src/08_Config.js` — setting_key / setting_value / description を優先し旧名にフォールバック
+  - `src/99_DevRenameSystemSettingsColumns.js` — 新規: バックアップ・列名変更 GAS 関数を追加
+
+### PR-2 — CoreSchema 切り替え + シートリネーム実行
+
+- PR: #938
+- マージ: 2026-09-02T06:16:10Z
+- CI: frontend-check / gas-global-namespace / Gitleaks / Sensitive Content 全 4件 SUCCESS
+- Deploy to DEV: success
+- 変更ファイル: 3ファイル
+  - `src/00_CoreSchemaRegistry.js` — SETTINGS ヘッダーを英語名に切り替え
+  - `src/99_SqlReadinessCheck.js` — pkColumn を setting_key に更新
+  - `src/99_DevPostgresMigrationAnalysis.js` — pkHeader を setting_key に更新（2箇所）
+- シートリネーム実行結果（`clasp run devRenameSystemSettingsColumns`）:
+  ```
+  {
+    renamedCount: 5, expectedCount: 5, skipped: [],
+    newHeaders: ['setting_key', 'setting_value', 'value_type', 'description', 'updated_at'],
+    rowCountBefore: 4, rowCountAfter: 4,
+    colCountBefore: 5, colCountAfter: 5
+  }
+  ```
+- 事後確認（PR-2 後、シートリネーム後）:
+  - SHA: `a08c2754c7587237b346dd06e0675c70382842e3` = origin/develop HEAD ✅
+  - 監査: 総不一致 0件 → PASS ✅
+  - dryRun: 変更あり 0件 ✅
+
+### PR-3 — 旧名フォールバック除去
+
+- PR: #939（予定）
+- 変更ファイル: 3ファイル
+  - `src/08_Config.js` — フォールバック除去: setting_key / setting_value / description を直接参照
+  - `src/99_DevSettingsStructureAudit.js` — setting_key / value_type / setting_value を直接参照（旧名除去）
+  - `docs/column-rename-execution-log.md` — PR-3 記録追加
+- 旧列名 indexOf 確認（`システム設定` コンテキスト）: 0件 ✅
+  - `src/99_DisplaySettingsVerify.js` の `設定キー`/`設定値` は `表示設定マスタ` シート対象 — 変更対象外 ✅
+  - `src/00_CoreSchemaRegistry.js` の `設定キー`/`設定値` は DISPLAY_SETTINGS テーブル定義 — 変更対象外 ✅

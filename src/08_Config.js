@@ -1055,22 +1055,16 @@ function getStatusSettingsFromSheet() {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  // 「setting_key」列を探す（新形式の設定シート）。旧名「設定キー」にもフォールバック（Phase 2 移行期）
-  const keyColIndex = headers.indexOf('setting_key') >= 0
-    ? headers.indexOf('setting_key')
-    : headers.indexOf('設定キー');
+  // 「setting_key」列を探す（新形式の設定シート）
+  const keyColIndex = headers.indexOf('setting_key');
 
   // 新形式の設定シートでない場合はデフォルト値を返す
   if (keyColIndex === -1) {
     return DEFAULT_STATUS_SETTINGS;
   }
 
-  const valueColIndex = headers.indexOf('setting_value') >= 0
-    ? headers.indexOf('setting_value')
-    : headers.indexOf('設定値');
-  const descColIndex = headers.indexOf('description') >= 0
-    ? headers.indexOf('description')
-    : headers.indexOf('説明');
+  const valueColIndex = headers.indexOf('setting_value');
+  const descColIndex = headers.indexOf('description');
 
   if (valueColIndex === -1) {
     return DEFAULT_STATUS_SETTINGS;
