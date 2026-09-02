@@ -2,6 +2,35 @@
 
 ---
 
+### 2026-09-03 PostgreSQL DDL 作成（段階3）
+
+**PR**: #984 / mergedAt: 2026-09-02T21:24:36Z  
+**Deploy to DEV**: conclusion: success（2026-09-02T21:24:39Z 開始、48秒完了）  
+**revert 手順**: `gh pr revert 984` → `gh pr revert <work-log-pr>`
+
+**変更内容**:
+- `docs/sql/schema.sql`: 22テーブルスコープから 21テーブルの CREATE TABLE + CREATE INDEX を生成
+  - shared_inventory は primaryKey: null のため DDL 除外
+  - 全 PO 判断(a)採用（LEADS+13列・customers.assignee_id・会話ログ・ip_works 等）
+  - NOT NULL: nonEmpty=100% かつ サンプル行数≥5 の場合のみ付与
+  - CASCADE: order_lines/shipments/purchases→orders, quote_lines→quotes
+  - RESTRICT: その他すべての FK
+- `docs/sql/schema-notes.md`: 対応表・型決定根拠・差分・除外テーブル記録
+
+**型決定の主要判断**:
+- exchange_rate / rate_to_jpy → NUMERIC(15,6)
+- 金額系 → NUMERIC(15,2)
+- hs_code → BIGINT（10桁数値、INTEGER 超過）
+- zip → TEXT（郵便番号は識別子。型混在は2026-09-02に解消済み）
+- setting_value → TEXT（型混在は2026-09-02に解消済み。GAS ISO文字列→TIMESTAMPTZ変換は移行時）
+- products の "-" 混在列 → NUMERIC(15,2) NULL可（"-" → NULL変換）
+
+**除外テーブル**: shared_inventory（primaryKey: null、設計選択肢は schema-notes.md §4 に記録）
+
+**CI（PR #984）**: Gitleaks pass / Sensitive Content pass / frontend-check pass / gas-global-namespace pass
+
+---
+
 ### 2026-09-02 発送タブに発送明細入力欄を追加（PR-AA3）
 
 **revert 手順**: `gh pr revert 961` → `gh pr revert <work-log-pr>`
