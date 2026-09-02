@@ -2,6 +2,13 @@
 
 ---
 
+### 2026-09-02 PostgreSQL 移植に向けた構造分析（段階1）
+- PR-1: #920 / `38ce8a3` / 調査関数追加（読み取り専用）`src/99_DevPostgresMigrationAnalysis.js`
+- PR-2: #923 / `cd993cbd` / `docs/postgres-migration-analysis.md` 追加
+- 結果: 型混在 6列 / 孤児レコード 0件 / PG予約語衝突 0件 / 命名規則違反 239件（日本語169/大文字60/特殊文字10） / 重複列名 53件
+- 次工程: PO が設計方針を決定（段階2）→ シート修正と DDL 作成（段階3）
+- revert: git revert `cd993cbd`（PR-2 squash merge）→ git revert `38ce8a3`（PR-1 squash merge）（逆順）
+
 ### 2026-09-02 選択肢マスタV2 の contact_method に LINE を追加（PR #918）
 
 **revert SHA**: `7a937dd`（develop HEAD at branch creation）
