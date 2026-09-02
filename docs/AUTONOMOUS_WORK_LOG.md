@@ -8274,3 +8274,52 @@ localhost:5180/?preview#/inbox (Playwright)
 
 **revert SHA（緊急時）:** `e2d3aca`（PR #960 squash commit）
 **バックアップシート:** `発送_backup_20260902`（シート変換後に GAS で作成）
+
+---
+
+## 2026-09-02: 見積もり明細12列 英語化スプリント (Phase 2)
+
+**対象シート:** 見積もり明細（QUOTE_LINES）
+**対象列数:** 12列
+
+**変換マッピング:**
+| 旧名 | 新名 |
+|------|------|
+| 明細ID | quote_line_id |
+| 見積書ID | quote_id |
+| 行番号 | line_no |
+| 商品ID | product_id |
+| 商品名 | product_name |
+| 説明 | description |
+| 状態 | condition |
+| 重量 | weight |
+| 数量 | quantity |
+| 単価 | unit_price |
+| 金額 | amount |
+| 備考 | note |
+
+**PR-1 (#966): コード先行変換**
+- マージ: 2026-09-02T12:18:06Z
+- Deploy to DEV: success (58秒)
+- 変更: 00_CoreSchemaRegistry.js QUOTE_LINES headers 英語化
+- 追加: 99_DevRenameQuoteLinesColumns.js (バックアップ・列変更ユーティリティ)
+- アーキテクチャ: getCoreSchemaV1HeaderName 経由のため Registry 変更のみで全 API 自動追従
+- 注意: 11_QuoteService.js は CONFIG.QUOTE_HISTORY.GID（レガシー見積書管理）を参照 → 変更対象外
+
+**PR-2 (#967): シート変換手順書**
+- マージ: 2026-09-02T12:22:51Z
+- Deploy to DEV: success
+- 変更: docs/column-rename-execution-log.md にリネーム記録追記
+
+**PR-3 (#TBD): 旧参照確認・完走ログ**
+- 旧列名参照（見積もり明細コンテキスト）: 0件確認済み
+- 除外確認: 11_Quote.js / 11_QuoteService.js は レガシー見積書管理シートを参照（変更対象外）
+- 除外確認: 99_Phase7A.js / 99_InvBookRecon.js はオーダー明細シートを参照（変更対象外）
+
+**シート変換（PR-2 後に実施が必要）:**
+- `devBackupQuoteLinesSheet()` → `見積もり明細_backup_20260902` 作成
+- `devRenameQuoteLinesColumns()` → 12列一括変換 (renamedCount=12 確認)
+- `runCoreSchemaConformanceAudit()` → QUOTE_LINES 不一致 0件 を確認
+
+**revert SHA（緊急時）:** `f3f36b9`（PR #966 squash commit）
+**バックアップシート:** `見積もり明細_backup_20260902`（シート変換後に GAS で作成）
