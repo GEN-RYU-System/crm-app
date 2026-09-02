@@ -957,3 +957,69 @@
   - dryRun: 変更あり 0件 ✅
 
 **ログインセッション 列リネーム 完了 ✅**
+
+---
+
+## 会話ログ（商談用）（Phase 2 - 6シート目）
+
+**実行日: 2026-09-02**
+
+**対象列 11本:**
+| 旧名 | 新名 |
+|------|------|
+| ログID | log_id |
+| リードID | lead_id |
+| 日時 | occurred_at |
+| 送受信 | direction |
+| 発言者 | speaker |
+| 原文 | original_text |
+| 原文言語 | original_language |
+| 翻訳文 | translated_text |
+| 記録者ID | recorded_by |
+| 記録日時 | recorded_at |
+| 商談解析 | deal_analysis |
+
+### Phase 0 分類結果
+
+| 分類 | 件数 |
+|------|------|
+| 会話ログシートの列参照（変更対象） | 約50箇所 |
+| 他シートの同名列（変更しない） | 5件（アーカイブ/顧客マスタ旧/UIラベル/Buddyログ） |
+| 変数名・コメント・UIラベル | 多数（変更なし） |
+| 未確認 | 0件 |
+
+### PR-1 — デュアルサポート追加
+
+- PR: #957
+- マージ: （未完了）
+- 変更ファイル: 9ファイル
+  - `src/08_Config.js` — HEADERS.CONVERSATION_LOG を全11列英語列名に更新
+  - `src/28_CoreInboxApi.js` — resolveConvIdx_ ヘルパー追加。全 indexOf 参照を新旧両対応に変換
+  - `src/10_ConversationLogService.js` — getConversationLogs / updateLeadConversationInfo / generateConversationSummaryText / generateConversationSummary を新旧フォールバック付きに変換
+  - `src/27_WebApp.js` — addConversationLog / translateAndAddLog / addConversationLogInternal / updateConversationLogTranslation を新旧フォールバック付きに変換
+  - `src/34_DealAnalysisService.js` — getConversationHistory / saveDealAnalysis の indexOf を新旧両対応に変換
+  - `src/30_CSVImportService.js` — importConversationLogCSV の列名参照を新旧両対応に変換
+  - `src/check_conversation_structure.js` — indexOf を新旧両対応に変換
+  - `src/add_original_language_column.js` — indexOf を新旧両対応に変換
+  - `src/99_DevRenameConversationLogColumns.js` — バックアップ・リネーム実行用 DEV ユーティリティを新規追加
+
+### PR-2 — シート列名変更
+
+- PR: （未実施）
+- 実行手順:
+  1. `devBackupConversationLogSheet()` を実行してバックアップ作成
+  2. headers が `['ログID', 'リードID', '日時', '送受信', '発言者', '原文', '原文言語', '翻訳文', '記録者ID', '記録日時', '商談解析']` であることを確認
+  3. `devRenameConversationLogColumns()` を実行
+  4. renamedCount === 11、skipped === []、newHeaders 確認
+
+### PR-3 — 旧名フォールバック除去
+
+- PR: （未実施）
+- 除去対象:
+  - `src/28_CoreInboxApi.js` — resolveConvIdx_ の旧名フォールバック行（各列の `|| headers.indexOf('旧名')` 部分）
+  - `src/10_ConversationLogService.js` — `|| b['日時']` `|| log['翻訳文']` 等のフォールバック
+  - `src/27_WebApp.js` — `|| data['送受信']` `|| data['発言者']` `|| data['原文']` 等のフォールバック
+  - `src/34_DealAnalysisService.js` — 各 indexOf の旧名フォールバック
+  - `src/30_CSVImportService.js` — 各ヘッダー判定の旧名フォールバック
+  - `src/check_conversation_structure.js` — indexOf の旧名フォールバック
+  - `src/add_original_language_column.js` — indexOf の旧名フォールバック
