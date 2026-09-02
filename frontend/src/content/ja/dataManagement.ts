@@ -18,5 +18,6 @@ export const dataManagementCopy = {
   googleDrive: 'Google Drive',
   issuerMaster: '発行元情報',
   packageMaster: '荷姿マスタ',
-  ownMaster: '自社マスタ'
+  ownMaster: '自社マスタ',
+  exportMaster: '輸出情報マスタ'
 } as const;

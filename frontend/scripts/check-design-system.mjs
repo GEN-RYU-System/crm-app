@@ -278,6 +278,7 @@ const GAS_CLIENT_IN_PAGES_ALLOWLIST = new Set([
   'src/pages/data-management/PackageMasterPage.tsx', // getCoreSizes / upsertCoreSize etc. (master CRUD)
   'src/pages/data-management/OwnMasterPage.tsx',     // getCoreOwnCategories / upsertCoreOwnCategory etc. (master CRUD)
   'src/pages/data-management/ProductMasterPage.tsx', // getCoreSharedProducts / upsertCoreProductPackage etc. (master CRUD)
+  'src/pages/data-management/ExportMasterPage.tsx',  // getCoreItems / upsertCoreItem etc. (master CRUD)
   'src/pages/orders/OrderDetailPage.tsx',     // type-only import (IssuerRecord)
   'src/pages/orders/OrderEditorPage.tsx',     // getCoreOrderDetail for invoice print preview (same pattern as OrderDetailPage)
   'src/pages/sales-orders/SalesOrderDetailPage.tsx', // confirmCoreOrderPayment / upsertCorePurchase (save+action)

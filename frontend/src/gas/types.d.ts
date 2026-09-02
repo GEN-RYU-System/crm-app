@@ -76,6 +76,12 @@ interface GoogleScriptRun {
   upsertCoreProductPackageForFrontend(sessionId: string | null, payload: unknown): void;
   getCoreOwnProductsForFrontend(sessionId: string | null): void;
   upsertCoreOwnProductWithPackageForFrontend(sessionId: string | null, payload: unknown): void;
+  getCoreItemsForFrontend(sessionId: string | null): void;
+  getCoreHtsCodesForFrontend(sessionId: string | null): void;
+  getCoreMaterialsForFrontend(sessionId: string | null): void;
+  upsertCoreItemForFrontend(sessionId: string | null, payload: unknown): void;
+  upsertCoreHtsCodeForFrontend(sessionId: string | null, payload: unknown): void;
+  upsertCoreMaterialForFrontend(sessionId: string | null, payload: unknown): void;
 }
 
 interface Window {
