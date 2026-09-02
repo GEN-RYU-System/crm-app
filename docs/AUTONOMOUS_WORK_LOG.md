@@ -7674,6 +7674,62 @@ DHL/UPS の `RATE_NOT_FOUND` は US 向け料金マスタが未登録のため�
 
 ---
 
+### 2026-09-02 PR-Y1: 地帯マスタの「-」を CARRIER_NOT_AVAILABLE として扱い日本語化（PR #921）
+
+**PR:** #921
+**マージSHA:** 3032a08eaf7b4012d71b3089598ad4796fd9717c
+
+**背景:**
+地帯マスタで「-」（ハイフン）が登録されているキャリア（US の DHL / UPS）が
+`RATE_NOT_FOUND` を返していた。原因調査の結果、「-」は「取扱いなし」を意味する慣習値であり、
+送料表（SHIPPING_RATES）に対応する行が 0 件であることを実測で確認済み。
+
+**「-」の意味と経緯（事実）:**
+- 地帯マスタで「-」は「その配送会社の配送先への取扱いがない」ことを表す慣習値
+- 2026-09-01 時点: US 向けは FedEx のみ契約（DHL / UPS は「-」）
+- 契約内容の確認を各社に依頼中。回答が得られたら地帯マスタの値を更新する可能性がある
+
+**変更内容:**
+
+GAS（src/29_ShippingFeeCalculator.js）:
+- `_sfcCalculateForCarrier` でゾーン値が `'-'`（前後空白除去後の完全一致）の場合、
+  `CARRIER_NOT_AVAILABLE` を返す
+- 空文字・ゾーン未登録は従来どおり `ZONE_NOT_FOUND`（区別を維持）
+- JSDoc に「-」の意味と 2026-09-01 時点の契約状況を記載
+
+フロントエンド:
+- `content/ja/quotes.ts`: `carrierErrorNotAvailable: 'この配送会社は対象外です'` を追加
+- `content/ja/salesOrders.ts`:
+  - `shippingFeeErrorNotAvailable` を追加（発送タブ用）
+  - `billingShippingFeeCarrierErrorNotAvailable` を追加（請求タブ用）
+- 見積もり画面・発送タブ・請求タブの 3 か所すべてで `CARRIER_NOT_AVAILABLE` を日本語に変換
+
+**検証結果（DEV / devTestShippingFeeForLines）:**
+
+(a) US 向け（PM0015 / Damaged sealed box / 数量 1）:
+| キャリア | 変更前エラー | 変更後エラー |
+|----------|-------------|-------------|
+| FedEx | 成功 | 成功（変化なし） |
+| DHL | `RATE_NOT_FOUND` | `CARRIER_NOT_AVAILABLE` ✅ |
+| UPS | `RATE_NOT_FOUND` | `CARRIER_NOT_AVAILABLE` ✅ |
+
+(b) CN 向け（PM0015 / Damaged sealed box / postalCode=100000）:
+| キャリア | 結果 |
+|----------|------|
+| FedEx | ✅ 算出成功 |
+| DHL | ✅ 算出成功 |
+| UPS | ✅ 算出成功 |
+
+**その他確認結果:**
+| 手順 | 結果 |
+|------|------|
+| build:gas（typecheck + build） | ✅ 通過 |
+| getDeployedSha | ✅ `3032a08...`（origin/develop HEAD と一致） |
+| runCoreSchemaConformanceAudit | ✅ 総不一致 0 → PASS |
+| CI（4件） | ✅ 全件 success |
+
+---
+
 ## 次フェーズ課題
 
 **【PO判断待ち】連絡手段（contact_method）のフロントエンド未実装**
