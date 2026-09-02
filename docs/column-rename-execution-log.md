@@ -1205,3 +1205,63 @@
 ### revert SHA
 - バックアップシート: 見積もり明細_backup_20260902（スプレッドシート内に保持）
 - GAS revert: devBackupQuoteLinesSheet のバックアップから手動復元
+
+---
+
+## Sheet 9: オーダー明細（ORDER_LINES）— 12列
+
+**実行日**: 2026-09-02  
+**PR-1**: #970 (mergedAt: 2026-09-02T12:49:40Z)
+
+### PR-1 変更ファイル
+
+- `src/00_CoreSchemaRegistry.js`: ORDER_LINES 12列物理名を英語化
+- `src/99_DevRenameOrderLinesColumns.js`: devBackupOrderLinesSheet / devRenameOrderLinesColumns 追加
+- `src/99_SqlReadinessCheck.js`: pkColumn '明細ID' → 'order_line_id'
+- `src/99_DevPostgresMigrationAnalysis.js`: pkHeader/refCol 更新
+- `src/99_DevReferenceIntegrityAudit.js`: refCol 'オーダーID' → 'order_id'
+- `src/99_InvBookRecon.js`: _npnFindCol バリアントに order_line_id / line_number 追加
+
+### バックアップ実行結果（`clasp run devBackupOrderLinesSheet`）
+```
+{
+  backupName: 'オーダー明細_backup_20260902',
+  originalRows: 26,
+  originalCols: 12,
+  headers: [
+    '明細ID', 'オーダーID', '行番号', 'カテゴリ',
+    '商品名', '状態', 'SKU', '数量',
+    '単価', '小計', '商品ID', 'コンディション'
+  ]
+}
+```
+
+### シートリネーム実行結果（`clasp run devRenameOrderLinesColumns`）
+```
+{
+  renamedCount: 12, expectedCount: 12, skipped: [],
+  newHeaders: [
+    'order_line_id', 'order_id', 'line_number', 'category',
+    'product_name', 'status', 'sku', 'quantity',
+    'unit_price', 'subtotal', 'product_id', 'condition'
+  ],
+  rowCountBefore: 26, rowCountAfter: 26,
+  colCountBefore: 12, colCountAfter: 12
+}
+```
+
+### 事後確認（3点監査）
+- SHA: `49e2148d3de881f1b6a9e72839d77164ebbfc5e0` = origin/develop HEAD ✅
+- 監査: 総不一致 0件 → PASS ✅（ORDER_LINES: ヘッダー12/12 一致・主キー order_line_id OK）
+- dryRun: 変更あり 0件 ✅
+
+### UI確認
+- Playwright（クリーン Chromium）: Google 認証が必要なため省略
+- 代替確認: runCoreSchemaConformanceAudit で ORDER_LINES 不一致 0件 確認済み ✅
+- 判定: **PASS**
+
+**オーダー明細（ORDER_LINES）列リネーム 完了 ✅**
+
+### revert SHA
+- バックアップシート: オーダー明細_backup_20260902（スプレッドシート内に保持）
+- GAS revert: devBackupOrderLinesSheet のバックアップから手動復元
