@@ -1703,3 +1703,72 @@ export function upsertCoreShipmentLine(payload: UpsertShipmentLinePayload): Prom
       .upsertCoreShipmentLineForFrontend(getStoredSessionId(), payload);
   });
 }
+
+// ─── Tax Number Types ─────────────────────────────────────────────────────────
+
+export type TaxNumberTypeRecord = {
+  typeId: string;
+  nameJa: string;
+  nameEn: string;
+  description: string;
+  targetCountry: string;
+  isActive: string;
+};
+
+export function getCoreTaxNumberTypes(): Promise<TaxNumberTypeRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as TaxNumberTypeRecord[]))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getCoreTaxNumberTypesForFrontend(getStoredSessionId());
+  });
+}
+
+// ─── Customer Tax Numbers ─────────────────────────────────────────────────────
+
+export type CustomerTaxNumberRecord = {
+  taxNumberId: string;
+  customerId: string;
+  typeId: string;
+  typeNameJa: string;
+  typeNameEn: string;
+  number: string;
+  isActive: string;
+};
+
+export function getCoreCustomerTaxNumbers(customerId: string): Promise<CustomerTaxNumberRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as CustomerTaxNumberRecord[]))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getCoreCustomerTaxNumbersForFrontend(getStoredSessionId(), customerId);
+  });
+}
+
+export type UpsertCustomerTaxNumberPayload = {
+  taxNumberId?: string;
+  customerId: string;
+  typeId: string;
+  number: string;
+  isActive?: string;
+};
+
+export type UpsertCustomerTaxNumberResult = {
+  success: true;
+  taxNumberId: string;
+};
+
+export function upsertCoreCustomerTaxNumber(payload: UpsertCustomerTaxNumberPayload): Promise<UpsertCustomerTaxNumberResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as UpsertCustomerTaxNumberResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .upsertCoreCustomerTaxNumberForFrontend(getStoredSessionId(), payload);
+  });
+}

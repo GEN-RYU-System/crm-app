@@ -944,6 +944,25 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     upsertCoreShipmentLineForFrontend(_s: string | null, _payload: unknown) {
       succeed({ success: true, shipmentLineId: 'SL-0001', savedToProductMaster: false, failedStep: null });
     },
+    getCoreTaxNumberTypesForFrontend(_s: string | null) {
+      succeed([
+        { typeId: 'US_TAX_ID', nameJa: '米国納税者番号（EIN/SSN）', nameEn: 'US Tax ID (EIN/SSN)', description: '法人はEIN、個人はSSN。米国の正式通関で必須', targetCountry: 'アメリカ', isActive: 'TRUE' },
+        { typeId: 'TAX_ID',    nameJa: '納税者ID番号',              nameEn: 'Tax ID',              description: 'EORIが不要な国で代替として使用',        targetCountry: '汎用',       isActive: 'TRUE' },
+        { typeId: 'VAT',       nameJa: 'VAT番号',                   nameEn: 'VAT Number',          description: 'EU域内の付加価値税登録番号',           targetCountry: 'EU',         isActive: 'TRUE' },
+        { typeId: 'EORI',      nameJa: 'EORI番号',                  nameEn: 'EORI Number',         description: 'EU・英国の通関で使用',                targetCountry: 'EU・英国',    isActive: 'TRUE' },
+        { typeId: 'ABN',       nameJa: '事業者番号',                nameEn: 'Australian Business Number', description: 'オーストラリアの事業者番号', targetCountry: 'オーストラリア', isActive: 'TRUE' },
+        { typeId: 'PCCC',      nameJa: '個人通関固有符号',          nameEn: 'Personal Customs Clearance Code', description: '韓国の個人通関固有符号', targetCountry: '韓国',        isActive: 'TRUE' },
+        { typeId: 'RFC',       nameJa: '納税者番号',                nameEn: 'Registro Federal de Contribuyentes', description: 'メキシコの納税者番号', targetCountry: 'メキシコ',     isActive: 'TRUE' },
+      ]);
+    },
+    getCoreCustomerTaxNumbersForFrontend(_s: string | null, _customerId: string) {
+      succeed([
+        { taxNumberId: 'CTN-0001', customerId: _customerId, typeId: 'US_TAX_ID', typeNameJa: '米国納税者番号（EIN/SSN）', typeNameEn: 'US Tax ID (EIN/SSN)', number: '12-3456789', isActive: 'TRUE' },
+      ]);
+    },
+    upsertCoreCustomerTaxNumberForFrontend(_s: string | null, _payload: unknown) {
+      succeed({ success: true, taxNumberId: 'CTN-0002' });
+    },
   };
 
   return new Proxy(chain, {

@@ -29,14 +29,15 @@ export type CustomerListColumnKey = Exclude<keyof CustomerListRow, 'customerId' 
 export type CustomerSortKey = CustomerListColumnKey;
 export type CustomerSortDirection = 'ascending' | 'descending';
 export type CustomerSort = { key: CustomerSortKey; direction: CustomerSortDirection };
-export type CustomerDetailTab = 'basic' | 'shipping' | 'payment';
+export type CustomerDetailTab = 'basic' | 'shipping' | 'payment' | 'taxNumbers';
 
 export const CUSTOMER_ROUTE_SEGMENTS = { detail: ':customerId' } as const;
 export const CUSTOMER_LIST_INITIAL_SORT: CustomerSort = { key: 'customerName', direction: 'ascending' };
 export const CUSTOMER_DETAIL_TABS: readonly { key: CustomerDetailTab; label: string }[] = [
-  { key: 'basic', label: customersCopy.tabs.basic },
-  { key: 'shipping', label: customersCopy.tabs.shipping },
-  { key: 'payment', label: customersCopy.tabs.payment }
+  { key: 'basic',      label: customersCopy.tabs.basic },
+  { key: 'shipping',   label: customersCopy.tabs.shipping },
+  { key: 'payment',    label: customersCopy.tabs.payment },
+  { key: 'taxNumbers', label: customersCopy.tabs.taxNumbers }
 ];
 export const CUSTOMER_LIST_COLUMNS: readonly { key: CustomerListColumnKey; label: string; cellAlignment: DataTableCellAlignment; sortable: boolean }[] = [
   { key: 'customerName', label: customersCopy.columns.customerName, cellAlignment: 'center', sortable: true },
