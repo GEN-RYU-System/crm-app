@@ -10,8 +10,8 @@ const DEV_CUSTOMER_ORDER_ANALYTICS_FAILED =
 const DEV_CUSTOMER_ORDER_ANALYTICS_SCHEMAS = {
   leads: { sheet: 'リード管理', headers: ['lead_id'] },
   customers: { sheet: '顧客マスタ', headers: ['源流リードID', '顧客ID'] },
-  orders: { sheet: 'オーダー管理', headers: ['オーダーID', '顧客ID', '受注日', '請求総額'] },
-  lines: { sheet: 'オーダー明細', headers: ['オーダーID', '商品ID'] },
+  orders: { sheet: 'オーダー管理', headers: ['order_id', 'customer_id', 'order_date', 'invoice_total'] },
+  lines: { sheet: 'オーダー明細', headers: ['order_id', 'product_id'] },
   products: { sheet: '商品マスタ同期', headers: ['product_id'] }
 };
 
@@ -41,13 +41,13 @@ function buildDevCustomerOrderAnalyticsReadiness(spreadsheet) {
     lines: readDevCustomerOrderAnalyticsSheet(spreadsheet, DEV_CUSTOMER_ORDER_ANALYTICS_SCHEMAS.lines),
     products: readDevCustomerOrderAnalyticsSheet(spreadsheet, DEV_CUSTOMER_ORDER_ANALYTICS_SCHEMAS.products)
   };
-  const leadIds = getDevCustomerOrderAnalyticsIds(data.leads, 'リードID');
+  const leadIds = getDevCustomerOrderAnalyticsIds(data.leads, 'lead_id');
   const customerIds = getDevCustomerOrderAnalyticsIds(data.customers, '顧客ID');
-  const orderIds = getDevCustomerOrderAnalyticsIds(data.orders, 'オーダーID');
+  const orderIds = getDevCustomerOrderAnalyticsIds(data.orders, 'order_id');
   const productIds = getDevCustomerOrderAnalyticsIds(data.products, 'product_id');
   const leadToCustomer = auditDevCustomerOrderAnalyticsCustomerSources(data.customers, leadIds);
   const orderRows = data.orders.rows.filter(row =>
-    !isDevCustomerOrderAnalyticsEmpty(getDevCustomerOrderAnalyticsValue(data.orders, row, 'オーダーID'))
+    !isDevCustomerOrderAnalyticsEmpty(getDevCustomerOrderAnalyticsValue(data.orders, row, 'order_id'))
   );
   const customerToOrder = auditDevCustomerOrderAnalyticsOrderCustomers(data.orders, orderRows, customerIds);
   const orderAnalyticsData = auditDevCustomerOrderAnalyticsOrderData(data.orders, orderRows, customerIds);
@@ -152,7 +152,7 @@ function auditDevCustomerOrderAnalyticsOrderCustomers(orders, orderRows, custome
   orderRows.forEach(row => {
     counts.orderRecordCount += 1;
     countDevCustomerOrderAnalyticsReference(
-      counts, getDevCustomerOrderAnalyticsValue(orders, row, '顧客ID'), customerIds
+      counts, getDevCustomerOrderAnalyticsValue(orders, row, 'customer_id'), customerIds
     );
   });
   return counts;
@@ -166,9 +166,9 @@ function auditDevCustomerOrderAnalyticsOrderLines(lines, orderIds, productIds) {
   lines.rows.forEach(row => {
     orderCounts.orderLineRecordCount += 1;
     countDevCustomerOrderAnalyticsReference(
-      orderCounts, getDevCustomerOrderAnalyticsValue(lines, row, 'オーダーID'), orderIds
+      orderCounts, getDevCustomerOrderAnalyticsValue(lines, row, 'order_id'), orderIds
     );
-    const productId = getDevCustomerOrderAnalyticsValue(lines, row, '商品ID');
+    const productId = getDevCustomerOrderAnalyticsValue(lines, row, 'product_id');
     if (isDevCustomerOrderAnalyticsEmpty(productId)) {
       productIdEmptyLineCount += 1;
     } else if (productIds.has(String(productId))) {
@@ -193,12 +193,12 @@ function auditDevCustomerOrderAnalyticsOrderData(orders, orderRows, customerIds)
   let invalidOrderAmountCount = 0;
   let fullyValidCustomerDateAmountOrderCount = 0;
   orderRows.forEach(row => {
-    const customerId = getDevCustomerOrderAnalyticsValue(orders, row, '顧客ID');
+    const customerId = getDevCustomerOrderAnalyticsValue(orders, row, 'customer_id');
     const dateState = getDevCustomerOrderAnalyticsDateState(
-      getDevCustomerOrderAnalyticsValue(orders, row, '受注日')
+      getDevCustomerOrderAnalyticsValue(orders, row, 'order_date')
     );
     const amountState = getDevCustomerOrderAnalyticsNumberState(
-      getDevCustomerOrderAnalyticsValue(orders, row, '請求総額')
+      getDevCustomerOrderAnalyticsValue(orders, row, 'invoice_total')
     );
     if (dateState === 'valid') validOrderDateCount += 1;
     if (dateState === 'empty') emptyOrderDateCount += 1;
@@ -226,11 +226,11 @@ function auditDevCustomerOrderAnalyticsOrderData(orders, orderRows, customerIds)
 function auditDevCustomerOrderAnalyticsCustomerReadiness(customerIds, orders, orderRows) {
   const customersWithValidOrderDate = new Set();
   orderRows.forEach(row => {
-    const customerId = getDevCustomerOrderAnalyticsValue(orders, row, '顧客ID');
+    const customerId = getDevCustomerOrderAnalyticsValue(orders, row, 'customer_id');
     if (
       customerIds.has(String(customerId)) &&
       getDevCustomerOrderAnalyticsDateState(
-        getDevCustomerOrderAnalyticsValue(orders, row, '受注日')
+        getDevCustomerOrderAnalyticsValue(orders, row, 'order_date')
       ) === 'valid'
     ) {
       customersWithValidOrderDate.add(String(customerId));

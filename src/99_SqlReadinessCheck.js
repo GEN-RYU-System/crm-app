@@ -20,7 +20,7 @@ var SQL_CHECK_TARGETS = [
   { sheetName: '顧客マスタ',         pkColumn: '顧客ID' },
   { sheetName: '配送先マスタ',       pkColumn: '配送先ID' },
   { sheetName: '支払先マスタ',       pkColumn: '支払先ID' },
-  { sheetName: 'オーダー管理',       pkColumn: 'オーダーID' },
+  { sheetName: 'オーダー管理',       pkColumn: 'order_id' },
   { sheetName: 'オーダー明細',       pkColumn: 'order_line_id' },
   { sheetName: '見積もり管理',       pkColumn: '見積書ID' },
   { sheetName: '見積もり明細',       pkColumn: 'quote_line_id' },

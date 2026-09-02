@@ -23,9 +23,9 @@ const DEV_REFERENCE_INTEGRITY_RELATIONSHIPS = [
   ['顧客マスタ', '顧客ID', 'オーダー管理', '顧客ID', 'REQUIRED'],
   ['リード管理', 'リードID', '顧客マスタ', '源流リードID', 'REQUIRED'],
   ['リード管理', 'リードID', 'オーダー管理', '源流リードID', 'REQUIRED'],
-  ['オーダー管理', 'オーダーID', 'オーダー明細', 'order_id', 'REQUIRED'],
-  ['オーダー管理', 'オーダーID', '発送', 'オーダーID', 'REQUIRED'],
-  ['オーダー管理', 'オーダーID', '仕入れ', 'オーダーID', 'OPTIONAL'],
+  ['オーダー管理', 'order_id', 'オーダー明細', 'order_id', 'REQUIRED'],
+  ['オーダー管理', 'order_id', '発送', 'order_id', 'REQUIRED'],
+  ['オーダー管理', 'order_id', '仕入れ', 'order_id', 'OPTIONAL'],
   ['担当者マスタ', '担当者ID', 'リード管理', '担当者ID', 'REQUIRED'],
   ['担当者マスタ', '担当者ID', 'オーダー管理', '受注担当ID', 'REQUIRED'],
   ['担当者マスタ', '担当者ID', 'オーダー管理', '営業担当ID', 'REQUIRED'],
@@ -36,7 +36,7 @@ const DEV_REFERENCE_INTEGRITY_RELATIONSHIPS = [
   // 見積もり管理
   ['リード管理',   'リードID',   '見積もり管理', 'リードID',   'REQUIRED'],
   ['顧客マスタ',   '顧客ID',     '見積もり管理', '顧客ID',     'OPTIONAL'],
-  ['オーダー管理', 'オーダーID', '見積もり管理', 'オーダーID', 'OPTIONAL'],
+  ['オーダー管理', 'order_id', '見積もり管理', 'オーダーID', 'OPTIONAL'],
   ['担当者マスタ', '担当者ID',   '見積もり管理', '担当者ID',   'REQUIRED'],
   // 見積もり明細
   ['見積もり管理', '見積書ID', '見積もり明細', 'quote_id', 'REQUIRED'],
