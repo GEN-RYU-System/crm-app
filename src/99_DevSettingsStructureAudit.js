@@ -40,11 +40,9 @@ function auditSettingsSheetStructure() {
     var fetchRows = Math.min(lastRow - 1, 50);
     var rawData = sheet.getRange(2, 1, fetchRows, lastCol).getValues();
 
-    // 「SETTING_KEY」列のインデックスを特定（縦持ち構造を想定）
-    var keyColIdx = dataHeaders.indexOf('SETTING_KEY');
-    if (keyColIdx === -1) keyColIdx = dataHeaders.indexOf('設定キー');
-    var typeColIdx = dataHeaders.indexOf('VALUE_TYPE');
-    if (typeColIdx === -1) typeColIdx = dataHeaders.indexOf('値の型');
+    // 「setting_key」列のインデックスを特定
+    var keyColIdx = dataHeaders.indexOf('setting_key');
+    var typeColIdx = dataHeaders.indexOf('value_type');
 
     rawData.forEach(function(row, rowIdx) {
       var record = {};
@@ -58,7 +56,7 @@ function auditSettingsSheetStructure() {
             isSecret = true;
           }
         }
-        if (isSecret && header === 'SETTING_VALUE' || header === '設定値') {
+        if (isSecret && header === 'setting_value') {
           record[header] = (val !== '' && val !== null && val !== undefined)
             ? '値あり（機密のため非表示）' : '';
         } else {
