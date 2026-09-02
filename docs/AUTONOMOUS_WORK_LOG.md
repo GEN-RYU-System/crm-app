@@ -2,6 +2,27 @@
 
 ---
 
+### 2026-09-02 発送タブに発送明細入力欄を追加（PR-AA3）
+
+**revert 手順**: `gh pr revert 961` → `gh pr revert <work-log-pr>`
+
+- PR #961 / `c772331e264423e8c95352aec254319dca22ceca` / mergedAt: 2026-09-02T11:50:47Z
+- getDeployedSha: `c772331e264423e8c95352aec254319dca22ceca` / deployedAt: 2026-09-02T11:51:35.032Z
+- Deploy to DEV: conclusion: success
+- ?preview: 【未確認】worktree 環境のため `npm run dev` + ブラウザでの動作確認は未実施
+- runCoreSchemaConformanceAudit: SHIPMENT_LINES 0件 ✅ / COUNTRIES 0件 ✅ / SHIPMENTS 23件不一致は既存問題（本PRとは無関係）
+
+**変更内容**:
+- `src/28_CoreExportMasterApi.js`: `getCoreCountriesForFrontend` 追加（COUNTRIES テーブル read-only）
+- `frontend/src/gas/client.ts`: CountryRecord / getCoreCountries / ShipmentLineRecord / getCoreShipmentLines / ProductExportDefaults / getProductExportDefaults / UpsertShipmentLinePayload / UpsertShipmentLineResult / upsertCoreShipmentLine 追加
+- `frontend/src/gas/types.d.ts`: 上記4関数のシグネチャ追加
+- `frontend/src/preview/gasRunnerMock.ts`: 対応モック実装追加
+- `frontend/src/content/ja/salesOrders.ts`: 発送明細セクションのコピー追加
+- `frontend/src/pages/sales-orders/SalesOrderDetailPage.tsx`: 発送明細セクション追加（明細一覧テーブル・追加フォーム・商品選択時自動入力・既存明細クリック編集）
+- `frontend/src/pages/sales-orders/SalesOrderDetailPage.css`: 発送明細用スタイル追加
+
+---
+
 ### 2026-09-02 ログインセッション 列名リネーム（Phase 2 — 5シート目）
 
 **revert SHA（PR-1）**: `7afc98c5ab6519f8a28cdfce8849d818100b5393` (PR-1 squash merge後の develop HEAD)
