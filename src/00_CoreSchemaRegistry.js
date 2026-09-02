@@ -657,6 +657,38 @@ const CORE_SCHEMA_V1_TABLES = {
     ]),
     primaryKey: 'OPTION_ID',
     referenceIds: []
+  },
+  TAX_NUMBER_TYPES: {
+    sheetName: '番号種別マスタ', canonicalName: '番号種別マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['TYPE_ID',        '番号種別ID'],
+      ['NAME_JA',        '名称（日本語）'],
+      ['NAME_EN',        '名称（英語）'],
+      ['DESCRIPTION',    '説明'],
+      ['TARGET_COUNTRY', '対象国'],
+      ['ACTIVE',         '有効'],
+      ['REGISTERED_AT',  '登録日'],
+      ['UPDATED_AT',     '更新日']
+    ]),
+    primaryKey: 'TYPE_ID',
+    referenceIds: []
+  },
+  CUSTOMER_TAX_NUMBERS: {
+    sheetName: '顧客税務番号', canonicalName: '顧客税務番号', aliases: [], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['TAX_NUMBER_ID', '税務番号ID'],
+      ['CUSTOMER_ID',   '顧客ID'],
+      ['TYPE_ID',       '番号種別ID'],
+      ['NUMBER',        '番号'],
+      ['ACTIVE',        '有効'],
+      ['REGISTERED_AT', '登録日'],
+      ['UPDATED_AT',    '更新日']
+    ]),
+    primaryKey: 'TAX_NUMBER_ID',
+    referenceIds: [
+      { headerKey: 'CUSTOMER_ID', targetTableKey: 'CUSTOMERS' },
+      { headerKey: 'TYPE_ID',     targetTableKey: 'TAX_NUMBER_TYPES' }
+    ]
   }
 };
 
