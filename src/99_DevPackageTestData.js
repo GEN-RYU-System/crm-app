@@ -207,11 +207,24 @@ function devTestShippingFeeForLines(payload) {
     ? results.filter(function(r) { return !r.error; }).length
     : 0;
 
+  // キャリアごとの成否と理由コード（金額は含まない）
+  var carrierSummary = Array.isArray(results)
+    ? results.map(function(r) {
+        return {
+          carrierId:   r.carrierId,
+          carrierName: r.carrierName,
+          ok:          !r.error,
+          error:       r.error || null
+        };
+      })
+    : [];
+
   return JSON.stringify({
-    success:       carriersCount > 0,
-    boxCount:      built.boxes.length,
-    carriersCount: carriersCount,
-    successCount:  successCount,
-    skipped:       built.skipped
+    success:        carriersCount > 0 && successCount > 0,
+    boxCount:       built.boxes.length,
+    carriersCount:  carriersCount,
+    successCount:   successCount,
+    carrierSummary: carrierSummary,
+    skipped:        built.skipped
   });
 }
