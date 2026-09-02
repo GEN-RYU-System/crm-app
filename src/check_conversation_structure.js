@@ -121,11 +121,12 @@ function analyzeConversationLanguages() {
   }
 
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const originalTextColIndex = headers.indexOf('原文');
-  const translatedTextColIndex = headers.indexOf('翻訳文');
+  // 新旧列名両対応
+  const originalTextColIndex = headers.indexOf('original_text') !== -1 ? headers.indexOf('original_text') : headers.indexOf('原文');
+  const translatedTextColIndex = headers.indexOf('translated_text') !== -1 ? headers.indexOf('translated_text') : headers.indexOf('翻訳文');
 
   if (originalTextColIndex === -1 || translatedTextColIndex === -1) {
-    throw new Error('原文または翻訳文の列が見つかりません');
+    throw new Error('original_text/原文 または translated_text/翻訳文 の列が見つかりません');
   }
 
   // サンプルデータを分析（最新10件）

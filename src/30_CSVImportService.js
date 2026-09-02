@@ -549,12 +549,13 @@ function importConversationLogCSV(csvContent, options) {
       try {
         const rowNumber = index + 2;
 
-        // 必須項目チェック
-        if (!row['原文'] || row['原文'].trim() === '') {
+        // 必須項目チェック（新旧列名両対応）
+        const originalText = row['original_text'] || row['原文'];
+        if (!originalText || originalText.trim() === '') {
           results.errors.push({
             row: rowNumber,
             type: 'MISSING_REQUIRED',
-            message: '原文は必須項目です'
+            message: '原文(original_text)は必須項目です'
           });
           return;
         }
@@ -584,8 +585,8 @@ function importConversationLogCSV(csvContent, options) {
           leadId = matchResult.leadId;
         }
 
-        // ログID自動生成
-        let logId = row['ログID'];
+        // ログID自動生成（新旧列名両対応）
+        let logId = row['log_id'] || row['ログID'];
         if (!logId || logId.trim() === '') {
           logId = generateNextLogId();
           results.generatedIds.push(logId);
@@ -594,13 +595,14 @@ function importConversationLogCSV(csvContent, options) {
         // 記録日時自動設定
         const recordDate = new Date();
 
-        // スプレッドシートに書き込むデータを準備
+        // スプレッドシートに書き込むデータを準備（新旧列名両対応）
         const rowData = headers.map(header => {
-          if (header === 'ログID') return logId;
-          if (header === 'リードID') return leadId;
-          if (header === '記録日時') return recordDate;
-          if (header === '記録者ID') return currentUser.email;
+          if (header === 'log_id'    || header === 'ログID')    return logId;
+          if (header === 'lead_id'   || header === 'リードID')  return leadId;
+          if (header === 'recorded_at' || header === '記録日時') return recordDate;
+          if (header === 'recorded_by' || header === '記録者ID') return currentUser.email;
 
+          // 新列名でCSV行を参照し、なければ旧列名でフォールバック
           return row[header] || '';
         });
 

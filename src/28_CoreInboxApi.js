@@ -190,11 +190,12 @@ function buildInboxConversations_(spreadsheet) {
   if (convSheet) {
     var convData    = convSheet.getDataRange().getValues();
     var convHeaders = convData[0];
-    var leadIdIdx   = convHeaders.indexOf('lead_id');
-    var datetimeIdx = convHeaders.indexOf('日時');
-    var bodyIdx     = convHeaders.indexOf('原文');
-    var dirIdx      = convHeaders.indexOf('送受信');
-    var logIdIdx    = convHeaders.indexOf('ログID');
+    var ci_         = resolveConvIdx_(convHeaders);
+    var leadIdIdx   = ci_.leadIdIdx;
+    var datetimeIdx = ci_.datetimeIdx;
+    var bodyIdx     = ci_.bodyIdx;
+    var dirIdx      = ci_.dirIdx;
+    var logIdIdx    = ci_.logIdIdx;
 
     if (leadIdIdx !== -1) {
       for (var r = 1; r < convData.length; r++) {
@@ -286,13 +287,14 @@ function readInboxMessages_(spreadsheet, leadId) {
 
   var convData    = convSheet.getDataRange().getValues();
   var convHeaders = convData[0];
-  var leadIdIdx   = convHeaders.indexOf('lead_id');
+  var ci_         = resolveConvIdx_(convHeaders);
+  var leadIdIdx   = ci_.leadIdIdx;
   if (leadIdIdx === -1) return [];
 
-  var logIdIdx    = convHeaders.indexOf('ログID');
-  var datetimeIdx = convHeaders.indexOf('日時');
-  var bodyIdx     = convHeaders.indexOf('原文');
-  var dirIdx      = convHeaders.indexOf('送受信');
+  var logIdIdx    = ci_.logIdIdx;
+  var datetimeIdx = ci_.datetimeIdx;
+  var bodyIdx     = ci_.bodyIdx;
+  var dirIdx      = ci_.dirIdx;
 
   var messages = [];
   for (var r = 1; r < convData.length; r++) {
@@ -330,6 +332,35 @@ function resolveConversationLogSheet_(spreadsheet) {
   return spreadsheet.getSheetByName(CONFIG.SHEETS.CONVERSATION_LOG)
       || spreadsheet.getSheetByName('会話ログ（商談用）')
       || null;
+}
+
+/**
+ * 会話ログヘッダー配列から列インデックスを解決する（新旧両対応）。
+ * PR-1 フォールバック: 新列名が見つからない場合に旧列名で再検索する。
+ * PR-3 でフォールバック行を削除する。
+ * @param {Array} headers - シート1行目の値配列
+ * @returns {{ leadIdIdx, logIdIdx, datetimeIdx, bodyIdx, dirIdx, speakerIdx, origLangIdx, translatedIdx, recorderIdx, recAtIdx, analysisIdx }}
+ */
+function resolveConvIdx_(headers) {
+  function idx(newName, oldName) {
+    var i = headers.indexOf(newName);
+    if (i !== -1) return i;
+    // PR-1 フォールバック（PR-3 で削除予定）
+    return oldName ? headers.indexOf(oldName) : -1;
+  }
+  return {
+    leadIdIdx:    idx('lead_id'),           // lead_id に旧名なし（以前から英語）
+    logIdIdx:     idx('log_id',          'ログID'),
+    datetimeIdx:  idx('occurred_at',     '日時'),
+    bodyIdx:      idx('original_text',   '原文'),
+    dirIdx:       idx('direction',       '送受信'),
+    speakerIdx:   idx('speaker',         '発言者'),
+    origLangIdx:  idx('original_language', '原文言語'),
+    translatedIdx: idx('translated_text', '翻訳文'),
+    recorderIdx:  idx('recorded_by',     '記録者ID'),
+    recAtIdx:     idx('recorded_at',     '記録日時'),
+    analysisIdx:  idx('deal_analysis',   '商談解析')
+  };
 }
 
 /**
@@ -383,11 +414,12 @@ function getInboxBulkInitialLoad(sessionId, maxConversations, maxMessagesPerConv
   if (convSheet) {
     var convData    = convSheet.getDataRange().getValues();
     var convHeaders = convData[0];
-    var leadIdIdx   = convHeaders.indexOf('lead_id');
-    var logIdIdx    = convHeaders.indexOf('ログID');
-    var datetimeIdx = convHeaders.indexOf('日時');
-    var bodyIdx     = convHeaders.indexOf('原文');
-    var dirIdx      = convHeaders.indexOf('送受信');
+    var ci_         = resolveConvIdx_(convHeaders);
+    var leadIdIdx   = ci_.leadIdIdx;
+    var logIdIdx    = ci_.logIdIdx;
+    var datetimeIdx = ci_.datetimeIdx;
+    var bodyIdx     = ci_.bodyIdx;
+    var dirIdx      = ci_.dirIdx;
 
     if (leadIdIdx !== -1) {
       for (var r = 1; r < convData.length; r++) {
@@ -589,8 +621,9 @@ function measureInboxScale() {
   if (convSheet) {
     var convData  = convSheet.getDataRange().getValues();
     var headers   = convData[0];
-    var leadIdIdx = headers.indexOf('lead_id');
-    var bodyIdx   = headers.indexOf('原文');
+    var ci_ms_    = resolveConvIdx_(headers);
+    var leadIdIdx = ci_ms_.leadIdIdx;
+    var bodyIdx   = ci_ms_.bodyIdx;
 
     if (leadIdIdx !== -1) {
       for (var r = 1; r < convData.length; r++) {
@@ -675,11 +708,12 @@ function measureInboxBulkTiming() {
       if (convSheet) {
         var convData    = convSheet.getDataRange().getValues();
         var convHeaders = convData[0];
-        var leadIdIdx   = convHeaders.indexOf('lead_id');
-        var logIdIdx    = convHeaders.indexOf('ログID');
-        var datetimeIdx = convHeaders.indexOf('日時');
-        var bodyIdx     = convHeaders.indexOf('原文');
-        var dirIdx      = convHeaders.indexOf('送受信');
+        var ci_bt_      = resolveConvIdx_(convHeaders);
+        var leadIdIdx   = ci_bt_.leadIdIdx;
+        var logIdIdx    = ci_bt_.logIdIdx;
+        var datetimeIdx = ci_bt_.datetimeIdx;
+        var bodyIdx     = ci_bt_.bodyIdx;
+        var dirIdx      = ci_bt_.dirIdx;
         if (leadIdIdx !== -1) {
           for (var r = 1; r < convData.length; r++) {
             var row       = convData[r];
@@ -866,11 +900,18 @@ function seedInboxTestData100() {
 
   var convData  = convSheet.getDataRange().getValues();
   var convHdrs  = convData[0];
-  var cCol = function(name) { return convHdrs.indexOf(name); };
+  var ci_seed_  = resolveConvIdx_(convHdrs);
+  // PR-1 両対応: resolveConvIdx_ で新旧フォールバック済みの列インデックスを使う
+  var cLeadId   = ci_seed_.leadIdIdx;
+  var cLogId    = ci_seed_.logIdIdx;
+  var cDatetime = ci_seed_.datetimeIdx;
+  var cDir      = ci_seed_.dirIdx;
+  var cSpeaker  = ci_seed_.speakerIdx;
+  var cBody     = ci_seed_.bodyIdx;
 
   // 後ろから削除（行番号がズレないよう逆順）
   for (var dr = convData.length - 1; dr >= 1; dr--) {
-    if (String(convData[dr][cCol('リードID')] || '').trim() === TEST_LEAD_ID) {
+    if (cLeadId !== -1 && String(convData[dr][cLeadId] || '').trim() === TEST_LEAD_ID) {
       convSheet.deleteRow(dr + 1);
     }
   }
@@ -886,12 +927,12 @@ function seedInboxTestData100() {
     var body    = 'テストメッセージ ' + nStr + ' / 100';
 
     var row = new Array(convHdrs.length).fill('');
-    if (cCol('ログID')    !== -1) row[cCol('ログID')]    = 'LOG-TEST-' + nStr;
-    if (cCol('リードID')  !== -1) row[cCol('リードID')]  = TEST_LEAD_ID;
-    if (cCol('日時')      !== -1) row[cCol('日時')]      = dateStr;
-    if (cCol('送受信')    !== -1) row[cCol('送受信')]    = dir;
-    if (cCol('発言者')    !== -1) row[cCol('発言者')]    = dir === '受信' ? 'テスト顧客' : 'テスト担当者';
-    if (cCol('原文')      !== -1) row[cCol('原文')]      = body;
+    if (cLogId    !== -1) row[cLogId]    = 'LOG-TEST-' + nStr;
+    if (cLeadId   !== -1) row[cLeadId]   = TEST_LEAD_ID;
+    if (cDatetime !== -1) row[cDatetime] = dateStr;
+    if (cDir      !== -1) row[cDir]      = dir;
+    if (cSpeaker  !== -1) row[cSpeaker]  = dir === '受信' ? 'テスト顧客' : 'テスト担当者';
+    if (cBody     !== -1) row[cBody]     = body;
     newRows.push(row);
   }
 
@@ -931,11 +972,12 @@ function dryRunInboxBulkLoad() {
   if (convSheet) {
     var convData    = convSheet.getDataRange().getValues();
     var convHeaders = convData[0];
-    var leadIdIdx   = convHeaders.indexOf('lead_id');
-    var logIdIdx    = convHeaders.indexOf('ログID');
-    var datetimeIdx = convHeaders.indexOf('日時');
-    var bodyIdx     = convHeaders.indexOf('原文');
-    var dirIdx      = convHeaders.indexOf('送受信');
+    var ci_dbl_     = resolveConvIdx_(convHeaders);
+    var leadIdIdx   = ci_dbl_.leadIdIdx;
+    var logIdIdx    = ci_dbl_.logIdIdx;
+    var datetimeIdx = ci_dbl_.datetimeIdx;
+    var bodyIdx     = ci_dbl_.bodyIdx;
+    var dirIdx      = ci_dbl_.dirIdx;
     if (leadIdIdx !== -1) {
       for (var r = 1; r < convData.length; r++) {
         var row       = convData[r];

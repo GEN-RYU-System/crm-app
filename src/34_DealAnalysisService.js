@@ -123,12 +123,13 @@ function getConversationHistory(leadId, currentLogId) {
 
   const data = logSheet.getDataRange().getValues();
   const headers = data[0];
-  const logIdIdx = headers.indexOf('ログID');
+  // 新旧列名両対応
+  const logIdIdx = headers.indexOf('log_id') !== -1 ? headers.indexOf('log_id') : headers.indexOf('ログID');
   const leadIdIdx = headers.indexOf('lead_id');
-  const dateIdx = headers.indexOf('日時');
-  const directionIdx = headers.indexOf('送受信');
-  const textIdx = headers.indexOf('翻訳文');
-  const originalIdx = headers.indexOf('原文');
+  const dateIdx = headers.indexOf('occurred_at') !== -1 ? headers.indexOf('occurred_at') : headers.indexOf('日時');
+  const directionIdx = headers.indexOf('direction') !== -1 ? headers.indexOf('direction') : headers.indexOf('送受信');
+  const textIdx = headers.indexOf('translated_text') !== -1 ? headers.indexOf('translated_text') : headers.indexOf('翻訳文');
+  const originalIdx = headers.indexOf('original_text') !== -1 ? headers.indexOf('original_text') : headers.indexOf('原文');
 
   const history = [];
 
@@ -273,8 +274,9 @@ function saveDealAnalysis(logId, analysisText) {
 
     const data = logSheet.getDataRange().getValues();
     const headers = data[0];
-    const logIdIdx = headers.indexOf('ログID');
-    const analysisIdx = headers.indexOf('商談解析');
+    // 新旧列名両対応
+    const logIdIdx = headers.indexOf('log_id') !== -1 ? headers.indexOf('log_id') : headers.indexOf('ログID');
+    const analysisIdx = headers.indexOf('deal_analysis') !== -1 ? headers.indexOf('deal_analysis') : headers.indexOf('商談解析');
 
     if (logIdIdx === -1) {
       return {
