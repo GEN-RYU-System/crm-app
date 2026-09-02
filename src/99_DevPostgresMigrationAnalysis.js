@@ -446,7 +446,7 @@ function devPostgresMigrationAnalysisStage1() {
     { name: '選択肢マスタ',     pkHeader: null },
     { name: '発行元マスタ',     pkHeader: 'issuer_id' },
     { name: '会話ログ（商談用）', pkHeader: 'ログID' },
-    { name: 'システム設定',     pkHeader: '設定キー' }
+    { name: 'システム設定',     pkHeader: 'setting_key' }
   ];
 
   var sheetResults = [];
@@ -643,7 +643,7 @@ function devPostgresMigrationAnalysisSheets17to22() {
     { name: '選択肢マスタ',     pkHeader: null },
     { name: '発行元マスタ',     pkHeader: 'issuer_id' },
     { name: '会話ログ（商談用）', pkHeader: 'ログID' },
-    { name: 'システム設定',     pkHeader: '設定キー' }
+    { name: 'システム設定',     pkHeader: 'setting_key' }
   ];
 
   var sheetResults = sheetDefs.map(function(def) {

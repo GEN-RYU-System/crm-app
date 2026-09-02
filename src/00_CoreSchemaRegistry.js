@@ -263,11 +263,11 @@ const CORE_SCHEMA_V1_TABLES = {
   SETTINGS: {
     sheetName: 'システム設定', canonicalName: 'システム設定', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
     headers: createCoreSchemaV1Headers([
-      ['SETTING_KEY',   '設定キー'],
-      ['SETTING_VALUE', '設定値'],
-      ['VALUE_TYPE',    '値の型'],
-      ['DESCRIPTION',   '説明'],
-      ['UPDATED_AT',    '更新日時']
+      ['SETTING_KEY',   'setting_key'],
+      ['SETTING_VALUE', 'setting_value'],
+      ['VALUE_TYPE',    'value_type'],
+      ['DESCRIPTION',   'description'],
+      ['UPDATED_AT',    'updated_at']
     ]), primaryKey: 'SETTING_KEY',
     values: {
       VALUE_TYPE: {
