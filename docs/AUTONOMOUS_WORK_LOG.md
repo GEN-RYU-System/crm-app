@@ -8406,3 +8406,58 @@ clasp run runCoreSchemaConformanceAudit
 ```
 
 **revert SHA（緊急時）:** `a9a4bc6`（PR #974 squash commit = 現在の develop HEAD）
+
+---
+
+## 型混在列の解消（zip / setting_value） — 2026-09-02
+
+**目的:** PostgreSQL 移植対応。型混在列を文字列型に統一する。
+
+**対象列:**
+- 配送先マスタ.zip（number:4 / string:2 → all string）
+- 支払先マスタ.zip（number:4 / string:2 → all string）
+- システム設定.setting_value（number:2 / boolean:1 → all string）
+
+**追加スクリプト（PR #978）:**
+- `src/99_DevTypeInspect.js` — 現状確認（読み取り専用）
+- `src/99_DevTypeConvert.js` — backup / dry-run / execute / verify
+
+**実行結果:**
+
+```
+clasp run devInspectZipAndSettingValue
+→ shippingZip: 6行 (string:2 / number:4)、先頭0問題なし（10001/28001/75001/2000）
+→ paymentZip: 6行 (string:2 / number:4)、同上
+→ settingValue: 3行 (number:2 / boolean:1) — 30, true, 2
+
+clasp run devBackupTypeConvertSheets
+→ 配送先マスタ_backup_20260902_type: rowMatch=true, colMatch=true (7行 17列)
+→ 支払先マスタ_backup_20260902_type: rowMatch=true, colMatch=true (7行 16列)
+→ システム設定_backup_20260902_type: rowMatch=true, colMatch=true (4行 5列)
+
+clasp run devDryRunTypeConvert
+→ 変換対象 11件 (配送先マスタ:4件 / 支払先マスタ:4件 / システム設定:3件)
+→ boolean true → "true"（小文字）
+→ 全て想定通り
+
+clasp run devExecuteTypeConvert
+→ changed: 11件 — dry-run と一致
+
+clasp run devVerifyTypeConvert
+→ { issues: [], pass: true } ✅
+```
+
+**3点監査:**
+```
+getDeployedSha: b54947a42a2505bddcd1f933ab306e97e7013166 = origin/develop HEAD ✅
+runCoreSchemaConformanceAudit: 総不一致 0 → PASS ✅
+dryRunOrderStatusRecalculation: 変更あり 0件 ✅
+```
+
+**設計判断:**
+- boolean→"true"（小文字）: `getSettingValue` が `rawValue === 'true'` で判定済み → 互換性あり
+- zip先頭0: 変換前の数値（10001/28001/75001/2000）は先頭0なし → 変換後も情報損失なし
+- `setNumberFormat('@')` でセル書式も文字列化 → 以後数値再入力で元に戻らない
+
+**revert SHA（緊急時）:** `b54947a`（PR #978 squash commit = develop HEAD）
+**バックアップシート:** `配送先マスタ_backup_20260902_type` / `支払先マスタ_backup_20260902_type` / `システム設定_backup_20260902_type`
