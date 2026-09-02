@@ -138,7 +138,7 @@ const CORE_SCHEMA_V1_TABLES = {
   },
   SHIPMENTS: {
     sheetName: '発送', canonicalName: '発送管理', aliases: ['発送'], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
-    headers: createCoreSchemaV1Headers([['SHIPMENT_ID', '発送ID'], ['ORDER_ID', 'オーダーID'], ['BOX_NUMBER', '箱番号'], ['SHIPPING_METHOD', '発送方法'], ['SHIPPED_AT', '発送日'], ['TRACKING_NUMBER', '運送状番号'], ['LENGTH', '長さ'], ['WIDTH', '幅'], ['HEIGHT', '高さ'], ['WEIGHT', '重量'], ['ESTIMATED_SHIPPING_FEE', '見積もり送料'], ['LABEL_URL', 'ラベルURL'], ['INVOICE_URL', 'インボイスURL'], ['INSPECTION', '検品'], ['PACKING', '梱包'], ['STORAGE', '格納'], ['PICKUP_REQUEST', '集荷依頼'], ['NOTIFICATION', '通知'], ['SHIPPING_ASSIGNEE_ID', '発送担当ID'], ['NOTE', '備考'], ['REGISTERED_AT', '登録日'], ['UPDATED_AT', '更新日']]), primaryKey: 'SHIPMENT_ID',
+    headers: createCoreSchemaV1Headers([['SHIPMENT_ID', 'shipment_id'], ['ORDER_ID', 'order_id'], ['BOX_NUMBER', 'box_number'], ['SHIPPING_METHOD', 'shipping_method'], ['SHIPPED_AT', 'shipped_at'], ['TRACKING_NUMBER', 'tracking_number'], ['LENGTH', 'length'], ['WIDTH', 'width'], ['HEIGHT', 'height'], ['WEIGHT', 'weight'], ['ESTIMATED_SHIPPING_FEE', 'estimated_shipping_fee'], ['LABEL_URL', 'label_url'], ['INVOICE_URL', 'invoice_url'], ['INSPECTION', 'inspection'], ['PACKING', 'packing'], ['STORAGE', 'storage'], ['PICKUP_REQUEST', 'pickup_request'], ['NOTIFICATION', 'notification'], ['SHIPPING_ASSIGNEE_ID', 'shipping_assignee_id'], ['NOTE', 'note'], ['REGISTERED_AT', 'registered_at'], ['UPDATED_AT', 'updated_at']]), primaryKey: 'SHIPMENT_ID',
     referenceIds: [{ headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' }, { headerKey: 'SHIPPING_ASSIGNEE_ID', targetTableKey: 'STAFF' }]
   },
   PURCHASES: {
