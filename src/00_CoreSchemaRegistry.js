@@ -457,7 +457,8 @@ const CORE_SCHEMA_V1_TABLES = {
       ['MATERIAL_ID',        '素材ID'],
       ['ACTIVE',             '有効'],
       ['REGISTERED_AT',      '登録日'],
-      ['UPDATED_AT',         '更新日']
+      ['UPDATED_AT',         '更新日'],
+      ['ORIGIN_COUNTRY',     '原産国']
     ]), primaryKey: 'PRODUCT_PACKAGE_ID',
     referenceIds: [
       { headerKey: 'SHARED_PRODUCT_ID', targetTableKey: 'PRODUCTS' },
@@ -467,7 +468,8 @@ const CORE_SCHEMA_V1_TABLES = {
       { headerKey: 'PACK_PACKAGE_ID',   targetTableKey: 'PACKAGES' },
       { headerKey: 'ITEM_ID',           targetTableKey: 'ITEMS' },
       { headerKey: 'HTS_CODE_ID',       targetTableKey: 'HTS_CODES' },
-      { headerKey: 'MATERIAL_ID',       targetTableKey: 'MATERIALS' }
+      { headerKey: 'MATERIAL_ID',       targetTableKey: 'MATERIALS' },
+      { headerKey: 'ORIGIN_COUNTRY',    targetTableKey: 'COUNTRIES' }
     ]
   },
   CARRIERS: {
@@ -607,6 +609,42 @@ const CORE_SCHEMA_V1_TABLES = {
       }
     },
     referenceIds: []
+  },
+  // ============================================================
+  // 発送明細
+  // ============================================================
+  // 設計メモ（SQL 移行観点）:
+  //   - 共用商品ID と 自社商品ID はどちらか一方のみに値が入る（バリデーションは API 層で実施）。
+  //   - 単価は持たない（オーダー明細から引くため）。
+  //   - 原産国は ISO2 コード。既定値は 'JP'（入力省略時のデフォルト）。
+  //   - ID 接頭辞: SL-0001（4桁連番）
+  SHIPMENT_LINES: {
+    sheetName: '発送明細', canonicalName: '発送明細', aliases: [], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['SHIPMENT_LINE_ID',  '発送明細ID'],
+      ['SHIPMENT_ID',       '発送ID'],
+      ['ORDER_LINE_ID',     'オーダー明細ID'],
+      ['LINE_NUMBER',       '行番号'],
+      ['SHARED_PRODUCT_ID', '共用商品ID'],
+      ['OWN_PRODUCT_ID',    '自社商品ID'],
+      ['ITEM_ID',           '品目ID'],
+      ['HTS_CODE_ID',       'HTSコードID'],
+      ['MATERIAL_ID',       '素材ID'],
+      ['ORIGIN_COUNTRY',    '原産国'],
+      ['QUANTITY',          '数量'],
+      ['REGISTERED_AT',     '登録日'],
+      ['UPDATED_AT',        '更新日']
+    ]), primaryKey: 'SHIPMENT_LINE_ID',
+    referenceIds: [
+      { headerKey: 'SHIPMENT_ID',       targetTableKey: 'SHIPMENTS' },
+      { headerKey: 'ORDER_LINE_ID',     targetTableKey: 'ORDER_LINES' },
+      { headerKey: 'SHARED_PRODUCT_ID', targetTableKey: 'PRODUCTS' },
+      { headerKey: 'OWN_PRODUCT_ID',    targetTableKey: 'OWN_PRODUCTS' },
+      { headerKey: 'ITEM_ID',           targetTableKey: 'ITEMS' },
+      { headerKey: 'HTS_CODE_ID',       targetTableKey: 'HTS_CODES' },
+      { headerKey: 'MATERIAL_ID',       targetTableKey: 'MATERIALS' },
+      { headerKey: 'ORIGIN_COUNTRY',    targetTableKey: 'COUNTRIES' }
+    ]
   },
   OPTION_MASTER: {
     sheetName: '選択肢マスタV2', canonicalName: '選択肢マスタV2', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
