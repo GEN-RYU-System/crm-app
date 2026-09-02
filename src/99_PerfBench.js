@@ -2194,8 +2194,9 @@ function benchLeadSourceIdConversion() {
 
   var srcHeaders    = sourceSheet.getRange(1, 1, 1, sourceSheet.getLastColumn()).getValues()[0];
   var srcIdIdx      = srcHeaders.indexOf('source_id');
-  var srcNameIdx    = srcHeaders.indexOf('名称');
-  out.push('流入元マスタ ヘッダー確認: source_id=' + srcIdIdx + ' / 名称=' + srcNameIdx);
+  // 列名 '名称' → 'name' への移行対応（新旧両対応）
+  var srcNameIdx    = srcHeaders.indexOf('name') >= 0 ? srcHeaders.indexOf('name') : srcHeaders.indexOf('名称');
+  out.push('流入元マスタ ヘッダー確認: source_id=' + srcIdIdx + ' / name=' + srcNameIdx);
   out.push('流入元マスタ 行数: ' + (sourceSheet.getLastRow() - 1) + '行');
   out.push('');
 
@@ -2265,7 +2266,8 @@ function benchLeadSourceIdConversion() {
     var srcData = sourceSheet.getDataRange().getValues();
     var srcHdr  = srcData[0];
     var idCol   = srcHdr.indexOf('source_id');
-    var nmCol   = srcHdr.indexOf('名称');
+    // 列名 '名称' → 'name' への移行対応（新旧両対応）
+    var nmCol   = srcHdr.indexOf('name') >= 0 ? srcHdr.indexOf('name') : srcHdr.indexOf('名称');
 
     // ② メモリ内でMap構築（名称 → source_id）
     var nameToId = {};

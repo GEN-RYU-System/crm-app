@@ -15,9 +15,10 @@ function dryRunLeadSourceIdMigration() {
 
   var masterData    = masterSheet.getRange(1, 1, masterLastRow, masterLastCol).getValues();
   var masterHeaders = masterData[0].map(String);
-  var nameIdx       = masterHeaders.indexOf('名称');
+  // 列名 '名称' → 'name' への移行対応（新旧両対応）
+  var nameIdx       = masterHeaders.indexOf('name') >= 0 ? masterHeaders.indexOf('name') : masterHeaders.indexOf('名称');
   var idIdx         = masterHeaders.indexOf('source_id');
-  if (nameIdx < 0)  throw new Error('流入元マスタに「名称」列がありません');
+  if (nameIdx < 0)  throw new Error('流入元マスタに「name」列がありません');
   if (idIdx   < 0)  throw new Error('流入元マスタに「source_id」列がありません');
 
   // 名称 → source_id のマップ（有効・無効問わず全件）

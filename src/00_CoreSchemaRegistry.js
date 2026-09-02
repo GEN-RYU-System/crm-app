@@ -252,11 +252,11 @@ const CORE_SCHEMA_V1_TABLES = {
     sheetName: '流入元マスタ', canonicalName: '流入元マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
     headers: createCoreSchemaV1Headers([
       ['SOURCE_ID',     'source_id'],
-      ['NAME',          '名称'],
-      ['IS_INBOUND',    'インバウンド'],
-      ['IS_OUTBOUND',   'アウトバウンド'],
-      ['IS_ACTIVE',     '有効'],
-      ['DISPLAY_ORDER', '表示順']
+      ['NAME',          'name'],
+      ['IS_INBOUND',    'is_inbound'],
+      ['IS_OUTBOUND',   'is_outbound'],
+      ['IS_ACTIVE',     'is_active'],
+      ['DISPLAY_ORDER', 'display_order']
     ]), primaryKey: 'SOURCE_ID',
     referenceIds: []
   },
