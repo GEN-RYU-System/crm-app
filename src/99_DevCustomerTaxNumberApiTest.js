@@ -23,11 +23,50 @@
    upsertCoreCustomerTaxNumberForFrontend,
    runCoreSchemaConformanceAudit,
    getEnvironment, getSpreadsheet,
-   coreCustomerFrontendReadTable, coreCustomerFrontendValue */
+   coreCustomerFrontendReadTable, coreCustomerFrontendValue,
+   createSession, revokeSession,
+   getCoreSchemaV1Table, getCoreSchemaV1Sheet, getCoreSchemaV1HeaderName,
+   getCoreSchemaV1Value */
+
+/**
+ * STAFF テーブルから最初の有効な担当者IDを取得する。
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
+ * @returns {string|null}
+ */
+function devCtnGetFirstActiveStaffId_(ss) {
+  var table   = getCoreSchemaV1Table('STAFF');
+  var sheet   = getCoreSchemaV1Sheet(ss, 'STAFF');
+  var lastCol = sheet.getLastColumn();
+  if (!lastCol) return null;
+
+  var rawHeaders = sheet
+    .getRange(table.headerRowNumber, 1, 1, lastCol)
+    .getDisplayValues()[0]
+    .map(function(h) { return String(h).trim(); });
+
+  var staffIdPhysical = getCoreSchemaV1HeaderName('STAFF', 'STAFF_ID');
+  var statusPhysical  = getCoreSchemaV1HeaderName('STAFF', 'STATUS');
+  var staffIdCol      = rawHeaders.indexOf(staffIdPhysical);
+  var statusCol       = rawHeaders.indexOf(statusPhysical);
+  if (staffIdCol < 0) return null;
+
+  var statusActive = getCoreSchemaV1Value('STAFF', 'STATUS', 'ACTIVE');
+  var lastRow = sheet.getLastRow();
+  if (lastRow < table.headerRowNumber + 1) return null;
+
+  var values = sheet.getRange(table.headerRowNumber + 1, 1, lastRow - table.headerRowNumber, lastCol).getValues();
+  for (var i = 0; i < values.length; i++) {
+    var sid    = String(values[i][staffIdCol]  || '').trim();
+    var status = String(values[i][statusCol]   || '').trim();
+    if (sid && (statusCol < 0 || status === statusActive)) return sid;
+  }
+  return null;
+}
 
 /**
  * 顧客税務番号 API の総合テスト。
- * 実行前に setupTaxNumberMaster(['APPLY']) が完了していること。
+ * 実行前に setupTaxNumberMaster('APPLY') が完了していること。
  *
  * @returns {Object} テスト結果サマリ
  */
@@ -40,6 +79,13 @@ function devCustomerTaxNumberApiTest() {
   Logger.log('');
 
   var ss = getSpreadsheet();
+
+  // ── DEV セッションを取得（テスト終了後に削除する）────────────────────────
+  var testStaffId = devCtnGetFirstActiveStaffId_(ss);
+  if (!testStaffId) throw new Error('テスト用スタッフが見つかりません。');
+  var testSessionId = createSession(testStaffId);
+  Logger.log('テスト用セッション作成: staffId=' + testStaffId);
+  Logger.log('');
 
   // ── テスト用顧客IDを顧客マスタから取得 ──────────────────────────────────────
   var custData = coreCustomerFrontendReadTable(ss, 'CUSTOMERS', ['CUSTOMER_ID', 'CUSTOMER_NAME']);
@@ -71,7 +117,7 @@ function devCustomerTaxNumberApiTest() {
   var rowCountBefore = ctnSheetBefore ? ctnSheetBefore.getLastRow() : 1;
 
   try {
-    var resultA = upsertCoreCustomerTaxNumberForFrontend(null, {
+    var resultA = upsertCoreCustomerTaxNumberForFrontend(testSessionId, {
       customerId: testCustomerId,
       typeId:     'US_TAX_ID',
       number:     '12-3456789',
@@ -96,7 +142,7 @@ function devCustomerTaxNumberApiTest() {
   Logger.log('');
   Logger.log('--- (b) EORI を新規登録（別種別）---');
   try {
-    var resultB = upsertCoreCustomerTaxNumberForFrontend(null, {
+    var resultB = upsertCoreCustomerTaxNumberForFrontend(testSessionId, {
       customerId: testCustomerId,
       typeId:     'EORI',
       number:     'GB123456789000',
@@ -119,7 +165,7 @@ function devCustomerTaxNumberApiTest() {
   Logger.log('--- (c) US_TAX_ID 重複登録 → 拒否確認 ---');
   var rowCountBeforeC = ss.getSheetByName('顧客税務番号').getLastRow();
   try {
-    upsertCoreCustomerTaxNumberForFrontend(null, {
+    upsertCoreCustomerTaxNumberForFrontend(testSessionId, {
       customerId: testCustomerId,
       typeId:     'US_TAX_ID',
       number:     '99-9999999'
@@ -153,7 +199,7 @@ function devCustomerTaxNumberApiTest() {
     results.d = 'SKIP';
   } else {
     try {
-      var resultD = upsertCoreCustomerTaxNumberForFrontend(null, {
+      var resultD = upsertCoreCustomerTaxNumberForFrontend(testSessionId, {
         taxNumberId: registeredIdA,
         customerId:  testCustomerId,
         typeId:      'US_TAX_ID',
@@ -174,7 +220,7 @@ function devCustomerTaxNumberApiTest() {
   Logger.log('');
   Logger.log('--- (e) 存在しない顧客IDで登録 → 拒否確認 ---');
   try {
-    upsertCoreCustomerTaxNumberForFrontend(null, {
+    upsertCoreCustomerTaxNumberForFrontend(testSessionId, {
       customerId: 'GHOST-9999',
       typeId:     'VAT',
       number:     'DE999999999'
@@ -197,7 +243,7 @@ function devCustomerTaxNumberApiTest() {
   Logger.log('');
   Logger.log('--- (f) 読み取り & 種別名結合確認 ---');
   try {
-    var rows = getCoreCustomerTaxNumbersForFrontend(null, testCustomerId);
+    var rows = getCoreCustomerTaxNumbersForFrontend(testSessionId, testCustomerId);
     Logger.log('  取得件数: ' + rows.length);
     rows.forEach(function(r) {
       Logger.log('  ' + r.taxNumberId + ' | ' + r.typeId + ' | nameJa=' + r.typeNameJa + ' | nameEn=' + r.typeNameEn + ' | number=' + r.number);
@@ -216,6 +262,14 @@ function devCustomerTaxNumberApiTest() {
   } catch (e) {
     Logger.log('  ❌ 予期しない失敗: ' + e.message);
     results.f = 'FAIL: ' + e.message;
+  }
+
+  // ── DEV セッション破棄 ─────────────────────────────────────────────────────
+  try {
+    revokeSession(testSessionId);
+    Logger.log('テスト用セッション破棄完了');
+  } catch (e) {
+    Logger.log('セッション破棄失敗（無視）: ' + e.message);
   }
 
   // ── 最終サマリ ────────────────────────────────────────────────────────────────
