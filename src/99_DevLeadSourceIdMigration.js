@@ -63,8 +63,7 @@ function applyLeadSourceIdMigration() {
 
   var masterData    = masterSheet.getRange(1, 1, masterLastRow, masterLastCol).getValues();
   var masterHeaders = masterData[0].map(String);
-  // 列名 '名称' → 'name' への移行対応（新旧両対応）
-  var nameIdx       = masterHeaders.indexOf('name') >= 0 ? masterHeaders.indexOf('name') : masterHeaders.indexOf('名称');
+  var nameIdx       = masterHeaders.indexOf('name');
   var idIdx         = masterHeaders.indexOf('source_id');
   if (nameIdx < 0) throw new Error('流入元マスタに「name」列がありません');
   if (idIdx   < 0) throw new Error('流入元マスタに「source_id」列がありません');

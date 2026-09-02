@@ -831,3 +831,22 @@
     colCountBefore: 6, colCountAfter: 6
   }
   ```
+- 事後確認（PR-2 後、シートリネーム後）:
+  - SHA: `e28d27994743139d0ad8e4672f58d4d9ce12c50f` = origin/develop HEAD ✅
+  - 監査: 総不一致 0件 → PASS ✅
+  - dryRun: 変更あり 0件 ✅
+
+### PR-3 — 旧名フォールバック除去
+
+- PR: #948（予定）
+- 変更ファイル: 4ファイル
+  - `src/99_DevLeadSourceIdDryRun.js` — `indexOf('name') >= 0 ? indexOf('name') : indexOf('名称')` → `indexOf('name')` に統一
+  - `src/99_DevLeadSourceIdMigration.js` — 同上
+  - `src/99_PerfBench.js` — 行2197-2199 および 行2267-2269 のフォールバック除去（2箇所）
+  - `docs/column-rename-execution-log.md` — PR-3 記録追加
+- 旧列名 indexOf 確認（流入元マスタコンテキスト）:
+  - `indexOf('名称')`: 0件 ✅
+  - `indexOf('インバウンド')`: 0件 ✅
+  - `indexOf('アウトバウンド')`: 0件 ✅
+  - `indexOf('有効')`: 0件（国マスタ・テンプレートシート等の他シートのみ）✅
+  - `indexOf('表示順')`: 0件 ✅
