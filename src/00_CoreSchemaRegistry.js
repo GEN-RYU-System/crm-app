@@ -127,9 +127,9 @@ const CORE_SCHEMA_V1_TABLES = {
   QUOTE_LINES: {
     sheetName: '見積もり明細', canonicalName: '見積もり明細', aliases: [], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
     headers: createCoreSchemaV1Headers([
-      ['QUOTE_LINE_ID', '明細ID'], ['QUOTE_ID', '見積書ID'], ['LINE_NO', '行番号'], ['PRODUCT_ID', '商品ID'], ['PRODUCT_NAME', '商品名'], ['DESCRIPTION', '説明'],
-      ['CONDITION', '状態'], ['WEIGHT', '重量'],
-      ['QUANTITY', '数量'], ['UNIT_PRICE', '単価'], ['AMOUNT', '金額'], ['NOTE', '備考']
+      ['QUOTE_LINE_ID', 'quote_line_id'], ['QUOTE_ID', 'quote_id'], ['LINE_NO', 'line_no'], ['PRODUCT_ID', 'product_id'], ['PRODUCT_NAME', 'product_name'], ['DESCRIPTION', 'description'],
+      ['CONDITION', 'condition'], ['WEIGHT', 'weight'],
+      ['QUANTITY', 'quantity'], ['UNIT_PRICE', 'unit_price'], ['AMOUNT', 'amount'], ['NOTE', 'note']
     ]), primaryKey: 'QUOTE_LINE_ID',
     referenceIds: [
       { headerKey: 'QUOTE_ID',   targetTableKey: 'QUOTES' },

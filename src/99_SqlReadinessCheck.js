@@ -23,7 +23,7 @@ var SQL_CHECK_TARGETS = [
   { sheetName: 'オーダー管理',       pkColumn: 'オーダーID' },
   { sheetName: 'オーダー明細',       pkColumn: '明細ID' },
   { sheetName: '見積もり管理',       pkColumn: '見積書ID' },
-  { sheetName: '見積もり明細',       pkColumn: '明細ID' },
+  { sheetName: '見積もり明細',       pkColumn: 'quote_line_id' },
   { sheetName: '発送',               pkColumn: 'shipment_id' },
   { sheetName: '仕入れ',             pkColumn: '仕入れID' },
   { sheetName: 'フォームトークン',   pkColumn: 'トークン' },
