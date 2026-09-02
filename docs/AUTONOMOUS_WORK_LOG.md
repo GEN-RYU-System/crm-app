@@ -7737,6 +7737,50 @@ GAS（src/29_ShippingFeeCalculator.js）:
 
 ---
 
+### 2026-09-02 PR-Z1: 品目・HTSコード・素材マスタ GAS API 新設（PR #924）
+
+**PR:** #924
+**マージSHA:** 227bf5be10f528fd42d2e642f6306559ca49fa26
+
+**背景:**
+品目・HTSコード・素材マスタを画面から扱えるようにするため、
+`src/28_CoreExportMasterApi.js` を新規作成。
+`src/28_CoreOwnMasterApi.js` を雛形に準拠した実装。
+
+**追加 API:**
+| 関数名 | 種別 | 対象テーブル |
+|--------|------|------------|
+| getCoreItemsForFrontend | 読み取り | ITEMS |
+| getCoreHtsCodesForFrontend | 読み取り | HTS_CODES |
+| getCoreMaterialsForFrontend | 読み取り | MATERIALS |
+| upsertCoreItemForFrontend | 書き込み | ITEMS |
+| upsertCoreHtsCodeForFrontend | 書き込み | HTS_CODES |
+| upsertCoreMaterialForFrontend | 書き込み | MATERIALS |
+
+**ID採番形式:** ITM-0001 / HTS-0001 / MAT-0001（4桁連番）
+
+**書き込みテスト結果（手順6）:**
+| マスタ | 登録内容 | 採番ID | 登録後監査 |
+|--------|---------|--------|----------|
+| 品目 | Trading Cards / トレーディングカード | ITM-0001 | ✅ 0件 |
+| HTSコード | 9504.40 / Playing cards / 遊戯用カード | HTS-0001 | ✅ 0件 |
+| 素材 | Paper / 紙 | MAT-0001 | ✅ 0件 |
+
+**更新テスト結果（手順7）:**
+- ITM-0001: nameEn を「Trading Cards (updated)」に変更、isActive を '' に更新 → 反映確認済み
+- HTS-0001: htsCode を「9504.40.00」に変更、isActive を '' に更新 → 反映確認済み
+- MAT-0001: nameEn を「Paper (updated)」に変更、isActive を '' に更新 → 反映確認済み
+
+**最終確認結果:**
+| 手順 | 結果 |
+|------|------|
+| build:gas（typecheck + build） | ✅ 通過 |
+| getDeployedSha | ✅ `c485465...`（origin/develop HEAD と一致） |
+| runCoreSchemaConformanceAudit（最終） | ✅ 総不一致 0 → PASS |
+| CI（4件） | ✅ 全件 success |
+
+---
+
 ## 次フェーズ課題
 
 **【PO判断待ち】連絡手段（contact_method）のフロントエンド未実装**
