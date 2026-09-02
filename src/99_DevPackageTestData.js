@@ -21,7 +21,8 @@
    getCoreSchemaV1Sheet, getCoreSchemaV1Table, getCoreSchemaV1Value,
    coreCustomerFrontendReadTable, coreCustomerFrontendValue,
    createSession, buildBoxesFromLines_, _sfcLoadCarriers,
-   _sfcBuildZonesMap, _sfcBuildRatesMap, _sfeProcess_ */
+   _sfcBuildZonesMap, _sfcBuildRatesMap, _sfeProcess_,
+   getCoreSchemaV1TableName */
 
 // ─── 1. 商品検索（読み取り専用）─────────────────────────────────────────────
 
@@ -226,5 +227,154 @@ function devTestShippingFeeForLines(payload) {
     successCount:   successCount,
     carrierSummary: carrierSummary,
     skipped:        built.skipped
+  });
+}
+
+// ─── 4. 荷姿・サイズ・重量の数値確認（読み取り専用）────────────────────────────
+
+/**
+ * 指定荷姿IDのサイズ・重量数値と、指定商品荷姿IDの各荷姿IDを返す。
+ * WEIGHT_EXCEEDS_MAX 原因調査用。書き込み一切なし。
+ *
+ * @param {string} packageId        荷姿ID（例: 'PKG-0001'）
+ * @param {string} productPackageId 商品荷姿ID（例: 'PPK-0005'）
+ * @returns {string} JSON: { package, size, weight, volumetricWeight_kg, productPackage }
+ */
+function devInspectPackageDimensions(packageId, productPackageId) {
+  if (getEnvironment() !== 'development') {
+    throw new Error('devInspectPackageDimensions は development 環境でのみ実行できます。');
+  }
+  if (!packageId) throw new Error('packageId を指定してください。');
+
+  var ss = getSpreadsheet();
+
+  // ── PACKAGES シートから packageId を検索 ──
+  var pkgSheetName = getCoreSchemaV1TableName('PACKAGES');
+  var pkgSheet = ss.getSheetByName(pkgSheetName);
+  if (!pkgSheet) throw new Error('PACKAGES シートが見つかりません: ' + pkgSheetName);
+
+  var pkgData = pkgSheet.getDataRange().getValues();
+  var pkgHeaders = pkgData[0].map(function(h) { return String(h).trim(); });
+
+  var pkgIdCol      = pkgHeaders.indexOf(getCoreSchemaV1HeaderName('PACKAGES', 'PACKAGE_ID'));
+  var pkgNameCol    = pkgHeaders.indexOf(getCoreSchemaV1HeaderName('PACKAGES', 'NAME'));
+  var pkgUnitCol    = pkgHeaders.indexOf(getCoreSchemaV1HeaderName('PACKAGES', 'UNIT'));
+  var pkgQtyCol     = pkgHeaders.indexOf(getCoreSchemaV1HeaderName('PACKAGES', 'QUANTITY'));
+  var pkgSizeIdCol  = pkgHeaders.indexOf(getCoreSchemaV1HeaderName('PACKAGES', 'SIZE_ID'));
+  var pkgWeightIdCol= pkgHeaders.indexOf(getCoreSchemaV1HeaderName('PACKAGES', 'WEIGHT_ID'));
+
+  var pkg = null;
+  for (var i = 1; i < pkgData.length; i++) {
+    if (String(pkgData[i][pkgIdCol]).trim() === packageId) {
+      pkg = {
+        packageId: String(pkgData[i][pkgIdCol]).trim(),
+        name:      String(pkgData[i][pkgNameCol]).trim(),
+        unit:      String(pkgData[i][pkgUnitCol]).trim(),
+        quantity:  pkgData[i][pkgQtyCol],
+        sizeId:    String(pkgData[i][pkgSizeIdCol]).trim(),
+        weightId:  String(pkgData[i][pkgWeightIdCol]).trim()
+      };
+      break;
+    }
+  }
+  if (!pkg) return JSON.stringify({ error: 'PACKAGE_NOT_FOUND', packageId: packageId });
+
+  // ── SIZES シートから size を検索 ──
+  var sizeSheetName = getCoreSchemaV1TableName('SIZES');
+  var sizeSheet = ss.getSheetByName(sizeSheetName);
+  if (!sizeSheet) throw new Error('SIZES シートが見つかりません: ' + sizeSheetName);
+
+  var sizeData = sizeSheet.getDataRange().getValues();
+  var sizeHeaders = sizeData[0].map(function(h) { return String(h).trim(); });
+
+  var sizeIdCol  = sizeHeaders.indexOf(getCoreSchemaV1HeaderName('SIZES', 'SIZE_ID'));
+  var sizeNameCol= sizeHeaders.indexOf(getCoreSchemaV1HeaderName('SIZES', 'NAME'));
+  var lenCol     = sizeHeaders.indexOf(getCoreSchemaV1HeaderName('SIZES', 'LENGTH'));
+  var widCol     = sizeHeaders.indexOf(getCoreSchemaV1HeaderName('SIZES', 'WIDTH'));
+  var hgtCol     = sizeHeaders.indexOf(getCoreSchemaV1HeaderName('SIZES', 'HEIGHT'));
+
+  var size = null;
+  for (var j = 1; j < sizeData.length; j++) {
+    if (String(sizeData[j][sizeIdCol]).trim() === pkg.sizeId) {
+      size = {
+        sizeId: String(sizeData[j][sizeIdCol]).trim(),
+        name:   String(sizeData[j][sizeNameCol]).trim(),
+        length: sizeData[j][lenCol],
+        width:  sizeData[j][widCol],
+        height: sizeData[j][hgtCol]
+      };
+      break;
+    }
+  }
+
+  // ── WEIGHTS シートから weight を検索 ──
+  var wgtSheetName = getCoreSchemaV1TableName('WEIGHTS');
+  var wgtSheet = ss.getSheetByName(wgtSheetName);
+  if (!wgtSheet) throw new Error('WEIGHTS シートが見つかりません: ' + wgtSheetName);
+
+  var wgtData = wgtSheet.getDataRange().getValues();
+  var wgtHeaders = wgtData[0].map(function(h) { return String(h).trim(); });
+
+  var wgtIdCol    = wgtHeaders.indexOf(getCoreSchemaV1HeaderName('WEIGHTS', 'WEIGHT_ID'));
+  var wgtNameCol  = wgtHeaders.indexOf(getCoreSchemaV1HeaderName('WEIGHTS', 'NAME'));
+  var wgtValCol   = wgtHeaders.indexOf(getCoreSchemaV1HeaderName('WEIGHTS', 'WEIGHT'));
+
+  var weight = null;
+  for (var k = 1; k < wgtData.length; k++) {
+    if (String(wgtData[k][wgtIdCol]).trim() === pkg.weightId) {
+      weight = {
+        weightId: String(wgtData[k][wgtIdCol]).trim(),
+        name:     String(wgtData[k][wgtNameCol]).trim(),
+        weight_kg: wgtData[k][wgtValCol]
+      };
+      break;
+    }
+  }
+
+  // ── 容積重量計算（cm → m³ 換算: ÷ 5000, 単位 cm³ → kg） ──
+  var volumetricWeight_kg = null;
+  var exceedsMax68kg = null;
+  if (size) {
+    volumetricWeight_kg = (Number(size.length) * Number(size.width) * Number(size.height)) / 5000;
+    exceedsMax68kg = volumetricWeight_kg > 68;
+  }
+
+  // ── PRODUCT_PACKAGES シートから productPackageId を検索 ──
+  var ppkResult = null;
+  if (productPackageId) {
+    var ppkSheetName = getCoreSchemaV1TableName('PRODUCT_PACKAGES');
+    var ppkSheet = ss.getSheetByName(ppkSheetName);
+    if (ppkSheet) {
+      var ppkData = ppkSheet.getDataRange().getValues();
+      var ppkHeaders = ppkData[0].map(function(h) { return String(h).trim(); });
+
+      var ppkIdCol   = ppkHeaders.indexOf(getCoreSchemaV1HeaderName('PRODUCT_PACKAGES', 'PRODUCT_PACKAGE_ID'));
+      var ppkCaseCol = ppkHeaders.indexOf(getCoreSchemaV1HeaderName('PRODUCT_PACKAGES', 'CASE_PACKAGE_ID'));
+      var ppkBoxCol  = ppkHeaders.indexOf(getCoreSchemaV1HeaderName('PRODUCT_PACKAGES', 'BOX_PACKAGE_ID'));
+      var ppkPackCol = ppkHeaders.indexOf(getCoreSchemaV1HeaderName('PRODUCT_PACKAGES', 'PACK_PACKAGE_ID'));
+      var ppkProdCol = ppkHeaders.indexOf(getCoreSchemaV1HeaderName('PRODUCT_PACKAGES', 'OWN_PRODUCT_ID'));
+
+      for (var m = 1; m < ppkData.length; m++) {
+        if (String(ppkData[m][ppkIdCol]).trim() === productPackageId) {
+          ppkResult = {
+            productPackageId: String(ppkData[m][ppkIdCol]).trim(),
+            ownProductId:     String(ppkData[m][ppkProdCol]).trim(),
+            casePackageId:    String(ppkData[m][ppkCaseCol]).trim(),
+            boxPackageId:     String(ppkData[m][ppkBoxCol]).trim(),
+            packPackageId:    String(ppkData[m][ppkPackCol]).trim()
+          };
+          break;
+        }
+      }
+    }
+  }
+
+  return JSON.stringify({
+    package:              pkg,
+    size:                 size,
+    weight:               weight,
+    volumetricWeight_kg:  volumetricWeight_kg,
+    exceedsMax68kg:       exceedsMax68kg,
+    productPackage:       ppkResult
   });
 }
