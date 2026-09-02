@@ -7881,6 +7881,31 @@ completed  success  docs: 完了報告は実測値のみを書くルールを AG
 
 ---
 
+---
+
+### 2026-09-02 Phase 2 システム設定 列名リネーム（PR #937/938/939）
+
+**revert 経路:**
+- git revert `58469737f2e3b9312a86b20788b4f06ce7e6ee3d`（PR-3 squash merge）
+- git revert `a08c2754c7587237b346dd06e0675c70382842e3`（PR-2 squash merge）
+- git revert `4fbfc0b`（PR-1 squash merge）
+- clasp run devBackupSystemSettingsSheet バックアップから復元
+
+**変更列:**
+設定キー → setting_key / 設定値 → setting_value / 値の型 → value_type / 説明 → description / 更新日時 → updated_at
+
+**PR一覧:**
+- PR-1 #937: mergedAt 2026-09-02T06:09:47Z — コード新旧両対応（src/08_Config.js + src/99_DevRenameSystemSettingsColumns.js）
+- PR-2 #938: mergedAt 2026-09-02T06:16:10Z — CoreSchema 切り替え + シートリネーム実行
+- PR-3 #939: mergedAt 2026-09-02T06:27:41Z — 旧名フォールバック除去
+
+**事後確認（PR-3 後）:**
+- SHA: `58469737f2e3b9312a86b20788b4f06ce7e6ee3d` = origin/develop HEAD ✅
+- 監査: 総不一致 0件 → PASS ✅
+- dryRun: 変更あり 0件 ✅
+
+---
+
 ## 次フェーズ課題
 
 **【PO判断待ち】連絡手段（contact_method）のフロントエンド未実装**

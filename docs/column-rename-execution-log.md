@@ -655,7 +655,10 @@
 
 ### PR-3 — 旧名フォールバック除去
 
-- PR: #939（予定）
+- PR: #939
+- マージ: 2026-09-02T06:27:41Z
+- CI: frontend-check / gas-global-namespace / Gitleaks / Sensitive Content 全 4件 SUCCESS
+- Deploy to DEV: success
 - 変更ファイル: 3ファイル
   - `src/08_Config.js` — フォールバック除去: setting_key / setting_value / description を直接参照
   - `src/99_DevSettingsStructureAudit.js` — setting_key / value_type / setting_value を直接参照（旧名除去）
@@ -663,3 +666,9 @@
 - 旧列名 indexOf 確認（`システム設定` コンテキスト）: 0件 ✅
   - `src/99_DisplaySettingsVerify.js` の `設定キー`/`設定値` は `表示設定マスタ` シート対象 — 変更対象外 ✅
   - `src/00_CoreSchemaRegistry.js` の `設定キー`/`設定値` は DISPLAY_SETTINGS テーブル定義 — 変更対象外 ✅
+- 事後確認（PR-3 後）:
+  - SHA: `58469737f2e3b9312a86b20788b4f06ce7e6ee3d` = origin/develop HEAD ✅
+  - 監査: 総不一致 0件 → PASS ✅
+  - dryRun: 変更あり 0件 ✅
+
+**システム設定 列リネーム 完了 ✅**
