@@ -36,11 +36,11 @@ function dryRunIpIdsMigration() {
   var masterHeaders = masterData[0].map(String);
 
   var ipIdIdx   = masterHeaders.indexOf('ip_id');
-  var nameIdx   = masterHeaders.indexOf('作品名');
-  var aliasIdx  = masterHeaders.indexOf('別名');
-  var activeIdx = masterHeaders.indexOf('有効');
+  var nameIdx   = masterHeaders.indexOf('title')     >= 0 ? masterHeaders.indexOf('title')     : masterHeaders.indexOf('作品名');
+  var aliasIdx  = masterHeaders.indexOf('alias')     >= 0 ? masterHeaders.indexOf('alias')     : masterHeaders.indexOf('別名');
+  var activeIdx = masterHeaders.indexOf('is_active') >= 0 ? masterHeaders.indexOf('is_active') : masterHeaders.indexOf('有効');
   if (ipIdIdx  < 0) throw new Error('作品マスタに「ip_id」列がありません');
-  if (nameIdx  < 0) throw new Error('作品マスタに「作品名」列がありません');
+  if (nameIdx  < 0) throw new Error('作品マスタに「title」(旧:「作品名」)列がありません');
 
   // 名称・別名 → ip_id マップ（有効・無効問わず全件）
   var nameToId = {};

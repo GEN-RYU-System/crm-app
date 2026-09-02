@@ -614,8 +614,8 @@ function getIpMasterMap_() {
   const data     = sheet.getDataRange().getValues();
   const headers  = data[0].map(String);
   const ipIdIdx  = headers.indexOf('ip_id');
-  const nameIdx  = headers.indexOf('作品名');
-  const aliasIdx = headers.indexOf('別名');
+  const nameIdx  = headers.indexOf('title')  >= 0 ? headers.indexOf('title')  : headers.indexOf('作品名');
+  const aliasIdx = headers.indexOf('alias')  >= 0 ? headers.indexOf('alias')  : headers.indexOf('別名');
 
   if (ipIdIdx < 0 || nameIdx < 0) {
     writeCacheChunks_(IP_MASTER_CACHE_INDEX, IP_MASTER_CACHE_PREFIX, {}, IP_MASTER_CACHE_TTL, IP_MASTER_CACHE_CHUNK_SIZE);
