@@ -1113,11 +1113,58 @@
 - CI: 4件 pass
 - Deploy to DEV: success
 
-### シート変換手順（PR-2 後に GAS で実行）
-1. `devBackupShipmentsSheet()` → `発送_backup_20260902` 作成
-2. `devRenameShipmentsColumns()` → 22列を一括変換
-3. renamedCount=22, skipped=[], 行列数変化なし を確認
+### シートリネーム実行（PR-2 後 clasp run）
+
+**実行日: 2026-09-02**
+
+バックアップ確認（`clasp run devBackupShipmentsSheet`）:
+```
+{
+  backupName: '発送_backup_20260902',
+  originalCols: 22,
+  originalRows: 9,
+  headers: [
+    '発送ID', 'オーダーID', '箱番号', '発送方法', '発送日', '運送状番号',
+    '長さ', '幅', '高さ', '重量', '見積もり送料', 'ラベルURL', 'インボイスURL',
+    '検品', '梱包', '格納', '集荷依頼', '通知', '発送担当ID', '備考', '登録日', '更新日'
+  ]
+}
+```
+
+シートリネーム実行結果（`clasp run devRenameShipmentsColumns`）:
+```
+{
+  renamedCount: 22, expectedCount: 22, skipped: [],
+  newHeaders: [
+    'shipment_id', 'order_id', 'box_number', 'shipping_method', 'shipped_at',
+    'tracking_number', 'length', 'width', 'height', 'weight',
+    'estimated_shipping_fee', 'label_url', 'invoice_url', 'inspection',
+    'packing', 'storage', 'pickup_request', 'notification',
+    'shipping_assignee_id', 'note', 'registered_at', 'updated_at'
+  ],
+  rowCountBefore: 9, rowCountAfter: 9,
+  colCountBefore: 22, colCountAfter: 22
+}
+```
+
+事後確認（シートリネーム後）:
+- SHA: `c772331e264423e8c95352aec254319dca22ceca` = origin/develop HEAD ✅
+- 監査: 総不一致 0件 → PASS ✅（SHIPMENTS: ヘッダー22/22 一致・主キー shipment_id OK）
+- dryRun: 変更あり 0件 ✅
+
+旧列名参照確認（発送シートコンテキスト）:
+- 発送シートの列名として直接参照している箇所: **0件** ✅
+  - `src/08_Config.js` SHIPMENT 配列は既に英語スネークケース（行657-678）
+  - `src/00_CoreSchemaRegistry.js` SHIPMENTS.headers は英語スネークケース（行141）
+  - 他ファイルのヒットはコメント内参照・他シート（ORDERS/SHIPMENT_LINES）の同名列・Dev migration スクリプト — 変更対象外 ✅
 
 ### 発送関連画面表示確認
-- 【未確認】GAS 上での devRenameShipmentsColumns() 実行はローカル環境では不可能
-- PR-2 実行者が GAS スクリプトエディタで実施後に確認必要
+
+- 確認方法: ローカル開発サーバー（localhost:5174/?preview#/sales-orders/ORD-00002?tab=shipping）+ Playwright
+- 確認結果:
+  - 受注管理一覧: ✅（Console: 0 errors, 2 warnings）
+  - 発送タブ表示: ✅（[active][selected] で遷移成功）
+  - 発送データ表示: ✅（発送方法・運送状番号・箱番号が正常表示）
+- 判定: **PASS**
+
+**発送（SHIPMENTS）列リネーム 完了 ✅**
