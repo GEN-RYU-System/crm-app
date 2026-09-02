@@ -8018,3 +8018,40 @@ PR-Z4 着手前の調査（読み取りのみの制約下）で `runProductPacka
 - **PO判断が必要な内容**: リード登録・編集画面への「連絡手段」プルダウン追加要否。
   追加する場合は `getLeadFormOptions` の返却値に `contactMethods: string[]` を追加し、
   `LeadEditorPage` にフィールドを追加する。
+
+---
+
+## 流入元マスタ 列名リネーム（Phase 2 - 4シート目）
+
+**実行日:** 2026-09-02
+
+**対象シート選定理由（参照数 153件）:**
+| シート | 参照数 | 状態 |
+|-------|-------|------|
+| 共用在庫 | 17 | 除外指定 |
+| 作品マスタ_共用在庫 | 38 | PR #930/932/934 完了済み |
+| システム設定 | 46 | PR #937/938/939 完了済み |
+| 通貨マスタ | 57 | PR #942/943/944 完了済み |
+| **流入元マスタ** | **153** | **本作業** |
+
+**変更列:**
+名称 → name / インバウンド → is_inbound / アウトバウンド → is_outbound / 有効 → is_active / 表示順 → display_order
+
+**バックアップ:**
+- バックアップ名: 流入元マスタ_backup_20260902
+- originalRows: 10 / originalCols: 6
+- 変更前ヘッダー: ['source_id', '名称', 'インバウンド', 'アウトバウンド', '有効', '表示順']
+- 変更後ヘッダー: ['source_id', 'name', 'is_inbound', 'is_outbound', 'is_active', 'display_order']
+
+**PR一覧:**
+- PR-1 #946: mergedAt 2026-09-02T07:31:11Z — コード新旧両対応（Registry更新・Dev系フォールバック・Renameユーティリティ追加）
+- PR-2 #947: mergedAt 2026-09-02T07:37:02Z — シートリネーム実行記録
+- PR-3 #948: mergedAt 2026-09-02T07:43:06Z — 旧名フォールバック除去
+
+**revert SHA（緊急時）:** `3f4940cf8c07494161a6729aa51dabbac12e7770`（PR-3 squash commit = 現在の develop HEAD）
+シート復元: clasp run devBackupLeadSourceMasterSheet のバックアップ（流入元マスタ_backup_20260902）から復元
+
+**事後確認（PR-3 後）:**
+- SHA: `3f4940cf8c07494161a6729aa51dabbac12e7770` = origin/develop HEAD ✅
+- 監査: 総不一致 0件 → PASS ✅
+- dryRun: 変更あり 0件 ✅
