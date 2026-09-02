@@ -37,7 +37,7 @@ var SQL_CHECK_TARGETS = [
   { sheetName: '会話ログ（商談用）', pkColumn: 'ログID' },
   { sheetName: 'システム設定',       pkColumn: 'setting_key' },
   { sheetName: '担当者マスタ',       pkColumn: '担当者ID' },
-  { sheetName: 'ログインセッション', pkColumn: 'セッションID' }
+  { sheetName: 'ログインセッション', pkColumn: 'session_id' }
 ];
 
 /**
