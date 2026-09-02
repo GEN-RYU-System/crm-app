@@ -399,3 +399,63 @@
   color: var(--color-text-muted);
   margin: var(--space-xs) 0 var(--space-sm);
 }
+
+.sales-order-detail-page__shipment-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.sales-order-detail-page__shipment-lines-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sales-order-detail-page__shipment-lines-title {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-sm);
+}
+
+.sales-order-detail-page__shipment-lines-empty {
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+}
+
+.sales-order-detail-page__shipment-lines-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-sm);
+}
+
+.sales-order-detail-page__shipment-lines-table th,
+.sales-order-detail-page__shipment-lines-table td {
+  padding: var(--space-xs) var(--space-sm);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sales-order-detail-page__shipment-lines-table th {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+}
+
+.sales-order-detail-page__shipment-line-row {
+  cursor: pointer;
+}
+
+.sales-order-detail-page__shipment-line-row:hover td {
+  opacity: 0.8;
+}
+
+.sales-order-detail-page__shipment-line-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+}

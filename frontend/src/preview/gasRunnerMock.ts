@@ -929,6 +929,21 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     upsertCoreMaterialForFrontend(_s: string | null, _payload: unknown) {
       succeed({ success: true, materialId: 'MAT-0001' });
     },
+    getCoreCountriesForFrontend(_s: string | null) {
+      succeed([
+        { countryCode: 'JP', displayName: 'Japan', nameJa: '日本', isActive: 'TRUE' },
+        { countryCode: 'US', displayName: 'United States', nameJa: 'アメリカ合衆国', isActive: 'TRUE' },
+      ]);
+    },
+    getCoreShipmentLinesForFrontend(_s: string | null, _shipmentId: string) {
+      succeed([]);
+    },
+    getProductExportDefaultsForFrontend(_s: string | null, _payload: unknown) {
+      succeed({ found: false, itemId: '', htsCodeId: '', materialId: '', originCountry: 'JP' });
+    },
+    upsertCoreShipmentLineForFrontend(_s: string | null, _payload: unknown) {
+      succeed({ success: true, shipmentLineId: 'SL-0001', savedToProductMaster: false, failedStep: null });
+    },
   };
 
   return new Proxy(chain, {

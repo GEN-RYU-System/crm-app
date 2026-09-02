@@ -9,6 +9,7 @@
  *   getCoreItemsForFrontend(sessionId)
  *   getCoreHtsCodesForFrontend(sessionId)
  *   getCoreMaterialsForFrontend(sessionId)
+ *   getCoreCountriesForFrontend(sessionId)
  *   upsertCoreItemForFrontend(sessionId, payload)
  *   upsertCoreHtsCodeForFrontend(sessionId, payload)
  *   upsertCoreMaterialForFrontend(sessionId, payload)
@@ -106,6 +107,31 @@ function getCoreMaterialsForFrontend(sessionId) {
       isActive:   coreCustomerFrontendValue(row[data.indexes.ACTIVE])
     };
   }).filter(function(r) { return r.materialId !== ''; });
+}
+
+/**
+ * 国マスタの全行を返す。
+ *
+ * @param {string} sessionId
+ * @returns {Array<{countryCode:string, displayName:string, nameJa:string, isActive:string}>}
+ */
+function getCoreCountriesForFrontend(sessionId) {
+  setEmailFromSession(sessionId);
+  checkPermission('lead_view');
+
+  var ss   = getSpreadsheet();
+  var data = coreCustomerFrontendReadTable(ss, 'COUNTRIES', [
+    'COUNTRY_CODE', 'DISPLAY_NAME', 'NAME_JA', 'IS_ACTIVE'
+  ]);
+
+  return data.rows.map(function(row) {
+    return {
+      countryCode:  coreCustomerFrontendValue(row[data.indexes.COUNTRY_CODE]),
+      displayName:  coreCustomerFrontendValue(row[data.indexes.DISPLAY_NAME]),
+      nameJa:       coreCustomerFrontendValue(row[data.indexes.NAME_JA]),
+      isActive:     coreCustomerFrontendValue(row[data.indexes.IS_ACTIVE])
+    };
+  }).filter(function(r) { return r.countryCode !== ''; });
 }
 
 // ─── Write APIs ───────────────────────────────────────────────────────────────

@@ -1593,3 +1593,113 @@ export function upsertCoreMaterial(payload: UpsertMaterialPayload): Promise<Upse
       .upsertCoreMaterialForFrontend(getStoredSessionId(), payload);
   });
 }
+
+export type CountryRecord = { countryCode: string; displayName: string; nameJa: string; isActive: string };
+
+export function getCoreCountries(): Promise<CountryRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as CountryRecord[]))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getCoreCountriesForFrontend(getStoredSessionId());
+  });
+}
+
+// ─── Shipment Lines ────────────────────────────────────────────────────────────
+
+export type ShipmentLineRecord = {
+  shipmentLineId: string;
+  shipmentId: string;
+  orderLineId: string;
+  lineNumber: string;
+  sharedProductId: string;
+  sharedProductEnglishTitle: string;
+  sharedProductJapaneseTitle: string;
+  ownProductId: string;
+  ownProductNameEn: string;
+  ownProductNameJa: string;
+  itemId: string;
+  itemNameEn: string;
+  itemNameJa: string;
+  htsCodeId: string;
+  htsCode: string;
+  htsCodeDescriptionEn: string;
+  htsCodeDescriptionJa: string;
+  materialId: string;
+  materialNameEn: string;
+  materialNameJa: string;
+  originCountry: string;
+  originCountryDisplayName: string;
+  originCountryNameJa: string;
+  quantity: string;
+  registeredAt: string;
+  updatedAt: string;
+};
+
+export function getCoreShipmentLines(shipmentId: string): Promise<ShipmentLineRecord[]> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as ShipmentLineRecord[]))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getCoreShipmentLinesForFrontend(getStoredSessionId(), shipmentId);
+  });
+}
+
+export type ProductExportDefaults = {
+  found: boolean;
+  itemId: string;
+  htsCodeId: string;
+  materialId: string;
+  originCountry: string;
+};
+
+export type GetProductExportDefaultsPayload = {
+  sharedProductId?: string;
+  ownProductId?: string;
+};
+
+export function getProductExportDefaults(payload: GetProductExportDefaultsPayload): Promise<ProductExportDefaults> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as ProductExportDefaults))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .getProductExportDefaultsForFrontend(getStoredSessionId(), payload);
+  });
+}
+
+export type UpsertShipmentLinePayload = {
+  shipmentLineId?: string;
+  shipmentId: string;
+  sharedProductId?: string;
+  ownProductId?: string;
+  itemId?: string;
+  htsCodeId?: string;
+  materialId?: string;
+  originCountry?: string;
+  quantity?: number | string;
+  saveToProductMaster?: boolean;
+};
+
+export type UpsertShipmentLineResult = {
+  success: true;
+  shipmentLineId: string;
+  savedToProductMaster: boolean;
+  failedStep: string | null;
+};
+
+export function upsertCoreShipmentLine(payload: UpsertShipmentLinePayload): Promise<UpsertShipmentLineResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as UpsertShipmentLineResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .upsertCoreShipmentLineForFrontend(getStoredSessionId(), payload);
+  });
+}
