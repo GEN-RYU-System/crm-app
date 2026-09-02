@@ -856,3 +856,104 @@
   - dryRun: 変更あり 0件 ✅
 
 **流入元マスタ 列リネーム 完了 ✅**
+
+---
+
+## ログインセッション（Phase 2 - 5シート目）
+
+**選定根拠:** `docs/column-rename-plan-phase2.md` セクション 6 の参照数比較
+- 共用在庫: 17件（除外指定）
+- 作品マスタ_共用在庫: 38件（PR #930/932/934 完了済み）
+- システム設定: 46件（PR #937/938/939 完了済み）
+- 通貨マスタ: 57件（PR #942/943/944 完了済み）
+- 流入元マスタ: 153件（PR #946/947/948 完了済み）
+- ログインセッション: 155件（最小 → 本作業の対象）
+
+**対象列 6本:**
+
+| # | 旧名 | 新名 |
+|---|------|------|
+| 1 | セッションID | `session_id` |
+| 2 | 担当者ID | `staff_id` |
+| 3 | 発行日時 | `issued_at` |
+| 4 | 最終利用日時 | `last_used_at` |
+| 5 | 失効日時 | `expires_at` |
+| 6 | 状態 | `status` |
+
+### Phase 0 調査結果（認証ファイル）
+
+**`src/26_SessionService.js`（行361-363）:**
+全アクセスが `_sessionColIdx(hi, logicalKey)` → `getCoreSchemaV1HeaderName('LOGIN_SESSIONS', logicalKey)` 経由。
+日本語物理列名の直書き: **0件**。フォールバック追加不要。
+
+**`src/26_LoginService.js`:**
+`_lsColIdx` は STAFF テーブルのみ参照。ログインセッション列への直接参照: **0件**。コード変更不要。
+
+### バックアップ
+
+- バックアップ名: `ログインセッション_backup_20260902`
+- originalRows: 67（ヘッダー1行 + データ66行）
+- originalCols: 6
+- 変更前ヘッダー: `['セッションID', '担当者ID', '発行日時', '最終利用日時', '失効日時', '状態']`
+
+### PR-1 — Registry 物理名更新 + リネームスクリプト追加
+
+- PR: #951
+- マージ: 2026-09-02T09:47:03Z
+- squash commit SHA: `7afc98c5ab6519f8a28cdfce8849d818100b5393`
+- CI: frontend-check / gas-global-namespace / Gitleaks / Sensitive Content 全 4件 SUCCESS
+- Deploy to DEV: success
+- 変更ファイル: 4ファイル
+  - `src/00_CoreSchemaRegistry.js` — LOGIN_SESSIONS 物理列名を英語スネークケースに変更（行193）
+  - `src/99_SqlReadinessCheck.js` — pkColumn: 'セッションID' → 'session_id'（行40）
+  - `src/99_DevPostgresMigrationAnalysis.js` — pkHeader: 'セッションID' → 'session_id'（行431, 584）
+  - `src/99_DevRenameLoginSessionsColumns.js` — 新規: devBackupLoginSessionsSheet / devRenameLoginSessionsColumns
+- 監査（PR-1 後、シート未変更）: LOGIN_SESSIONS 8件不一致（想定通り）、他テーブル 0件 ✅
+- dryRun: 変更あり 0件 ✅
+
+### PR-2 — シートリネーム実行
+
+- 実行日: 2026-09-02
+- コード変更なし（GAS関数呼び出しのみ）
+- バックアップ作成結果（`clasp run devBackupLoginSessionsSheet`）:
+  ```
+  {
+    originalCols: 6,
+    headers: ['セッションID', '担当者ID', '発行日時', '最終利用日時', '失効日時', '状態'],
+    backupName: 'ログインセッション_backup_20260902',
+    originalRows: 67
+  }
+  ```
+- シートリネーム実行結果（`clasp run devRenameLoginSessionsColumns`）:
+  ```
+  {
+    renamedCount: 6, expectedCount: 6, skipped: [],
+    newHeaders: ['session_id', 'staff_id', 'issued_at', 'last_used_at', 'expires_at', 'status'],
+    rowCountBefore: 67, rowCountAfter: 67,
+    colCountBefore: 6, colCountAfter: 6
+  }
+  ```
+- 事後確認（シートリネーム後）:
+  - SHA: `7afc98c5ab6519f8a28cdfce8849d818100b5393` = origin/develop HEAD ✅
+  - 監査: 総不一致 0件 → PASS ✅
+  - dryRun: 変更あり 0件 ✅
+
+### PR-3 — 旧名フォールバック除去
+
+- 旧名フォールバック追加なし（全参照がRegistry経由）→ 除去対象なし
+- 旧列名 indexOf 確認（ログインセッションコンテキスト）:
+  - `indexOf('セッションID')`: 0件 ✅
+  - `indexOf('発行日時')`: 0件 ✅
+  - `indexOf('最終利用日時')`: 0件 ✅
+  - `indexOf('失効日時')`: 0件 ✅
+  - `indexOf('担当者ID')`: 他シート（担当者マスタ/顧客マスタ）コンテキストのみ — 変更対象外 ✅
+  - `indexOf('状態')`: 0件 ✅
+- 変更ファイル: 2ファイル（docs更新のみ）
+  - `docs/column-rename-execution-log.md` — PR-3 記録追加
+  - `docs/AUTONOMOUS_WORK_LOG.md` — 完了記録（revert SHA付き）
+- 事後確認:
+  - SHA: `7afc98c5ab6519f8a28cdfce8849d818100b5393` = origin/develop HEAD ✅
+  - 監査: 総不一致 0件 → PASS ✅
+  - dryRun: 変更あり 0件 ✅
+
+**ログインセッション 列リネーム 完了 ✅**
