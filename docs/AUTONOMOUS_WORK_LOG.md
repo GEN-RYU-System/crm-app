@@ -8135,3 +8135,47 @@ clasp run runCoreSchemaConformanceAudit
 ```
 
 **revert SHA（緊急時）:** `860e7717fdb30767ee15d502334803aa0a2daa28`（PR #950 squash commit = 現在の develop HEAD）
+
+---
+
+## PR-AA2: 発送明細 GAS API 新設
+
+**日時:** 2026-09-02
+
+**目的:**
+- 発送明細の読み書き API を `src/28_CoreShipmentLineApi.js` として新設
+- 商品選択時に輸出情報を自動補完できる仕組みを提供
+
+**実装内容:**
+- `getCoreShipmentLinesForFrontend(sessionId, shipmentId)` — 参照先名称を結合して返す
+- `getProductExportDefaultsForFrontend(sessionId, payload)` — 商品荷姿マスタから輸出デフォルト値を取得
+- `upsertCoreShipmentLineForFrontend(sessionId, payload)` — 事前検証・発送明細書き込み・商品荷姿マスタ保存
+
+**PR一覧:**
+- PR #954 (API実装): mergedAt `2026-09-02T10:11:07Z`
+- PR #955 (テストラッパー): mergedAt `2026-09-02T10:17:18Z`
+
+**手順5（getDeployedSha）:**
+```
+clasp run getDeployedSha
+→ 9ad67bb7f58bb0e4eb232e0328477a8e5a028bc6 = origin/develop HEAD ✅（PR #954 merge 後）
+```
+
+**手順6（DEV テスト: runShipmentLineApiTest）:**
+```
+clasp run runShipmentLineApiTest
+→ testA_upsertNoMaster: { success: true, shipmentLineId: 'SL-0001', savedToProductMaster: false, rowAdded: 1 } ✅
+→ testB_getLines: { namesJoined: true, ownProductNameJa: 'DEVテスト自社商品A（更新済み）' } ✅
+→ testC_exportDefaults: { found: false, originCountry: 'JP' } ✅（荷姿未登録のためfound:false、originCountry既定値JP）
+→ testD_upsertWithMaster: { success: true, shipmentLineId: 'SL-0002', savedToProductMaster: true } ✅
+→ testE_bothProductIdsRejected: { result: 'REJECTED_OK', rowsUnchanged: true } ✅
+→ auditAfterA / auditAfterD / auditAfterE: mismatches: 0 ✅
+```
+
+**手順7（runCoreSchemaConformanceAudit）:**
+```
+clasp run runCoreSchemaConformanceAudit
+→ 総不一致: 0 → PASS ✅（LOGIN_SESSIONSも0件に解消）
+```
+
+**revert SHA（緊急時）:** `e80df5e`（PR #955 squash commit = 現在の develop HEAD）
