@@ -20,7 +20,7 @@ const CUSTOMER_AGGREGATE_CACHE_TTL        = 600;
  */
 function buildCoreCustomerListRows_(spreadsheet) {
   const customers = coreCustomerFrontendReadTable(spreadsheet, 'CUSTOMERS', [
-    'CUSTOMER_ID', 'SOURCE_LEAD_ID', 'CUSTOMER_NAME', 'COUNTRY', 'SALES_ASSIGNEE_NAME'
+    'CUSTOMER_ID', 'SOURCE_LEAD_ID', 'CUSTOMER_NAME', 'COUNTRY', 'SALES_ASSIGNEE_ID'
   ]);
   const leads = coreCustomerFrontendReadTable(spreadsheet, 'LEADS', [
     'LEAD_ID', 'SALES_CHANNEL', 'HANDLED_TITLE'
@@ -42,7 +42,8 @@ function buildCoreCustomerListRows_(spreadsheet) {
       country:            coreCustomerFrontendValue(row[customers.indexes.COUNTRY]),
       salesChannel:       sourceLead ? coreCustomerFrontendValue(sourceLead[leads.indexes.SALES_CHANNEL])  : '',
       handledTitle:       sourceLead ? coreCustomerFrontendValue(sourceLead[leads.indexes.HANDLED_TITLE])  : '',
-      salesAssigneeName:  coreCustomerFrontendValue(row[customers.indexes.SALES_ASSIGNEE_NAME]),
+      salesAssigneeId:    coreCustomerFrontendValue(row[customers.indexes.SALES_ASSIGNEE_ID]),
+      salesAssigneeName:  '',
       transactionCount:   transactions.count,
       transactionAmounts: transactions.amounts
     };
@@ -74,7 +75,7 @@ function getCoreCustomerForFrontend(sessionId, customerId) {
   const customers = coreCustomerFrontendReadTable(spreadsheet, 'CUSTOMERS', [
     'CUSTOMER_ID', 'SOURCE_LEAD_ID', 'CUSTOMER_NAME', 'COUNTRY', 'EMAIL', 'PHONE',
     'COUNTRY_CODE', 'FIRST_TRANSACTION_DATE', 'REGISTERED_AT',
-    'SALES_ASSIGNEE_NAME', 'CONTACT_TOOL', 'SHIPPING_NOTE'
+    'SALES_ASSIGNEE_ID', 'CONTACT_TOOL', 'SHIPPING_NOTE'
   ]);
   const customerRow = customers.rows.find(function(row) {
     return coreCustomerFrontendValue(row[customers.indexes.CUSTOMER_ID]) === normalizedCustomerId;
@@ -112,7 +113,8 @@ function getCoreCustomerForFrontend(sessionId, customerId) {
       countryCode: coreCustomerFrontendValue(customerRow[customers.indexes.COUNTRY_CODE]),
       firstTransactionDate: coreCustomerFrontendValue(customerRow[customers.indexes.FIRST_TRANSACTION_DATE]),
       registeredAt: coreCustomerFrontendValue(customerRow[customers.indexes.REGISTERED_AT]),
-      salesAssigneeName: coreCustomerFrontendValue(customerRow[customers.indexes.SALES_ASSIGNEE_NAME]),
+      salesAssigneeId: coreCustomerFrontendValue(customerRow[customers.indexes.SALES_ASSIGNEE_ID]),
+      salesAssigneeName: '',
       contactTool: coreCustomerFrontendValue(customerRow[customers.indexes.CONTACT_TOOL]),
       contactMethod: (function() {
         var sid = coreCustomerFrontendValue(customerRow[customers.indexes.SOURCE_LEAD_ID]);
