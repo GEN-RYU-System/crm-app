@@ -8750,3 +8750,161 @@ git revert dc865c8935bb00bc75b5c890e2ce4d6063856906
 「監査の限界」セクション参照）。
 
 **判断**: 自動 smoke test の実装は PO 判断待ち
+
+---
+
+## lead_status SSOT 統一（5段階）— 2026-09-03
+
+**背景:** リード管理シートの `lead_status` 列が3つの SSOT（Config 静的配列・選択肢マスタV2・Registry）に分散。
+旧値（`成約済み`, `新規`）が実データに残存し、`getLeads` のステータスフィルターが誤除外を引き起こしていた。
+
+**PO 決定（事前確認済み）:**
+1. 実データを V2 の10値に統一（成約済み→成約、新規→新規リード）
+2. Registry に LEAD_STATUS 許可値を登録
+3. CONFIG.LEAD_STATUSES 静的配列を廃止し V2 参照に一本化
+4. getLeads の lead ステータスフィルターを削除（全ステータスのリードを返す）
+
+---
+
+### 段階0: lead_status 不整合調査 — PR #990 / `951a419`
+
+**変更ファイル:**
+
+| ファイル | 変更種別 | 概要 |
+|--------|------|------|
+| `src/99_DevLeadStatusInvestigation.js` | 新規 | リード管理シートの lead_status 実態調査関数 |
+
+**clasp run 実行結果（調査）:**
+```
+CONFIG.LEAD_STATUSES（実行時）: ["新規リード","リード対応中","リード対象外"]（3値）
+実データ分布: 成約済み×6, 商談中×2, 新規×1, 失注×1（合計10件）
+→ CONFIG.LEAD_STATUSES に一致する件数: 0（全件除外）
+→ V2 10値に一致する件数: 10（全件一致）
+```
+
+**PR #990:** mergedAt: （前セッション — SHA `951a419`）  
+**Deploy to DEV:** success
+
+---
+
+### 段階1: データ移行スクリプト追加 + 実行 — PR #992 / `8330e64`
+
+**変更ファイル:**
+
+| ファイル | 変更種別 | 概要 |
+|--------|------|------|
+| `src/99_DevLeadStatusMigration.js` | 新規 | backup / dry-run / execute / verify 関数 |
+
+**dry-run 実行結果:**
+```
+成約済み → 成約: 6件
+新規 → 新規リード: 1件
+変更対象: 7件
+変更不要（V2準拠済み）: 3件
+```
+
+**execute 後 verify 実行結果:**
+```json
+{"pass":true,"rowMatch":true,"colMatch":true,
+ "statusViolations":[],"statusViolationCount":0,
+ "statusValueCounts":{"成約":6,"商談中":2,"新規リード":1,"失注":1}}
+```
+
+**PR #992:** mergedAt: （前セッション — SHA `8330e64`）  
+**Deploy to DEV:** success
+
+---
+
+### 段階2: Registry に LEAD_STATUS 許可値登録 — PR #994 / `64ba387`
+
+**変更ファイル:**
+
+| ファイル | 変更種別 | 概要 |
+|--------|------|------|
+| `src/00_CoreSchemaRegistry.js` | 変更 | LEADS.values.LEAD_STATUS に V2 の10値を追加 |
+
+**追加内容:**
+```javascript
+values: {
+  LEAD_STATUS: {
+    新規リード: '新規リード', リード対応中: 'リード対応中', アサイン確定: 'アサイン確定',
+    リード対象外: 'リード対象外', 商談中: '商談中', 商談対象外: '商談対象外',
+    追客_短期: '追客(短期)', 追客_長期: '追客(長期)', 成約: '成約', 失注: '失注'
+  }
+}
+```
+
+**conformance audit 結果:**
+```
+[LEADS / リード管理]
+  5. Values [LEAD_STATUS] (lead_status): OK
+  小計不一致: 0件
+=== 総不一致: 0 → PASS ===
+```
+
+**PR #994:** mergedAt: 2026-09-03T22:07:33Z / SHA `64ba387`  
+**Deploy to DEV:** success（run ID: 33811523380）
+
+---
+
+### 段階3: CONFIG.LEAD_STATUSES 置換・削除 — PR #996 / `23adf33`
+
+**変更ファイル:**
+
+| ファイル | 変更種別 | 概要 |
+|--------|------|------|
+| `src/08_Config.js` | 変更 | `LEAD_STATUSES: [...]` 静的定数を削除 |
+| `src/27_WebApp.js` | 変更 | getLeadsKPI / getCSMetrics / getDashboardData で V2 参照に置換、デバッグログ削除 |
+| `src/03_AssignService.js` | 変更 | `CONFIG.LEAD_STATUSES \|\| [...]` → V2 参照（既知不具合関数内） |
+| `src/23_SheetService.js` | 変更 | `CONFIG.LEAD_STATUSES` → V2 参照（既知不具合関数内） |
+
+**残留 CONFIG.LEAD_STATUSES（意図的）:**
+- `27_WebApp.js:471` — 段階4 で削除
+- `12_DashboardService.js:293` — 旧列名 `進捗ステータス` で既存不具合（スコープ外）
+- `99_PerfBench.js` 他 — dev スクリプト（本番フロー外）
+
+**PR #996:** mergedAt: 2026-09-03T22:26:00Z / SHA `23adf33`  
+**Deploy to DEV:** success（run ID: 33813018686）
+
+---
+
+### 段階4: getLeads の lead ステータスフィルター削除 — PR #997 / `6f0302c`
+
+**変更ファイル:**
+
+| ファイル | 変更種別 | 概要 |
+|--------|------|------|
+| `src/27_WebApp.js` | 変更 | `filter === 'lead'` のステータスフィルター削除、`debugSkipReasons.statusFilter` 削除 |
+
+**背景:** 段階1でリード管理シートの全ステータス値を V2 の10値に統一済み。
+旧フィルターは `新規リード / リード対応中 / リード対象外`（3値）のみ通過させており、
+`商談中 / 成約 / 失注` 等のリードを誤除外していた。
+
+**PR #997:** mergedAt: 2026-09-03T22:46:38Z / SHA `6f0302c`  
+**Deploy to DEV:** success（run ID: 33814628015）
+
+---
+
+### 段階5: 表示確認（clasp run）— 2026-09-03
+
+**devLeadStatusVerify 実行結果:**
+```json
+{"pass":true,"rowMatch":true,"colMatch":true,
+ "statusViolations":[],"statusViolationCount":0,
+ "statusValueCounts":{"成約":6,"商談中":2,"新規リード":1,"失注":1}}
+```
+→ 全10件 V2 準拠、違反0件
+
+**getLeadsByType / getLeads 直接確認:** auth required のため clasp run 不可。  
+**DEV ブラウザ確認:** PO 環境で実施予定。
+
+---
+
+### 既知の残存問題（スコープ外）
+
+| ファイル | 問題 | 原因 | 対処 |
+|--------|------|------|------|
+| `12_DashboardService.js:293` | `CONFIG.LEAD_STATUSES` 参照 + 旧列名 `進捗ステータス` | リード管理シートの列名英語化以前の実装 | 別タスクで修正 |
+| `23_SheetService.js:583` | `getIntegratedLeads` 関数が旧列名 `進捗ステータス` を参照 | 同上 | 別タスクで修正 |
+| `03_AssignService.js:178` | `row[colIndex.進捗ステータス]` 旧列名 | 同上 | 別タスクで修正 |
+| `99_PerfBench.js` 他 | `CONFIG.LEAD_STATUSES` 参照 | dev スクリプト | 本番フロー外、影響なし |
