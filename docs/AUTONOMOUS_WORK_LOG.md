@@ -8620,3 +8620,95 @@ clasp run runCoreSchemaConformanceAudit
 ```
 
 **revert SHA（緊急時）:** `d665ec1`（PR-AB2 work log squash = PR-AB3 ロールバック先）
+
+---
+
+## 【顧客一覧 CORE_SCHEMA_HEADER_KEY_NOT_FOUND 修正】PR #986
+
+**実施日時**: 2026-09-03T03:35:39Z（mergedAt）  
+**revert SHA**: `dc865c8935bb00bc75b5c890e2ce4d6063856906`
+
+### 原因
+
+PR #883（2026-09-02）が Registry と物理シートから `SALES_ASSIGNEE_NAME` 列を削除したが、
+`src/28_CoreCustomerReadApi.js` と `src/99_PerfBench.js` のコード側参照が除去されなかった。
+
+`getCoreSchemaV1HeaderName('CUSTOMERS', 'SALES_ASSIGNEE_NAME')` が
+`CORE_SCHEMA_HEADER_KEY_NOT_FOUND` を throw → 顧客一覧が全件表示不能に。
+
+`runCoreSchemaConformanceAudit` はこの誤りを検出できなかった（監査の限界: Code→Registry 方向は未検証）。
+
+### 変更ファイル
+
+- `src/28_CoreCustomerReadApi.js`: 6箇所
+  - `buildCoreCustomerListRows_`: `SALES_ASSIGNEE_NAME` → `SALES_ASSIGNEE_ID`。返却フィールドを `salesAssigneeId` に改名（`salesAssigneeName: ''`）
+  - `getCoreCustomerForFrontend`: 同様
+- `src/99_PerfBench.js`: 2箇所（`benchCustomerListMs`）
+
+### 検証結果
+
+- `clasp run benchCustomerListMs` → `CORE_SCHEMA_HEADER_KEY_NOT_FOUND` 未発生 / 6件返却 ✅
+- `runCoreSchemaConformanceAudit` → 全テーブル 0件不一致 ✅
+- `devCustomerListAudit`（PR #987 / 2026-09-03T10:11:23Z）:
+  - エラーなし ✅
+  - totalRows: 6 ✅
+  - salesAssigneeIdValues: `["EMP-00001"]` ✅
+  - 全6件に `salesAssigneeId: "EMP-00001"` が含まれる ✅
+
+### リード空表示の原因（実測確定）
+
+`clasp run devLeadStatusAllRows` 実行結果（2026-09-03T10:11:33Z）:
+
+```
+totalDataRows: 10
+CONFIG.LEAD_STATUSES: ['新規リード', 'リード対応中', 'リード対象外']
+valueCounts:
+  成約済み: 6件 (inLeadStatuses: false)
+  商談中:   2件 (inLeadStatuses: false)
+  新規:     1件 (inLeadStatuses: false)
+  失注:     1件 (inLeadStatuses: false)
+matchCount:   0
+noMatchCount: 10
+```
+
+**判定: コードは正常。DEV テストデータの lead_status が旧表記のため全件フィルタ除外されている。**
+
+`getLeads()` は `CONFIG.LEAD_STATUSES.includes(status)` でフィルタする。
+DEV データは `成約済み / 商談中 / 新規 / 失注` という旧表記で登録されており、
+現在の定義値（`新規リード / リード対応中 / リード対象外`）と一致しない。
+空表示はコードの問題ではなく、テストデータの状態の問題。
+
+### ロールバック手順
+
+```
+git revert dc865c8935bb00bc75b5c890e2ce4d6063856906
+# → develop へ push して Deploy to DEV が自動起動
+```
+
+---
+
+## 次フェーズ課題（2026-09-03 記録）
+
+### (1) salesAssigneeName フィールドの廃止
+
+**状況**: GAS が `salesAssigneeName: ''`（空文字）を返すだけになっている。  
+フロントは `salesAssigneeId` を `resolveAssigneeName(staffMap)` に通して名前を表示しており、
+`salesAssigneeName` フィールドは機能していない。
+
+**必要作業**:
+- `src/28_CoreCustomerReadApi.js`: 戻り値から `salesAssigneeName` キーを削除
+- `frontend/src/features/customers/contracts.ts`: `CustomerSummaryDto` / `CustomerProfileDto` から `salesAssigneeName` を削除
+
+**優先度**: 低（現状でも正常動作する。誤解を招くフィールド名の除去が目的）  
+**判断**: PO 確認後に実施
+
+### (2) 監査の Code→Registry 方向の検証
+
+**状況**: `runCoreSchemaConformanceAudit` は Registry → 実シートのみ検証。
+コードが参照する論理キーが Registry に存在するかは未検証。
+
+**提案**: Registry からキーを削除する PR では、削除後に対象 API を `clasp run` で
+実行して戻り値を確認することをルール化する（詳細は `docs/AUTONOMOUS_WORK_RULES.md` の
+「監査の限界」セクション参照）。
+
+**判断**: 自動 smoke test の実装は PO 判断待ち

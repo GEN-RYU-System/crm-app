@@ -561,3 +561,31 @@ squash merge 運用の本リポジトリでは削除候補が常にゼロにな�
 
 worktree の整理には `scripts/worktree-cleanup.sh` を使うこと。
 `janitor.sh` は変更しない。
+
+---
+
+## 監査の限界（2026-09-03 追加）
+
+`runCoreSchemaConformanceAudit` は
+「Registry の物理名が実シートに存在するか」のみを検証する。
+
+**検証されないこと:**
+- コードが参照する論理キーが Registry に存在するか
+- フロント側の型定義が GAS の返却と一致するか
+
+Registry からキーを削除する変更では、監査0件でも画面が壊れる。
+
+**削除後の必須手順:**
+
+削除したキーを参照する API 関数を `clasp run` で実行し、
+戻り値に `CORE_SCHEMA_HEADER_KEY_NOT_FOUND` が含まれないことを確認すること。
+
+```bash
+# 例: CUSTOMERS を読む API を確認
+clasp run benchCustomerListMs
+# または dev 関数を追加して clasp run devCustomerListAudit
+```
+
+**背景:** 2026-09-02、PR #883 で `SALES_ASSIGNEE_NAME` を Registry から削除した際、
+`src/28_CoreCustomerReadApi.js` 側の参照が残り、顧客一覧が完全停止した。
+監査は 0件不一致を返していた。PR #986 で修正（2026-09-03）。
