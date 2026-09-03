@@ -28,7 +28,20 @@
 **除外テーブル**: shared_inventory（primaryKey: null、設計選択肢は schema-notes.md §4 に記録）
 
 **CI（PR #984）**: Gitleaks pass / Sensitive Content pass / frontend-check pass / gas-global-namespace pass
+### 2026-09-02 発送（SHIPMENTS）列名リネーム（Phase 2 — 7シート目）
 
+**revert SHA（PR-1）**: `e2d3aca` (PR #960 squash merge 後の develop HEAD)
+**revert 手順**: clasp run devRenameShipmentsColumns 逆方向実行 → git revert PR #962 squash → git revert PR #960 squash（逆順）
+
+- PR-1: #960 (mergedAt: 2026-09-02T11:38:25Z) — CoreSchemaRegistry 物理列名変更 + リネームスクリプト追加
+- PR-2: なし（Registry 経由のため clasp run でシート変更のみ）
+- PR-3: #962 (mergedAt: 2026-09-02T11:45:52Z) — 旧参照削除（08_Config.js SHIPMENT 配列英語化等）
+- 変更列: 発送ID→shipment_id / オーダーID→order_id / 箱番号→box_number / 発送方法→shipping_method / 発送日→shipped_at / 運送状番号→tracking_number / 長さ→length / 幅→width / 高さ→height / 重量→weight / 見積もり送料→estimated_shipping_fee / ラベルURL→label_url / インボイスURL→invoice_url / 検品→inspection / 梱包→packing / 格納→storage / 集荷依頼→pickup_request / 通知→notification / 発送担当ID→shipping_assignee_id / 備考→note / 登録日→registered_at / 更新日→updated_at
+- バックアップ: `発送_backup_20260902`（9行×22列）
+- 実行後ヘッダー: `['shipment_id', 'order_id', 'box_number', 'shipping_method', 'shipped_at', 'tracking_number', 'length', 'width', 'height', 'weight', 'estimated_shipping_fee', 'label_url', 'invoice_url', 'inspection', 'packing', 'storage', 'pickup_request', 'notification', 'shipping_assignee_id', 'note', 'registered_at', 'updated_at']`
+- 監査結果（シートリネーム後）: 総不一致 0件 → PASS ✅ / dryRun 変更あり 0件 ✅
+- 旧列名参照（発送シートコンテキスト）: 0件 ✅
+- 発送画面表示確認: PASS（受注管理一覧・発送タブ正常表示・Console 0 errors）
 ---
 
 ### 2026-09-02 発送タブに発送明細入力欄を追加（PR-AA3）
