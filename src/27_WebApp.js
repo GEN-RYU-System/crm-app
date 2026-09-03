@@ -435,7 +435,7 @@ function getLeads(filter, leadType) {
   console.log('getLeads: leadType param="' + leadType + '" (length=' + (leadType ? leadType.length : 0) + ')');
 
   const leads = [];
-  let debugSkipReasons = { typeFilter: 0, statusFilter: 0 };
+  let debugSkipReasons = { typeFilter: 0 };
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
@@ -468,10 +468,6 @@ function getLeads(filter, leadType) {
     }
 
     // ステータスフィルタ
-    if (filter === 'lead' && !CONFIG.LEAD_STATUSES.includes(status)) {
-      debugSkipReasons.statusFilter++;
-      continue;
-    }
     if (filter === 'deal' && !CONFIG.DEAL_STATUSES.includes(status)) continue;
     if (filter === 'closed') {
       const isArchived = archivedAtIdx >= 0 && row[archivedAtIdx];
@@ -518,7 +514,7 @@ function getLeads(filter, leadType) {
   }
 
   console.log('getLeads RESULT: ' + leads.length + '件 (filter=' + filter + ', type=' + leadType + ')');
-  console.log('getLeads SKIP: typeFilter=' + debugSkipReasons.typeFilter + ', statusFilter=' + debugSkipReasons.statusFilter);
+  console.log('getLeads SKIP: typeFilter=' + debugSkipReasons.typeFilter);
   return leads;
 }
 
