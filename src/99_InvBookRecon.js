@@ -1210,7 +1210,7 @@ function normalizeProductNamesDryRun() {
 
   L('ヘッダー: ' + headers.join(' | '));
 
-  var CI_DETAIL   = _npnFindCol(headers, ['明細ID','detailid','detail_id','明細行ID','行ID']);
+  var CI_DETAIL   = _npnFindCol(headers, ['明細ID','detailid','detail_id','明細行ID','行ID','order_line_id']);
   var CI_ORDER    = _npnFindCol(headers, ['オーダーID','orderid','order_id','注文ID','受注ID']);
   var CI_NAME     = _npnFindCol(headers, ['商品名','productname','product_name','商品名称','itemname']);
   var CI_QTY      = _npnFindCol(headers, ['数量','qty','quantity']);
@@ -1420,9 +1420,9 @@ function investigatePostNormalize() {
   var headers = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
   var olData  = olSh.getRange(2, 1, olSh.getLastRow() - 1, numCols).getValues();
 
-  var CI_DETAIL   = _npnFindCol(headers, ['明細ID','detailid','detail_id','明細行ID','行ID']);
+  var CI_DETAIL   = _npnFindCol(headers, ['明細ID','detailid','detail_id','明細行ID','行ID','order_line_id']);
   var CI_ORDER    = _npnFindCol(headers, ['オーダーID','orderid','order_id','注文ID','受注ID']);
-  var CI_ROW      = _npnFindCol(headers, ['行番号','rowno','row_no','行No']);
+  var CI_ROW      = _npnFindCol(headers, ['行番号','rowno','row_no','行No','line_number']);
   var CI_NAME     = _npnFindCol(headers, ['商品名','productname','product_name','商品名称','itemname']);
   var CI_STATUS   = _npnFindCol(headers, ['状態','status','ステータス']);
   var CI_SKU      = _npnFindCol(headers, ['SKU','sku']);
@@ -3704,7 +3704,7 @@ function rematchAfterKW() {
   var olSh    = crmSS.getSheetByName('オーダー明細');
   var numCols = olSh.getLastColumn();
   var headers = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
-  var CI_OL   = _npnFindCol(headers, ['明細ID','詳細ID','lineitemid','odl']);
+  var CI_OL   = _npnFindCol(headers, ['明細ID','詳細ID','lineitemid','odl','order_line_id']);
   var CI_NAME = _npnFindCol(headers, ['商品名','productname','product_name']);
   if (CI_NAME < 0) CI_NAME = 4;
   if (CI_OL  < 0) CI_OL  = 0;
@@ -3797,7 +3797,7 @@ function dryRunOrderDetailPmId() {
   var olSh    = crmSS.getSheetByName('オーダー明細');
   var numCols = olSh.getLastColumn();
   var headers = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
-  var CI_OL   = _npnFindCol(headers, ['明細ID','詳細ID','lineitemid','odl']);
+  var CI_OL   = _npnFindCol(headers, ['明細ID','詳細ID','lineitemid','odl','order_line_id']);
   var CI_NAME = _npnFindCol(headers, ['商品名','productname','product_name']);
   if (CI_NAME < 0) CI_NAME = 4;
   if (CI_OL  < 0) CI_OL  = 0;
@@ -3907,7 +3907,7 @@ function execCRMNamePatch() {
   var olSh  = crmSS.getSheetByName('オーダー明細');
   var numCols = olSh.getLastColumn();
   var headers = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
-  var CI_OL   = _npnFindCol(headers, ['明細ID','詳細ID','lineitemid','odl']);
+  var CI_OL   = _npnFindCol(headers, ['明細ID','詳細ID','lineitemid','odl','order_line_id']);
   var CI_NAME = _npnFindCol(headers, ['商品名','productname','product_name']);
   if (CI_NAME < 0) CI_NAME = 4;
   if (CI_OL  < 0) CI_OL  = 0;
@@ -3961,7 +3961,7 @@ function rematchAfterPatch() {
   var olSh    = crmSS.getSheetByName('オーダー明細');
   var numCols = olSh.getLastColumn();
   var headers = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
-  var CI_OL   = _npnFindCol(headers, ['明細ID','詳細ID','lineitemid','odl']);
+  var CI_OL   = _npnFindCol(headers, ['明細ID','詳細ID','lineitemid','odl','order_line_id']);
   var CI_NAME = _npnFindCol(headers, ['商品名','productname','product_name']);
   if (CI_NAME < 0) CI_NAME = 4;
   if (CI_OL  < 0) CI_OL  = 0;
@@ -4023,7 +4023,7 @@ function execOrderDetailPmId() {
   var olSh    = crmSS.getSheetByName('オーダー明細');
   var numCols = olSh.getLastColumn();
   var headers = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
-  var CI_OL   = _npnFindCol(headers, ['明細ID','詳細ID','lineitemid','odl']);
+  var CI_OL   = _npnFindCol(headers, ['明細ID','詳細ID','lineitemid','odl','order_line_id']);
   var CI_NAME = _npnFindCol(headers, ['商品名','productname','product_name']);
   var CI_QTY  = _npnFindCol(headers, ['数量','qty','quantity']);
   var CI_SUB  = _npnFindCol(headers, ['小計','subtotal']);
@@ -4145,9 +4145,9 @@ function investigateBlankAndNonProduct() {
   var olSh  = crmSS.getSheetByName('オーダー明細');
   var numCols = olSh.getLastColumn();
   var headers = olSh.getRange(1, 1, 1, numCols).getValues()[0].map(function(h){ return String(h).trim(); });
-  var CI_OL   = _npnFindCol(headers, ['明細ID','詳細ID','lineitemid','odl']);
+  var CI_OL   = _npnFindCol(headers, ['明細ID','詳細ID','lineitemid','odl','order_line_id']);
   var CI_OD   = _npnFindCol(headers, ['オーダーID','orderid','order_id']);
-  var CI_ROW  = _npnFindCol(headers, ['行番号','linenum','line']);
+  var CI_ROW  = _npnFindCol(headers, ['行番号','linenum','line','line_number']);
   var CI_CAT  = _npnFindCol(headers, ['カテゴリ','category']);
   var CI_NAME = _npnFindCol(headers, ['商品名','productname','product_name']);
   var CI_STAT = _npnFindCol(headers, ['状態','status']);

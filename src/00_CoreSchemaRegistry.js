@@ -33,7 +33,7 @@ const CORE_SCHEMA_V1_TABLES = {
   ORDERS: {
     sheetName: 'オーダー管理', canonicalName: 'オーダー管理', aliases: [], headerRowNumber: 1, sheetType: 'TRANSACTION', writeAllowed: true,
     headers: createCoreSchemaV1Headers([
-      ['ORDER_ID', 'オーダーID'], ['INVOICE_NUMBER', '請求書番号'], ['CUSTOMER_ID', '顧客ID'], ['SHIPPING_DESTINATION_ID', '配送先ID'], ['PAYMENT_DESTINATION_ID', '支払先ID'], ['SOURCE_LEAD_ID', '源流リードID'], ['STATUS', 'ステータス'], ['ORDER_DATE', '受注日'], ['CURRENCY', '通貨'], ['EXCHANGE_RATE', '為替レート'], ['LINE_TOTAL', '明細合計'], ['SHIPPING_FEE', '送料'], ['DUTY', '関税'], ['INVOICE_TOTAL', '請求総額'], ['PAYMENT_METHOD', '決済手段'], ['INVOICE_LINK', '請求書リンク'], ['INVOICE_ISSUED_AT', '請求書発行日'], ['PAYMENT_DUE_AT', '支払期日'], ['PAYMENT_CONFIRMED_AT', '支払確認日'], ['PAYMENT_CONFIRMATION_SOURCE', '入金確認元'], ['SHIPPING_METHOD', '発送方法'], ['SHIPPED_AT', '発送日'], ['TRACKING_NUMBER', '運送状番号'], ['SHIPPING_NOTE', '発送時メモ'], ['NOTE', '備考'], ['REGISTERED_AT', '登録日'], ['UPDATED_AT', '更新日'], ['ORDER_ASSIGNEE_ID', '受注担当ID'], ['PAYMENT_CONFIRMED_BY_ID', '入金確認者ID'], ['SALES_ASSIGNEE_ID', '営業担当ID'], ['SHIPPING_ASSIGNEE_ID', '発送担当ID'], ['TRANSACTION_NOTE', '取引備考欄'], ['RESERVED_INVOICE_NUMBER', '予約請求書番号'], ['RELEASE_SCHEDULED_AT', '発売予定日'], ['DEPOSIT_RATE', 'デポジット率'], ['OTHER_FEE', 'その他手数料'], ['DISCOUNT', '値引き'], ['PAYMENT_TERMS', '支払サイト'], ['CANCELLATION_REASON', 'キャンセル理由'], ['CANCELLATION_NOTE', 'キャンセルメモ'], ['PAYMENT_STATUS', '支払いステータス'], ['INVOICE_TOTAL_JPY', '円換算請求総額'], ['INTERNAL_NOTE', '内部メモ']
+      ['ORDER_ID', 'order_id'], ['INVOICE_NUMBER', 'invoice_number'], ['CUSTOMER_ID', 'customer_id'], ['SHIPPING_DESTINATION_ID', 'shipping_destination_id'], ['PAYMENT_DESTINATION_ID', 'payment_destination_id'], ['SOURCE_LEAD_ID', 'source_lead_id'], ['STATUS', 'status'], ['ORDER_DATE', 'order_date'], ['CURRENCY', 'currency'], ['EXCHANGE_RATE', 'exchange_rate'], ['LINE_TOTAL', 'line_total'], ['SHIPPING_FEE', 'shipping_fee'], ['DUTY', 'duty'], ['INVOICE_TOTAL', 'invoice_total'], ['PAYMENT_METHOD', 'payment_method'], ['INVOICE_LINK', 'invoice_link'], ['INVOICE_ISSUED_AT', 'invoice_issued_at'], ['PAYMENT_DUE_AT', 'payment_due_at'], ['PAYMENT_CONFIRMED_AT', 'payment_confirmed_at'], ['PAYMENT_CONFIRMATION_SOURCE', 'payment_confirmation_source'], ['SHIPPING_METHOD', 'shipping_method'], ['SHIPPED_AT', 'shipped_at'], ['TRACKING_NUMBER', 'tracking_number'], ['SHIPPING_NOTE', 'shipping_note'], ['NOTE', 'note'], ['REGISTERED_AT', 'registered_at'], ['UPDATED_AT', 'updated_at'], ['ORDER_ASSIGNEE_ID', 'order_assignee_id'], ['PAYMENT_CONFIRMED_BY_ID', 'payment_confirmed_by_id'], ['SALES_ASSIGNEE_ID', 'sales_assignee_id'], ['SHIPPING_ASSIGNEE_ID', 'shipping_assignee_id'], ['TRANSACTION_NOTE', 'transaction_note'], ['RESERVED_INVOICE_NUMBER', 'reserved_invoice_number'], ['RELEASE_SCHEDULED_AT', 'release_scheduled_at'], ['DEPOSIT_RATE', 'deposit_rate'], ['OTHER_FEE', 'other_fee'], ['DISCOUNT', 'discount'], ['PAYMENT_TERMS', 'payment_terms'], ['CANCELLATION_REASON', 'cancellation_reason'], ['CANCELLATION_NOTE', 'cancellation_note'], ['PAYMENT_STATUS', 'payment_status'], ['INVOICE_TOTAL_JPY', 'invoice_total_jpy'], ['INTERNAL_NOTE', 'internal_note']
     ]), primaryKey: 'ORDER_ID',
     values: {
       PAYMENT_STATUS: {
@@ -75,7 +75,7 @@ const CORE_SCHEMA_V1_TABLES = {
   },
   ORDER_LINES: {
     sheetName: 'オーダー明細', canonicalName: 'オーダー明細', aliases: [], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
-    headers: createCoreSchemaV1Headers([['ORDER_LINE_ID', '明細ID'], ['ORDER_ID', 'オーダーID'], ['LINE_NUMBER', '行番号'], ['CATEGORY', 'カテゴリ'], ['PRODUCT_NAME', '商品名'], ['STATUS', '状態'], ['SKU', 'SKU'], ['QUANTITY', '数量'], ['UNIT_PRICE', '単価'], ['SUBTOTAL', '小計'], ['PRODUCT_ID', '商品ID'], ['CONDITION', 'コンディション']]), primaryKey: 'ORDER_LINE_ID',
+    headers: createCoreSchemaV1Headers([['ORDER_LINE_ID', 'order_line_id'], ['ORDER_ID', 'order_id'], ['LINE_NUMBER', 'line_number'], ['CATEGORY', 'category'], ['PRODUCT_NAME', 'product_name'], ['STATUS', 'status'], ['SKU', 'sku'], ['QUANTITY', 'quantity'], ['UNIT_PRICE', 'unit_price'], ['SUBTOTAL', 'subtotal'], ['PRODUCT_ID', 'product_id'], ['CONDITION', 'condition']]), primaryKey: 'ORDER_LINE_ID',
     // CONDITION 表示名が '状態'（STATUS）と重複するため 'コンディション' を採用。
     // 見積もり明細（QUOTE_LINES）の CONDITION は '状態' のまま。
     referenceIds: [{ headerKey: 'ORDER_ID', targetTableKey: 'ORDERS' }, { headerKey: 'PRODUCT_ID', targetTableKey: 'PRODUCTS' }, { headerKey: 'CONDITION', targetTableKey: 'CONDITIONS' }]
@@ -127,9 +127,9 @@ const CORE_SCHEMA_V1_TABLES = {
   QUOTE_LINES: {
     sheetName: '見積もり明細', canonicalName: '見積もり明細', aliases: [], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
     headers: createCoreSchemaV1Headers([
-      ['QUOTE_LINE_ID', '明細ID'], ['QUOTE_ID', '見積書ID'], ['LINE_NO', '行番号'], ['PRODUCT_ID', '商品ID'], ['PRODUCT_NAME', '商品名'], ['DESCRIPTION', '説明'],
-      ['CONDITION', '状態'], ['WEIGHT', '重量'],
-      ['QUANTITY', '数量'], ['UNIT_PRICE', '単価'], ['AMOUNT', '金額'], ['NOTE', '備考']
+      ['QUOTE_LINE_ID', 'quote_line_id'], ['QUOTE_ID', 'quote_id'], ['LINE_NO', 'line_no'], ['PRODUCT_ID', 'product_id'], ['PRODUCT_NAME', 'product_name'], ['DESCRIPTION', 'description'],
+      ['CONDITION', 'condition'], ['WEIGHT', 'weight'],
+      ['QUANTITY', 'quantity'], ['UNIT_PRICE', 'unit_price'], ['AMOUNT', 'amount'], ['NOTE', 'note']
     ]), primaryKey: 'QUOTE_LINE_ID',
     referenceIds: [
       { headerKey: 'QUOTE_ID',   targetTableKey: 'QUOTES' },
@@ -657,6 +657,38 @@ const CORE_SCHEMA_V1_TABLES = {
     ]),
     primaryKey: 'OPTION_ID',
     referenceIds: []
+  },
+  TAX_NUMBER_TYPES: {
+    sheetName: '番号種別マスタ', canonicalName: '番号種別マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['TYPE_ID',        '番号種別ID'],
+      ['NAME_JA',        '名称（日本語）'],
+      ['NAME_EN',        '名称（英語）'],
+      ['DESCRIPTION',    '説明'],
+      ['TARGET_COUNTRY', '対象国'],
+      ['ACTIVE',         '有効'],
+      ['REGISTERED_AT',  '登録日'],
+      ['UPDATED_AT',     '更新日']
+    ]),
+    primaryKey: 'TYPE_ID',
+    referenceIds: []
+  },
+  CUSTOMER_TAX_NUMBERS: {
+    sheetName: '顧客税務番号', canonicalName: '顧客税務番号', aliases: [], headerRowNumber: 1, sheetType: 'CHILD', writeAllowed: true,
+    headers: createCoreSchemaV1Headers([
+      ['TAX_NUMBER_ID', '税務番号ID'],
+      ['CUSTOMER_ID',   '顧客ID'],
+      ['TYPE_ID',       '番号種別ID'],
+      ['NUMBER',        '番号'],
+      ['ACTIVE',        '有効'],
+      ['REGISTERED_AT', '登録日'],
+      ['UPDATED_AT',    '更新日']
+    ]),
+    primaryKey: 'TAX_NUMBER_ID',
+    referenceIds: [
+      { headerKey: 'CUSTOMER_ID', targetTableKey: 'CUSTOMERS' },
+      { headerKey: 'TYPE_ID',     targetTableKey: 'TAX_NUMBER_TYPES' }
+    ]
   }
 };
 

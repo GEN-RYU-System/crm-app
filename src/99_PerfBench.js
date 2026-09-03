@@ -736,7 +736,7 @@ function benchCustomerListMs() {
     var t0 = Date.now();
 
     var customers = coreCustomerFrontendReadTable(ss, 'CUSTOMERS', [
-      'CUSTOMER_ID', 'SOURCE_LEAD_ID', 'CUSTOMER_NAME', 'COUNTRY', 'SALES_ASSIGNEE_NAME'
+      'CUSTOMER_ID', 'SOURCE_LEAD_ID', 'CUSTOMER_NAME', 'COUNTRY', 'SALES_ASSIGNEE_ID'
     ]);
     var leads = coreCustomerFrontendReadTable(ss, 'LEADS', [
       'LEAD_ID', 'SALES_CHANNEL', 'HANDLED_TITLE'
@@ -758,7 +758,8 @@ function benchCustomerListMs() {
         country:            coreCustomerFrontendValue(row[customers.indexes.COUNTRY]),
         salesChannel:       sourceLead ? coreCustomerFrontendValue(sourceLead[leads.indexes.SALES_CHANNEL])  : '',
         handledTitle:       sourceLead ? coreCustomerFrontendValue(sourceLead[leads.indexes.HANDLED_TITLE])  : '',
-        salesAssigneeName:  coreCustomerFrontendValue(row[customers.indexes.SALES_ASSIGNEE_NAME]),
+        salesAssigneeId:    coreCustomerFrontendValue(row[customers.indexes.SALES_ASSIGNEE_ID]),
+        salesAssigneeName:  '',
         transactionCount:   transactions.count,
         transactionAmounts: transactions.amounts
       };

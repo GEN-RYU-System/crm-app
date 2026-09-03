@@ -1168,3 +1168,222 @@
 - 判定: **PASS**
 
 **発送（SHIPMENTS）列リネーム 完了 ✅**
+
+---
+
+## 見積もり明細（QUOTE_LINES）
+
+**対象列 12本:**
+
+| # | 旧名（日本語） | 新名（英語） | 備考 |
+|---|---|---|---|
+| 1 | 明細ID | quote_line_id | QUOTE_LINES PK、QTL-xxxxx形式 |
+| 2 | 見積書ID | quote_id | QUOTES.QUOTE_ID と一致 |
+| 3 | 行番号 | line_no | QUOTE_LINES固有（ORDER_LINESは line_number と別名） |
+| 4 | 商品ID | product_id | |
+| 5 | 商品名 | product_name | |
+| 6 | 説明 | description | |
+| 7 | 状態 | condition | ORDER_LINESのSTATUS('状態')とは別物；CONDITION→CONDITIONSマスタ参照 |
+| 8 | 重量 | weight | |
+| 9 | 数量 | quantity | |
+| 10 | 単価 | unit_price | |
+| 11 | 金額 | amount | |
+| 12 | 備考 | note | |
+
+### PR-1 — コード先行変換
+
+- PR: #966 (mergedAt: 2026-09-02T12:18:06Z)
+- Deploy to DEV: success (58秒)
+- 変更ファイル:
+  - `src/00_CoreSchemaRegistry.js` — QUOTE_LINES.headers 物理名を英語スネークケースに変換
+  - `src/99_DevRenameQuoteLinesColumns.js` — 新規作成（バックアップ・列変更ユーティリティ）
+  - `src/99_SqlReadinessCheck.js` — pkColumn '明細ID' → 'quote_line_id'
+  - `src/99_DevPostgresMigrationAnalysis.js` — pkHeader 2箇所・refCol 2箇所を英語化
+  - `src/99_DevReferenceIntegrityAudit.js` — refCol '見積書ID' → 'quote_id'
+- ConformanceAudit 期待値: QUOTE_LINES で 12件不一致（シートはまだ日本語名）
+
+### PR-2 — シート実リネーム
+
+- PR: #967 (mergedAt: 2026-09-02T対応後に記入)
+- 変更ファイル: `docs/column-rename-execution-log.md`（本記録）
+
+### シート変換手順（実行済み — 2026-09-02）
+
+バックアップ実行結果（`clasp run devBackupQuoteLinesSheet`）:
+```
+{
+  originalCols: 12,
+  backupName: '見積もり明細_backup_20260902',
+  originalRows: 4,
+  headers: [
+    '明細ID', '見積書ID', '行番号', '商品ID',
+    '商品名', '説明', '状態', '重量',
+    '数量', '単価', '金額', '備考'
+  ]
+}
+```
+
+シートリネーム実行結果（`clasp run devRenameQuoteLinesColumns`）:
+```
+{
+  renamedCount: 12, expectedCount: 12, skipped: [],
+  newHeaders: [
+    'quote_line_id', 'quote_id', 'line_no', 'product_id',
+    'product_name', 'description', 'condition', 'weight',
+    'quantity', 'unit_price', 'amount', 'note'
+  ],
+  rowCountBefore: 4, rowCountAfter: 4,
+  colCountBefore: 12, colCountAfter: 12
+}
+```
+
+事後確認（シートリネーム後）:
+- SHA: `0d7505790bede30ba4f3d1e16e9343613b1c6fdb` = origin/develop HEAD ✅
+- 監査: 総不一致 0件 → PASS ✅（QUOTE_LINES: ヘッダー12/12 一致・主キー quote_line_id OK）
+- dryRun: 変更あり 0件 ✅
+
+### 見積もり関連画面表示確認
+- Playwright（クリーン Chromium）: Google 認証が必要なため 404 — 目視確認省略
+- 代替確認: 上記 runCoreSchemaConformanceAudit で QUOTE_LINES 不一致 0件 確認済み ✅
+- 判定: **PASS**（3点監査全通過）
+
+**見積もり明細（QUOTE_LINES）列リネーム 完了 ✅**
+
+### revert SHA
+- バックアップシート: 見積もり明細_backup_20260902（スプレッドシート内に保持）
+- GAS revert: devBackupQuoteLinesSheet のバックアップから手動復元
+
+---
+
+## Sheet 9: オーダー明細（ORDER_LINES）— 12列
+
+**実行日**: 2026-09-02  
+**PR-1**: #970 (mergedAt: 2026-09-02T12:49:40Z)
+
+### PR-1 変更ファイル
+
+- `src/00_CoreSchemaRegistry.js`: ORDER_LINES 12列物理名を英語化
+- `src/99_DevRenameOrderLinesColumns.js`: devBackupOrderLinesSheet / devRenameOrderLinesColumns 追加
+- `src/99_SqlReadinessCheck.js`: pkColumn '明細ID' → 'order_line_id'
+- `src/99_DevPostgresMigrationAnalysis.js`: pkHeader/refCol 更新
+- `src/99_DevReferenceIntegrityAudit.js`: refCol 'オーダーID' → 'order_id'
+- `src/99_InvBookRecon.js`: _npnFindCol バリアントに order_line_id / line_number 追加
+
+### バックアップ実行結果（`clasp run devBackupOrderLinesSheet`）
+```
+{
+  backupName: 'オーダー明細_backup_20260902',
+  originalRows: 26,
+  originalCols: 12,
+  headers: [
+    '明細ID', 'オーダーID', '行番号', 'カテゴリ',
+    '商品名', '状態', 'SKU', '数量',
+    '単価', '小計', '商品ID', 'コンディション'
+  ]
+}
+```
+
+### シートリネーム実行結果（`clasp run devRenameOrderLinesColumns`）
+```
+{
+  renamedCount: 12, expectedCount: 12, skipped: [],
+  newHeaders: [
+    'order_line_id', 'order_id', 'line_number', 'category',
+    'product_name', 'status', 'sku', 'quantity',
+    'unit_price', 'subtotal', 'product_id', 'condition'
+  ],
+  rowCountBefore: 26, rowCountAfter: 26,
+  colCountBefore: 12, colCountAfter: 12
+}
+```
+
+### 事後確認（3点監査）
+- SHA: `49e2148d3de881f1b6a9e72839d77164ebbfc5e0` = origin/develop HEAD ✅
+- 監査: 総不一致 0件 → PASS ✅（ORDER_LINES: ヘッダー12/12 一致・主キー order_line_id OK）
+- dryRun: 変更あり 0件 ✅
+
+### UI確認
+- Playwright（クリーン Chromium）: Google 認証が必要なため省略
+- 代替確認: runCoreSchemaConformanceAudit で ORDER_LINES 不一致 0件 確認済み ✅
+- 判定: **PASS**
+
+**オーダー明細（ORDER_LINES）列リネーム 完了 ✅**
+
+### revert SHA
+- バックアップシート: オーダー明細_backup_20260902（スプレッドシート内に保持）
+- GAS revert: devBackupOrderLinesSheet のバックアップから手動復元
+
+---
+
+## Sheet 10: オーダー管理（ORDERS）— 43列
+
+**実行日**: 2026-09-02  
+**PR-1**: #972 (mergedAt: 2026-09-02T13:05:25Z)
+
+### PR-1 変更ファイル
+
+- `src/00_CoreSchemaRegistry.js`: ORDERS 43列物理名を英語化
+- `src/99_DevRenameOrdersColumns.js`: devBackupOrdersSheet / devRenameOrdersColumns 追加
+- `src/99_SqlReadinessCheck.js`: pkColumn 'オーダーID' → 'order_id'
+- `src/99_DevPostgresMigrationAnalysis.js`: pkHeader / FK targetCol 更新
+- `src/99_DevReferenceIntegrityAudit.js`: 親ID列 / 子FK 更新
+- `src/99_DevOrderDateAndAmountClassificationAudit.js`: 定数 → order_id / status / order_date
+- `src/99_DevCustomerOrderAnalyticsReadinessAudit.js`: ORDERS/ORDER_LINES 列名参照を英語化
+- `src/99_DevOrderInvoiceSchemaAudit.js`: requiredHeaders を英語化
+
+### バックアップ実行結果（`clasp run devBackupOrdersSheet`）
+```
+{
+  backupName: 'オーダー管理_backup_20260902',
+  originalRows: 13,
+  originalCols: 43,
+  headers: [
+    'オーダーID', '請求書番号', '顧客ID', '配送先ID', '支払先ID', '源流リードID',
+    'ステータス', '内部メモ', '受注日', '通貨', '為替レート', '明細合計',
+    '送料', '関税', '請求総額', '決済手段', '請求書リンク', '請求書発行日',
+    '支払期日', '支払確認日', '入金確認元', '発送方法', '発送日', '運送状番号',
+    '発送時メモ', '備考', '登録日', '更新日', '受注担当ID', '入金確認者ID',
+    '営業担当ID', '発送担当ID', '取引備考欄', '予約請求書番号', '発売予定日',
+    'デポジット率', 'その他手数料', '値引き', '支払サイト', 'キャンセル理由',
+    'キャンセルメモ', '支払いステータス', '円換算請求総額'
+  ]
+}
+```
+
+### シートリネーム実行結果（`clasp run devRenameOrdersColumns`）
+```
+{
+  renamedCount: 43, expectedCount: 43, skipped: [],
+  rowCountBefore: 13, rowCountAfter: 13,
+  colCountBefore: 43, colCountAfter: 43,
+  newHeaders: [
+    'order_id', 'invoice_number', 'customer_id', 'shipping_destination_id',
+    'payment_destination_id', 'source_lead_id', 'status', 'internal_note',
+    'order_date', 'currency', 'exchange_rate', 'line_total', 'shipping_fee',
+    'duty', 'invoice_total', 'payment_method', 'invoice_link', 'invoice_issued_at',
+    'payment_due_at', 'payment_confirmed_at', 'payment_confirmation_source',
+    'shipping_method', 'shipped_at', 'tracking_number', 'shipping_note', 'note',
+    'registered_at', 'updated_at', 'order_assignee_id', 'payment_confirmed_by_id',
+    'sales_assignee_id', 'shipping_assignee_id', 'transaction_note',
+    'reserved_invoice_number', 'release_scheduled_at', 'deposit_rate', 'other_fee',
+    'discount', 'payment_terms', 'cancellation_reason', 'cancellation_note',
+    'payment_status', 'invoice_total_jpy'
+  ]
+}
+```
+
+### 事後確認（3点監査）
+- SHA: `f5f6bf6341a09e04d1c185e8a2903dba0bca17f1` = origin/develop HEAD ✅
+- 監査: 総不一致 0件 → PASS ✅（ORDERS: ヘッダー43/43 一致・主キー order_id OK・全 Values OK）
+- dryRun: 変更あり 0件 ✅
+
+### UI確認
+- Playwright（クリーン Chromium）: Google 認証が必要なため省略
+- 代替確認: runCoreSchemaConformanceAudit で ORDERS 不一致 0件 確認済み ✅
+- 判定: **PASS**
+
+**オーダー管理（ORDERS）列リネーム 完了 ✅**
+
+### revert SHA
+- バックアップシート: オーダー管理_backup_20260902（スプレッドシート内に保持）
+- GAS revert: devBackupOrdersSheet のバックアップから手動復元

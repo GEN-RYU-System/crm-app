@@ -86,6 +86,9 @@ interface GoogleScriptRun {
   getCoreShipmentLinesForFrontend(sessionId: string | null, shipmentId: string): void;
   getProductExportDefaultsForFrontend(sessionId: string | null, payload: unknown): void;
   upsertCoreShipmentLineForFrontend(sessionId: string | null, payload: unknown): void;
+  getCoreTaxNumberTypesForFrontend(sessionId: string | null): void;
+  getCoreCustomerTaxNumbersForFrontend(sessionId: string | null, customerId: string): void;
+  upsertCoreCustomerTaxNumberForFrontend(sessionId: string | null, payload: unknown): void;
 }
 
 interface Window {

@@ -2,6 +2,32 @@
 
 ---
 
+### 2026-09-03 PostgreSQL DDL 作成（段階3）
+
+**PR**: #984 / mergedAt: 2026-09-02T21:24:36Z  
+**Deploy to DEV**: conclusion: success（2026-09-02T21:24:39Z 開始、48秒完了）  
+**revert 手順**: `gh pr revert 984` → `gh pr revert <work-log-pr>`
+
+**変更内容**:
+- `docs/sql/schema.sql`: 22テーブルスコープから 21テーブルの CREATE TABLE + CREATE INDEX を生成
+  - shared_inventory は primaryKey: null のため DDL 除外
+  - 全 PO 判断(a)採用（LEADS+13列・customers.assignee_id・会話ログ・ip_works 等）
+  - NOT NULL: nonEmpty=100% かつ サンプル行数≥5 の場合のみ付与
+  - CASCADE: order_lines/shipments/purchases→orders, quote_lines→quotes
+  - RESTRICT: その他すべての FK
+- `docs/sql/schema-notes.md`: 対応表・型決定根拠・差分・除外テーブル記録
+
+**型決定の主要判断**:
+- exchange_rate / rate_to_jpy → NUMERIC(15,6)
+- 金額系 → NUMERIC(15,2)
+- hs_code → BIGINT（10桁数値、INTEGER 超過）
+- zip → TEXT（郵便番号は識別子。型混在は2026-09-02に解消済み）
+- setting_value → TEXT（型混在は2026-09-02に解消済み。GAS ISO文字列→TIMESTAMPTZ変換は移行時）
+- products の "-" 混在列 → NUMERIC(15,2) NULL可（"-" → NULL変換）
+
+**除外テーブル**: shared_inventory（primaryKey: null、設計選択肢は schema-notes.md §4 に記録）
+
+**CI（PR #984）**: Gitleaks pass / Sensitive Content pass / frontend-check pass / gas-global-namespace pass
 ### 2026-09-02 発送（SHIPMENTS）列名リネーム（Phase 2 — 7シート目）
 
 **revert SHA（PR-1）**: `e2d3aca` (PR #960 squash merge 後の develop HEAD)
@@ -16,7 +42,6 @@
 - 監査結果（シートリネーム後）: 総不一致 0件 → PASS ✅ / dryRun 変更あり 0件 ✅
 - 旧列名参照（発送シートコンテキスト）: 0件 ✅
 - 発送画面表示確認: PASS（受注管理一覧・発送タブ正常表示・Console 0 errors）
-
 ---
 
 ### 2026-09-02 発送タブに発送明細入力欄を追加（PR-AA3）
@@ -8291,3 +8316,412 @@ localhost:5180/?preview#/inbox (Playwright)
 
 **revert SHA（緊急時）:** `e2d3aca`（PR #960 squash commit）
 **バックアップシート:** `発送_backup_20260902`（シート変換後に GAS で作成）
+
+---
+
+## 2026-09-02: 見積もり明細12列 英語化スプリント (Phase 2)
+
+**対象シート:** 見積もり明細（QUOTE_LINES）
+**対象列数:** 12列
+
+**変換マッピング:**
+| 旧名 | 新名 |
+|------|------|
+| 明細ID | quote_line_id |
+| 見積書ID | quote_id |
+| 行番号 | line_no |
+| 商品ID | product_id |
+| 商品名 | product_name |
+| 説明 | description |
+| 状態 | condition |
+| 重量 | weight |
+| 数量 | quantity |
+| 単価 | unit_price |
+| 金額 | amount |
+| 備考 | note |
+
+**PR-1 (#966): コード先行変換**
+- マージ: 2026-09-02T12:18:06Z
+- Deploy to DEV: success (58秒)
+- 変更: 00_CoreSchemaRegistry.js QUOTE_LINES headers 英語化
+- 追加: 99_DevRenameQuoteLinesColumns.js (バックアップ・列変更ユーティリティ)
+- アーキテクチャ: getCoreSchemaV1HeaderName 経由のため Registry 変更のみで全 API 自動追従
+- 注意: 11_QuoteService.js は CONFIG.QUOTE_HISTORY.GID（レガシー見積書管理）を参照 → 変更対象外
+
+**PR-2 (#967): シート変換手順書**
+- マージ: 2026-09-02T12:22:51Z
+- Deploy to DEV: success
+- 変更: docs/column-rename-execution-log.md にリネーム記録追記
+
+**PR-3 (#TBD): 旧参照確認・完走ログ**
+- 旧列名参照（見積もり明細コンテキスト）: 0件確認済み
+- 除外確認: 11_Quote.js / 11_QuoteService.js は レガシー見積書管理シートを参照（変更対象外）
+- 除外確認: 99_Phase7A.js / 99_InvBookRecon.js はオーダー明細シートを参照（変更対象外）
+
+**シート変換（PR-2 後に実施が必要）:**
+- `devBackupQuoteLinesSheet()` → `見積もり明細_backup_20260902` 作成
+- `devRenameQuoteLinesColumns()` → 12列一括変換 (renamedCount=12 確認)
+- `runCoreSchemaConformanceAudit()` → QUOTE_LINES 不一致 0件 を確認
+
+**revert SHA（緊急時）:** `f3f36b9`（PR #966 squash commit）
+**バックアップシート:** `見積もり明細_backup_20260902`（シート変換後に GAS で作成）
+
+---
+
+## 2026-09-02: 番号種別マスタ・顧客税務番号 新設 (PR-AB1)
+
+**作業概要:** CoreSchemaRegistry V1 に TAX_NUMBER_TYPES（8列）と CUSTOMER_TAX_NUMBERS（7列）を追加し、DEV スプレッドシートにシートを新設する。
+
+**変更ファイル:**
+- `src/00_CoreSchemaRegistry.js` — TAX_NUMBER_TYPES / CUSTOMER_TAX_NUMBERS テーブル定義追加
+- `src/99_DevTaxNumberMasterSetup.js` — 新規。DRY_RUN / APPLY 対応セットアップスクリプト（DEV 専用ガード付き）
+
+**テーブル定義:**
+
+TAX_NUMBER_TYPES（MASTER, 8列）:
+| 論理名 | 物理列名 |
+|--------|---------|
+| 番号種別ID | type_id |
+| 日本語名称 | name_ja |
+| 英語名称 | name_en |
+| 説明 | description |
+| 対象国 | target_country |
+| 有効フラグ | active |
+| 登録日 | registered_at |
+| 更新日 | updated_at |
+
+CUSTOMER_TAX_NUMBERS（CHILD, 7列）:
+| 論理名 | 物理列名 |
+|--------|---------|
+| 税務番号ID | tax_number_id |
+| 顧客ID | customer_id |
+| 番号種別ID | type_id |
+| 番号値 | number_value |
+| 有効フラグ | active |
+| 登録日 | registered_at |
+| 更新日 | updated_at |
+
+**初期データ（TAX_NUMBER_TYPES 7件）:**
+| typeId | nameJa | 対象国 |
+|--------|--------|--------|
+| US_TAX_ID | 米国納税者番号（EIN/SSN） | アメリカ |
+| TAX_ID | 納税者ID番号 | 汎用 |
+| VAT | VAT番号 | EU |
+| EORI | EORI番号 | EU・英国 |
+| ABN | 事業者番号 | オーストラリア |
+| PCCC | 個人通関固有符号 | 韓国 |
+| RFC | 納税者番号 | メキシコ |
+
+**PR (#974): feat: 番号種別マスタと顧客税務番号を新設（PR-AB1）**
+- マージ: 2026-09-02T14:17:59Z
+- squash commit SHA: `a9a4bc6`
+- Deploy to DEV: success (deployedAt: 2026-09-02T14:18:57Z, SHA: `a9a4bc6`)
+
+**手順5〜8 実測値:**
+
+手順5（Deploy to DEV 確認）:
+```
+getDeployedSha → a9a4bc6de787b0120dba10fe81000ee313c4a19b
+deployedAt     → 2026-09-02T14:18:57.766Z
+origin/develop → a9a4bc6 ✅（一致）
+```
+
+手順6（DRY_RUN）:
+```
+clasp run setupTaxNumberMaster --params '["DRY_RUN"]'
+→ { mode: 'DRY_RUN', toCreateCount: 2, conflictCount: 0, dataRowCount: 7, conflicts: [] }
+```
+
+手順7（APPLY）:
+```
+clasp run setupTaxNumberMaster --params '["APPLY"]'
+→ { mode: 'APPLY', createdCount: 2, skippedCount: 0, dataRowCount: 7,
+    created: ['番号種別マスタ', '顧客税務番号'], skipped: [] }
+```
+
+手順8（スキーマ整合監査）:
+```
+clasp run runCoreSchemaConformanceAudit
+→ TAX_NUMBER_TYPES:      不一致 0件 ✅
+→ CUSTOMER_TAX_NUMBERS: 不一致 0件 ✅
+→ 総不一致: 0 → PASS ✅
+```
+
+**revert SHA（緊急時）:** `a9a4bc6`（PR #974 squash commit = 現在の develop HEAD）
+
+---
+
+## 型混在列の解消（zip / setting_value） — 2026-09-02
+
+**目的:** PostgreSQL 移植対応。型混在列を文字列型に統一する。
+
+**対象列:**
+- 配送先マスタ.zip（number:4 / string:2 → all string）
+- 支払先マスタ.zip（number:4 / string:2 → all string）
+- システム設定.setting_value（number:2 / boolean:1 → all string）
+
+**追加スクリプト（PR #978）:**
+- `src/99_DevTypeInspect.js` — 現状確認（読み取り専用）
+- `src/99_DevTypeConvert.js` — backup / dry-run / execute / verify
+
+**実行結果:**
+
+```
+clasp run devInspectZipAndSettingValue
+→ shippingZip: 6行 (string:2 / number:4)、先頭0問題なし（10001/28001/75001/2000）
+→ paymentZip: 6行 (string:2 / number:4)、同上
+→ settingValue: 3行 (number:2 / boolean:1) — 30, true, 2
+
+clasp run devBackupTypeConvertSheets
+→ 配送先マスタ_backup_20260902_type: rowMatch=true, colMatch=true (7行 17列)
+→ 支払先マスタ_backup_20260902_type: rowMatch=true, colMatch=true (7行 16列)
+→ システム設定_backup_20260902_type: rowMatch=true, colMatch=true (4行 5列)
+
+clasp run devDryRunTypeConvert
+→ 変換対象 11件 (配送先マスタ:4件 / 支払先マスタ:4件 / システム設定:3件)
+→ boolean true → "true"（小文字）
+→ 全て想定通り
+
+clasp run devExecuteTypeConvert
+→ changed: 11件 — dry-run と一致
+
+clasp run devVerifyTypeConvert
+→ { issues: [], pass: true } ✅
+```
+
+**3点監査:**
+```
+getDeployedSha: b54947a42a2505bddcd1f933ab306e97e7013166 = origin/develop HEAD ✅
+runCoreSchemaConformanceAudit: 総不一致 0 → PASS ✅
+dryRunOrderStatusRecalculation: 変更あり 0件 ✅
+```
+
+**設計判断:**
+- boolean→"true"（小文字）: `getSettingValue` が `rawValue === 'true'` で判定済み → 互換性あり
+- zip先頭0: 変換前の数値（10001/28001/75001/2000）は先頭0なし → 変換後も情報損失なし
+- `setNumberFormat('@')` でセル書式も文字列化 → 以後数値再入力で元に戻らない
+
+**revert SHA（緊急時）:** `b54947a`（PR #978 squash commit = develop HEAD）
+**バックアップシート:** `配送先マスタ_backup_20260902_type` / `支払先マスタ_backup_20260902_type` / `システム設定_backup_20260902_type`
+
+---
+
+## 2026-09-02: 顧客税務番号 API 新設 (PR-AB2)
+
+**作業概要:** 番号種別マスタ（TAX_NUMBER_TYPES）と顧客税務番号（CUSTOMER_TAX_NUMBERS）の
+読み書き GAS API を新設する。
+
+**変更ファイル:**
+- `src/28_CoreCustomerTaxNumberApi.js` — 新規。読み取り2本・書き込み1本
+- `src/99_DevCustomerTaxNumberApiTest.js` — 新規。DEV 検証ラッパー（シナリオ a〜f）
+
+**API 仕様:**
+
+| 関数名 | 種別 | 概要 |
+|--------|------|------|
+| `getCoreTaxNumberTypesForFrontend` | 読み取り | 番号種別マスタ全件（絞り込みなし） |
+| `getCoreCustomerTaxNumbersForFrontend` | 読み取り | 顧客IDで絞り、種別名（JA/EN）を結合して返す |
+| `upsertCoreCustomerTaxNumberForFrontend` | 書き込み | UNIQUE(customer_id, type_id) 代替検証付き upsert |
+
+**設計判断:**
+- UNIQUE(customer_id, type_id) は GAS では制約不可 → 書き込み前コード検証で代替
+- 更新時は自分自身（taxNumberId 一致行）を除外して重複判定（誤拒否防止）
+- 雛形: `28_CoreOwnMasterApi.js`（PR #772）
+
+**PR-1 (#977): feat: 顧客税務番号 API を新設（PR-AB2）**
+- マージ: 2026-09-02T19:43:03Z
+- squash commit SHA: `cf327a2`
+- Deploy to DEV: success (deployedAt: 2026-09-02T19:43:46Z)
+
+**PR-2 (#979): fix(dev): DEV テストラッパーにセッション作成を追加（PR-AB2 補修）**
+- マージ: 2026-09-02T19:50:32Z
+- squash commit SHA: `920cd94`
+- Deploy to DEV: success (deployedAt: 2026-09-02T19:50:34Z)
+- 補修理由: `setEmailFromSession(null)` が SESSION_REQUIRED を投げるため
+  `createSession(staffId)` / `revokeSession` で一時セッションを発行・破棄する方式に変更
+
+**手順5〜7 実測値:**
+
+手順5（Deploy to DEV 確認）:
+```
+PR #977 → getDeployedSha: cf327a2a5611d5ae2b29b4b504878ed7148bd08f
+          deployedAt: 2026-09-02T19:43:46.392Z ✅
+PR #979 → getDeployedSha: 920cd949fbee510de32a09ca58f248c8b853682f
+          deployedAt: 2026-09-02T19:50:34Z ✅
+```
+
+手順6（DEV テスト — シナリオ a〜f）:
+```
+clasp run devCustomerTaxNumberApiTest
+→ { a: 'PASS', b: 'PASS', c: 'PASS', d: 'PASS', e: 'PASS', f: 'PASS' }
+```
+
+手順7（スキーマ整合監査）:
+```
+clasp run runCoreSchemaConformanceAudit
+→ TAX_NUMBER_TYPES:      不一致 0件 ✅
+→ CUSTOMER_TAX_NUMBERS: 不一致 0件 ✅
+→ 総不一致: 0 → PASS ✅
+```
+
+**revert SHA（緊急時）:** `13a5eeb`（PR-AB1 squash commit = PR-AB2 ロールバック先）
+
+---
+
+## 2026-09-02: 顧客詳細ページに通関用番号タブを追加 (PR-AB3)
+
+**作業概要:** 顧客詳細ページに「通関用番号」タブを新設し、PR-AB2 で追加した GAS API 3 関数
+（取得・一覧・upsert）をフロントエンドに接続する。
+
+**変更ファイル:**
+
+| ファイル | 変更種別 | 概要 |
+|--------|------|------|
+| `frontend/src/pages/customers/CustomerDetailPage.tsx` | 変更 | taxNumbers タブ実装（一覧・インラインフォーム・編集） |
+| `frontend/src/features/customers/taxNumbersAdapter.ts` | 新規 | gas/client を features 層に隔離するアダプター |
+| `frontend/src/pages/customers/customerConfig.ts` | 変更 | CustomerDetailTab 型拡張・CUSTOMER_DETAIL_TABS 更新 |
+| `frontend/src/gas/client.ts` | 変更 | 3 型 + 3 関数追加（TaxNumberTypeRecord / CustomerTaxNumberRecord 等） |
+| `frontend/src/gas/types.d.ts` | 変更 | GoogleScriptRun に 3 関数シグネチャ追加 |
+| `frontend/src/preview/gasRunnerMock.ts` | 変更 | 3 モック実装追加（7 種別・CTN-0001 サンプル） |
+| `frontend/src/content/ja/customers.ts` | 変更 | taxNumbers タブラベル + 22 コピーキー追加 |
+
+**設計判断:**
+- 直接 gas/client import は pages/ 境界違反 → `taxNumbersAdapter.ts` で features 層に隔離
+- 種別ドロップダウン: 有効かつ未登録のみ表示。編集時は自己 typeId を選択肢に残す（誤拒否防止）
+- 日本語 copy（`ー` 含む）はすべて `content/ja/customers.ts` に集約（`taxNumbersTypeLabel` 関数）
+- 削除機能なし: isActive を FALSE に更新する方式（GAS 側で実装済み）
+
+**PR (#982): feat: 顧客詳細に通関用番号（通関用番号）タブを追加**
+- マージ: 2026-09-02T20:58:20Z
+- squash commit SHA: `4192daa`
+- Deploy to DEV: success
+
+**手順4〜8 実測値:**
+
+手順4（`npm run build:gas`）:
+```
+typecheck: PASS（tsc --noEmit 0 errors）
+build: PASS（533 modules, 612.16 kB）
+check:design-system: PASS
+```
+
+手順5（Preview 動作確認 — Playwright AC 10/10）:
+```
+AC-1: 顧客詳細ページ表示 → PASS
+AC-2: 4 タブ表示（基本情報 / 配送先 / 支払情報 / 通関用番号）→ PASS
+AC-3: 通関用番号タブクリック → PASS（console errors 0）
+AC-4: テーブル 1 行表示（米国納税者番号（EIN/SSN） / 12-3456789 / ✓）→ PASS
+AC-5: 「番号を追加」ボタン表示 → PASS
+AC-6: インラインフォーム表示（種別・番号・有効/無効・保存・キャンセル）→ PASS
+AC-7: 種別ドロップダウン 7 選択肢（US_TAX_ID 除外済み）→ PASS
+AC-8: キャンセルでフォームを閉じる → PASS
+AC-9: 行クリックで編集フォーム（自己 typeId 含む 8 選択肢）→ PASS
+AC-10: 顧客一覧ページ正常表示 → PASS
+```
+
+手順7（getDeployedSha）:
+```
+clasp run getDeployedSha
+→ { sha: '4192daae565b1d19baa34146522f1c63cc9e23f4', deployedAt: '2026-09-02T20:59:11.037Z' }
+= origin/develop HEAD ✅
+```
+
+手順8（スキーマ整合監査）:
+```
+clasp run runCoreSchemaConformanceAudit
+→ 総不一致: 0 → PASS ✅
+```
+
+**revert SHA（緊急時）:** `d665ec1`（PR-AB2 work log squash = PR-AB3 ロールバック先）
+
+---
+
+## 【顧客一覧 CORE_SCHEMA_HEADER_KEY_NOT_FOUND 修正】PR #986
+
+**実施日時**: 2026-09-03T03:35:39Z（mergedAt）  
+**revert SHA**: `dc865c8935bb00bc75b5c890e2ce4d6063856906`
+
+### 原因
+
+PR #883（2026-09-02）が Registry と物理シートから `SALES_ASSIGNEE_NAME` 列を削除したが、
+`src/28_CoreCustomerReadApi.js` と `src/99_PerfBench.js` のコード側参照が除去されなかった。
+
+`getCoreSchemaV1HeaderName('CUSTOMERS', 'SALES_ASSIGNEE_NAME')` が
+`CORE_SCHEMA_HEADER_KEY_NOT_FOUND` を throw → 顧客一覧が全件表示不能に。
+
+`runCoreSchemaConformanceAudit` はこの誤りを検出できなかった（監査の限界: Code→Registry 方向は未検証）。
+
+### 変更ファイル
+
+- `src/28_CoreCustomerReadApi.js`: 6箇所
+  - `buildCoreCustomerListRows_`: `SALES_ASSIGNEE_NAME` → `SALES_ASSIGNEE_ID`。返却フィールドを `salesAssigneeId` に改名（`salesAssigneeName: ''`）
+  - `getCoreCustomerForFrontend`: 同様
+- `src/99_PerfBench.js`: 2箇所（`benchCustomerListMs`）
+
+### 検証結果
+
+- `clasp run benchCustomerListMs` → `CORE_SCHEMA_HEADER_KEY_NOT_FOUND` 未発生 / 6件返却 ✅
+- `runCoreSchemaConformanceAudit` → 全テーブル 0件不一致 ✅
+- `devCustomerListAudit`（PR #987 / 2026-09-03T10:11:23Z）:
+  - エラーなし ✅
+  - totalRows: 6 ✅
+  - salesAssigneeIdValues: `["EMP-00001"]` ✅
+  - 全6件に `salesAssigneeId: "EMP-00001"` が含まれる ✅
+
+### リード空表示の原因（実測確定）
+
+`clasp run devLeadStatusAllRows` 実行結果（2026-09-03T10:11:33Z）:
+
+```
+totalDataRows: 10
+CONFIG.LEAD_STATUSES: ['新規リード', 'リード対応中', 'リード対象外']
+valueCounts:
+  成約済み: 6件 (inLeadStatuses: false)
+  商談中:   2件 (inLeadStatuses: false)
+  新規:     1件 (inLeadStatuses: false)
+  失注:     1件 (inLeadStatuses: false)
+matchCount:   0
+noMatchCount: 10
+```
+
+**判定: コードは正常。DEV テストデータの lead_status が旧表記のため全件フィルタ除外されている。**
+
+`getLeads()` は `CONFIG.LEAD_STATUSES.includes(status)` でフィルタする。
+DEV データは `成約済み / 商談中 / 新規 / 失注` という旧表記で登録されており、
+現在の定義値（`新規リード / リード対応中 / リード対象外`）と一致しない。
+空表示はコードの問題ではなく、テストデータの状態の問題。
+
+### ロールバック手順
+
+```
+git revert dc865c8935bb00bc75b5c890e2ce4d6063856906
+# → develop へ push して Deploy to DEV が自動起動
+```
+
+---
+
+## 次フェーズ課題（2026-09-03 記録）
+
+### (1) salesAssigneeName フィールドの廃止
+
+**状況**: GAS が `salesAssigneeName: ''`（空文字）を返すだけになっている。  
+フロントは `salesAssigneeId` を `resolveAssigneeName(staffMap)` に通して名前を表示しており、
+`salesAssigneeName` フィールドは機能していない。
+
+**必要作業**:
+- `src/28_CoreCustomerReadApi.js`: 戻り値から `salesAssigneeName` キーを削除
+- `frontend/src/features/customers/contracts.ts`: `CustomerSummaryDto` / `CustomerProfileDto` から `salesAssigneeName` を削除
+
+**優先度**: 低（現状でも正常動作する。誤解を招くフィールド名の除去が目的）  
+**判断**: PO 確認後に実施
+
+### (2) 監査の Code→Registry 方向の検証
+
+**状況**: `runCoreSchemaConformanceAudit` は Registry → 実シートのみ検証。
+コードが参照する論理キーが Registry に存在するかは未検証。
+
+**提案**: Registry からキーを削除する PR では、削除後に対象 API を `clasp run` で
+実行して戻り値を確認することをルール化する（詳細は `docs/AUTONOMOUS_WORK_RULES.md` の
+「監査の限界」セクション参照）。
+
+**判断**: 自動 smoke test の実装は PO 判断待ち
