@@ -594,6 +594,7 @@ function getIntegratedLeads(filter, leadType) {
   const typeIndex = headers.indexOf('lead_type');
 
   const leads = [];
+  const leadStatuses = getOptionsByCategory_('lead_status');
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
@@ -604,7 +605,7 @@ function getIntegratedLeads(filter, leadType) {
     let include = true;
 
     // ステータスフィルタ
-    if (filter === 'lead' && !CONFIG.LEAD_STATUSES.includes(status)) {
+    if (filter === 'lead' && !leadStatuses.includes(status)) {
       include = false;
     } else if (filter === 'deal' && !CONFIG.DEAL_STATUSES.includes(status)) {
       include = false;
