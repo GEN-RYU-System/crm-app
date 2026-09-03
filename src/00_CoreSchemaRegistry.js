@@ -5,6 +5,20 @@ const CORE_SCHEMA_V1_TABLES = {
       ['LEAD_ID', 'lead_id'], ['REGISTERED_AT', 'registered_at'], ['CUSTOMER_NAME', 'customer_name'], ['DEAL_RESULT', 'deal_result'], ['ENGLISH_CALL_NAME', 'english_call_name'], ['COUNTRY', 'country'], ['SHEET_UPDATED_AT', 'sheet_updated_at'], ['LEAD_ASSIGNEE_NAME', 'lead_assignee_name'], ['LEAD_TYPE', 'lead_type'], ['LEAD_SOURCE', 'lead_source'], ['LEAD_SOURCE_ID', 'lead_source_id'], ['MESSAGE_URL', 'message_url'], ['HANDLED_TITLE', 'handled_title'], ['IP_IDS', 'ip_ids'], ['CS_NOTE', 'cs_note'], ['EMAIL', 'email'], ['PHONE', 'phone'], ['CONTACT_METHOD', 'contact_method'], ['TEMPERATURE', 'temperature'], ['EXPECTED_SCALE', 'expected_scale'], ['RESPONSE_SPEED', 'response_speed'], ['INQUIRY_COUNT', 'inquiry_count'], ['ARCHIVED_AT', 'archived_at'], ['ARCHIVE_REASON', 'archive_reason'], ['ASSIGNED_AT', 'assigned_at'], ['SALES_ASSIGNEE_ID', 'sales_assignee_id'], ['ASSIGNEE_ID', 'assignee_id'], ['CUSTOMER_TYPE', 'customer_type'], ['LAST_RESPONDER_ID', 'last_responder_id'], ['PROSPECT_SCORE', 'prospect_score'], ['NEXT_ACTION', 'next_action'], ['NEXT_ACTION_DATE', 'next_action_date'], ['DEAL_NOTE', 'deal_note'], ['CUSTOMER_ISSUE', 'customer_issue'], ['SALES_CHANNEL', 'sales_channel'], ['MONTHLY_EXPECTED_AMOUNT', 'monthly_expected_amount'], ['COMPETITOR_COMPARISON', 'competitor_comparison'], ['ALERT_CONFIRMED_AT', 'alert_confirmed_at'], ['EXCLUSION_REASON', 'exclusion_reason'], ['LOSS_REASON', 'loss_reason'], ['FIRST_TRANSACTION_DATE', 'first_transaction_date'], ['FIRST_TRANSACTION_AMOUNT', 'first_transaction_amount'], ['CUMULATIVE_TRANSACTION_AMOUNT', 'cumulative_transaction_amount'], ['CONVERSATION_SUMMARY', 'conversation_summary'], ['LAST_CONVERSATION_AT', 'last_conversation_at'], ['CONVERSATION_COUNT', 'conversation_count'], ['DUPLICATE_FLAG', 'duplicate_flag'], ['DUPLICATE_SOURCE_LEAD_ID', 'duplicate_source_lead_id'], ['DUPLICATE_CONFIRMED_AT', 'duplicate_confirmed_at'], ['DUPLICATE_CONFIRMED_BY', 'duplicate_confirmed_by'], ['LEAD_STATUS', 'lead_status']
     ]),
     primaryKey: 'LEAD_ID',
+    values: {
+      LEAD_STATUS: {
+        新規リード:  '新規リード',
+        リード対応中: 'リード対応中',
+        アサイン確定: 'アサイン確定',
+        リード対象外: 'リード対象外',
+        商談中:      '商談中',
+        商談対象外:  '商談対象外',
+        追客_短期:   '追客(短期)',
+        追客_長期:   '追客(長期)',
+        成約:        '成約',
+        失注:        '失注'
+      }
+    },
     referenceIds: [
       { headerKey: 'ASSIGNEE_ID', targetTableKey: 'STAFF' },
       { headerKey: 'LAST_RESPONDER_ID', targetTableKey: 'STAFF' },
