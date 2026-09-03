@@ -432,7 +432,6 @@ function getLeads(filter, leadType) {
   const ipMasterMap  = ipIdsIdx    >= 0 ? getIpMasterMap_()      : {};
 
   console.log('getLeads: typeIdx=' + typeIdx + ', statusIdx=' + statusIdx);
-  console.log('getLeads: LEAD_STATUSES=' + JSON.stringify(CONFIG.LEAD_STATUSES));
   console.log('getLeads: leadType param="' + leadType + '" (length=' + (leadType ? leadType.length : 0) + ')');
 
   const leads = [];
@@ -449,7 +448,6 @@ function getLeads(filter, leadType) {
     if (i <= 5) {
       const typeMatch = (type === expectedType);
       console.log('getLeads Row ' + i + ': type="' + type + '" (len=' + type.length + '), status="' + status + '"');
-      console.log('  typeMatch=' + typeMatch + ', statusMatch=' + CONFIG.LEAD_STATUSES.includes(status));
       // 文字コード比較（エンコーディング問題検出）
       if (type && expectedType && !typeMatch) {
         const typeChars = type.split('').map(c => c.charCodeAt(0)).join(',');
@@ -472,7 +470,6 @@ function getLeads(filter, leadType) {
     // ステータスフィルタ
     if (filter === 'lead' && !CONFIG.LEAD_STATUSES.includes(status)) {
       debugSkipReasons.statusFilter++;
-      if (i <= 5) console.log('getLeads: Row ' + i + ' skipped - status=' + status + ' not in LEAD_STATUSES');
       continue;
     }
     if (filter === 'deal' && !CONFIG.DEAL_STATUSES.includes(status)) continue;
@@ -2811,6 +2808,7 @@ function getLeadsKPI(leadType) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   let total = 0, todayNew = 0, unassigned = 0, inProgress = 0;
+  const leadStatuses = getOptionsByCategory_('lead_status');
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
@@ -2821,7 +2819,7 @@ function getLeadsKPI(leadType) {
     if (type !== leadType) continue;
 
     // リード段階のみ
-    if (!CONFIG.LEAD_STATUSES.includes(status)) continue;
+    if (!leadStatuses.includes(status)) continue;
 
     total++;
 
@@ -2869,13 +2867,14 @@ function getCSMetrics() {
   const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   let todayNewLeads = 0, waitingAssign = 0, weekAssigned = 0, totalLeads = 0;
+  const leadStatuses = getOptionsByCategory_('lead_status');
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     const status = row[statusIdx];
 
     // リード段階のみカウント
-    if (!CONFIG.LEAD_STATUSES.includes(status)) continue;
+    if (!leadStatuses.includes(status)) continue;
 
     totalLeads++;
 
@@ -3194,6 +3193,7 @@ function getLeaderMetrics() {
   let totalDeals = 0, wonDeals = 0, lostDeals = 0, pendingDeals = 0, totalSales = 0;
   // スタッフ別集計
   const staffMap = {};
+  const leadStatuses = getOptionsByCategory_('lead_status');
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
@@ -3201,7 +3201,7 @@ function getLeaderMetrics() {
     const assignee = row[assignIdx];
 
     // CS部門集計（リード段階）
-    if (CONFIG.LEAD_STATUSES.includes(status)) {
+    if (leadStatuses.includes(status)) {
       totalLeads++;
 
       const regDate = row[regDateIdx];
@@ -4049,7 +4049,6 @@ function debugLeadsPage() {
   const statusIdx = headers.indexOf('lead_status');
   Logger.log('リード種別の列インデックス: ' + typeIdx);
   Logger.log('進捗ステータスの列インデックス: ' + statusIdx);
-  Logger.log('CONFIG.LEAD_STATUSES: ' + JSON.stringify(CONFIG.LEAD_STATUSES));
 
   // 期待される値の文字コード
   const expectedType = 'インバウンド';
@@ -4065,7 +4064,6 @@ function debugLeadsPage() {
     const typeMatch = (actualType === expectedType);
 
     Logger.log('Row ' + i + ': リード種別="' + actualType + '", 進捗ステータス="' + actualStatus + '"');
-    Logger.log('  リード種別一致=' + typeMatch + ', ステータス含む=' + CONFIG.LEAD_STATUSES.includes(actualStatus));
 
     if (actualType && !typeMatch) {
       const actualChars = actualType.split('').map(c => c.charCodeAt(0)).join(',');
@@ -4415,7 +4413,6 @@ function debugGetLeads() {
 
     console.log('リード種別列: ' + typeIdx);
     console.log('進捗ステータス列: ' + statusIdx);
-    console.log('CONFIG.LEAD_STATUSES: ' + JSON.stringify(CONFIG.LEAD_STATUSES));
 
     // 最初の5行のデータを確認
     console.log('--- 最初の5行のデータ ---');

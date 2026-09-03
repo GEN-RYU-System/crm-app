@@ -173,7 +173,7 @@ function runAssignMigrationIntegrated() {
 
   // アサイン対象行を抽出
   const rowsToAssign = [];
-  const leadStatuses = CONFIG.LEAD_STATUSES || ['新規', '対応中'];
+  const leadStatuses = getOptionsByCategory_('lead_status');
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
