@@ -81,8 +81,21 @@ CANONICAL_DIR="${HOME}/crm-app-canonical-20260830"
 # canonical clone が develop 以外のブランチにある場合、警告を出す（push は続行）
 # 理由: 古いブランチのまま調査すると「存在するファイルを存在しない」と誤判定する事故が
 #       2026-08-30・2026-09-03 に発生。機械で気づく仕組みを設ける。
-if [ -d "${CANONICAL_DIR}" ]; then
-  CANONICAL_BRANCH=$(git -C "${CANONICAL_DIR}" branch --show-current 2>/dev/null || echo "")
+#
+# 実装ノート: git フック実行時は GIT_DIR 環境変数が worktree のパスに設定されるため、
+# `git -C ${CANONICAL_DIR} branch --show-current` は worktree 自身のブランチを返してしまう。
+# そのため HEAD ファイルを直接読んで canonical clone のブランチを取得する。
+CANONICAL_HEAD_FILE="${CANONICAL_DIR}/.git/HEAD"
+if [ -f "${CANONICAL_HEAD_FILE}" ]; then
+  CANONICAL_HEAD_CONTENT=$(cat "${CANONICAL_HEAD_FILE}" 2>/dev/null || echo "")
+  case "${CANONICAL_HEAD_CONTENT}" in
+    ref:\ refs/heads/*)
+      CANONICAL_BRANCH="${CANONICAL_HEAD_CONTENT#ref: refs/heads/}"
+      ;;
+    *)
+      CANONICAL_BRANCH=""
+      ;;
+  esac
   if [ -n "${CANONICAL_BRANCH}" ] && [ "${CANONICAL_BRANCH}" != "develop" ]; then
     echo ""
     echo "======================================================"
@@ -96,6 +109,11 @@ if [ -d "${CANONICAL_DIR}" ]; then
 fi
 ```
 
+**実装ノート（重要）**: 初期実装では `git -C ${CANONICAL_DIR} branch --show-current` を使用したが、
+git フック実行時に `GIT_DIR` 環境変数が worktree 自身を指すため、常に worktree のブランチを
+返してしまうことが判明（最初の push で誤検知が発生し確認）。
+`.git/HEAD` ファイルを直接読む方式に修正した。
+
 ---
 
 ## 検証結果
@@ -107,14 +125,15 @@ bash -n .githooks/pre-push
 OK: 構文エラーなし
 ```
 
-### 検証2: develop にいる場合に通ること
+### 検証2: develop にいる場合に通ること（.git/HEAD 読み取り方式）
 
 ```
+HEAD file: ref: refs/heads/develop
 CANONICAL_BRANCH='develop'
 OK: 警告なし（期待どおり）
 ```
 
-canonical clone を develop に保ったまま検査ロジックを直接実行 → 警告なし。
+canonical clone が develop のとき、.git/HEAD を読んで `develop` と判定 → 警告なし。
 
 ### 検証3: develop 以外で検出されること
 
@@ -122,6 +141,7 @@ canonical clone を develop に保ったまま検査ロジックを直接実行 
 git -C ~/crm-app-canonical-20260830 checkout main
 → Switched to branch 'main'
 
+HEAD file: ref: refs/heads/main
 CANONICAL_BRANCH='main'
 ======================================================
   WARNING: canonical clone が develop 以外のブランチにいます
@@ -160,6 +180,15 @@ ls /Users/tanizawashingo/salesanchor/.githooks/
 
 salesanchor は `.githooks/` を持たない。crm-app の hooks は salesanchor に影響しない。  
 `core.hooksPath` はリポジトリごとの設定であり、他リポジトリには適用されない。
+
+### 発見した問題と修正
+
+最初の push 時（検証中）に `GIT_DIR` 環境変数の問題が判明:
+
+- **症状**: canonical clone が `develop` にあるのに、WARNING が `release/canonical-branch-guard` を表示
+- **原因**: git フック実行時、`GIT_DIR` が現在の worktree を指すため `git -C` では canonical clone のブランチを取得できない
+- **修正**: `git branch --show-current` を廃止し、`.git/HEAD` ファイルを直接読む方式に変更
+- **再検証**: 修正後に検証2・3を実施し、いずれも期待どおり
 
 ---
 

@@ -539,7 +539,10 @@ develop 以外にいる場合は以下の WARNING が表示される（push は�
 ======================================================
 ```
 
-実装: `.githooks/pre-push` の 28–40 行目（PR #<番号> で追加）
+実装: `.githooks/pre-push` の 28–57 行目（PR を通じて追加）
+
+技術的注意: git フック内では `GIT_DIR` 環境変数が worktree を指すため、
+`git -C ... branch --show-current` は使えない。`.git/HEAD` を直接読む方式を採用。
 
 ---
 
