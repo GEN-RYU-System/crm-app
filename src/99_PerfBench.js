@@ -758,7 +758,8 @@ function benchCustomerListMs() {
         country:            coreCustomerFrontendValue(row[customers.indexes.COUNTRY]),
         salesChannel:       sourceLead ? coreCustomerFrontendValue(sourceLead[leads.indexes.SALES_CHANNEL])  : '',
         handledTitle:       sourceLead ? coreCustomerFrontendValue(sourceLead[leads.indexes.HANDLED_TITLE])  : '',
-        salesAssigneeName:  coreCustomerFrontendValue(row[customers.indexes.SALES_ASSIGNEE_ID]),
+        salesAssigneeId:    coreCustomerFrontendValue(row[customers.indexes.SALES_ASSIGNEE_ID]),
+        salesAssigneeName:  '',
         transactionCount:   transactions.count,
         transactionAmounts: transactions.amounts
       };

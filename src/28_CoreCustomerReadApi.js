@@ -42,7 +42,8 @@ function buildCoreCustomerListRows_(spreadsheet) {
       country:            coreCustomerFrontendValue(row[customers.indexes.COUNTRY]),
       salesChannel:       sourceLead ? coreCustomerFrontendValue(sourceLead[leads.indexes.SALES_CHANNEL])  : '',
       handledTitle:       sourceLead ? coreCustomerFrontendValue(sourceLead[leads.indexes.HANDLED_TITLE])  : '',
-      salesAssigneeName:  coreCustomerFrontendValue(row[customers.indexes.SALES_ASSIGNEE_ID]),
+      salesAssigneeId:    coreCustomerFrontendValue(row[customers.indexes.SALES_ASSIGNEE_ID]),
+      salesAssigneeName:  '',
       transactionCount:   transactions.count,
       transactionAmounts: transactions.amounts
     };
@@ -112,7 +113,8 @@ function getCoreCustomerForFrontend(sessionId, customerId) {
       countryCode: coreCustomerFrontendValue(customerRow[customers.indexes.COUNTRY_CODE]),
       firstTransactionDate: coreCustomerFrontendValue(customerRow[customers.indexes.FIRST_TRANSACTION_DATE]),
       registeredAt: coreCustomerFrontendValue(customerRow[customers.indexes.REGISTERED_AT]),
-      salesAssigneeName: coreCustomerFrontendValue(customerRow[customers.indexes.SALES_ASSIGNEE_ID]),
+      salesAssigneeId: coreCustomerFrontendValue(customerRow[customers.indexes.SALES_ASSIGNEE_ID]),
+      salesAssigneeName: '',
       contactTool: coreCustomerFrontendValue(customerRow[customers.indexes.CONTACT_TOOL]),
       contactMethod: (function() {
         var sid = coreCustomerFrontendValue(customerRow[customers.indexes.SOURCE_LEAD_ID]);
