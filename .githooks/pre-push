@@ -11,6 +11,7 @@
 PROTECTED_BRANCHES="main develop"
 MIN_FREE_GB="${CRM_MIN_FREE_GB:-10}"
 MAX_WORKTREES="${CRM_MAX_WORKTREES:-19}"
+CANONICAL_DIR="${HOME}/crm-app-canonical-20260830"
 FREE_GB=$(df -Pk . | awk 'NR==2 { print int($4 / 1024 / 1024) }')
 WORKTREE_COUNT=$(git worktree list | wc -l | tr -d ' ')
 
@@ -21,6 +22,24 @@ fi
 if [ "$WORKTREE_COUNT" -gt "$MAX_WORKTREES" ]; then
   echo "ERROR: ${WORKTREE_COUNT} worktrees; limit is ${MAX_WORKTREES}. Run scripts/janitor.sh first."
   exit 1
+fi
+
+# canonical clone ブランチ関所（2026-09-04 追加）
+# canonical clone が develop 以外のブランチにある場合、警告を出す（push は続行）
+# 理由: 古いブランチのまま調査すると「存在するファイルを存在しない」と誤判定する事故が
+#       2026-08-30・2026-09-03 に発生。機械で気づく仕組みを設ける。
+if [ -d "${CANONICAL_DIR}" ]; then
+  CANONICAL_BRANCH=$(git -C "${CANONICAL_DIR}" branch --show-current 2>/dev/null || echo "")
+  if [ -n "${CANONICAL_BRANCH}" ] && [ "${CANONICAL_BRANCH}" != "develop" ]; then
+    echo ""
+    echo "======================================================"
+    echo "  WARNING: canonical clone が develop 以外のブランチにいます"
+    echo "  現在: ${CANONICAL_BRANCH}"
+    echo "  戻し方: git -C ${CANONICAL_DIR} checkout develop"
+    echo "======================================================"
+    echo ""
+    # 警告のみ。push は続行する
+  fi
 fi
 
 while read local_ref local_sha remote_ref remote_sha; do

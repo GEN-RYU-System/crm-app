@@ -527,6 +527,20 @@ canonical clone が別ブランチのままだと、
 2026-09-03、release/shipments-rename-exec-log のまま
 放置されており、後続作業が停止した。
 
+**機械的な関所（2026-09-04 設置）:**  
+`git push` を実行するたびに `.githooks/pre-push` が自動で canonical clone のブランチを検査する。  
+develop 以外にいる場合は以下の WARNING が表示される（push は続行）:
+
+```
+======================================================
+  WARNING: canonical clone が develop 以外のブランチにいます
+  現在: <ブランチ名>
+  戻し方: git -C ~/crm-app-canonical-20260830 checkout develop
+======================================================
+```
+
+実装: `.githooks/pre-push` の 28–40 行目（PR #<番号> で追加）
+
 ---
 
 ## worktree の後片付け（2026-08-31 追加）
