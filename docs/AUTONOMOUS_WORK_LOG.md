@@ -2,6 +2,31 @@
 
 ---
 
+### 2026-09-04 canonical clone ブランチ関所設置
+
+**PR**: #993 / mergedAt: 2026-09-03T22:07:32Z  
+**Deploy to DEV**: success  
+**revert 手順**: `git revert a114624`
+
+**変更内容**:
+- `.githooks/pre-push`: canonical clone ブランチ検査を追加（28–57 行目）
+  - `~/crm-app-canonical-20260830/.git/HEAD` を直接読んで現在ブランチを取得
+  - develop 以外なら WARNING を表示（push は続行）
+  - 注: `git -C ... branch --show-current` は GIT_DIR 環境変数の影響で使えないため HEAD ファイル直読みを採用
+- `docs/AUTONOMOUS_WORK_RULES.md`: 関所設置の旨を追記
+- `docs/canonical-branch-guard-report.md`: 実装レポート（新規）
+
+**検証結果**:
+- 構文エラーなし
+- develop 時: 警告なし ✓
+- main 時: WARNING 表示 ✓（確認後 develop に戻した）
+- 既存ガード（worktree上限/空き容量/protected branch）残存 ✓
+- salesanchor 影響なし ✓
+- `runCoreSchemaConformanceAudit`: 総不一致 0 → PASS
+- `dryRunOrderStatusRecalculation`: 変更あり 0件 → PASS
+
+---
+
 ### 2026-09-03 PostgreSQL DDL 作成（段階3）
 
 **PR**: #984 / mergedAt: 2026-09-02T21:24:36Z  
