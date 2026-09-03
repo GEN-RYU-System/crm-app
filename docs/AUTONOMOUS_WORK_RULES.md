@@ -511,6 +511,22 @@ Please commit your changes or stash them before you merge.
 ファイルの編集・新規作成はすべて **worktree 内** で行うこと。  
 canonical clone 上での `Edit` / `Write` ツールの使用は禁止する。
 
+### 作業終了時の確認
+
+worktree での作業とマージが完了したら、
+canonical clone が develop にあることを確認すること。
+
+```
+git -C ~/crm-app-canonical-20260830 branch --show-current
+```
+
+develop でなければ戻すこと。
+canonical clone が別ブランチのままだと、
+次のセッションが開始前チェックで停止する。
+
+2026-09-03、release/shipments-rename-exec-log のまま
+放置されており、後続作業が停止した。
+
 ---
 
 ## worktree の後片付け（2026-08-31 追加）
