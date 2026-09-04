@@ -9067,6 +9067,60 @@ PR #1001 の DEV deploy 完了後から `clasp run` が全関数で `"Unable to 
 
 ---
 
+### 2026-09-04 PR-AD2: 超過料金単価計算に対応（OVERWEIGHT_UNIT_RATES マスタ新設）
+
+**PR**: #1011 / mergedAt: 2026-09-04T15:50:08Z  
+**Deploy to DEV**: success（run 33891753315、45秒完了）  
+**origin/develop HEAD**: `9e7f031`
+
+**変更内容**:
+- `src/00_CoreSchemaRegistry.js`:
+  - CARRIERS に末尾2列を追加（既存3社は空→動作変更なし）
+    - `UNIT_RATE_FROM_KG`（単価開始重量）: この重量以上で単価計算に切り替え
+    - `OVERWEIGHT_METHOD`（超過計算方式）: `MULTIPLY_ALL` または `ADD_TO_BASE`
+  - `OVERWEIGHT_UNIT_RATES`（超過料金単価マスタ）テーブル定義を新設
+    - 10列（UNIT_RATE_ID / CARRIER_ID / ZONE / PACKAGE_TYPE / MIN_WEIGHT / MAX_WEIGHT / UNIT_RATE / ACTIVE / REGISTERED_AT / UPDATED_AT）
+    - ID 接頭辞: RPU-0001（4桁連番）
+    - referenceIds: CARRIER_ID → CARRIERS
+    - values: PACKAGE_TYPE（BOX / ENVELOPE / PAK）
+- `src/99_DevOverweightRateSetup.js`: 新規ファイル
+  - `setupOverweightRateMaster('DRY_RUN' | 'APPLY')` を追加
+  - APPLY: ① CARRIERS に2列追加（既存行は空）② OVERWEIGHT_UNIT_RATES シート新設（ヘッダー行のみ）
+  - DEV 環境ガード・既存列・既存シートのスキップ処理あり
+- `src/29_ShippingFeeCalculator.js`:
+  - `_sfcLoadCarriers`: `unitRateFromKg` / `overweightMethod` をオプション読み込み（列未存在時は 0 / ''）
+  - `_sfcBuildOverweightRatesMap(ss)`: 新関数。キー `carrierId|zone|packageType` → `[{minWeight,maxWeight,unitRate}]`
+    - OVERWEIGHT_UNIT_RATES シート未存在時は `{}` を返す（セットアップ前でも安全）
+  - `_sfcCalculateForCarrier`: `overweightRatesMap` を第7引数で受け取り `_sfcCalculateBox` に渡す
+  - `_sfcCalculateBox`: 超過計算ブロックを追加
+    - `carrier.unitRateFromKg > 0 && chargeableWeight >= carrier.unitRateFromKg` の場合のみ実行
+    - `MULTIPLY_ALL`: 課金重量 × 単価（FedEx 公式「キログラム単位料金」方式）
+    - `ADD_TO_BASE`: ratesMap の unitRateFromKg 重量帯料金 + 超過分 × 単価（eLogi DHL 方式）
+    - 既存3社（unitRateFromKg=0）はブロックをスキップ → 動作変更なし
+    - 単価帯が見つからない場合は `RATE_NOT_FOUND`
+  - `_sfeProcess_`: `_sfcBuildOverweightRatesMap(ss)` をロードして `_sfcCalculateForCarrier` に渡す
+  - `calculateShippingFeeForFrontend`: `overweightRatesMap` をロードして `_sfcCalculateForCarrier` に渡す（前PRで実装済み）
+
+**設計意図**:
+- 配送会社ごとに単価計算の開始重量が異なる（FedEx IP 21.0 / DHL 30.1 等）ためマスタで持つ
+- MULTIPLY_ALL は「請求重量の全体 × 単価」（FedEx 公式「キログラム単位料金」）
+- ADD_TO_BASE は「上限重量の料金 ＋ 超過分 × 単価」（eLogi DHL「30kgを超える分…」）
+- 既存3社は両フィールドとも空なので計算フローは一切変わらない
+
+**マージ後検証（未実施）**: clasp run が全コマンドで失敗中（PR-AC1 以降継続中）。
+- `getDeployedSha`: 未確認（origin/develop HEAD は `9e7f031` と一致するはず）
+- `setupOverweightRateMaster('DRY_RUN')`: 未確認
+- `setupOverweightRateMaster('APPLY')`: **未実施（★ データマスタ初期化未完了）**
+- `runCoreSchemaConformanceAudit`: 未確認
+- `devTestShippingFeeForLines`: 未確認（回帰テスト未実施）
+
+**★ 要ユーザー対応**: `setupOverweightRateMaster('APPLY')` が未実施のため、
+CARRIERS の2列追加・OVERWEIGHT_UNIT_RATES シート新設はまだ行われていない。
+clasp run が回復次第、DRY_RUN → APPLY の順で実行が必要。
+単価データ投入（addOverweightUnitRates）は次のPR。
+
+---
+
 ### 2026-09-04 PR-AD1: 送料表マスタに PACKAGE_TYPE（荷姿区分）列を追加
 
 **PR**: #1009 / mergedAt: 2026-09-04T14:48:10Z  
