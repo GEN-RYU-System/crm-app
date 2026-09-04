@@ -79,14 +79,15 @@ function calculateShippingFeeForFrontend(sessionId, payload) {
   var effectiveCode = _sfcResolveCountryCode(countryCode, postalCode);
 
   // --- マスタデータ読み込み ---
-  var ss       = getSpreadsheet();
-  var carriers = _sfcLoadCarriers(ss);
-  var zonesMap = _sfcBuildZonesMap(ss);
-  var ratesMap = _sfcBuildRatesMap(ss);
+  var ss                = getSpreadsheet();
+  var carriers          = _sfcLoadCarriers(ss);
+  var zonesMap          = _sfcBuildZonesMap(ss);
+  var ratesMap          = _sfcBuildRatesMap(ss);
+  var overweightRatesMap = _sfcBuildOverweightRatesMap(ss);
 
   // --- 各社の送料計算 ---
   var results = carriers.map(function(carrier) {
-    return _sfcCalculateForCarrier(carrier, effectiveCode, boxes, zonesMap, ratesMap, packageType);
+    return _sfcCalculateForCarrier(carrier, effectiveCode, boxes, zonesMap, ratesMap, packageType, overweightRatesMap);
   });
 
   return { results: results };
@@ -161,6 +162,10 @@ function _sfcLoadCarriers(ss) {
   var iApiEndpoint    = headers.indexOf(table.headers['API_ENDPOINT']     || '');
   var iApiAuthKeyName = headers.indexOf(table.headers['API_AUTH_KEY_NAME'] || '');
 
+  // 超過料金単価計算設定（オプション。setupOverweightRateMaster APPLY 実行後に存在する）
+  var iUnitRateFromKg  = headers.indexOf(table.headers['UNIT_RATE_FROM_KG']  || '');
+  var iOverweightMethod = headers.indexOf(table.headers['OVERWEIGHT_METHOD'] || '');
+
   var lastRow      = sheet.getLastRow();
   var dataRowCount = Math.max(0, lastRow - table.headerRowNumber);
   if (dataRowCount === 0) return [];
@@ -172,17 +177,22 @@ function _sfcLoadCarriers(ss) {
       return _sfcIsActive(row[iActive]);
     })
     .map(function(row) {
+      var rawUnitRateFromKg = iUnitRateFromKg >= 0 ? row[iUnitRateFromKg] : '';
       return {
-        id:            String(row[iId]          || '').trim(),
-        name:          String(row[iName]        || '').trim(),
-        divisor:       Number(row[iDivisor]),
-        dimRounding:   String(row[iDimRounding] || '').trim().toUpperCase(),
-        stepSmall:     Number(row[iStepSmall]),
-        stepLarge:     Number(row[iStepLarge]),
-        maxWeight:     Number(row[iMaxWeight]),
-        apiEnabled:    iApiEnabled     >= 0 ? _sfcIsActive(row[iApiEnabled])              : false,
-        apiEndpoint:   iApiEndpoint    >= 0 ? String(row[iApiEndpoint]    || '').trim()  : '',
-        apiAuthKeyName: iApiAuthKeyName >= 0 ? String(row[iApiAuthKeyName] || '').trim() : ''
+        id:              String(row[iId]          || '').trim(),
+        name:            String(row[iName]        || '').trim(),
+        divisor:         Number(row[iDivisor]),
+        dimRounding:     String(row[iDimRounding] || '').trim().toUpperCase(),
+        stepSmall:       Number(row[iStepSmall]),
+        stepLarge:       Number(row[iStepLarge]),
+        maxWeight:       Number(row[iMaxWeight]),
+        apiEnabled:      iApiEnabled     >= 0 ? _sfcIsActive(row[iApiEnabled])              : false,
+        apiEndpoint:     iApiEndpoint    >= 0 ? String(row[iApiEndpoint]    || '').trim()  : '',
+        apiAuthKeyName:  iApiAuthKeyName >= 0 ? String(row[iApiAuthKeyName] || '').trim() : '',
+        // 超過計算設定: 空 or 0 の場合は単価計算なし（既存3社）
+        unitRateFromKg:  (rawUnitRateFromKg !== '' && !isNaN(Number(rawUnitRateFromKg)))
+          ? Number(rawUnitRateFromKg) : 0,
+        overweightMethod: iOverweightMethod >= 0 ? String(row[iOverweightMethod] || '').trim() : ''
       };
     });
 }
@@ -305,6 +315,75 @@ function _sfcBuildRatesMap(ss) {
   return map;
 }
 
+/**
+ * OVERWEIGHT_UNIT_RATES テーブルから {carrierId|zone|packageType → [{minWeight, maxWeight, unitRate}]} のマップを構築する。
+ * ★ unit_rate の値をログに出力しない。
+ * ★ テーブルが存在しない場合は空オブジェクトを返す（テーブル新設前も壊れない）。
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
+ * @returns {Object}
+ */
+function _sfcBuildOverweightRatesMap(ss) {
+  var tableKey  = 'OVERWEIGHT_UNIT_RATES';
+  var table     = getCoreSchemaV1Table(tableKey);
+  var sheetName = table.sheetName;
+  var sheet     = ss.getSheetByName(sheetName);
+
+  // シートが存在しない場合（setupOverweightRateMaster APPLY 前）は空を返す
+  if (!sheet) return {};
+
+  var lastCol = sheet.getLastColumn();
+  if (lastCol === 0) return {};
+
+  var headers = sheet.getRange(table.headerRowNumber, 1, 1, lastCol).getDisplayValues()[0]
+    .map(function(h) { return String(h).trim(); });
+
+  function hOpt(key) {
+    var name = getCoreSchemaV1HeaderName(tableKey, key);
+    return headers.indexOf(name);
+  }
+
+  var iCarrier  = hOpt('CARRIER_ID');
+  var iZone     = hOpt('ZONE');
+  var iPkgType  = hOpt('PACKAGE_TYPE');
+  var iMin      = hOpt('MIN_WEIGHT');
+  var iMax      = hOpt('MAX_WEIGHT');
+  var iRate     = hOpt('UNIT_RATE');
+  var iActive   = hOpt('ACTIVE');
+
+  if ([iCarrier, iZone, iMin, iMax, iRate, iActive].some(function(i) { return i < 0; })) {
+    return {}; // 必須列が見つからない場合（ヘッダー行のみのシート等）は空を返す
+  }
+
+  var lastRow      = sheet.getLastRow();
+  var dataRowCount = Math.max(0, lastRow - table.headerRowNumber);
+  if (dataRowCount === 0) return {};
+
+  var data = sheet.getRange(table.headerRowNumber + 1, 1, dataRowCount, lastCol).getValues();
+  var map  = {};
+
+  data.forEach(function(row) {
+    if (!_sfcIsActive(row[iActive])) return;
+
+    var carrierId = String(row[iCarrier] || '').trim();
+    var zone      = String(row[iZone]    || '').trim();
+    var minW      = Number(row[iMin]);
+    var maxW      = Number(row[iMax]);
+    var unitRate  = Number(row[iRate]);
+    var pkgType   = iPkgType >= 0
+      ? (String(row[iPkgType] || '').trim() || 'BOX')
+      : 'BOX';
+
+    if (!carrierId || !zone || isNaN(minW) || isNaN(maxW) || isNaN(unitRate)) return;
+
+    var key = carrierId + '|' + zone + '|' + pkgType;
+    if (!map[key]) map[key] = [];
+    map[key].push({ minWeight: minW, maxWeight: maxW, unitRate: unitRate });
+  });
+
+  return map;
+}
+
 // ============================================================
 // 送料計算
 // ============================================================
@@ -312,16 +391,18 @@ function _sfcBuildRatesMap(ss) {
 /**
  * 1社分の送料を計算する。
  *
- * @param {{ id, name, divisor, dimRounding, stepSmall, stepLarge, maxWeight }} carrier
+ * @param {{ id, name, divisor, dimRounding, stepSmall, stepLarge, maxWeight, unitRateFromKg, overweightMethod }} carrier
  * @param {string} countryCode
  * @param {Array<{ length, width, height, actualWeight }>} boxes
  * @param {Object} zonesMap
  * @param {Object} ratesMap
  * @param {string} [packageType] - 荷姿区分（省略時は 'BOX'）
+ * @param {Object} [overweightRatesMap] - 超過料金単価マップ（省略時は空オブジェクト）
  * @returns {{ carrierId, carrierName, zone, totalFee, boxes, error, errorDetail? }}
  */
-function _sfcCalculateForCarrier(carrier, countryCode, boxes, zonesMap, ratesMap, packageType) {
+function _sfcCalculateForCarrier(carrier, countryCode, boxes, zonesMap, ratesMap, packageType, overweightRatesMap) {
   var pkgType = packageType || 'BOX';
+  var owMap   = overweightRatesMap || {};
   var result = {
     carrierId:   carrier.id,
     carrierName: carrier.name,
@@ -349,7 +430,7 @@ function _sfcCalculateForCarrier(carrier, countryCode, boxes, zonesMap, ratesMap
   // 箱ごとに計算
   var boxResults = [];
   for (var i = 0; i < boxes.length; i++) {
-    var boxResult = _sfcCalculateBox(carrier, zone, boxes[i], ratesMap, pkgType);
+    var boxResult = _sfcCalculateBox(carrier, zone, boxes[i], ratesMap, pkgType, owMap);
     if (boxResult.error) {
       result.error       = boxResult.error;
       result.errorDetail = boxResult.errorDetail !== undefined ? boxResult.errorDetail : null;
@@ -367,15 +448,17 @@ function _sfcCalculateForCarrier(carrier, countryCode, boxes, zonesMap, ratesMap
  * 1箱の請求重量と料金を計算する。
  * ★ 料金の値をログに出力しない。
  *
- * @param {{ divisor, dimRounding, stepSmall, stepLarge, maxWeight }} carrier
+ * @param {{ divisor, dimRounding, stepSmall, stepLarge, maxWeight, unitRateFromKg, overweightMethod }} carrier
  * @param {string} zone
  * @param {{ length, width, height, actualWeight }} box
  * @param {Object} ratesMap
  * @param {string} [packageType] - 荷姿区分（省略時は 'BOX'）
+ * @param {Object} [overweightRatesMap] - 超過料金単価マップ（省略時は空オブジェクト）
  * @returns {{ chargeableWeight: number, fee: number } | { error: string, errorDetail?: * }}
  */
-function _sfcCalculateBox(carrier, zone, box, ratesMap, packageType) {
+function _sfcCalculateBox(carrier, zone, box, ratesMap, packageType, overweightRatesMap) {
   var pkgType = packageType || 'BOX';
+  var owMap   = overweightRatesMap || {};
   var L = Number(box.length);
   var W = Number(box.width);
   var H = Number(box.height);
@@ -415,10 +498,51 @@ function _sfcCalculateBox(carrier, zone, box, ratesMap, packageType) {
     };
   }
 
-  // 料金表照合: minWeight < chargeableWeight <= maxWeight
   var rateKey = carrier.id + '|' + zone + '|' + pkgType;
-  var bands   = ratesMap[rateKey] || [];
-  var band    = null;
+
+  // --- 超過料金単価計算（carrier.unitRateFromKg > 0 かつ課金重量がしきい値以上） ---
+  // 既存3社は unitRateFromKg=0 なので、このブロックには入らない。
+  if (carrier.unitRateFromKg > 0 && chargeableWeight >= carrier.unitRateFromKg) {
+    var owBands = owMap[rateKey] || [];
+    var owBand  = null;
+    for (var k = 0; k < owBands.length; k++) {
+      if (owBands[k].minWeight < chargeableWeight && chargeableWeight <= owBands[k].maxWeight) {
+        owBand = owBands[k];
+        break;
+      }
+    }
+    if (!owBand) {
+      return { error: 'RATE_NOT_FOUND', errorDetail: { zone: zone, chargeableWeight: chargeableWeight } };
+    }
+
+    if (carrier.overweightMethod === 'MULTIPLY_ALL') {
+      // 請求重量の全体 × 単価（出典: FedEx 公式「キログラム単位料金」）
+      return { chargeableWeight: chargeableWeight, fee: chargeableWeight * owBand.unitRate };
+    }
+
+    if (carrier.overweightMethod === 'ADD_TO_BASE') {
+      // 上限重量（unitRateFromKg）の料金 ＋ 超過分 × 単価（出典: eLogi DHL「30kgを超える分…」）
+      var baseBands = ratesMap[rateKey] || [];
+      var baseBand  = null;
+      for (var b = 0; b < baseBands.length; b++) {
+        if (baseBands[b].minWeight < carrier.unitRateFromKg && carrier.unitRateFromKg <= baseBands[b].maxWeight) {
+          baseBand = baseBands[b];
+          break;
+        }
+      }
+      if (!baseBand) {
+        return { error: 'RATE_NOT_FOUND', errorDetail: { zone: zone, chargeableWeight: carrier.unitRateFromKg } };
+      }
+      var fee = baseBand.rate + (chargeableWeight - carrier.unitRateFromKg) * owBand.unitRate;
+      return { chargeableWeight: chargeableWeight, fee: fee };
+    }
+
+    return { error: 'UNSUPPORTED_OVERWEIGHT_METHOD', errorDetail: carrier.overweightMethod };
+  }
+
+  // --- 通常料金表照合: minWeight < chargeableWeight <= maxWeight ---
+  var bands = ratesMap[rateKey] || [];
+  var band  = null;
   for (var j = 0; j < bands.length; j++) {
     if (bands[j].minWeight < chargeableWeight && chargeableWeight <= bands[j].maxWeight) {
       band = bands[j];
@@ -562,7 +686,7 @@ function estimateShippingFeeForFrontend(sessionId, payload) {
 /**
  * セッションなしで見積計算を実行する（DEV テスト・内部呼び出し用）。
  *
- * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss   未使用（将来の拡張用）
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
  * @param {Array}  carriers
  * @param {Object} zonesMap
  * @param {Object} ratesMap
@@ -579,6 +703,8 @@ function _sfeProcess_(ss, carriers, zonesMap, ratesMap, payload) { // eslint-dis
     payload.countryCode.toUpperCase(),
     payload.postalCode || ''
   );
+
+  var overweightRatesMap = _sfcBuildOverweightRatesMap(ss);
 
   var feeTypeValues = CORE_SCHEMA_V1_TABLES.SHIPPING_FEE_ESTIMATES.values.FEE_TYPE;
   var calcSourceValues = CORE_SCHEMA_V1_TABLES.SHIPPING_FEE_ESTIMATES.values.CALC_SOURCE;
@@ -604,7 +730,7 @@ function _sfeProcess_(ss, carriers, zonesMap, ratesMap, payload) { // eslint-dis
 
     if (!res) {
       var pkgType = payload.packageType ? String(payload.packageType).trim().toUpperCase() : 'BOX';
-      res = _sfcCalculateForCarrier(carrier, effectiveCode, payload.boxes, zonesMap, ratesMap, pkgType);
+      res = _sfcCalculateForCarrier(carrier, effectiveCode, payload.boxes, zonesMap, ratesMap, pkgType, overweightRatesMap);
       calcSource = calcSourceValues.MASTER;
     }
 

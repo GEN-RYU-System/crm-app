@@ -514,9 +514,19 @@ const CORE_SCHEMA_V1_TABLES = {
       //    SQL 移行後は環境変数に置き換える。
       ['API_ENABLED',         'API有効'],
       ['API_ENDPOINT',        'APIエンドポイント'],
-      ['API_AUTH_KEY_NAME',   'API認証キー名']
+      ['API_AUTH_KEY_NAME',   'API認証キー名'],
+      // 超過料金単価計算設定（eLogi FedEx IP / DHL 等のkg単価方式に対応）
+      // ★ 既存3社（FedEx/DHL/UPS）は両方とも空（単価計算なし）
+      ['UNIT_RATE_FROM_KG',   '単価開始重量'],   // 15列目: この重量以上で単価計算に切り替え
+      ['OVERWEIGHT_METHOD',   '超過計算方式']    // 16列目: MULTIPLY_ALL または ADD_TO_BASE
     ]), primaryKey: 'CARRIER_ID',
-    referenceIds: []
+    referenceIds: [],
+    values: {
+      OVERWEIGHT_METHOD: {
+        MULTIPLY_ALL: 'MULTIPLY_ALL', // 請求重量の全体 × 単価
+        ADD_TO_BASE:  'ADD_TO_BASE'   // 上限重量の料金 + 超過分 × 単価
+      }
+    }
   },
   ZONES: {
     sheetName: '地帯マスタ', canonicalName: '地帯マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
@@ -548,6 +558,41 @@ const CORE_SCHEMA_V1_TABLES = {
       ['UPDATED_AT',   '更新日'],
       ['PACKAGE_TYPE', '荷姿区分']  // 10列目（末尾追加）。eLogi FedEx IP 対応。SQL移行後は UNIQUE(carrier_id,zone,package_type,min_weight,max_weight)
     ]), primaryKey: 'RATE_ID',
+    referenceIds: [
+      { headerKey: 'CARRIER_ID', targetTableKey: 'CARRIERS' }
+    ],
+    values: {
+      PACKAGE_TYPE: {
+        BOX:      'BOX',
+        ENVELOPE: 'ENVELOPE',
+        PAK:      'PAK'
+      }
+    }
+  },
+  // ============================================================
+  // 超過料金単価マスタ
+  // ============================================================
+  // 設計メモ（SQL 移行観点）:
+  //   - 重量帯の上限を超えた場合に 1kg あたりの単価で計算する体系に対応する。
+  //   - eLogi FedEx IP はエンベロープ・パック・箱でそれぞれ単価が異なる。
+  //   - eLogi UPS: MULTIPLY_ALL（請求重量 × キロ単位料金）
+  //   - eLogi DHL: ADD_TO_BASE（上限重量の料金 + 超過分 × 単価）
+  //   - UNIQUE (carrier_id, zone, package_type, min_weight, max_weight)
+  OVERWEIGHT_UNIT_RATES: {
+    sheetName: '超過料金単価マスタ', canonicalName: '超過料金単価マスタ', aliases: [], headerRowNumber: 1, sheetType: 'MASTER', writeAllowed: true,
+    // ID 接頭辞: RPU-0001（4桁連番）
+    headers: createCoreSchemaV1Headers([
+      ['UNIT_RATE_ID',  '単価ID'],
+      ['CARRIER_ID',    '配送会社ID'],
+      ['ZONE',          'ゾーン'],
+      ['PACKAGE_TYPE',  '荷姿区分'],
+      ['MIN_WEIGHT',    '下限重量'],
+      ['MAX_WEIGHT',    '上限重量'],
+      ['UNIT_RATE',     '単価'],
+      ['ACTIVE',        '有効'],
+      ['REGISTERED_AT', '登録日'],
+      ['UPDATED_AT',    '更新日']
+    ]), primaryKey: 'UNIT_RATE_ID',
     referenceIds: [
       { headerKey: 'CARRIER_ID', targetTableKey: 'CARRIERS' }
     ],
