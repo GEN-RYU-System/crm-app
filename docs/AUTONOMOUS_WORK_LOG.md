@@ -9058,7 +9058,7 @@ PR #1001 の DEV deploy 完了後から `clasp run` が全関数で `"Unable to 
 - `frontend/src/preview/gasRunnerMock.ts`: `generateElogiCsvForFrontend` プレビュースタブを追加
 
 **CI 修正事項**:
-- `Sensitive Content` 失敗: `gasRunnerMock.ts` のダミー電話番号 `+1-800-000-0000` が検出
+- `Sensitive Content` 失敗: `gasRunnerMock.ts` のダミー電話番号（US 有料番号形式）が検出
   → `+000-000-0000`（safePhone パターン `0{2,}` 対象値）に変更して通過
 
 **マージ後検証（未実施）**: clasp run が全コマンドで失敗中（PR-AC1 以降継続中）。
