@@ -72,6 +72,8 @@ function calculateShippingFeeForFrontend(sessionId, payload) {
   var countryCode = String(payload.countryCode).trim().toUpperCase();
   var postalCode  = payload.postalCode ? String(payload.postalCode).trim() : '';
   var boxes       = payload.boxes;
+  // 荷姿区分: 省略時は 'BOX'（既存の呼び出しを壊さない）
+  var packageType = payload.packageType ? String(payload.packageType).trim().toUpperCase() : 'BOX';
 
   // --- 実効国コード解決（CN → CN-S 判定） ---
   var effectiveCode = _sfcResolveCountryCode(countryCode, postalCode);
@@ -84,7 +86,7 @@ function calculateShippingFeeForFrontend(sessionId, payload) {
 
   // --- 各社の送料計算 ---
   var results = carriers.map(function(carrier) {
-    return _sfcCalculateForCarrier(carrier, effectiveCode, boxes, zonesMap, ratesMap);
+    return _sfcCalculateForCarrier(carrier, effectiveCode, boxes, zonesMap, ratesMap, packageType);
   });
 
   return { results: results };
@@ -236,8 +238,10 @@ function _sfcBuildZonesMap(ss) {
 }
 
 /**
- * SHIPPING_RATES テーブルから {carrierId|zone → [{minWeight, maxWeight, rate}]} のマップを構築する。
+ * SHIPPING_RATES テーブルから {carrierId|zone|packageType → [{minWeight, maxWeight, rate}]} のマップを構築する。
  * ★ rate の値をログに出力しない。
+ * ★ PACKAGE_TYPE 列は addPackageTypeColumn APPLY 実行後に存在する。
+ *   列が存在しない場合は全行 'BOX' 扱いとし、既存の呼び出しを壊さない。
  *
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
  * @returns {Object}
@@ -267,6 +271,11 @@ function _sfcBuildRatesMap(ss) {
   var iRate    = hIdx('RATE');
   var iActive  = hIdx('ACTIVE');
 
+  // PACKAGE_TYPE はオプション列（addPackageTypeColumn APPLY 実行後に存在する）
+  // 列が存在しない場合は -1 → 全行 'BOX' 扱い（既存の呼び出しを壊さない）
+  var pkgTypeName = getCoreSchemaV1HeaderName(tableKey, 'PACKAGE_TYPE');
+  var iPkgType    = headers.indexOf(pkgTypeName);
+
   var lastRow      = sheet.getLastRow();
   var dataRowCount = Math.max(0, lastRow - table.headerRowNumber);
   if (dataRowCount === 0) return {};
@@ -282,10 +291,13 @@ function _sfcBuildRatesMap(ss) {
     var minW      = Number(row[iMin]);
     var maxW      = Number(row[iMax]);
     var rate      = Number(row[iRate]);
+    var pkgType   = iPkgType >= 0
+      ? (String(row[iPkgType] || '').trim() || 'BOX')
+      : 'BOX';
 
     if (!carrierId || !zone || isNaN(minW) || isNaN(maxW) || isNaN(rate)) return;
 
-    var key = carrierId + '|' + zone;
+    var key = carrierId + '|' + zone + '|' + pkgType;
     if (!map[key]) map[key] = [];
     map[key].push({ minWeight: minW, maxWeight: maxW, rate: rate });
   });
@@ -305,9 +317,11 @@ function _sfcBuildRatesMap(ss) {
  * @param {Array<{ length, width, height, actualWeight }>} boxes
  * @param {Object} zonesMap
  * @param {Object} ratesMap
+ * @param {string} [packageType] - 荷姿区分（省略時は 'BOX'）
  * @returns {{ carrierId, carrierName, zone, totalFee, boxes, error, errorDetail? }}
  */
-function _sfcCalculateForCarrier(carrier, countryCode, boxes, zonesMap, ratesMap) {
+function _sfcCalculateForCarrier(carrier, countryCode, boxes, zonesMap, ratesMap, packageType) {
+  var pkgType = packageType || 'BOX';
   var result = {
     carrierId:   carrier.id,
     carrierName: carrier.name,
@@ -335,7 +349,7 @@ function _sfcCalculateForCarrier(carrier, countryCode, boxes, zonesMap, ratesMap
   // 箱ごとに計算
   var boxResults = [];
   for (var i = 0; i < boxes.length; i++) {
-    var boxResult = _sfcCalculateBox(carrier, zone, boxes[i], ratesMap);
+    var boxResult = _sfcCalculateBox(carrier, zone, boxes[i], ratesMap, pkgType);
     if (boxResult.error) {
       result.error       = boxResult.error;
       result.errorDetail = boxResult.errorDetail !== undefined ? boxResult.errorDetail : null;
@@ -357,9 +371,11 @@ function _sfcCalculateForCarrier(carrier, countryCode, boxes, zonesMap, ratesMap
  * @param {string} zone
  * @param {{ length, width, height, actualWeight }} box
  * @param {Object} ratesMap
+ * @param {string} [packageType] - 荷姿区分（省略時は 'BOX'）
  * @returns {{ chargeableWeight: number, fee: number } | { error: string, errorDetail?: * }}
  */
-function _sfcCalculateBox(carrier, zone, box, ratesMap) {
+function _sfcCalculateBox(carrier, zone, box, ratesMap, packageType) {
+  var pkgType = packageType || 'BOX';
   var L = Number(box.length);
   var W = Number(box.width);
   var H = Number(box.height);
@@ -400,7 +416,7 @@ function _sfcCalculateBox(carrier, zone, box, ratesMap) {
   }
 
   // 料金表照合: minWeight < chargeableWeight <= maxWeight
-  var rateKey = carrier.id + '|' + zone;
+  var rateKey = carrier.id + '|' + zone + '|' + pkgType;
   var bands   = ratesMap[rateKey] || [];
   var band    = null;
   for (var j = 0; j < bands.length; j++) {
@@ -587,7 +603,8 @@ function _sfeProcess_(ss, carriers, zonesMap, ratesMap, payload) { // eslint-dis
     }
 
     if (!res) {
-      res = _sfcCalculateForCarrier(carrier, effectiveCode, payload.boxes, zonesMap, ratesMap);
+      var pkgType = payload.packageType ? String(payload.packageType).trim().toUpperCase() : 'BOX';
+      res = _sfcCalculateForCarrier(carrier, effectiveCode, payload.boxes, zonesMap, ratesMap, pkgType);
       calcSource = calcSourceValues.MASTER;
     }
 
