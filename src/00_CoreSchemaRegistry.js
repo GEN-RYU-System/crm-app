@@ -545,11 +545,19 @@ const CORE_SCHEMA_V1_TABLES = {
       ['RATE',         '料金'],
       ['ACTIVE',       '有効'],
       ['REGISTERED_AT','登録日'],
-      ['UPDATED_AT',   '更新日']
+      ['UPDATED_AT',   '更新日'],
+      ['PACKAGE_TYPE', '荷姿区分']  // 10列目（末尾追加）。eLogi FedEx IP 対応。SQL移行後は UNIQUE(carrier_id,zone,package_type,min_weight,max_weight)
     ]), primaryKey: 'RATE_ID',
     referenceIds: [
       { headerKey: 'CARRIER_ID', targetTableKey: 'CARRIERS' }
-    ]
+    ],
+    values: {
+      PACKAGE_TYPE: {
+        BOX:      'BOX',
+        ENVELOPE: 'ENVELOPE',
+        PAK:      'PAK'
+      }
+    }
   },
   // ============================================================
   // 送料見積履歴
