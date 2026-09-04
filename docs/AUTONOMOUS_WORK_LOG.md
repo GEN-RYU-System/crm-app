@@ -8974,7 +8974,63 @@ PR #1001 の DEV deploy 完了後から `clasp run` が全関数で `"Unable to 
 2. 再現する場合、`src/99_DevSharedInventoryFormulaCheck.js` を削除した PR を作成してデプロイし、解消するか確認
 3. 解消しない場合、GAS スクリプトエディタで手動確認
 
-**maージ後検証（未実施）:** 上記 clasp run 問題のため、以下は未確認:
+**マージ後検証（未実施）:** 上記 clasp run 問題のため、以下は未確認:
 - getDeployedSha（SHA 一致確認）
 - runCoreSchemaConformanceAudit（総不一致 0 件確認）
+
+---
+
+### 2026-09-04 PR-AC1: ORDERS に ORDER_SOURCE（注文種類）列を追加
+
+**PR**: #1004 / mergedAt: 2026-09-04T07:05:47Z  
+**Deploy to DEV**: success（run 33847181120, 1m23s）  
+**origin/develop HEAD**: `46f7814635129444ae725aff05da087a536b6af6`
+
+**変更内容**:
+- `src/00_CoreSchemaRegistry.js`: ORDERS テーブル末尾に `ORDER_SOURCE`（注文種類）を追加（44列目）
+  - headers: `['ORDER_SOURCE', '注文種類']`
+  - values: `{ EBAY: 'ebay', AMAZON: 'amazon', RAKUTEN: 'rakuten', YAHOO: 'yahoo', OTHER: 'その他' }`
+- `src/99_DevOrderSourceColumn.js`: `addOrderSourceColumn('DRY_RUN'|'APPLY')` マイグレーション関数を新設
+  - DEV 環境専用・既存データへのバックフィルなし（空列追加のみ）
+  - 二重実行防止: 既存列があればスキップ
+
+**背景**: eLogi CSV の1列目「注文種類」が必須。SQL 移行後は ENUM または CHECK 制約になる想定。
+
+**マージ後検証（未実施）**: clasp run が全コマンドで失敗中（clasp list は通る）。
+- `addOrderSourceColumn` 実行: 未確認
+- `runCoreSchemaConformanceAudit`: 未確認
+
+---
+
+### 2026-09-04 PR-AC2: eLogi CSV 生成 GAS API を新設
+
+**PR**: #1005 / mergedAt: 2026-09-04T07:44:41Z  
+**Deploy to DEV**: success（run 33850122484, 7m5s）  
+**origin/develop HEAD**: `579aa8372fb11f0b7accd3fe3490eda055a35f2a`
+
+**変更内容**:
+- `src/29_ElogiCsvExporter.js`: 新規ファイル（413行）
+  - `generateElogiCsvForFrontend(sessionId, shipmentId)` を実装
+  - 結合テーブル: SHIPMENTS → ORDERS → SHIPMENT_LINES → ORDER_LINES →
+    SHIPPING_DESTINATIONS → COUNTRIES → HTS_CODES → CUSTOMER_TAX_NUMBERS
+  - 戻り値: `{ csv: string, warnings: [{lineNo, field, reason}] }`
+  - 必須10項目が空の場合は警告として返す（エラーにしない）
+  - シート書き込みなし・顧客情報はログ非出力
+  - DEV テストラッパー `devTestElogiCsv(shipmentId)` を同ファイル末尾に同梱
+
+**CSV 仕様**:
+- ヘッダー: eLogi 仕様の25列固定（ELOGI_CSV_HEADERS 定数）
+- 列8（USD申告単価/個）: 単価 ÷ 為替レート、小数点2桁
+- 列14/22（国名）: ISO2 → COUNTRIES.display_name（英語名）
+- 列23（納税者ID）: US→US_TAX_ID / KR→PCCC / MX→RFC / else→TAX_ID / なければ空
+- 列25（EORI）: CUSTOMER_TAX_NUMBERS の TYPE_ID='EORI' の値
+
+**CI 備考**: PR が DRAFT で作成されたため base が `main` に設定されていた。
+`gh pr edit 1005 --base develop` で修正後、空コミット push で CI をトリガーした。
+次回から DRAFT PR 作成時は base ブランチを即確認する。
+
+**マージ後検証（未実施）**: clasp run が全コマンドで失敗中（clasp list は通る）。
+- `getDeployedSha`: 未確認（origin/develop HEAD は `579aa83...` と一致するはず）
+- `devTestElogiCsv("SH-0004")`: 未確認
+- `runCoreSchemaConformanceAudit`: 未確認
 - dryRunOrderStatusRecalculation（変更 0 件確認）
