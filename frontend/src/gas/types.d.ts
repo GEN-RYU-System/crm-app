@@ -89,6 +89,7 @@ interface GoogleScriptRun {
   getCoreTaxNumberTypesForFrontend(sessionId: string | null): void;
   getCoreCustomerTaxNumbersForFrontend(sessionId: string | null, customerId: string): void;
   upsertCoreCustomerTaxNumberForFrontend(sessionId: string | null, payload: unknown): void;
+  generateElogiCsvForFrontend(sessionId: string | null, shipmentId: string): void;
 }
 
 interface Window {

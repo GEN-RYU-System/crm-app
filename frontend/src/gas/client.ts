@@ -1704,6 +1704,30 @@ export function upsertCoreShipmentLine(payload: UpsertShipmentLinePayload): Prom
   });
 }
 
+// ─── eLogi CSV Export ─────────────────────────────────────────────────────────
+
+export type ElogiCsvWarning = {
+  lineNo: number;
+  field: string;
+  reason: string;
+};
+
+export type ElogiCsvResult = {
+  csv: string;
+  warnings: ElogiCsvWarning[];
+};
+
+export function generateElogiCsv(shipmentId: string): Promise<ElogiCsvResult> {
+  const runner = window.google?.script?.run;
+  if (!runner) return Promise.reject(new Error(errorCopy.appsScriptOnly));
+  return new Promise((resolve, reject) => {
+    runner
+      .withSuccessHandler((value: unknown) => resolve(value as ElogiCsvResult))
+      .withFailureHandler((error: unknown) => reject(toError(error)))
+      .generateElogiCsvForFrontend(getStoredSessionId(), shipmentId);
+  });
+}
+
 // ─── Tax Number Types ─────────────────────────────────────────────────────────
 
 export type TaxNumberTypeRecord = {

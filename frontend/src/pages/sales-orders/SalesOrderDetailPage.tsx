@@ -15,6 +15,7 @@ import {
   getCoreCountries,
   getCoreHtsCodes,
   getCoreItems,
+  generateElogiCsv,
   getCoreShipmentLines,
   getCoreMaterials,
   getProductExportDefaults,
@@ -24,6 +25,7 @@ import {
   upsertCoreShipmentLine,
   uploadCoreShipmentFile,
   type CountryRecord,
+  type ElogiCsvWarning,
   type HtsCodeRecord,
   type ItemRecord,
   type MaterialRecord,
@@ -44,6 +46,26 @@ import './SalesOrderDetailPage.css';
 
 type OrderDetail = OrderDetailRecord;
 type DetailTab = 'billing' | 'purchases' | 'shipments';
+
+// eLogi CSV helpers (module-level, no state dependency)
+function buildElogiFilename(shipmentId: string): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `elogi_${shipmentId}_${y}${m}${d}.csv`;
+}
+
+function triggerElogiDownload(csv: string, filename: string): void {
+  const bom = '\uFEFF';
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function formatValue(v: unknown): string {
   if (v === null || v === undefined || v === '') return '-';
@@ -228,6 +250,13 @@ export function SalesOrderDetailPage() {
   const [coreCountries, setCoreCountries] = useState<CountryRecord[]>([]);
   const [mastersLoading, setMastersLoading] = useState(false);
 
+  // eLogi CSV state
+  const [elogiCsvLoading, setElogiCsvLoading] = useState(false);
+  const [elogiCsvError, setElogiCsvError] = useState<string | undefined>(undefined);
+  const [elogiCsvWarnings, setElogiCsvWarnings] = useState<ElogiCsvWarning[] | null>(null);
+  const [elogiCsvPendingCsv, setElogiCsvPendingCsv] = useState<string>('');
+  const [elogiCsvPendingFilename, setElogiCsvPendingFilename] = useState<string>('');
+
   // shipping fee calculation state (shipment tab — actual boxes)
   const [shippingFeeLoading, setShippingFeeLoading] = useState(false);
   const [shippingFeeResult, setShippingFeeResult] = useState<{
@@ -264,6 +293,10 @@ export function SalesOrderDetailPage() {
   useEffect(() => {
     setShipmentLineFormOpen(false);
     setShipmentLineFormError(undefined);
+    setElogiCsvError(undefined);
+    setElogiCsvWarnings(null);
+    setElogiCsvPendingCsv('');
+    setElogiCsvPendingFilename('');
     if (!selectedShipmentId) { setShipmentLines([]); return; }
     setShipmentLinesLoading(true);
     getCoreShipmentLines(selectedShipmentId)
@@ -525,6 +558,38 @@ export function SalesOrderDetailPage() {
     } finally {
       setUploadingFileType(null);
     }
+  };
+
+  const handleElogiCsvDownload = async () => {
+    if (!selectedShipmentId) return;
+    setElogiCsvLoading(true);
+    setElogiCsvError(undefined);
+    setElogiCsvWarnings(null);
+    setElogiCsvPendingCsv('');
+    setElogiCsvPendingFilename('');
+    try {
+      const result = await generateElogiCsv(selectedShipmentId);
+      const filename = buildElogiFilename(selectedShipmentId);
+      if (result.warnings.length > 0) {
+        setElogiCsvWarnings(result.warnings);
+        setElogiCsvPendingCsv(result.csv);
+        setElogiCsvPendingFilename(filename);
+      } else {
+        triggerElogiDownload(result.csv, filename);
+      }
+    } catch (e: unknown) {
+      setElogiCsvError(e instanceof Error ? e.message : copy.elogiCsvErrorUnknown);
+    } finally {
+      setElogiCsvLoading(false);
+    }
+  };
+
+  const handleElogiCsvConfirmDownload = () => {
+    if (!elogiCsvPendingCsv || !elogiCsvPendingFilename) return;
+    triggerElogiDownload(elogiCsvPendingCsv, elogiCsvPendingFilename);
+    setElogiCsvWarnings(null);
+    setElogiCsvPendingCsv('');
+    setElogiCsvPendingFilename('');
   };
 
   const handleConfirmPayment = async () => {
@@ -1252,6 +1317,73 @@ export function SalesOrderDetailPage() {
                               )}
                             </div>
                           )}
+                        </div>
+                        {/* eLogi CSV download */}
+                        <div className="sales-order-detail-page__elogi-section">
+                          <div className="sales-order-detail-page__elogi-header">
+                            <Button
+                              variant="secondary"
+                              onClick={() => void handleElogiCsvDownload()}
+                              disabled={elogiCsvLoading || shipmentLines.length === 0 || shipmentLinesLoading}
+                            >
+                              {elogiCsvLoading ? copy.elogiCsvDownloading : copy.elogiCsvDownloadBtn}
+                            </Button>
+                            {shipmentLines.length === 0 && !shipmentLinesLoading && (
+                              <span className="sales-order-detail-page__elogi-hint">{copy.elogiCsvNoLines}</span>
+                            )}
+                          </div>
+                          {elogiCsvError && (
+                            <StatusMessage variant="error">{elogiCsvError}</StatusMessage>
+                          )}
+                          {elogiCsvWarnings && elogiCsvWarnings.length > 0 && (() => {
+                            const fieldLabels: Record<string, string> = {
+                              ORDER_SOURCE:   copy.elogiCsvFieldOrderSource,
+                              ORDER_DATE:     copy.elogiCsvFieldOrderDate,
+                              PRODUCT_TITLE:  copy.elogiCsvFieldProductTitle,
+                              QUANTITY:       copy.elogiCsvFieldQuantity,
+                              USD_UNIT_PRICE: copy.elogiCsvFieldUsdUnitPrice,
+                              RECIPIENT_NAME: copy.elogiCsvFieldRecipientName,
+                              PHONE:          copy.elogiCsvFieldPhone,
+                              DEST_COUNTRY:   copy.elogiCsvFieldDestCountry,
+                              CITY:           copy.elogiCsvFieldCity,
+                              ADDRESS_LINE_1: copy.elogiCsvFieldAddressLine1,
+                            };
+                            const reasonSuffixes: Record<string, string> = {
+                              REQUIRED_FIELD_EMPTY: copy.elogiCsvReasonRequiredFieldEmpty,
+                            };
+                            return (
+                              <div className="sales-order-detail-page__elogi-warnings">
+                                <p className="sales-order-detail-page__elogi-warnings-title">
+                                  {copy.elogiCsvWarningsTitle}
+                                </p>
+                                <ul className="sales-order-detail-page__elogi-warnings-list">
+                                  {elogiCsvWarnings.map((w, i) => (
+                                    <li key={i}>
+                                      {`${copy.elogiCsvWarningLinePrefix}${w.lineNo}: ${fieldLabels[w.field] ?? w.field}${reasonSuffixes[w.reason] ?? copy.elogiCsvReasonDefault}`}
+                                    </li>
+                                  ))}
+                                </ul>
+                                <div className="sales-order-detail-page__elogi-warning-actions">
+                                  <Button
+                                    variant="primary"
+                                    onClick={handleElogiCsvConfirmDownload}
+                                  >
+                                    {copy.elogiCsvDownloadAnyway}
+                                  </Button>
+                                  <Button
+                                    variant="secondary"
+                                    onClick={() => {
+                                      setElogiCsvWarnings(null);
+                                      setElogiCsvPendingCsv('');
+                                      setElogiCsvPendingFilename('');
+                                    }}
+                                  >
+                                    {copy.elogiCsvCancel}
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div className="sales-order-detail-page__shipment-files">
                           {!s.TRACKING_NUMBER ? (

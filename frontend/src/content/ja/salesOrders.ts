@@ -307,5 +307,28 @@ export const salesOrdersCopy = {
     shippingFeeErrorNotAvailable: 'この配送会社は対象外です',
     shippingFeeErrorMissingCountryCode: '配送先の国が登録されていません。受注の配送先を確認してください。',
     shippingFeeErrorUnknown: '計算に失敗しました',
+    // eLogi CSV ダウンロード
+    elogiCsvDownloadBtn: 'eLogi CSV をダウンロード',
+    elogiCsvDownloading: 'ダウンロード中...',
+    elogiCsvNoLines: '発送明細を登録してください',
+    elogiCsvWarningsTitle: '以下の項目が未入力です。eLogi 側で補完してください。',
+    elogiCsvDownloadAnyway: 'それでもダウンロードする',
+    elogiCsvCancel: 'キャンセル',
+    elogiCsvErrorUnknown: 'CSV の生成に失敗しました',
+    // eLogi CSV 警告: フィールド名
+    elogiCsvFieldOrderSource:   '注文種類',
+    elogiCsvFieldOrderDate:     '注文日',
+    elogiCsvFieldProductTitle:  '商品タイトル',
+    elogiCsvFieldQuantity:      '数量',
+    elogiCsvFieldUsdUnitPrice:  'USD申告単価/個',
+    elogiCsvFieldRecipientName: '受取人氏名',
+    elogiCsvFieldPhone:         '電話番号',
+    elogiCsvFieldDestCountry:   '国名',
+    elogiCsvFieldCity:          '市',
+    elogiCsvFieldAddressLine1:  '住所１',
+    // eLogi CSV 警告: reason コード → 日本語サフィックス
+    elogiCsvWarningLinePrefix:        '行',
+    elogiCsvReasonRequiredFieldEmpty: 'が未入力です',
+    elogiCsvReasonDefault:            'に問題があります',
   },
 } as const;

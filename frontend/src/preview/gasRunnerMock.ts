@@ -944,6 +944,16 @@ function buildChain(onSuccess: SuccessHandler, onError: ErrorHandler) {
     upsertCoreShipmentLineForFrontend(_s: string | null, _payload: unknown) {
       succeed({ success: true, shipmentLineId: 'SL-0001', savedToProductMaster: false, failedStep: null });
     },
+    generateElogiCsvForFrontend(_s: string | null, shipmentId: string) {
+      const header = '注文種類,注文番号,注文日,SKU,商品画像URL,商品タイトル,数量,USD申告単価/個,購入者ID,受取人氏名,受取人会社名,電話番号,メールアドレス,国名,州コード/州名,市,郵便番号,住所１,住所２,住所３,HS/HTSコード,原産国,受取人 納税者ID,事前徴収ID,EORI番号';
+      const row = `ebay,${shipmentId},2026/09/04,SKU-001,,サンプル商品,1,10.00,,テスト受取人,,+1-800-000-0000,,United States,,New York,10001,123 Main St,,,1234.56,Japan,,, `;
+      succeed({
+        csv: `${header}\n${row}`,
+        warnings: [
+          { lineNo: 1, field: 'ORDER_SOURCE', reason: 'REQUIRED_FIELD_EMPTY' },
+        ],
+      });
+    },
     getCoreTaxNumberTypesForFrontend(_s: string | null) {
       succeed([
         { typeId: 'US_TAX_ID', nameJa: '米国納税者番号（EIN/SSN）', nameEn: 'US Tax ID (EIN/SSN)', description: '法人はEIN、個人はSSN。米国の正式通関で必須', targetCountry: 'アメリカ', isActive: 'TRUE' },
