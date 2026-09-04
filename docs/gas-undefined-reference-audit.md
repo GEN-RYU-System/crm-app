@@ -588,4 +588,210 @@ function getSystemAgents() {
 
 ---
 
+---
+
+## 補遺: CONFIG 未定義定数 到達可能性調査（2026-09-04）
+
+**調査日**: 2026-09-04  
+**起点**: PR #996 で `CONFIG.LEAD_STATUSES` を削除した際に判明した、pre-existing の未定義 CONFIG 定数 4 件の到達可能性を確認する。  
+**方針**: 調査のみ。修正しない。事実の記録のみ。
+
+### 判定基準
+
+| 判定 | 条件 |
+|---|---|
+| 実害あり | フロント 44 関数・トリガー・doGet/doPost から到達する |
+| レガシーのみ | src/index.html からのみ到達 |
+| 到達不能 | どこからも呼ばれない |
+| 【未確認】 | 判定できない |
+
+---
+
+### CONFIG.DRIVE（請求書発行.js:568）
+
+**読んだ行番号**: 07_Code.js:49、請求書発行.js:146、350、564–568
+
+#### 参照している関数
+
+```javascript
+// 請求書発行.js:564
+function createInvoicePDF_Internal(invoiceNo) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  // L568: CONFIG.DRIVE 未定義 → TypeError
+  const folderInput = CONFIG.DRIVE.INVOICE_FOLDER_ID;
+```
+
+#### 到達経路
+
+```
+07_Code.js:49  メニュー「請求書」→「📝請求書発行」
+  └─ 請求書発行.js:146  transferAndGeneratePDF()
+       └─ 請求書発行.js:350  createInvoicePDF_Internal(invoiceNoMain)
+            └─ 請求書発行.js:568  CONFIG.DRIVE.INVOICE_FOLDER_ID  ← TypeError
+```
+
+| 経路 | 到達するか |
+|------|-----------|
+| フロント 44 関数 | しない（リストに `transferAndGeneratePDF` なし） |
+| トリガー（00_TriggerSetup.js 全登録） | しない |
+| doGet / doPost | しない |
+| メニュー（onOpen → UI メニュー） | **する** |
+
+#### 判定: **実害あり**
+
+メニュー「📝請求書発行」をクリックすると `createInvoicePDF_Internal` が呼ばれ、`CONFIG.DRIVE.INVOICE_FOLDER_ID` で TypeError が発生する。PDF は生成されない。
+
+---
+
+### CONFIG.HEADERS（01_Initialize.js 複数行）
+
+**読んだ行番号**: 01_Initialize.js:88–422、23_SheetService.js:93–226、99_CustomerMasterSeed.js:1108、1304、1418
+
+#### 参照している関数（実コード）
+
+| 関数名 | 01_Initialize.js の行 | CONFIG.HEADERS 参照 |
+|--------|----------------------|-------------------|
+| `initializeLeadsSheet` | 88–121 | 行102: `CONFIG.HEADERS.LEADS` |
+| `initializeStaffMasterSheet` | 126–145 | 行134: `CONFIG.HEADERS.STAFF_MASTER` |
+| `initializeSettingsSheet` | 150–169 | 行158: `CONFIG.HEADERS.SETTINGS` |
+| `initializePermissionsSheet` | 174–193 | 行182: `CONFIG.HEADERS.PERMISSIONS` |
+| `initializeGoalsSheet` | 198–217 | 行206: `CONFIG.HEADERS.GOALS` |
+| `initializeTemplateSheet` | 222–241 | 行230: `CONFIG.HEADERS.TEMPLATE` |
+| `initializeWeeklyReportSheet` | 246–265 | 行254: `CONFIG.HEADERS.WEEKLY_REPORT` |
+| `initializeMonthlyReportSheet` | 270–289 | 行278: `CONFIG.HEADERS.MONTHLY_REPORT` |
+| `initializeShiftSheet` | 294–313 | 行302: `CONFIG.HEADERS.SHIFT` |
+| `initializeBuddyConversationLogSheet` | 318–337 | 行326: `CONFIG.HEADERS.BUDDY_CONVERSATION_LOG` |
+| `initializeConversationLogSheet` | 342–361 | 行350: `CONFIG.HEADERS.CONVERSATION_LOG` |
+| `initializeGlossarySheet` | 366–385 | 行374: `CONFIG.HEADERS.GLOSSARY` |
+| `initializeNoticeSheet` | 390–409 | 行398: `CONFIG.HEADERS.NOTICE` |
+| `initializeReadStatusSheet` | 414–433 | 行422: `CONFIG.HEADERS.READ_STATUS` |
+
+※ 99_CustomerMasterSeed.js:1108、1304、1418 の参照は JSDoc コメント内のみ。実コードには存在しない。
+
+#### 到達可能性の分析
+
+**`initializeLeadsSheet`（01_Initialize.js:88）**  
+行89に明示的な guard がある。
+
+```javascript
+function initializeLeadsSheet(ss) {
+  throw new Error(  // L89
+    'この関数は無効化されています。...'
+  );
+  // ...
+  const headers = CONFIG.HEADERS.LEADS;  // L102 — ここまで到達しない
+```
+
+CONFIG.HEADERS.LEADS は行102で参照されるが、行89の `throw` により到達不能。
+
+**`initializeSettingsSheet` / `initializePermissionsSheet` / `initializeGoalsSheet` / `initializeGoalsSheetFromMenu` / `initializePermissionsSheetFromMenu`**  
+23_SheetService.js で同名関数が再定義されている（行93、110、150、193、226）。  
+GAS は function 宣言を後勝ちで処理するため、01_Initialize.js 版（CONFIG.HEADERS を参照する版）は無効。  
+23_SheetService.js 版は CONFIG.HEADERS を参照しない。  
+これらはメニューから到達するが、実行されるのは 23_SheetService.js 版であり CONFIG.HEADERS には触れない。
+
+**残り 9 関数**（`initializeStaffMasterSheet`, `initializeTemplateSheet`, 他 7 件）  
+23_SheetService.js に同名関数なし。呼び出し元が `01_Initialize.js` 自身のみまたは 0 件（grep 結果）。  
+`initializeAllCRMSheets()`（行701）も `initializeSalesDataSheet` / `initializeAntiqueLedgerSheet` のみを呼ぶ（行720–738）。  
+到達経路なし。
+
+#### 判定: **到達不能**
+
+全 14 関数のいずれも CONFIG.HEADERS を参照する行には到達しない。
+
+**【未確認】**: GAS における同一スコープへの重複 function 宣言の公式仕様は未検証。「後勝ち」はアプリ稼働実績から推定（23_SheetService.js 版の関数が問題なく動作している）。
+
+---
+
+### CONFIG.QUOTE_HISTORY（00_HeaderMappingHelper.js:236 / 11_QuoteService.js）
+
+**読んだ行番号**: 00_HeaderMappingHelper.js:211–248、11_QuoteService.js:15–30、75–98、202–225、302–325、408–430、472–495、27_WebApp.js:228–300、7688–7750、7856–7900、src/index.html:18738、19011、19060
+
+#### 参照している関数
+
+| ファイル | 行 | 関数 | CONFIG.QUOTE_HISTORY 参照 |
+|--------|-----|------|--------------------------|
+| 00_HeaderMappingHelper.js | 211 | `testHeaderMapping()` | 行236: `CONFIG.QUOTE_HISTORY.GID` |
+| 11_QuoteService.js | 15 | `generateQuoteId()` | 行23、30 |
+| 11_QuoteService.js | 75 | `saveQuote()` | 行88 |
+| 11_QuoteService.js | 202 | `getQuoteById()` | 行213 |
+| 11_QuoteService.js | 302 | `getAllQuotes()` | 行317 |
+| 11_QuoteService.js | 408 | `getQuotePDFUrl()` | 行418 |
+| 11_QuoteService.js | 472 | `updateQuotePDFUrl()` | 行483 |
+
+#### 到達可能性の分析
+
+**`testHeaderMapping()`（00_HeaderMappingHelper.js:211）**  
+呼び出し元なし（grep 結果 0 件）。フロント 44 関数・メニュー・トリガーのいずれにも含まれない。  
+→ **到達不能**
+
+**11_QuoteService.js の 6 関数** — 以下の経路から到達する。
+
+| 到達経路 | 経由する GAS 関数 | CONFIG.QUOTE_HISTORY を参照する関数 |
+|---------|----------------|-----------------------------------|
+| `doPost`（27_WebApp.js:287） `action:'getAllQuotes'` | `getAllQuotes()` | 行317 |
+| `doPost`（27_WebApp.js:293） `action:'getQuotePDFUrl'` | `getQuotePDFUrl()` | 行418 |
+| `doPost`（27_WebApp.js:296） `action:'updateQuotePDFUrl'` | `updateQuotePDFUrl()` | 行483 |
+| `src/index.html:18787` → `google.script.run.getQuotesForList()` | `getQuotesForList()`（27_WebApp.js:7856）→ `getAllQuotes()` | 行317 |
+| `src/index.html:18738` → `google.script.run.saveQuoteFromForm()` | `saveQuoteFromForm()`（27_WebApp.js:7688）→ `saveQuote()` | 行88 |
+| `src/index.html:19011` → `google.script.run.updateQuotePDFUrl()` | `updateQuotePDFUrl()` | 行483 |
+| `src/index.html:19060` → `google.script.run.getQuotePDFUrl()` | `getQuotePDFUrl()` | 行418 |
+
+`src/index.html` は `doGet?page=legacy`（27_WebApp.js:64）で配信されるレガシーページ。  
+`doPost` は gas-cleanup-proposal.md section 3-3 で「現役（Webhookエントリ）」と分類されている。
+
+フロント 44 関数（28_CoreQuoteApi.js: `getCoreQuotesForFrontend`, `createCoreQuoteForFrontend` 等）は `coreQuoteReadTable` / `validateCoreSchemaV1TableForWrite` 経由でシートに直接アクセスし、`CONFIG.QUOTE_HISTORY` を参照しない。44 関数からは到達しない。
+
+#### 判定: **実害あり**
+
+`doPost`（Webhook エントリ）から `action:'getAllQuotes'` 等を送信すると、`11_QuoteService.js` の関数が呼ばれ `CONFIG.QUOTE_HISTORY.GID` で TypeError が発生する。  
+また `?page=legacy` 経由でレガシーページを開き見積もり操作を行うと同じ TypeError が発生する。  
+現行 React フロントエンド（44 関数）からは到達しない。
+
+---
+
+### CONFIG.SPREADSHEET_ID（27_WebApp.js:8193）
+
+**読んだ行番号**: 27_WebApp.js:8188–8210、check_staff_registration.js:1–5
+
+#### 参照している関数
+
+| ファイル | 行 | 関数 |
+|--------|-----|------|
+| 27_WebApp.js | 8191 | `checkImportRangeFormula()` |
+| check_staff_registration.js | 1 | `checkStaffRegistration()` |
+
+#### 到達可能性の分析
+
+両関数とも呼び出し元が存在しない（`grep -rn "checkImportRangeFormula\|checkStaffRegistration"` → 定義行以外 0 件）。  
+フロント 44 関数・doPost・メニュー・トリガーのいずれにも登録なし。
+
+#### 判定: **到達不能**
+
+---
+
+### まとめ
+
+| 定数 | 参照ファイル | 到達する関数 | 判定 |
+|------|-----------|------------|------|
+| `CONFIG.DRIVE` | 請求書発行.js:568 | `createInvoicePDF_Internal` | **実害あり**（メニューから） |
+| `CONFIG.HEADERS` | 01_Initialize.js（14 箇所） | なし（guard / 関数上書き / 呼び出し元なし） | **到達不能** |
+| `CONFIG.QUOTE_HISTORY` | 00_HeaderMappingHelper.js:236、11_QuoteService.js（6 箇所） | `getAllQuotes`, `getQuotePDFUrl`, `updateQuotePDFUrl`, `saveQuote` | **実害あり**（doPost + レガシーページ） |
+| `CONFIG.SPREADSHEET_ID` | 27_WebApp.js:8193、check_staff_registration.js:3 | なし | **到達不能** |
+
+### 実害ありと判定した件の一覧
+
+| # | 定数 | クラッシュ箇所 | 到達経路 | 現行フロントへの影響 |
+|---|------|-------------|---------|-------------------|
+| 1 | `CONFIG.DRIVE` | 請求書発行.js:568 | メニュー「📝請求書発行」 | **なし**（メニュー操作時のみ） |
+| 2 | `CONFIG.QUOTE_HISTORY` | 11_QuoteService.js:23、88、213、317、418、483 | `doPost` `action:'getAllQuotes'`/`'getQuotePDFUrl'`/`'updateQuotePDFUrl'` | **なし** |
+| 3 | `CONFIG.QUOTE_HISTORY` | 同上 | `?page=legacy` + `google.script.run.saveQuoteFromForm`/`getQuotesForList`/`updateQuotePDFUrl`/`getQuotePDFUrl` | **なし** |
+
+### 【未確認】項目
+
+1. GAS における同一スコープへの重複 function 宣言（01_Initialize.js と 23_SheetService.js の同名関数）の公式仕様。「後勝ち」はアプリ稼働実績から推定。
+2. `doPost` に対して `action:'getAllQuotes'` 等を実際に送信している外部クライアントが存在するか（コードからは判断不可）。
+
+---
+
 *調査実施: 読み取り専用（src/ への変更なし、clasp push なし、git push なし）*
