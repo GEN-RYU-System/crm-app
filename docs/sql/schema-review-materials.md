@@ -26,22 +26,60 @@
 
 | 項目 | 値 | 出典 |
 |------|-----|------|
-| 総行数 | 1086 行 | postgres-migration-analysis.md §2-13 |
-| product_id が NULL/空の行数 | 204 行 | 同 §7 参照整合性監査（全 1086 行対象） |
-| product_id が存在する行数 | 882 行（= 1086 − 204） | 計算値 |
-| 孤児参照（product_id が 商品マスタ同期に存在しない）| 0 件 | 同 §7 |
-| Condition 列の値種別 | Sealed box / Damaged sealed box / Case / No shrink box / Searched pack / FLAG_SINGLE / Damaged case / Unsearched pack（計 8 種） | CoreSchemaRegistry.SHARED_INVENTORY.values |
+| 総行数（DEV 実測） | **876 行** | `clasp run auditSharedInventoryUniqueness` 2026-09-04 |
+| ※ 前回分析値との差異 | 前回は 1086 行（postgres-migration-analysis.md §2-13）。DEV シートの行数が変動したと考えられる。【未確認: 差異の原因】 | — |
+| product_id が NULL/空の行数 | **180 行** | 同上（DEV 実測） |
+| product_id が存在する行数 | **696 行**（= 876 − 180） | 計算値 |
+| 孤児参照（product_id が 商品マスタ同期に存在しない）| 0 件 | postgres-migration-analysis.md §7（1086 行対象時の値） |
+| 提供者（supplier）が空の行数 | 0 件 | `clasp run auditSharedInventoryUniqueness` 2026-09-04 |
+| Condition が空の行数 | 0 件 | 同上 |
+| Condition 列の値種別（Registry 定義） | Sealed box / Damaged sealed box / Case / No shrink box / Searched pack / FLAG_SINGLE / Damaged case / Unsearched pack（計 8 種） | CoreSchemaRegistry.SHARED_INVENTORY.values |
+| Condition 列の値種別（実データ追加値） | **Opened box**（Registry 未定義。`runCoreSchemaConformanceAudit` 2026-09-04 で検出） | `clasp run runCoreSchemaConformanceAudit` |
 | 提供者（supplier）列の先頭 100 行サンプル | maxLen=4、sample: シンソク | postgres-migration-analysis.md §2-13 |
 
 備考: `CoreSchemaV1.SHARED_INVENTORY.primaryKey = null`（コメント: 「product_id が重複する（同一商品を複数の提供者が出す場合がある）ため」）
 
-**以下の一意性確認は `auditSharedInventoryUniqueness` 関数（本 PR で追加）を DEV 環境にデプロイ後に実行して記入する。**
+**一意性確認結果（`clasp run auditSharedInventoryUniqueness --json` 2026-09-04 実行）:**
 
 | 確認項目 | 結果 |
 |---------|------|
-| (product_id, 提供者) の組み合わせが 1086 行で一意か | **→ 実行後に記入** |
-| (product_id, Condition, 提供者) の組み合わせが 1086 行で一意か | **→ 実行後に記入** |
-| 完全重複行（全 11 列一致）の件数 | **→ 実行後に記入** |
+| (product_id, 提供者) の組み合わせが 876 行で一意か | **一意でない**（重複キー組み合わせ数: 10） |
+| (product_id, Condition, 提供者) の組み合わせが 876 行で一意か | **一意でない**（重複キー組み合わせ数: 10） |
+| 完全重複行（全 11 列一致）の件数 | **0 件** |
+
+**comboA 重複キー詳細（(product_id, 提供者) 上位 10 組）:**
+
+| product_id | 提供者 | 該当行数 |
+|-----------|-------|---------|
+| （空） | 吉田翔 | 40 |
+| （空） | 株式会社モノウリ ハタナカ | 15 |
+| （空） | H | 15 |
+| （空） | SIG | 13 |
+| PM0263 | 佐々木優太 | 10 |
+| （空） | やまちゃん | 8 |
+| （空） | 下司弘樹 | 8 |
+| （空） | 株式会社fun labo | 8 |
+| （空） | 武 | 7 |
+| （空） | 佐々木優太 | 7 |
+
+※ 10 組のうち 9 組は product_id が空。1 組（PM0263 + 佐々木優太）は product_id が非 NULL の実重複。
+
+**comboB 重複キー詳細（(product_id, Condition, 提供者) 上位 10 組）:**
+
+| product_id | Condition | 提供者 | 該当行数 |
+|-----------|----------|-------|---------|
+| （空） | FLAG_SINGLE | 吉田翔 | 30 |
+| （空） | FLAG_SINGLE | 株式会社モノウリ ハタナカ | 15 |
+| （空） | FLAG_SINGLE | H | 13 |
+| （空） | FLAG_SINGLE | SIG | 13 |
+| PM0263 | Sealed box | 佐々木優太 | 10 |
+| （空） | FLAG_SINGLE | やまちゃん | 8 |
+| （空） | Unsearched pack | 吉田翔 | 8 |
+| （空） | FLAG_SINGLE | 下司弘樹 | 7 |
+| （空） | FLAG_SINGLE | 吉田 | 7 |
+| （空） | Case | 株式会社fun labo | 7 |
+
+※ 10 組のうち 9 組は product_id が空。1 組（PM0263 + Sealed box + 佐々木優太）は product_id が非 NULL の実重複。
 
 ### 2-2. 外部参照（GAS API）
 
@@ -80,10 +118,10 @@ CREATE TABLE shared_inventory (
 | 項目 | 内容 |
 |------|------|
 | シートへの列追加 | **不要**（id は PostgreSQL 内部で自動採番。GAS スプレッドシートに列を追加しない） |
-| product_id が NULL の 204 行の扱い | PostgreSQL の UNIQUE 制約は NULL 同士を別値として扱うため、NULL + supplier の組み合わせが重複しても制約違反にならない |
+| product_id が NULL の 180 行の扱い | PostgreSQL の UNIQUE 制約は NULL 同士を別値として扱うため、NULL + supplier の組み合わせが重複しても制約違反にならない |
 | GAS API への影響 | 読み取り専用 API のため、主キー列への依存なし。影響なし |
 
-**前提条件**: (product_id, 提供者) が 1086 行で一意であること。**→ auditSharedInventoryUniqueness の実行結果を確認すること。**
+**前提条件**: (product_id, 提供者) が全行で一意であること。**→ 実測結果: 一意でない（PM0263 + 佐々木優太 が 10 行重複）。UNIQUE 制約を追加する場合、この重複を事前に解消する必要がある。**
 
 **ユニーク制約に NULL を含む場合の動作**:  
 PostgreSQL 15 以前: NULL は UNIQUE 制約で「異なる値」として扱われる（NULL + 同一 supplier が複数存在しても制約違反にならない）。  
@@ -111,13 +149,13 @@ CREATE TABLE shared_inventory (
 | 項目 | 内容 |
 |------|------|
 | シートへの列追加 | **不要** |
-| product_id が NULL の 204 行の扱い | PostgreSQL では主キー列に NULL を持てないため、NULL の 204 行は挿入拒否。移行前に NULL の 204 行を別途処理する必要がある |
+| product_id が NULL の 180 行の扱い | PostgreSQL では主キー列に NULL を持てないため、NULL の 180 行は挿入拒否。移行前に NULL の 180 行を別途処理する必要がある |
 | GAS API への影響 | 読み取り専用 API のため影響なし |
 
-**前提条件**: (product_id, Condition, 提供者) が 1086 行で一意であること。**→ auditSharedInventoryUniqueness の実行結果を確認すること。**
+**前提条件**: (product_id, Condition, 提供者) が全行で一意であること。**→ 実測結果: 一意でない（PM0263 + Sealed box + 佐々木優太 が 10 行重複）。NULL 行 180 件 + この重複を事前に解消する必要がある。**
 
 **NULL 行の処理方針（別途 PO 判断が必要）**:  
-- (a) product_id = NULL の 204 行は移行対象外とする  
+- (a) product_id = NULL の 180 行は移行対象外とする  
 - (b) placeholder の product_id（例: `UNKNOWN`）を割り当てて移行する
 
 ---
@@ -159,19 +197,21 @@ CREATE TABLE shared_inventory (
 
 ### 3-1. 分析データなしで型を推定した列（option_master）
 
-`選択肢マスタV2`（OPTION_MASTER）は分析時に DEV 環境に存在しなかったため（SHEET_NOT_FOUND）、5列のうち 4列の型を CoreSchemaV1 Registry の論理型から推定している。
+`選択肢マスタV2`（OPTION_MASTER）は初回分析時に DEV 環境に存在しなかったため（SHEET_NOT_FOUND）、5列のうち 4列の型を CoreSchemaV1 Registry の論理型から推定している。
 
-| SQL 列名 | schema.sql の型 | 型の根拠 | 全行空か |
-|---------|---------------|---------|---------|
+**2026-09-04 追記**: `clasp run runCoreSchemaConformanceAudit` により、DEV 環境に `選択肢マスタV2` シートが存在することを確認（シート取得: OK、ヘッダー列数: 定義 5 / 実シート 5 → OK、不一致: 0件）。シートは存在するが、各列の実データ型の確認（全行空かどうか等）は別途必要。
+
+| SQL 列名 | schema.sql の型 | 型の根拠 | 備考 |
+|---------|---------------|---------|------|
 | `option_id` | TEXT NOT NULL | Registry 論理キー（PK） | — |
-| `category` | TEXT | Registry 論理型（string）から推定 | **【未確認】**（SHEET_NOT_FOUND のため空行数不明） |
-| `value` | TEXT | 同上 | **【未確認】** |
-| `sort_order` | INTEGER | 同上（number かつ小数なし） | **【未確認】** |
-| `is_active` | BOOLEAN | 同上（boolean） | **【未確認】** |
+| `category` | TEXT | Registry 論理型（string）から推定 | シート存在確認済み（2026-09-04）。実データ型は未確認 |
+| `value` | TEXT | 同上 | 同上 |
+| `sort_order` | INTEGER | 同上（number かつ小数なし） | 同上 |
+| `is_active` | BOOLEAN | 同上（boolean） | 同上 |
 
 schema-notes.md §3-2: 「分析データなしのため全列 NULL 可（Registry の論理型から推定）」
 
-現在の DEV 環境でのシート存在確認および実データ分析を別途実施すれば確定できる。
+実データ分析を別途実施すれば型を確定できる。
 
 ### 3-2. 型の決定が注目すべき列（既に確定済み）
 
@@ -189,41 +229,44 @@ schema-notes.md §3-2: 「分析データなしのため全列 NULL 可（Regist
 
 ---
 
-## 4. auditSharedInventoryUniqueness の実行手順
+## 4. auditSharedInventoryUniqueness の実行結果（2026-09-04）
 
-本 PR で追加した `src/99_DevSharedInventoryUniquenessAudit.js` を DEV 環境にデプロイ後、以下のコマンドで実行する。
+`src/99_DevSharedInventoryUniquenessAudit.js` を DEV 環境にデプロイ後、以下のコマンドで実行済み。
 
 ```bash
-# 本 PR を develop にマージ → CI が DEV に自動デプロイ後
-clasp run auditSharedInventoryUniqueness
+clasp run auditSharedInventoryUniqueness --json
 ```
 
-実行結果の読み方:
+**生出力（抜粋）:**
 
 ```json
 {
-  "totalDataRows": <1086 になることを確認>,
-  "productIdNullCount": <NULL/空の product_id 件数>,
+  "totalDataRows": 876,
+  "productIdNullCount": 180,
+  "supplierEmptyCount": 0,
+  "conditionEmptyCount": 0,
+  "fullDuplicateRowCount": 0,
   "comboA": {
-    "isUnique": <true なら選択肢1の前提を満たす>,
-    "duplicateKeyCount": <重複キー数>
+    "isUnique": false,
+    "duplicateKeyCount": 10
   },
   "comboB": {
-    "isUnique": <true なら選択肢2の前提を満たす>,
-    "duplicateKeyCount": <重複キー数>
-  },
-  "fullDuplicateRowCount": <完全重複行の件数>
+    "isUnique": false,
+    "duplicateKeyCount": 10
+  }
 }
 ```
 
+重複キー詳細は §2-1 参照。
+
 ---
 
-## 5. 【未確認】項目まとめ
+## 5. 確認済み・未確認項目まとめ
 
-| # | 項目 | 確認方法 |
-|---|------|---------|
-| U-1 | (product_id, 提供者) が 1086 行で一意か | `clasp run auditSharedInventoryUniqueness` の `comboA.isUnique` |
-| U-2 | (product_id, Condition, 提供者) が 1086 行で一意か | 同 `comboB.isUnique` |
-| U-3 | 完全重複行の件数 | 同 `fullDuplicateRowCount` |
-| U-4 | option_master の 4 列（category / value / sort_order / is_active）の実データ型 | DEV 環境で `選択肢マスタV2` シートを分析 |
-| U-5 | 別セッションが共用在庫の SQL DDL を独自に作成済みかどうか | 別セッション担当者への確認 |
+| # | 項目 | 状態 | 結果 |
+|---|------|------|------|
+| U-1 | (product_id, 提供者) が全行で一意か | **確認済み** | 一意でない（10 組の重複。うち非 NULL 実重複: PM0263 + 佐々木優太 が 10 行） |
+| U-2 | (product_id, Condition, 提供者) が全行で一意か | **確認済み** | 一意でない（10 組の重複。うち非 NULL 実重複: PM0263 + Sealed box + 佐々木優太 が 10 行） |
+| U-3 | 完全重複行（全 11 列一致）の件数 | **確認済み** | 0 件 |
+| U-4 | option_master の 4 列（category / value / sort_order / is_active）の実データ型 | **一部確認** | シート存在を確認（2026-09-04）。各列の実データ分析は未実施 |
+| U-5 | 別セッションが共用在庫の SQL DDL を独自に作成済みかどうか | **未確認** | 別セッション担当者への確認が必要 |
