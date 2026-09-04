@@ -9064,3 +9064,43 @@ PR #1001 の DEV deploy 完了後から `clasp run` が全関数で `"Unable to 
 **マージ後検証（未実施）**: clasp run が全コマンドで失敗中（PR-AC1 以降継続中）。
 - `getDeployedSha`: 未確認
 - `runCoreSchemaConformanceAudit`: 未確認
+
+---
+
+### 2026-09-04 PR-AD1: 送料表マスタに PACKAGE_TYPE（荷姿区分）列を追加
+
+**PR**: #1009 / mergedAt: 2026-09-04T14:48:10Z  
+**Deploy to DEV**: success（run 33885832796）  
+**origin/develop HEAD**: `95ad600bdf16d684442e2c463c330de538964a01`
+
+**変更内容**:
+- `src/00_CoreSchemaRegistry.js`: SHIPPING_RATES に `PACKAGE_TYPE`（荷姿区分）を末尾（10列目）追加
+  - headers: `['PACKAGE_TYPE', '荷姿区分']`
+  - values: `BOX / ENVELOPE / PAK`
+  - SQL移行後の想定: `UNIQUE(carrier_id, zone, package_type, min_weight, max_weight)`
+- `src/99_DevShippingRatePackageType.js`: 新規ファイル
+  - `addPackageTypeColumn('DRY_RUN' | 'APPLY')` 関数を追加
+  - APPLY では既存全行に 'BOX' を `setValues` で一括書き込み（実行時間対策）
+  - DEV 環境ガード・既存列スキップ処理あり
+- `src/29_ShippingFeeCalculator.js`: 送料照合条件に荷姿区分を追加
+  - `_sfcBuildRatesMap`: ratesMap キーを `carrierId|zone` → `carrierId|zone|packageType` に変更
+    - PACKAGE_TYPE 列が未存在の場合は 'BOX' 既定（列追加 APPLY 前も動作を壊さない）
+  - `_sfcCalculateForCarrier` / `_sfcCalculateBox`: `packageType` パラメータ追加
+  - `calculateShippingFeeForFrontend`: `payload.packageType` 読み取り（省略時 'BOX'）
+  - `_sfeProcess_`: `payload.packageType` を `_sfcCalculateForCarrier` に渡す
+
+**設計意図**:
+- eLogi FedEx IP はエンベロープ・パック・箱で料金が違うため区分列で表す
+- 配送会社を分けると地帯マスタのゾーンが重複し比較画面に多数の選択肢が並ぶため
+- 既存 3社（FedEx / DHL / UPS）は全行 BOX 設定予定。動作は変わらない
+
+**マージ後検証（未実施）**: clasp run が全コマンドで失敗中（PR-AC1 以降継続中）。
+- `getDeployedSha`: 未確認（origin/develop HEAD は `95ad600...` と一致するはず）
+- `addPackageTypeColumn('DRY_RUN')`: 未確認
+- `addPackageTypeColumn('APPLY')`: **未実施（★ データ移行未完了）**
+- `runCoreSchemaConformanceAudit`: 未確認
+- `devTestShippingFeeForLines`: 未確認（回帰テスト未実施）
+
+**★ 要ユーザー対応**: `addPackageTypeColumn('APPLY')` が未実施のため、
+送料表マスタには荷姿区分列がまだ存在しない。
+clasp run が回復次第、DRY_RUN → APPLY の順で実行が必要。
