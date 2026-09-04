@@ -270,3 +270,75 @@ clasp run auditSharedInventoryUniqueness --json
 | U-3 | 完全重複行（全 11 列一致）の件数 | **確認済み** | 0 件 |
 | U-4 | option_master の 4 列（category / value / sort_order / is_active）の実データ型 | **一部確認** | シート存在を確認（2026-09-04）。各列の実データ分析は未実施 |
 | U-5 | 別セッションが共用在庫の SQL DDL を独自に作成済みかどうか | **未確認** | 別セッション担当者への確認が必要 |
+
+---
+
+## 6. 共用在庫 inventory_id 列追加 事前確認（2026-09-04 調査）
+
+PO 決定（2026-09-04）: 共用在庫の主キーはサロゲートキー（連番）とする。
+列追加前の事前確認として以下を調査した。
+
+### 6-1. GAS 側からの書き込み
+
+`grep -rn "共用在庫\|SHARED_INVENTORY" src/ | grep -iE "setValue|appendRow|write"` の結果:
+
+| ファイル | 内容 | 判定 |
+|--------|------|------|
+| `src/00_SheetWrite.js:44` | `SHARED_INVENTORY_CACHE_INDEX` → "inventory"（コメント） | cache write（シート書き込みなし）|
+| `src/99_PerfBench.js:676` | `writeCacheChunks_` | cache write（シート書き込みなし）|
+| `src/28_SharedInventoryReadApi.js:345,374` | `writeCacheChunks_` | cache write（シート書き込みなし）|
+| `src/00_CoreSchemaRegistry.js:219` | `writeAllowed: false` | Registry 定義（書き込み禁止）|
+
+**判定: GAS 側からのシート書き込み = なし**
+
+### 6-2. 読み取り関数の列参照方式
+
+`getSharedInventoryForFrontend`（`28_SharedInventoryReadApi.js:358`）と `getInventoryBatchForFrontend`（同:197）はいずれも `buildSharedInventoryRows_`（同:11）を経由する。
+
+`buildSharedInventoryRows_` の列解決方式（`28_SharedInventoryReadApi.js:76-93`）:
+
+```javascript
+var headers = invData[0].map(String);
+var col = {
+  series:          headers.indexOf('Series'),
+  quantity:        headers.indexOf('Quantity'),
+  unitPrice:       headers.indexOf('Unit Price'),
+  condition:       headers.indexOf('Condition'),
+  status:          headers.indexOf('Status'),
+  noteJa:          headers.indexOf('Note_JA'),
+  noteEn:          headers.indexOf('Note_EN'),
+  supplier:        headers.indexOf('提供者'),
+  productId:       headers.indexOf('product_id'),
+  rawName:         headers.indexOf('raw_name'),
+  exclusionReason: headers.indexOf('除外理由')
+};
+```
+
+全 11 列を**ヘッダー名で動的解決**。列位置の直書きなし。ヘッダー不足の場合は例外をスロー。
+
+**判定: 読み取り関数の列参照方式 = 列名ベース（列追加による影響なし）**
+
+### 6-3. 外部からの書き込み・IMPORTRANGE
+
+| 確認項目 | 結果 | 出典 |
+|---------|------|------|
+| このコードベースの IMPORTRANGE 対象 | `共用在庫` は対象外。`01_Initialize.js:880` の IMPORTRANGE は 'Stock List同期'（ERP の Stock List）。| `src/01_Initialize.js:869-894` |
+| '共用在庫' の sheetType | `SYNC_MASTER`（外部から同期されるシートの可能性あり） | `src/00_CoreSchemaRegistry.js:219` |
+| `共用在庫` シートの実際の数式 | **【未確認】**（`clasp run checkSharedInventoryFormulas` が実行不可） | — |
+| tcg-inventory-parser の書き込み方式 | **【未確認】**（外部リポジトリのためコード参照不可） | — |
+
+### 6-4. 判定
+
+| 判定基準 | 状態 |
+|---------|------|
+| 全参照が列名ベース | **OK** |
+| 外部書き込みなし | **【未確認】**（tcg-inventory-parser + 実シートの数式） |
+
+**最終判定: 【未確認】** → 列を追加しない。tcg-inventory-parser の書き込み方式および共用在庫シートの IMPORTRANGE 数式の有無について、別セッション担当者に確認が必要。
+
+### 6-5. 未確認事項の確認方法
+
+| 未確認事項 | 確認方法 |
+|---------|---------|
+| 共用在庫シートの数式 | `clasp run checkSharedInventoryFormulas` を実行（`src/99_DevSharedInventoryFormulaCheck.js` デプロイ済み） |
+| tcg-inventory-parser の書き込み方式 | tcg-inventory-parser リポジトリのコードで共用在庫シートへの書き込み部分を確認。列位置直書きか列名指定かを確認 |

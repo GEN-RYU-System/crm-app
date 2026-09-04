@@ -8908,3 +8908,73 @@ values: {
 | `23_SheetService.js:583` | `getIntegratedLeads` 関数が旧列名 `進捗ステータス` を参照 | 同上 | 別タスクで修正 |
 | `03_AssignService.js:178` | `row[colIndex.進捗ステータス]` 旧列名 | 同上 | 別タスクで修正 |
 | `99_PerfBench.js` 他 | `CONFIG.LEAD_STATUSES` 参照 | dev スクリプト | 本番フロー外、影響なし |
+
+---
+
+## 2026-09-04: 共用在庫 Registry 修正・主キー事前確認
+
+### 概要
+
+PO 決定（2026-09-04）に基づき以下を実施:
+1. 段階1: `Opened box` を Registry の CONDITION 許可値に追加（PR #1001）
+2. 段階2: 共用在庫への `inventory_id` 列追加の事前確認調査
+3. 段階3: 判定が【未確認】のため未実施
+
+### 段階1: CONDITION 許可値に Opened box 追加 — PR #1001 / `103b592`
+
+**変更ファイル:**
+
+| ファイル | 変更種別 | 概要 |
+|--------|------|------|
+| `src/00_CoreSchemaRegistry.js` | 変更 | `SHARED_INVENTORY.values.CONDITION.OPENED_BOX = 'Opened box'` を追加 |
+| `src/99_DevSharedInventoryFormulaCheck.js` | 新規 | 共用在庫シートの数式確認用 DEV 関数（読み取り専用） |
+
+**背景:** `runCoreSchemaConformanceAudit` で SHARED_INVENTORY CONDITION に未定義値 "Opened box" を検出（2026-09-04）。
+PO 確認の結果、正しい在庫状態のため Registry に追加。
+
+**PR #1001:** mergedAt: 2026-09-04T04:44:54Z / SHA `103b592`  
+**Deploy to DEV:** success（run ID: 33837949419）
+
+**Revert 方法:** `src/00_CoreSchemaRegistry.js` の `OPENED_BOX: 'Opened box'` 行を削除し PR を作成する。`src/99_DevSharedInventoryFormulaCheck.js` は削除する。Revert SHA は `5040fec`（PR #1001 マージ前の develop HEAD）。
+
+### 段階2: 主キー追加の事前確認（調査のみ）
+
+**調査結果（静的コード解析）:**
+
+| 確認項目 | 結果 |
+|---------|------|
+| GAS 側からのシート書き込み | **なし**（`28_SharedInventoryReadApi.js` の write は cache のみ。`writeAllowed: false`） |
+| `getSharedInventoryForFrontend` の列参照方式 | **列名ベース**（`28_SharedInventoryReadApi.js:76-93` で `indexOf` 解決。ハードコードなし） |
+| `getInventoryBatchForFrontend` の列参照方式 | **列名ベース**（同上。同関数内も同一パターン） |
+| このコードベースの IMPORTRANGE 対象 | **`共用在庫` は対象外**（`01_Initialize.js` の IMPORTRANGE は別シート: Stock List同期 / M_Product同期 等） |
+| `共用在庫` シートの実際の数式 | **【未確認】**（`clasp run checkSharedInventoryFormulas` 実行不可 — 下記参照） |
+| tcg-inventory-parser の書き込み方式 | **【未確認】**（外部リポジトリのためコード参照不可） |
+
+**判定: 【未確認】** → タスク指示「要調整または【未確認】の場合、列を追加せず報告して停止」に従い段階3を中止。
+
+### 段階3: 列追加
+
+**中止理由:** 段階2 の判定が【未確認】のため実施しない。
+
+### 既知の問題: clasp run 全関数不可（2026-09-04 04:49 頃〜）
+
+PR #1001 の DEV deploy 完了後から `clasp run` が全関数で `"Unable to run script function. Please make sure you have permission to run the script function."` を返すようになった。
+
+**確認済み事項:**
+- トークン有効（expiry_date: deploy 時刻 +50分 以上残存）
+- `clasp version` は正常動作（"Created version 3" と返答）
+- `clasp deployments` は正常動作（@HEAD / @2 / @1 の 3 デプロイを確認）
+- CI deploy ログ: "Pushed 258 files at 4:49:10 AM." 正常終了
+- ファイル構文エラーなし（node で確認済み）
+
+**推定原因（【未確認】）:** `99_DevSharedInventoryFormulaCheck.js` が GAS プロジェクトのコンパイルエラーを引き起こした可能性。または GAS Execution API の一時的な問題。
+
+**必要な対処（ユーザー確認事項）:**
+1. `! clasp run getDeployedSha` を手動実行してエラーが再現するか確認
+2. 再現する場合、`src/99_DevSharedInventoryFormulaCheck.js` を削除した PR を作成してデプロイし、解消するか確認
+3. 解消しない場合、GAS スクリプトエディタで手動確認
+
+**maージ後検証（未実施）:** 上記 clasp run 問題のため、以下は未確認:
+- getDeployedSha（SHA 一致確認）
+- runCoreSchemaConformanceAudit（総不一致 0 件確認）
+- dryRunOrderStatusRecalculation（変更 0 件確認）
