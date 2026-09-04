@@ -232,8 +232,7 @@ const CORE_SCHEMA_V1_TABLES = {
         SEARCHED_PACK:      'Searched pack',
         FLAG_SINGLE:        'FLAG_SINGLE',
         DAMAGED_CASE:       'Damaged case',
-        UNSEARCHED_PACK:    'Unsearched pack',
-        OPENED_BOX:         'Opened box'
+        UNSEARCHED_PACK:    'Unsearched pack'
       }
     },
     referenceIds: [{ headerKey: 'PRODUCT_ID', targetTableKey: 'PRODUCTS' }]
