@@ -47,7 +47,7 @@ const CORE_SCHEMA_V1_TABLES = {
   ORDERS: {
     sheetName: 'オーダー管理', canonicalName: 'オーダー管理', aliases: [], headerRowNumber: 1, sheetType: 'TRANSACTION', writeAllowed: true,
     headers: createCoreSchemaV1Headers([
-      ['ORDER_ID', 'order_id'], ['INVOICE_NUMBER', 'invoice_number'], ['CUSTOMER_ID', 'customer_id'], ['SHIPPING_DESTINATION_ID', 'shipping_destination_id'], ['PAYMENT_DESTINATION_ID', 'payment_destination_id'], ['SOURCE_LEAD_ID', 'source_lead_id'], ['STATUS', 'status'], ['ORDER_DATE', 'order_date'], ['CURRENCY', 'currency'], ['EXCHANGE_RATE', 'exchange_rate'], ['LINE_TOTAL', 'line_total'], ['SHIPPING_FEE', 'shipping_fee'], ['DUTY', 'duty'], ['INVOICE_TOTAL', 'invoice_total'], ['PAYMENT_METHOD', 'payment_method'], ['INVOICE_LINK', 'invoice_link'], ['INVOICE_ISSUED_AT', 'invoice_issued_at'], ['PAYMENT_DUE_AT', 'payment_due_at'], ['PAYMENT_CONFIRMED_AT', 'payment_confirmed_at'], ['PAYMENT_CONFIRMATION_SOURCE', 'payment_confirmation_source'], ['SHIPPING_METHOD', 'shipping_method'], ['SHIPPED_AT', 'shipped_at'], ['TRACKING_NUMBER', 'tracking_number'], ['SHIPPING_NOTE', 'shipping_note'], ['NOTE', 'note'], ['REGISTERED_AT', 'registered_at'], ['UPDATED_AT', 'updated_at'], ['ORDER_ASSIGNEE_ID', 'order_assignee_id'], ['PAYMENT_CONFIRMED_BY_ID', 'payment_confirmed_by_id'], ['SALES_ASSIGNEE_ID', 'sales_assignee_id'], ['SHIPPING_ASSIGNEE_ID', 'shipping_assignee_id'], ['TRANSACTION_NOTE', 'transaction_note'], ['RESERVED_INVOICE_NUMBER', 'reserved_invoice_number'], ['RELEASE_SCHEDULED_AT', 'release_scheduled_at'], ['DEPOSIT_RATE', 'deposit_rate'], ['OTHER_FEE', 'other_fee'], ['DISCOUNT', 'discount'], ['PAYMENT_TERMS', 'payment_terms'], ['CANCELLATION_REASON', 'cancellation_reason'], ['CANCELLATION_NOTE', 'cancellation_note'], ['PAYMENT_STATUS', 'payment_status'], ['INVOICE_TOTAL_JPY', 'invoice_total_jpy'], ['INTERNAL_NOTE', 'internal_note']
+      ['ORDER_ID', 'order_id'], ['INVOICE_NUMBER', 'invoice_number'], ['CUSTOMER_ID', 'customer_id'], ['SHIPPING_DESTINATION_ID', 'shipping_destination_id'], ['PAYMENT_DESTINATION_ID', 'payment_destination_id'], ['SOURCE_LEAD_ID', 'source_lead_id'], ['STATUS', 'status'], ['ORDER_DATE', 'order_date'], ['CURRENCY', 'currency'], ['EXCHANGE_RATE', 'exchange_rate'], ['LINE_TOTAL', 'line_total'], ['SHIPPING_FEE', 'shipping_fee'], ['DUTY', 'duty'], ['INVOICE_TOTAL', 'invoice_total'], ['PAYMENT_METHOD', 'payment_method'], ['INVOICE_LINK', 'invoice_link'], ['INVOICE_ISSUED_AT', 'invoice_issued_at'], ['PAYMENT_DUE_AT', 'payment_due_at'], ['PAYMENT_CONFIRMED_AT', 'payment_confirmed_at'], ['PAYMENT_CONFIRMATION_SOURCE', 'payment_confirmation_source'], ['SHIPPING_METHOD', 'shipping_method'], ['SHIPPED_AT', 'shipped_at'], ['TRACKING_NUMBER', 'tracking_number'], ['SHIPPING_NOTE', 'shipping_note'], ['NOTE', 'note'], ['REGISTERED_AT', 'registered_at'], ['UPDATED_AT', 'updated_at'], ['ORDER_ASSIGNEE_ID', 'order_assignee_id'], ['PAYMENT_CONFIRMED_BY_ID', 'payment_confirmed_by_id'], ['SALES_ASSIGNEE_ID', 'sales_assignee_id'], ['SHIPPING_ASSIGNEE_ID', 'shipping_assignee_id'], ['TRANSACTION_NOTE', 'transaction_note'], ['RESERVED_INVOICE_NUMBER', 'reserved_invoice_number'], ['RELEASE_SCHEDULED_AT', 'release_scheduled_at'], ['DEPOSIT_RATE', 'deposit_rate'], ['OTHER_FEE', 'other_fee'], ['DISCOUNT', 'discount'], ['PAYMENT_TERMS', 'payment_terms'], ['CANCELLATION_REASON', 'cancellation_reason'], ['CANCELLATION_NOTE', 'cancellation_note'], ['PAYMENT_STATUS', 'payment_status'], ['INVOICE_TOTAL_JPY', 'invoice_total_jpy'], ['INTERNAL_NOTE', 'internal_note'], ['ORDER_SOURCE', '注文種類']
     ]), primaryKey: 'ORDER_ID',
     values: {
       PAYMENT_STATUS: {
@@ -74,6 +74,13 @@ const CORE_SCHEMA_V1_TABLES = {
         TROUBLE: 'トラブル',
         CANCELLED: 'キャンセル',
         UNKNOWN: '不明'
+      },
+      ORDER_SOURCE: {
+        EBAY:    'ebay',
+        AMAZON:  'amazon',
+        RAKUTEN: 'rakuten',
+        YAHOO:   'yahoo',
+        OTHER:   'その他'
       }
     },
     referenceIds: [
