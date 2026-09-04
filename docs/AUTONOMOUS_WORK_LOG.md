@@ -9034,3 +9034,33 @@ PR #1001 の DEV deploy 完了後から `clasp run` が全関数で `"Unable to 
 - `devTestElogiCsv("SH-0004")`: 未確認
 - `runCoreSchemaConformanceAudit`: 未確認
 - dryRunOrderStatusRecalculation（変更 0 件確認）
+
+---
+
+### 2026-09-04 PR-AC3: 発送タブに eLogi CSV ダウンロードボタンを追加
+
+**PR**: #1007 / mergedAt: 2026-09-04T10:23:59Z  
+**Deploy to DEV**: success（run 33863043759）  
+**origin/develop HEAD**: `796e212ecb8d89d1750d21caef8c0f9567f6ad1a`
+
+**変更内容**:
+- `frontend/src/gas/client.ts`: `generateElogiCsv(shipmentId)` 関数を追加
+  - `ElogiCsvResult` / `ElogiCsvWarning` 型を export
+- `frontend/src/gas/types.d.ts`: `GoogleScriptRun` インターフェースに `generateElogiCsvForFrontend` を追加
+- `frontend/src/pages/sales-orders/SalesOrderDetailPage.tsx`: eLogi CSV セクションを追加
+  - 発送明細セクション下に配置
+  - 発送明細 0 件時はボタン無効（`disabled`）
+  - 警告がある場合は警告一覧を表示し「それでもダウンロードする」で続行
+  - ファイル名: `elogi_{shipmentId}_{yyyyMMdd}.csv`（UTF-8 BOM 付き）
+- `frontend/src/pages/sales-orders/SalesOrderDetailPage.css`: eLogi セクション用スタイルを追加
+  - `--color-warning-subtle` を使用（デザイントークン準拠）
+- `frontend/src/content/ja/salesOrders.ts`: eLogi CSV 関連コピー13件を追加
+- `frontend/src/preview/gasRunnerMock.ts`: `generateElogiCsvForFrontend` プレビュースタブを追加
+
+**CI 修正事項**:
+- `Sensitive Content` 失敗: `gasRunnerMock.ts` のダミー電話番号 `+1-800-000-0000` が検出
+  → `+000-000-0000`（safePhone パターン `0{2,}` 対象値）に変更して通過
+
+**マージ後検証（未実施）**: clasp run が全コマンドで失敗中（PR-AC1 以降継続中）。
+- `getDeployedSha`: 未確認
+- `runCoreSchemaConformanceAudit`: 未確認
